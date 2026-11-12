@@ -48,8 +48,8 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-lg-6 col-xl-5">
+    <div class="row g-3 mb-3 justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8 col-xl-6">
             <div class="cotq-panel">
                 <div class="cotq-panel-title">@(IsLangEn ? "Order status" : "Tình trạng đơn hàng")</div>
                 @if (TotalPO > 0)
@@ -59,7 +59,7 @@
                             <DxPieChartSeries T="OrderStatusPoint" TArgument="string" TValue="int"
                                               ArgumentField="@(s => s.Category)" ValueField="@(s => s.Value)">
                             </DxPieChartSeries>
-                            <DxChartLegend Visible="true" Position="RelativePosition.Outside" HorizontalAlignment="HorizontalAlignment.Right" Orientation="Orientation.Vertical" />
+                            <DxChartLegend Visible="true" Position="RelativePosition.Outside" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalEdge.Bottom" Orientation="Orientation.Horizontal" />
                         </DxPieChart>
                         <div class="cotq-donut-center">
                             <div class="cotq-donut-center-value">@TotalPO</div>
@@ -221,16 +221,26 @@ HeaderText="Ngày giao NCC">
         line-height: 1.4em;
     }
 
+    /* ===== COTQ dashboard (cotq-*) ===== */
+    .cotq-stat-card,
+    .cotq-panel {
+        --cotq-surface: #fff;
+        --cotq-radius: 10px;
+        --cotq-shadow: 0 1px 3px rgba(0,0,0,.08);
+        --cotq-muted: #6c757d;
+        background: var(--cotq-surface);
+        border-radius: var(--cotq-radius);
+        box-shadow: var(--cotq-shadow);
+        height: 100%;
+    }
+
+    /* Stat cards */
     .cotq-stat-card {
         display: flex;
         align-items: center;
         gap: 12px;
-        background: #fff;
-        border-radius: 10px;
         padding: 14px 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,.08);
         border-left: 4px solid var(--cotq-accent, #0d6efd);
-        height: 100%;
     }
 
     .cotq-stat-icon {
@@ -260,7 +270,7 @@ HeaderText="Ngày giao NCC">
 
     .cotq-stat-sub {
         font-size: .72rem;
-        color: #6c757d;
+        color: var(--cotq-muted);
     }
 
     .cotq-card-primary {
@@ -287,12 +297,11 @@ HeaderText="Ngày giao NCC">
         --cotq-icon-fg: #fd7e14;
     }
 
+    /* Donut panel: the legend sits under the chart, so the total is centred horizontally
+       and shifted up by half the (approximate) legend height. */
     .cotq-panel {
-        background: #fff;
-        border-radius: 10px;
-        padding: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,.08);
-        height: 100%;
+        padding: 14px 16px;
+        --cotq-legend-h: 32px;
     }
 
     .cotq-panel-title {
@@ -306,8 +315,8 @@ HeaderText="Ngày giao NCC">
 
     .cotq-donut-center {
         position: absolute;
-        top: 50%;
-        left: 35%;
+        top: calc(50% - (var(--cotq-legend-h) / 2));
+        left: 50%;
         transform: translate(-50%, -50%);
         text-align: center;
         pointer-events: none;
@@ -316,11 +325,12 @@ HeaderText="Ngày giao NCC">
     .cotq-donut-center-value {
         font-size: 1.6rem;
         font-weight: 700;
+        line-height: 1.1;
     }
 
     .cotq-donut-center-label {
         font-size: .75rem;
-        color: #6c757d;
+        color: var(--cotq-muted);
     }
 </style>
 
