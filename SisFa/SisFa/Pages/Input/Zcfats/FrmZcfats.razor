@@ -1,0 +1,1760 @@
+﻿@inherits FrmListBaseComponent
+@using SisFa.Pages.Input.Zcfats
+@using DevExpress.Blazor
+@using System.Data
+@using System.Linq
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+<FormList Title="@Title"
+          @bind-curActionTask="@curActionTask"
+          OnSave="@SaveDM"
+          OnCancel="@CloseForm">
+
+    <div class="row m-1 me-2" style="min-height: 290px; align-content: flex-start;">
+        <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header" onkeydown="ModifyEnterKeyPressAsTab(event);">
+            <DxFormLayoutTabPages ColSpanMd="12" CssClass="css-detail" @bind-ActiveTabIndex="@ActiveTabIndex">
+                <DxFormLayoutTabPage Caption="Thông tin chính" CaptionCssClass="fw-bold">
+                    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" CssClass="mt-3">
+
+                        @* --- DÒNG 1: MÃ TÀI SẢN (Chia 2 cột) --- *@
+                        <DxFormLayoutItem Caption="Mã tài sản (số thẻ):" ColSpanMd="6" CaptionCssClass="fw-bold">
+                            <Template>
+                                <DxTextBox @ref="txtMaTaiSan" @bind-Text="@CurDmts.So_the_ts" CharacterCasing="CharacterCasing.Upper" Enabled="@AllowEditMa" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã phụ:" ColSpanMd="6">
+                            <Template>
+                                <DxTextBox @ref="txtMaPhu" @bind-Text="@CurDmts.Ma_tra_cuu" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        @* --- DÒNG 2: TÊN TÀI SẢN (Trải dài full 100%) --- *@
+                        <DxFormLayoutItem Caption="Tên tài sản:" ColSpanMd="12" CaptionCssClass="fw-bold">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmts.Ten_ts" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        @* ==========================================================
+           TỪ ĐÂY TRỞ XUỐNG: CHIA 3 CỘT (ColSpanMd="4") ĐỂ RÚT NGẮN FORM
+           ========================================================== *@
+
+                        <DxFormLayoutItem Caption="Nhóm tài sản:" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmnhomts" @bind-Value="@CurDmts.Nh_ts" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Loại tài sản:" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmplts" @bind-Value="@CurDmts.Loai_ts" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Lý do tăng:" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmtgts" @bind-Value="@CurDmts.Ma_tg_ts" Filter="loai_tg_ts = 1" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Ngày tăng:" ColSpanMd="4">
+                            <Template>
+                                <DxDateEdit @bind-Date="@CurDmts.Ngay_mua" Format="dd/MM/yyyy" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã bpsd:" ColSpanMd="4">
+                            <Template>
+                                @* Hiển thị toàn bộ BPSD (không lọc theo ĐVCS) *@
+                                <AutocompleteComponent Ma_dm="dmbpts" Filter="1=1" @bind-Value="@CurDmts.Ma_bpts" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Kiểu k.hao:" ColSpanMd="4">
+                            <Template>
+                                <DxComboBox Data="@ListKieuKH"
+                                            Value="@CurDmts.Kieu_kh"
+                                            ValueFieldName="Value"
+                                            TextFieldName="Text"
+                                            Enabled="@AllowEditMode"
+                                            ValueChanged="@((string v) => OnKieuKhChanged(v))" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Số kỳ k.hao:" ColSpanMd="4" Visible="@(CurDmts.Kieu_kh == "1")">
+                            <Template>
+                                <DxSpinEdit Value="@CurDmts.So_ky_kh"
+                                            DisplayFormat="N0"
+                                            Enabled="@AllowEditMode"
+                                            ValueChanged="@((decimal? v) => OnSoKyChanged(v))" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Tổng sản lượng:" ColSpanMd="4" Visible="@(CurDmts.Kieu_kh == "2")">
+                            <Template>
+                                <DxSpinEdit @bind-Value="@CurDmts.Tong_sl" DisplayFormat="N2" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ngày bắt đầu tính KH:" ColSpanMd="4">
+                            <Template>
+                                <DxDateEdit Date="@CurDmts.Ngay_kh0" Format="dd/MM/yyyy" Enabled="@AllowEditMode" DateChanged="@((DateTime? d) => { CurDmts.Ngay_kh0 = d; CalculateEndDate(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="GTCL tính KH <= :" ColSpanMd="4">
+                            @* Rút gọn caption một xíu cho đỡ chật *@
+                            <Template>
+                                <DxSpinEdit @bind-Value="@CurDmts.Tien_cl" DisplayFormat="N0" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ngày kết thúc k.hao:" ColSpanMd="4">
+                            <Template>
+                                <DxDateEdit @bind-Date="@CurDmts.Ngay_kt_kh" Format="dd/MM/yyyy" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Tk khấu hao:" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmtk" @bind-Value="@CurDmts.Tk_kh" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Tk chi phí:" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmtk" @bind-Value="@CurDmts.Tk_cp" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã phí:" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmphi" @bind-Value="@CurDmts.Ma_phi" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã bpht:" ColSpanMd="4">
+                            <Template>
+                                @* Hiển thị toàn bộ BPHT (không lọc theo ĐVCS) *@
+                                <AutocompleteComponent Ma_dm="dmbpht" Filter="1=1" @bind-Value="@CurDmts.Ma_bpht" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Mã phân xưởng(cđ):" ColSpanMd="4">
+                            <Template>
+                                @* Hiển thị toàn bộ phân xưởng (không lọc theo ĐVCS) *@
+                                <AutocompleteComponent Ma_dm="dmpx" Filter="1=1" @bind-Value="@CurDmts.Ma_px" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã dự án:" ColSpanMd="4">
+                            <Template>
+                                @* Hiển thị toàn bộ dự án (không lọc theo ĐVCS) *@
+                                <AutocompleteComponent Ma_dm="dmvv" Filter="1=1" @bind-Value="@CurDmts.Ma_vv" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Phân nhóm 1:" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmnhts1" @bind-Value="@CurDmts.Nh_ts1" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Phân nhóm 2:" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmnhts2" @bind-Value="@CurDmts.Nh_ts2" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Phân nhóm 3:" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmnhts3" @bind-Value="@CurDmts.Nh_ts3" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã ĐVCS:" ColSpanMd="4">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmts.Ma_dvcs" ReadOnly="true" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                    </DxFormLayoutGroup>
+                </DxFormLayoutTabPage>
+                <DxFormLayoutTabPage Caption="Thông tin phụ" CaptionCssClass="fw-bold">
+                        <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" CssClass="mt-3">
+                            <DxFormLayoutItem Caption="Biên bản giao nhận số:" ColSpanMd="6">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurDmts.So_bbbg" Enabled="@AllowEditMode" />
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="Ngày:" ColSpanMd="6">
+                                <Template>
+                                    <DxDateEdit Date="@CurDmts.Ngay_bbbg" Format="dd/MM/yyyy" Enabled="@AllowEditMode" DateChanged="@((DateTime? d) => CurDmts.Ngay_bbbg = d)" />
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            @* --- HÀNG 2: SỐ LƯỢNG & ĐVT --- *@
+                            <DxFormLayoutItem Caption="Số lượng:" ColSpanMd="6">
+                                <Template>
+                                    <DxSpinEdit Value="@CurDmts.So_luong" DisplayFormat="N2" Enabled="@AllowEditMode" ValueChanged="@((decimal? v) => CurDmts.So_luong = v)" />
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="Đvt:" ColSpanMd="6">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurDmts.Dvt" Enabled="@AllowEditMode" />
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            @* --- HÀNG 3: SỐ HIỆU & NƯỚC SX --- *@
+                            <DxFormLayoutItem Caption="Số hiệu tài sản:" ColSpanMd="6">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurDmts.So_hieu_ts" Enabled="@AllowEditMode" />
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="Nước sản xuất:" ColSpanMd="6">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurDmts.Nuoc_sx" Enabled="@AllowEditMode" />
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            @* --- HÀNG 4: NĂM SX & THÔNG SỐ KT --- *@
+                            <DxFormLayoutItem Caption="Năm sản xuất:" ColSpanMd="6">
+                                <Template>
+                                    <DxSpinEdit Value="@CurDmts.Nam_sx" DisplayFormat="####" Enabled="@AllowEditMode" ValueChanged="@((decimal? v) => CurDmts.Nam_sx = v)" />
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="Thông số kỹ thuật:" ColSpanMd="6">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurDmts.Ts_kt" Enabled="@AllowEditMode" />
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            @* --- HÀNG 5: NGÀY SỬ DỤNG & NGÀY ĐÌNH CHỈ --- *@
+                            <DxFormLayoutItem Caption="Ngày đưa vào SD:" ColSpanMd="6">
+                                <Template>
+                                    <DxDateEdit Date="@CurDmts.Ngay_dvsd" Format="dd/MM/yyyy" Enabled="@AllowEditMode" DateChanged="@((DateTime? d) => CurDmts.Ngay_dvsd = d)" />
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="Ngày đình chỉ SD:" ColSpanMd="6">
+                                <Template>
+                                    <DxDateEdit Date="@CurDmts.Ngay_dc" Format="dd/MM/yyyy" Enabled="@AllowEditMode" DateChanged="@((DateTime? d) => CurDmts.Ngay_dc = d)" />
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            @* --- HÀNG 6: LÝ DO ĐÌNH CHỈ & TÊN 2 --- *@
+                            <DxFormLayoutItem Caption="Lý do đình chỉ:" ColSpanMd="6">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurDmts.Ly_do_dc" Enabled="@AllowEditMode" />
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="Tên 2:" ColSpanMd="6">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurDmts.Ten_ts2" Enabled="@AllowEditMode" />
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            @* --- HÀNG 7: GHI CHÚ (Full dòng) --- *@
+                            <DxFormLayoutItem Caption="Ghi chú" ColSpanMd="12">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurDmts.Ghi_chu" Enabled="@AllowEditMode" />
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                    </DxFormLayoutTabPage>
+
+                <DxFormLayoutTabPage Caption="Phụ tùng kèm theo" CaptionCssClass="fw-bold">
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <Template>
+                            @* 1. BỌC LƯỚI TRONG WRAPPER VÀ BẮT SỰ KIỆN LOST FOCUS *@
+                            <div id="grid-wrapper-pt" @onfocusout="OnGridPhuTungLostFocus" class="mt-2 mb-3">
+                                <DxGrid @ref="GridPhuTung"
+                                        Data="@LstPhuTung"
+                                        SizeMode="@Itemsizemode"
+                                        CssClass="w-100 grid-height-dynamic"
+                                        @onkeydown="GridPhuTung_OnKeyDown"
+                                        AllowSelectRowByClick="true"
+                                        KeyboardNavigationEnabled="true"
+                                        @bind-SelectedDataItem="@SelectedDataItemPhuTung"
+                                        ValidationEnabled="false"
+                                        EditMode="GridEditMode.EditRow"
+                                        RowClick="@StartEditDataItemByClickPT"
+                                        SelectionMode="GridSelectionMode.Single"
+                                        CustomizeEditModel="OnCustomizeEditModelPT"
+                                        EditModelSaving="OnGridSavingPT"
+                                        DataItemDeleting="OnGridDeletingPT"
+                                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                        EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                        ShowAllRows="true"
+                                        TextWrapEnabled="false"
+                                        AllowSort="false"
+                                        HighlightRowOnHover="true"
+                                        FooterDisplayMode="GridFooterDisplayMode.Always">
+
+                                    <Columns>
+                                        @* 3. CỘT LỆNH: CHỐNG LỖI FOCUS BẰNG CÁCH ĐỂ TRỐNG EditTemplate *@
+                                        <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                            <CellDisplayTemplate Context="gridCtx">
+                                                <div class="grid-cell-align-center">
+                                                    <a class="text-danger fw-bold cursor-pointer" tabindex="-1" @onclick="@(() => GridPhuTung.ShowRowDeleteConfirmation(gridCtx.VisibleIndex))" title="Xóa dòng">
+                                                        <i class="fa fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </CellDisplayTemplate>
+                                            <CellEditTemplate Context="gridCtx">
+                                                @* ĐỂ TRỐNG ĐỂ DEVEXPRESS TỰ NHẢY SANG CỘT TÊN PHỤ TÙNG *@
+                                            </CellEditTemplate>
+                                        </DxGridCommandColumn>
+
+                                        <DxGridDataColumn FieldName="Stt" Caption="Stt" Width="50px" ReadOnly="true" />
+
+                                        <DxGridDataColumn FieldName="Ten_ptkt" Caption="Tên phụ tùng" MinWidth="200">
+                                            <CellEditTemplate Context="gridCtx">
+                                                @{
+                                                    var item = (CtCtTs)gridCtx.EditModel;
+                                                }
+                                                <DxTextBox @bind-Text="@item.Ten_ptkt" NullText="Nhập tên phụ tùng..." CssClass="w-100" />
+                                            </CellEditTemplate>
+                                        </DxGridDataColumn>
+
+                                        <DxGridDataColumn FieldName="Dvt" Caption="ĐVT" Width="100px">
+                                            <CellEditTemplate Context="gridCtx">
+                                                @{
+                                                    var item = (CtCtTs)gridCtx.EditModel;
+                                                }
+                                                <DxTextBox @bind-Text="@item.Dvt" CssClass="w-100" />
+                                            </CellEditTemplate>
+                                        </DxGridDataColumn>
+
+                                        <DxGridDataColumn FieldName="So_luong" Caption="Số lượng" Width="120px">
+                                            <CellEditTemplate Context="gridCtx">
+                                                @{
+                                                    var item = (CtCtTs)gridCtx.EditModel;
+                                                }
+                                                <DxSpinEdit @bind-Value="@item.So_luong" DisplayFormat="N0" ShowSpinButtons="false" />
+                                            </CellEditTemplate>
+                                        </DxGridDataColumn>
+
+                                        <DxGridDataColumn FieldName="Gia_tri" Caption="Giá trị" Width="150px">
+                                            <CellEditTemplate Context="gridCtx">
+                                                @{
+                                                    var item = (CtCtTs)gridCtx.EditModel;
+                                                }
+                                                <DxSpinEdit @bind-Value="@item.Gia_tri" DisplayFormat="N0" ShowSpinButtons="false" />
+                                            </CellEditTemplate>
+                                        </DxGridDataColumn>
+                                    </Columns>
+
+                                </DxGrid>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayoutTabPage>
+            </DxFormLayoutTabPages>
+        </DxFormLayout>
+    </div>
+
+    <div id="grid-detail" class="mt-2 m-1 me-2 border rounded p-2" >
+                    <h6 class="fw-bold text-primary m-0 mb-1">Chi tiết giá trị Tài sản</h6>
+
+                    @* ĐÃ XÓA THẺ DxFormLayoutItem VÀ Template GÂY LỖI, CHỈ GIỮ LẠI WRAPPER CỦA SOCTHDA *@
+                    <div @ref="GridWrapperChiTiet" id="grid-wrapper" @onfocusout="OnGridChiTietLostFocus" class="mt-2 mb-3">
+
+                        <DxGrid @ref="GridChiTiet"
+                                Data="@LstChiTietGiaTri"
+                                SizeMode="@Itemsizemode"
+                                CssClass="w-100 grid-height-dynamic"
+                                @onkeydown="GridChiTiet_OnKeyDown"
+                                AllowSelectRowByClick="true"
+                                KeyboardNavigationEnabled="true"
+                                @bind-SelectedDataItem="@SelectedDataItemChiTiet"
+                                ValidationEnabled="false"
+                                EditMode="GridEditMode.EditRow"
+                                RowClick="@StartEditDataItemByClickChiTiet"
+                                SelectionMode="GridSelectionMode.Single"
+                                CustomizeEditModel="Grid_CustomizeEditModelChiTiet"
+                                EditModelSaving="Grid_EditModelSavingChiTiet"
+                                DataItemDeleting="Grid_DataItemDeletingChiTiet"
+                                ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                ShowFilterRow="false"
+                                ShowAllRows="true"
+                                TextWrapEnabled="false"
+                                AllowSort="false"
+                                HighlightRowOnHover="true"
+                                FooterDisplayMode="GridFooterDisplayMode.Always">
+
+                            <Columns>
+                                <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                    <CellDisplayTemplate Context="cntedit">
+                                        <div class="grid-cell-align-center">
+                                            <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                      RenderStyle="ButtonRenderStyle.Link"
+                                                      CssClass="grid-delete-btn"
+                                                      aria-label="Delete"
+                                                      Click="@(() => GridChiTiet.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                        </div>
+                                    </CellDisplayTemplate>
+                                    <CellEditTemplate Context="cntedit1">
+                                        <div class="grid-cell-align-center">
+                                            <DxButton Enabled="false"
+                                                      CssClass="grid-disabled-button"
+                                                      IconCssClass="grid-icon grid-icon-delete"
+                                                      aria-label="Delete"
+                                                      RenderStyle="ButtonRenderStyle.Link" />
+                                        </div>
+                                    </CellEditTemplate>
+                                </DxGridCommandColumn>
+                                <DxGridDataColumn FieldName="Ngay_ct" Caption="Ngày c.từ" DisplayFormat="dd/MM/yyyy" Width="120px">
+                                    <EditSettings><DxDateEditSettings Format="dd/MM/yyyy" /></EditSettings>
+                                </DxGridDataColumn>
+
+                                <DxGridDataColumn FieldName="So_ct" Caption="Số c.từ" Width="100px" />
+                                <DxGridDataColumn FieldName="Dien_giai" Caption="Diễn giải" />
+
+                                <DxGridDataColumn FieldName="Nguyen_gia" Caption="Nguyên giá" Width="130px">
+                                    <CellEditTemplate Context="cellContext">
+                                        @{
+                                            var item = (CtDmts)cellContext.EditModel;
+                                        }
+                                        <DxSpinEdit Value="@item.Nguyen_gia" ShowSpinButtons="false" ValueChanged="@((decimal? v) => OnNguyenGiaChanged(v, item))" />
+                                    </CellEditTemplate>
+                                </DxGridDataColumn>
+
+                                <DxGridDataColumn FieldName="Gt_da_kh" Caption="Gt đã k.hao" Width="130px">
+                                    <CellEditTemplate Context="cellContext">
+                                        @{
+                                            var item = (CtDmts)cellContext.EditModel;
+                                        }
+                                        <DxSpinEdit Value="@item.Gt_da_kh" ShowSpinButtons="false" ValueChanged="@((decimal? v) => OnGtDaKhChanged(v, item))" />
+                                    </CellEditTemplate>
+                                </DxGridDataColumn>
+
+                                <DxGridDataColumn FieldName="Gt_cl" Caption="Gt còn lại" DisplayFormat="N0" Width="130px">
+                                    <CellEditTemplate Context="cellContext">
+                                        @{
+                                            var item = (CtDmts)cellContext.EditModel;
+                                        }
+                                        <DxSpinEdit Value="@item.Gt_cl" DisplayFormat="N0" ShowSpinButtons="false" ReadOnly="true" Enabled="false" />
+                                    </CellEditTemplate>
+                                </DxGridDataColumn>
+
+                                <DxGridDataColumn FieldName="Gt_kh_ky" Caption="Gt k.hao 1 kỳ" DisplayFormat="N0" Width="130px" Visible="@(CurDmts.Kieu_kh == "1")">
+                                    <CellEditTemplate Context="cellContext">
+                                        @{
+                                            var item = (CtDmts)cellContext.EditModel;
+                                        }
+                                        <DxSpinEdit Value="@item.Gt_kh_ky" DisplayFormat="N0" ShowSpinButtons="false" ReadOnly="true" Enabled="false" />
+                                    </CellEditTemplate>
+                                </DxGridDataColumn>
+
+                                <DxGridDataColumn FieldName="Gt_da_kh0" Caption="Gt k.hao đến đk" DisplayFormat="N0" Width="130px" Visible="@(CurDmts.Kieu_kh == "2" && curActionTask == ActionTask.View)">
+                                    <CellEditTemplate Context="cellContext">
+                                        @{
+                                            var item = (CtDmts)cellContext.EditModel;
+                                        }
+                                        <DxSpinEdit Value="@item.Gt_da_kh0" DisplayFormat="N0" ShowSpinButtons="false" ValueChanged="@((decimal? v) => OnGtDaKh0Changed(v, item))" />
+                                    </CellEditTemplate>
+                                </DxGridDataColumn>
+
+                                <DxGridDataColumn FieldName="Ma_nv" Caption="Mã nguồn vốn" Width="200px">
+                                    <CellEditTemplate Context="cellContext">
+                                        @{
+                                            var item = (CtDmts)cellContext.EditModel;
+                                        }
+                                        <DxComboBox Data="@LsNguonVon" @bind-Value="@item.Ma_nv" ValueFieldName="ma_item" TextFieldName="ten_item" FilteringMode="DataGridFilteringMode.Contains" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" NullText="Chọn nguồn vốn..." CssClass="w-100">
+                                            <Columns>
+                                                <DxListEditorColumn FieldName="ma_item" Caption="Mã" Width="50px" />
+                                                <DxListEditorColumn FieldName="@(IsLangEn ? "ten_item2" : "ten_item")" Caption="Tên nguồn vốn" />
+                                            </Columns>
+                                        </DxComboBox>
+                                    </CellEditTemplate>
+                                </DxGridDataColumn>
+                            </Columns>
+
+                            <TotalSummary>
+                                <DxGridSummaryItem SummaryType="GridSummaryItemType.Count" FieldName="Stt" />
+                            </TotalSummary>
+                        </DxGrid>
+                    </div>
+        
+        </div> 
+</FormList>
+
+<style>
+    .css-detail {
+        /* Xóa height: auto; Thay bằng min-height */
+        /* Bạn có thể tăng giảm 380px này sao cho vừa khít với Tab Thông tin chính của bạn */
+        min-height: 880px; 
+    }
+
+    .css-detail .dxbl-formlayout-tabpage {
+        display: block;
+        padding: 0;
+        /* Ép các Tab con phải dài bằng Tab cha */
+        min-height: inherit; 
+    }
+
+    .css-detail .dxbl-formlayout-tabpage .dxbl-formlayout-group {
+        margin: 0;
+        padding: 0;
+    }
+    .popup-header {
+        display: none !important;
+    }
+    hr[style*="dimgrey"] {
+        display: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+</style>
+
+@code {
+// --- 1. KHAI BÁO BIẾN & MODEL ---
+private int ActiveTabIndex = 0; // Tab index cho DxFormLayoutTabPages
+DxGrid GridChiTiet { get; set; } // Đổi IGrid -> DxGrid
+DxGrid GridPhuTung { get; set; } // Đổi IGrid -> DxGrid
+object SelectedDataItemPhuTung;
+object SelectedDataItemChiTiet;
+public Dmts CurDmts { get; set; } = new Dmts();
+public List<CtCtTs> LstPhuTung { get; set; } = new List<CtCtTs>();
+public List<CtDmts> LstChiTietGiaTri { get; set; } = new List<CtDmts>();
+private List<listItem> LsNguonVon;
+    List<object> ListKieuKH = new List<object>() {
+        new { Value = "1", Text = "1. Đường thẳng" },
+        new { Value = "2", Text = "2. Sản lượng" }
+    };
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmts";
+        SqlTableKey = "so_the_ts";
+        // Kích thước vừa phải, dễ nhìn
+        Itemsizemode = SizeMode.Medium;
+        objRef = DotNetObjectReference.Create(this); 
+        base.OnInitialized();
+    }
+    DxTextBox txtMaTaiSan;
+    
+    bool hasFocusedMa = false;
+    DxTextBox txtMaPhu; 
+    // --- 3. LOGIC THÊM MỚI (NEW) ---
+    void CreateNewDM()
+    {
+        string ma_dvcs = myStateMN.GetMa_Dvcs();
+
+        if (string.IsNullOrWhiteSpace(ma_dvcs) || ma_dvcs.Trim().ToUpper() == "ALL")
+        {
+            myStateMN.SetNewThongbao("Vui lòng chọn ĐVCS cụ thể!");
+            return;
+        }
+        CurDmts = new Dmts();      
+        // Gán giá trị mặc định
+        CurDmts.Status = "1";
+        CurDmts.Ma_dvcs = ma_dvcs;
+        CurDmts.Ngay_mua = DateTime.Now;
+        CurDmts.Ngay_kh0 = DateTime.Now;
+        CurDmts.Kieu_kh = "1"; // Mặc định đường thẳng
+        CurDmts.So_ky_kh = 0;
+
+        // Khởi tạo lưới rỗng + 1 dòng trắng để nhập ngay
+        LstChiTietGiaTri = new List<CtDmts>();
+        AddRowChiTiet();
+
+        LstPhuTung = new List<CtCtTs>();
+
+        // Cho phép nhập Mã
+        AllowEditMode = true;
+        AllowEditMa = true;
+    }
+
+    // --- 4. LOGIC SỬA (EDIT) ---
+    async Task LoadData(string id)
+    {
+        // Load Master
+        string sql = $"SELECT * FROM {sqlTableName} WHERE {SqlTableKey} = '{id}'";
+        DataSet ds = await myDb.LoadDataset(sql);
+
+        if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+        {
+            var list = myDb.ConvertDataTable<Dmts>(ds.Tables[0]);
+            CurDmts = list[0];
+
+            // Load Detail 1 (Chi tiết giá trị)
+            string sqlCt = $"SELECT * FROM ctdmts WHERE so_the_ts = '{id}' ORDER BY ngay_ct, so_ct";
+            var dsCt = await myDb.LoadDataset(sqlCt);
+            if (dsCt != null && dsCt.Tables.Count > 0)
+            {
+                LstChiTietGiaTri = myDb.ConvertDataTable<CtDmts>(dsCt.Tables[0]);
+                // Đánh số STT
+                int stt = 1; LstChiTietGiaTri.ForEach(x => x.Stt = stt++);
+            }
+
+            // Load Detail 2 (Phụ tùng)
+            string sqlPt = $"SELECT * FROM ctctts WHERE so_the_ts = '{id}'";
+            var dsPt = await myDb.LoadDataset(sqlPt);
+            if (dsPt != null && dsPt.Tables.Count > 0)
+            {
+                LstPhuTung = myDb.ConvertDataTable<CtCtTs>(dsPt.Tables[0]);
+                // Đánh số STT
+                int stt = 1; LstPhuTung.ForEach(x => x.Stt = stt++);
+            }
+        }
+
+        // Chế độ Sửa: Không cho sửa Mã
+        if (curActionTask == ActionTask.Edit)
+        {
+            AllowEditMa = false;
+        }
+        AllowEditMode = (curActionTask != ActionTask.View);
+    }
+
+    // --- 5. LOGIC COPY (SAO CHÉP) ---
+    async Task CopyDM(string id)
+    {
+        // Bước 1: Load dữ liệu cũ lên giống hệt Edit
+        await LoadData(id);
+
+        // Bước 2: Xóa khóa chính để thành bản ghi mới
+        CurDmts.So_the_ts = "";
+
+        // Bước 3: Reset các thông tin ngày tháng về hiện tại (Tùy logic nghiệp vụ)
+        CurDmts.Ngay_mua = DateTime.Now;
+        CurDmts.Ngay_kh0 = DateTime.Now;
+        CurDmts.Ngay_kt_kh = null; // Tính lại sau
+
+        // Bước 4: Reset các giá trị lũy kế (Vì là tài sản mới copy nên chưa khấu hao)
+        CurDmts.Gt_da_kh = 0;
+        CurDmts.Gt_cl = CurDmts.Nguyen_gia; // Giá trị còn lại về ban đầu
+
+        // Bước 5: Cho phép sửa Mã
+        AllowEditMa = true;
+        AllowEditMode = true;
+
+        // Bước 6: Xóa ID của các dòng chi tiết để khi lưu nó thành dòng mới
+        // (Trong trường hợp này model detail không có ID tự tăng nên không cần reset ID, chỉ cần biết là list mới)
+    }
+
+    // --- 6. LOGIC LƯU (SAVE) ---
+    // --- 1. HÀM LƯU (SỬA LẠI GỌN GÀNG & GỌI CHECKVALID) ---
+    async Task SaveDM()
+{
+    // 1. Format dữ liệu chuẩn
+    CurDmts.So_the_ts = CurDmts.So_the_ts?.ToUpper().Trim();
+    CurDmts.Ten_ts = CurDmts.Ten_ts?.Trim();
+    if (CurDmts.Ngay_mua.HasValue) CurDmts.Ngay_mua = CurDmts.Ngay_mua.Value.Date;
+    if (CurDmts.Ngay_kh0.HasValue) CurDmts.Ngay_kh0 = CurDmts.Ngay_kh0.Value.Date;
+    if (CurDmts.Ngay_kt_kh.HasValue) CurDmts.Ngay_kt_kh = CurDmts.Ngay_kt_kh.Value.Date;
+    if (CurDmts.Ngay_dc.HasValue) CurDmts.Ngay_dc = CurDmts.Ngay_dc.Value.Date;
+    if (CurDmts.Ngay_dvsd.HasValue) CurDmts.Ngay_dvsd = CurDmts.Ngay_dvsd.Value.Date;
+    CurDmts.Nam_sx = CurDmts.Nam_sx ?? 0;
+    CurDmts.Tien_cl = CurDmts.Tien_cl ?? 0;
+    CurDmts.So_ky_kh = CurDmts.So_ky_kh ?? 0;
+    CurDmts.Tong_sl = CurDmts.Tong_sl ?? 0;
+    CurDmts.Tl_kh_nhanh = CurDmts.Tl_kh_nhanh ?? 0;
+    CurDmts.Nguyen_gia = CurDmts.Nguyen_gia ?? 0;
+    CurDmts.Gt_da_kh = CurDmts.Gt_da_kh ?? 0;
+    CurDmts.Gt_kh_ky = CurDmts.Gt_kh_ky ?? 0;
+    CurDmts.Gt_cl = CurDmts.Gt_cl ?? 0;
+    CurDmts.Ty_le_kh = CurDmts.Ty_le_kh ?? 0;
+    CurDmts.So_luong = CurDmts.So_luong ?? 0;
+    CurDmts.Gt_da_kh0 = CurDmts.Gt_da_kh0 ?? 0;
+
+    // 3. Ép các trường Ký tự (String) từ NULL về Chuỗi rỗng ""
+    CurDmts.So_hieu_ts = CurDmts.So_hieu_ts ?? "";
+    CurDmts.Ten_ts2 = CurDmts.Ten_ts2 ?? "";
+    CurDmts.Dvt = CurDmts.Dvt ?? "";
+    CurDmts.Nuoc_sx = CurDmts.Nuoc_sx ?? "";
+    CurDmts.Nh_ts1 = CurDmts.Nh_ts1 ?? "";
+    CurDmts.Nh_ts2 = CurDmts.Nh_ts2 ?? "";
+    CurDmts.Nh_ts3 = CurDmts.Nh_ts3 ?? "";
+    CurDmts.Ma_bpht = CurDmts.Ma_bpht ?? "";
+    CurDmts.Tk_ts = CurDmts.Tk_ts ?? "";
+    CurDmts.Ts_kt = CurDmts.Ts_kt ?? "";
+    CurDmts.Ghi_chu = CurDmts.Ghi_chu ?? "";
+    CurDmts.Search = CurDmts.Search ?? (CurDmts.Ten_ts + " " + CurDmts.So_the_ts);
+    if (string.IsNullOrEmpty(CurDmts.Status)) CurDmts.Status = "1";
+
+    // 2. Lưu các lưới chi tiết (để tránh mất dữ liệu đang nhập dở trên giao diện)
+    if (GridPhuTung != null) await GridPhuTung.SaveChangesAsync();
+    if (GridChiTiet != null) await GridChiTiet.SaveChangesAsync();
+
+    // 3. Validate dữ liệu
+    if (!await CheckValid()) return;
+
+    try
+    {
+        // 4. Tính toán tổng hợp từ lưới Chi tiết giá trị
+        if (LstChiTietGiaTri != null && LstChiTietGiaTri.Count > 0)
+        {
+            // Vẫn tính tổng bình thường
+            CurDmts.Nguyen_gia = LstChiTietGiaTri.Sum(x => x.Nguyen_gia ?? 0);
+            CurDmts.Gt_da_kh = LstChiTietGiaTri.Sum(x => x.Gt_da_kh ?? 0);
+            CurDmts.Gt_cl = LstChiTietGiaTri.Sum(x => x.Gt_cl ?? 0);
+            CurDmts.Gt_kh_ky = LstChiTietGiaTri.Sum(x => x.Gt_kh_ky ?? 0);
+        }
+        if ((CurDmts.Kieu_kh == "1" && CurDmts.So_ky_kh > 0) || (CurDmts.Kieu_kh == "2" && CurDmts.Tong_sl > 0))
+        {
+            CurDmts.Tinh_kh = 1;
+        }
+        else
+        {
+            CurDmts.Tinh_kh = 0;
+        }
+
+        // 2. Chốt số liệu triệt để chống rác dữ liệu DB
+        if (CurDmts.Kieu_kh == "1") // 1. Đường thẳng
+        {
+            CurDmts.Tong_sl = 0;
+            CurDmts.Tl_kh_nhanh = 0; // <--- Ép về 0 để DB không bị lỗi Null
+        }
+        else if (CurDmts.Kieu_kh == "2") // 2. Sản lượng
+        {
+            CurDmts.So_ky_kh = 0;
+            CurDmts.Tl_kh_nhanh = 0; // <--- Ép về 0 để DB không bị lỗi Null
+        }
+
+        // ==========================================================
+        // 5. GÁN THÔNG TIN QUẢN TRỊ (SYSTEM INFO) & LƯU MASTER
+        // ==========================================================
+        DateTime now = DateTime.Now;
+        string currentTime = now.ToString("HH:mm:ss");
+
+        if (curActionTask == ActionTask.New || curActionTask == ActionTask.Copy)
+        {
+            CurDmts.Date0 = now.Date;
+            CurDmts.Time0 = currentTime;
+            if (curUser != null)
+            {
+                CurDmts.User_id0 = curUser.User_id;
+                CurDmts.User_name0 = curUser.User_name;
+            }
+            CurDmts.Date = now.Date;
+            CurDmts.Time = currentTime;
+            CurDmts.User_id = CurDmts.User_id0;
+            CurDmts.User_name = CurDmts.User_name0;
+
+            await myDb.InsertOneRow<Dmts>(CurDmts, sqlTableName);
+            myStateMN.SetNewThongbao($"Thêm mới thành công: {CurDmts.So_the_ts}");
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmts.Date = now.Date;
+            CurDmts.Time = currentTime;
+            if (curUser != null)
+            {
+                CurDmts.User_id = curUser.User_id;
+                CurDmts.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmts>(CurDmts, sqlTableName, SqlTableKey, Ma_ma, true);
+            myStateMN.SetNewThongbao($"Cập nhật thành công: {CurDmts.So_the_ts}");
+        }
+
+        // ==========================================================
+        // 6. LƯU CHI TIẾT CON (Xóa cũ -> Insert mới)
+        // ==========================================================
+        string idToDelete = (curActionTask == ActionTask.Edit) ? Ma_ma : CurDmts.So_the_ts;
+
+        string sqlDel = $"DELETE FROM ctdmts WHERE so_the_ts = '{idToDelete}'; ";
+        sqlDel += $"DELETE FROM ctctts WHERE so_the_ts = '{idToDelete}';";
+        await myDb.ExecuteSqlQueryAsync(sqlDel);
+
+        // A. Insert Chi tiết giá trị (ctdmts)
+        if (LstChiTietGiaTri != null)
+        {
+            foreach (var item in LstChiTietGiaTri)
+            {
+                if (!item.Ngay_ct.HasValue) continue;
+                
+                string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+                string sNgayCt = CurDmts.Ngay_kh0.HasValue ? $"'{CurDmts.Ngay_kh0.Value:yyyy-MM-dd}'" : "NULL";
+                string sSoCt = item.So_ct?.Replace("'", "''") ?? "";
+                string sDienGiai = item.Dien_giai?.Replace("'", "''") ?? "";
+                string sMaNv = item.Ma_nv?.Replace("'", "''") ?? "";
+                
+                // Format số chuẩn quốc tế
+                string sNG = (item.Nguyen_gia ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string sKH = (item.Gt_da_kh ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string sCL = (item.Gt_cl ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string sGtKhKy = (item.Gt_kh_ky ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string sGtDaKh0 = (item.Gt_da_kh0 ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+                // --- CÁC BIẾN BỔ SUNG ĐỂ TRÁNH LỖI SỐ ÂM VÀ THIẾU DỮ LIỆU ---
+                string sNgayMua = CurDmts.Ngay_mua.HasValue ? $"'{CurDmts.Ngay_mua.Value:yyyy-MM-dd}'" : "NULL";
+                string sMaTg = CurDmts.Ma_tg_ts?.Replace("'", "''") ?? "";
+        
+                // Đổi tên biến ở đây để không bị trùng với phần C bên dưới:
+                string sNam_ct = CurDmts.Ngay_mua.HasValue ? CurDmts.Ngay_mua.Value.Year.ToString() : "NULL";
+                string sKy_ct = CurDmts.Ngay_mua.HasValue ? CurDmts.Ngay_mua.Value.Month.ToString() : "NULL";
+
+                // [ĐÃ SỬA]: Bổ sung tang_giam = '1' và các trường liên quan (ngay_tg, ma_tg_ts, nam, ky)
+                string sqlInsert = $@"
+                     INSERT INTO ctdmts(
+                         so_the_ts, ngay_ct, so_ct, dien_giai, nguyen_gia, gt_da_kh, gt_cl, gt_kh_ky, gt_da_kh0, ma_nv, ts0,
+                         tang_giam, ngay_tg, ma_tg_ts, nam, ky
+                     )
+                     VALUES (
+                         N'{sSoThe}', {sNgayCt}, N'{sSoCt}', N'{sDienGiai}', {sNG}, {sKH}, {sCL}, {sGtKhKy}, {sGtDaKh0}, N'{sMaNv}', '1',
+                         '1', {sNgayMua}, N'{sMaTg}', {sNam_ct}, {sKy_ct}
+                     )
+                ";
+                await myDb.ExecuteSqlQueryAsync(sqlInsert);
+            }
+        }
+
+        // B. Insert Phụ tùng (ctctts)
+        if (LstPhuTung != null)
+        {
+            foreach (var item in LstPhuTung)
+            {
+                 if (string.IsNullOrEmpty(item.Ten_ptkt)) continue;
+                 
+                 string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+                 string sTenPt = item.Ten_ptkt?.Replace("'", "''") ?? "";
+                 string sDvt = item.Dvt?.Replace("'", "''") ?? "";
+
+                 string sSoLuong = (item.So_luong ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                 string sGiaTri = (item.Gia_tri ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+                 // [ĐÃ SỬA]: Bổ sung thêm cột ts0 và gán giá trị '1'
+                 string sqlInsertPT = $@"INSERT INTO ctctts(so_the_ts, ten_ptkt, dvt, so_luong, gia_tri, ts0)
+                                         VALUES (N'{sSoThe}', N'{sTenPt}', N'{sDvt}', {sSoLuong}, {sGiaTri}, '1')";
+                 await myDb.ExecuteSqlQueryAsync(sqlInsertPT);
+            }
+        }
+
+        // C. TẠO DÒNG ĐIỀU CHUYỂN GỐC (ctbpts) - BỔ SUNG MỚI
+        string sSoTheGoc = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+        string sMaBp = CurDmts.Ma_bpts?.Replace("'", "''") ?? "";
+        string sNgayKh0 = CurDmts.Ngay_kh0.HasValue ? $"'{CurDmts.Ngay_kh0.Value:yyyy-MM-dd}'" : "NULL";
+        
+        // 1. Lấy đủ 2 tài khoản quan trọng
+        string sTkKh = CurDmts.Tk_kh?.Replace("'", "''") ?? "";
+        string sTkCp = CurDmts.Tk_cp?.Replace("'", "''") ?? "";
+        
+        string sMaBpht = CurDmts.Ma_bpht?.Replace("'", "''") ?? "";
+        string sMaVv = CurDmts.Ma_vv?.Replace("'", "''") ?? "";
+
+        // 2. Trích xuất Năm và Kỳ từ Ngày mua (Giống hàm NgayTC.GetYearOfDate của Winform)
+        string sNam = CurDmts.Ngay_mua.HasValue ? CurDmts.Ngay_mua.Value.Year.ToString() : "NULL";
+        string sKy = CurDmts.Ngay_mua.HasValue ? CurDmts.Ngay_mua.Value.Month.ToString() : "NULL";
+
+        if (curActionTask == ActionTask.New || curActionTask == ActionTask.Copy)
+        {
+            // Bổ sung nam, ky, tk_kh vào SQL (Cố tình bỏ qua tk_ts cho dòng gốc theo đúng chuẩn Winform)
+            string sqlInsertBP = $@"
+                INSERT INTO ctbpts(so_the_ts, ma_bpts, ngay_kh, tk_kh, tk_cp, ma_bpht, ma_vv, ts0, nam, ky, 
+                                   date0, time0, user_id0, date, time, user_id)
+                VALUES (N'{sSoTheGoc}', N'{sMaBp}', {sNgayKh0}, N'{sTkKh}', N'{sTkCp}', N'{sMaBpht}', N'{sMaVv}', '1', {sNam}, {sKy}, 
+                        '{now:yyyy-MM-dd}', '{currentTime}', {curUser?.User_id ?? 0}, '{now:yyyy-MM-dd}', '{currentTime}', {curUser?.User_id ?? 0})";
+            await myDb.ExecuteSqlQueryAsync(sqlInsertBP);
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            // Sửa thì cập nhật lại luôn cả tài khoản khấu hao
+            string sqlUpdateBP = $@"
+                UPDATE ctbpts 
+                SET ma_bpts = N'{sMaBp}', ngay_kh = {sNgayKh0}, 
+                    tk_kh = N'{sTkKh}', tk_cp = N'{sTkCp}', 
+                    ma_bpht = N'{sMaBpht}', ma_vv = N'{sMaVv}',
+                    date = '{now:yyyy-MM-dd}', time = '{currentTime}', user_id = {curUser?.User_id ?? 0}
+                WHERE so_the_ts = N'{sSoTheGoc}' AND ts0 = '1'";
+            await myDb.ExecuteSqlQueryAsync(sqlUpdateBP);
+        }
+        // 7. Đóng form
+        CloseForm();
+    }
+    catch (Exception ex)
+    {
+        myStateMN.SetNewThongbao("Lỗi khi lưu: " + ex.Message);
+    }
+}
+
+    async Task<bool> CheckValid()
+    {
+        // ========================================================================
+        // 1. KIỂM TRA THÔNG TIN MASTER (DMTS)
+        // ========================================================================
+
+        // [WinForm ID: 1180] Kiểm tra Mã rỗng
+        if (string.IsNullOrEmpty(CurDmts.So_the_ts))
+        {
+            myStateMN.SetNewThongbao("Chưa vào mã tài sản!");
+            return false;
+        }
+
+        // [WinForm ID: 1185] Kiểm tra Mã chứa khoảng trắng
+        if (CurDmts.So_the_ts.Contains(" "))
+        {
+            myStateMN.SetNewThongbao("Mã tài sản không được chứa khoảng trắng!");
+            return false;
+        }
+
+        // [WinForm ID: 1190 & 11900] Kiểm tra Trùng mã (Chỉ check khi Thêm mới/Copy)
+        // Logic WinForm có check "Mã lồng nhau", ở đây ta check trùng tuyệt đối trước
+        if (curActionTask == ActionTask.New || curActionTask == ActionTask.Copy)
+        {
+            // Kiểm tra trong DB
+            string sqlCheck = $"SELECT COUNT(*) FROM {sqlTableName} WHERE {SqlTableKey} = '{CurDmts.So_the_ts}'";
+            var ds = await myDb.LoadDataset(sqlCheck);
+            if (ds != null && ds.Tables[0].Rows.Count > 0 && Convert.ToInt32(ds.Tables[0].Rows[0][0]) > 0)
+            {
+                myStateMN.SetNewThongbao("Mã tài sản đã có!");
+                return false;
+            }
+        }
+
+        // [WinForm ID: 1195] Kiểm tra Tên rỗng
+        if (string.IsNullOrEmpty(CurDmts.Ten_ts))
+        {
+            myStateMN.SetNewThongbao("Chưa vào tên tài sản!");
+            return false;
+        }
+
+        // [WinForm ID: 1200] Kiểm tra Loại tài sản (DM_LOAI_TS / DM_PL_TS)
+        if (string.IsNullOrEmpty(CurDmts.Loai_ts))
+        {
+            myStateMN.SetNewThongbao("Chưa vào loại tài sản!");
+            return false;
+        }
+        // Kiểm tra tồn tại trong danh mục
+        if (!await CheckExistInTable("dmplts", "ma_loai", CurDmts.Loai_ts, "Loại tài sản")) return false;
+
+
+        // [WinForm ID: 1205] Kiểm tra Lý do tăng (DM_TG_TS)
+        if (string.IsNullOrEmpty(CurDmts.Ma_tg_ts))
+        {
+            myStateMN.SetNewThongbao("Chưa vào lý do tăng tài sản!");
+            return false;
+        }
+        if (!await CheckExistInTable("dmtgts", "ma_tg_ts", CurDmts.Ma_tg_ts, "Lý do tăng")) return false;
+
+
+        // [WinForm ID: 1210] Kiểm tra Ngày mua (Ngày tăng)
+        if (!CurDmts.Ngay_mua.HasValue)
+        {
+            myStateMN.SetNewThongbao("Chưa vào ngày tăng tài sản!");
+            return false;
+        }
+
+        // [WinForm ID: 1215] Kiểm tra Ngày bắt đầu tính Khấu hao
+        if (!CurDmts.Ngay_kh0.HasValue)
+        {
+            myStateMN.SetNewThongbao("Chưa vào ngày tính khấu hao!");
+            return false;
+        }
+
+
+        // [WinForm ID: 1220] Logic: Tháng tính KH không được nhỏ hơn Tháng tăng
+        // Logic gốc: (Month + Year*13) > (Month + Year*13).
+        // Ở đây ta so sánh ngày đầu tháng cho đơn giản và chính xác.
+        DateTime dateMua = new DateTime(CurDmts.Ngay_mua.Value.Year, CurDmts.Ngay_mua.Value.Month, 1);
+        DateTime dateKH = new DateTime(CurDmts.Ngay_kh0.Value.Year, CurDmts.Ngay_kh0.Value.Month, 1);
+
+        if (dateKH < dateMua)
+        {
+            myStateMN.SetNewThongbao("Tháng tính khấu hao không được nhỏ hơn tháng tăng tài sản!");
+            return false;
+        }
+
+        // [WinForm ID: 1225] Kiểm tra Bộ phận sử dụng (DM_BPTS)
+        if (string.IsNullOrEmpty(CurDmts.Ma_bpts))
+        {
+            myStateMN.SetNewThongbao("Chưa vào bộ phận sử dụng tài sản!");
+            return false;
+        }
+        if (!await CheckExistInTable("dmbpts", "ma_bp", CurDmts.Ma_bpts, "Bộ phận sử dụng")) return false;
+
+
+        // [WinForm ID: 1235] Kiểm tra TK Khấu hao (DMTK)
+        if (string.IsNullOrEmpty(CurDmts.Tk_kh))
+        {
+            myStateMN.SetNewThongbao("Chưa vào tài khoản khấu hao!");
+            return false;
+        }
+        if (!await CheckExistInTable("dmtk", "tk", CurDmts.Tk_kh, "TK khấu hao")) return false;
+
+
+        // [WinForm ID: 1240] Kiểm tra TK Chi phí (DMTK)
+        if (string.IsNullOrEmpty(CurDmts.Tk_cp))
+        {
+            myStateMN.SetNewThongbao("Chưa vào tài khoản chi phí!");
+            return false;
+        }
+        if (!await CheckExistInTable("dmtk", "tk", CurDmts.Tk_cp, "TK chi phí")) return false;
+
+        // Kiểm tra Nhóm tài sản (nếu có nhập)
+        if (!string.IsNullOrEmpty(CurDmts.Nh_ts))
+        {
+            if (!await CheckExistInTable("dmnhomts", "ma_nhom", CurDmts.Nh_ts, "Nhóm tài sản")) return false;
+        }
+        // Logic Winform: Tự động xóa dòng nếu tên phụ tùng trống
+        if (LstPhuTung != null && LstPhuTung.Count > 0)
+        {
+            // RemoveAll tương đương với vòng lặp Remove trong mẫu bạn gửi
+            LstPhuTung.RemoveAll(x => string.IsNullOrEmpty(x.Ten_ptkt?.Trim()));
+        }
+        if (LstChiTietGiaTri == null || LstChiTietGiaTri.Count == 0)
+        {
+            myStateMN.SetNewThongbao("Chưa nhập chi tiết nguồn vốn!");
+            return false;
+        }
+
+        // DUYỆT TỪNG DÒNG ĐỂ KIỂM TRA
+        foreach (var item in LstChiTietGiaTri)
+        {
+            // 1. Kiểm tra Ngày chứng từ (BẮT BUỘC)
+            if (!item.Ngay_ct.HasValue)
+            {
+                // Báo lỗi chỉ đích danh dòng nào
+                myStateMN.SetNewThongbao($"Dòng số {item.Stt}: Vui lòng nhập [Ngày chứng từ]!");
+            
+                // (Tùy chọn) Focus lại vào lưới để người dùng biết
+                // await GridChiTiet.SetFocusedDataItemAsync(item); 
+            
+                return false; // Chặn lưu ngay lập tức
+            }
+
+            // 2. Kiểm tra Nguyên giá (Nếu bạn muốn bắt buộc nhập > 0)
+            // Nếu logic của bạn cho phép nhập = 0 thì bỏ đoạn này đi
+            /*
+            if ((item.Nguyen_gia ?? 0) == 0)
+            {
+                myStateMN.SetNewThongbao($"Dòng số {item.Stt}: Chưa nhập [Nguyên giá]!");
+                return false;
+            }
+            */
+        }
+        return true;
+    }
+
+    // --- 3. HÀM HỖ TRỢ CHECK TỒN TẠI (Giữ nguyên từ bài trước) ---
+    async Task<bool> CheckExistInTable(string tableName, string fieldName, string value, string label)
+    {
+        if (string.IsNullOrEmpty(value)) return true;
+
+        string sql = $"SELECT COUNT(*) FROM {tableName} WHERE {fieldName} = '{value.Trim()}'";
+        try
+        {
+            var ds = await myDb.LoadDataset(sql);
+            if (ds == null || ds.Tables.Count == 0 || Convert.ToInt32(ds.Tables[0].Rows[0][0]) == 0)
+            {
+                myStateMN.SetNewThongbao($"{label} [{value}] không tồn tại trong danh mục!");
+                return false;
+            }
+        }
+        catch
+        {
+            return true;
+        }
+        return true;
+    }
+    
+    //Hàm khởi tạo giá trị mặc định cho dòng mới
+    void OnCustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var newItem = (CtDmts)e.EditModel;
+            // Gán các giá trị mặc định
+            newItem.Stt = LstChiTietGiaTri.Count + 1;
+            newItem.Ngay_ct = CurDmts.Ngay_mua ?? DateTime.Now;
+            newItem.Nguyen_gia = 0;
+            newItem.Gt_da_kh = 0;
+            newItem.Gt_cl = 0;
+        }
+        else
+        {
+            // Khi sửa dòng cũ -> Tính toán lại ngay
+            var item = (CtDmts)e.EditModel;
+            CalculateRowDepreciation(item);
+        }
+    }
+
+    // 2. Hàm Lưu dòng (Chạy khi bấm nút Save của dòng hoặc Enter)
+    // 1. Hàm lưu dữ liệu từ ô nhập vào danh sách (Tự động chạy khi rời ô)
+    async Task OnGridSaving(GridEditModelSavingEventArgs e)
+    {
+        var editModel = (CtDmts)e.EditModel;
+        
+        // 1. TÍNH TOÁN
+        decimal nGia = editModel.Nguyen_gia ?? 0;
+        decimal daKh = editModel.Gt_da_kh ?? 0;
+        decimal conLai = nGia - daKh; 
+
+        // 2. LƯU DỮ LIỆU
+        if (e.IsNew)
+        {
+            var newItem = new CtDmts();
+            newItem.Stt = LstChiTietGiaTri.Count + 1;
+            
+            // Gán tay từng trường (AN TOÀN NHẤT)
+            newItem.Ma_nv = editModel.Ma_nv;
+            newItem.Dien_giai = editModel.Dien_giai;
+            newItem.Nguyen_gia = nGia;
+            newItem.Gt_da_kh = daKh;
+            newItem.Gt_cl = conLai; // Gán giá trị tự tính
+            
+            LstChiTietGiaTri.Add(newItem);
+        }
+        else
+        {
+            var dataItem = (CtDmts)e.DataItem;
+            
+            // Gán tay khi sửa
+            dataItem.Ma_nv = editModel.Ma_nv;
+            dataItem.Dien_giai = editModel.Dien_giai;
+            dataItem.Nguyen_gia = nGia;
+            dataItem.Gt_da_kh = daKh;
+            dataItem.Gt_cl = conLai; // Gán giá trị tự tính
+        }
+
+        // 3. TÍNH TỔNG LÊN HEADER
+        UpdateMasterTotals();
+        
+        await InvokeAsync(StateHasChanged);
+    }
+    async Task OnGridDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var item = (CtDmts)e.DataItem;
+        LstChiTietGiaTri.Remove(item);
+
+        // Tính lại STT cho đẹp
+        int stt = 1;
+        foreach (var r in LstChiTietGiaTri) r.Stt = stt++;
+
+        UpdateMasterTotals();
+        await Task.CompletedTask;
+    }
+
+    // Hàm phụ trợ copy dữ liệu (Hoặc bạn có thể gán thủ công: a.Field = b.Field)
+    public static class Copier
+    {
+        public static void CopyPropertiesTo<T>(T source, T dest)
+        {
+            var props = typeof(T).GetProperties();
+            foreach (var prop in props)
+            {
+                if (prop.CanRead && prop.CanWrite)
+                    prop.SetValue(dest, prop.GetValue(source));
+            }
+        }
+    }
+    
+    // Hàm tính tổng cập nhật lên Master
+    void UpdateMasterTotals()
+    {
+        if (LstChiTietGiaTri != null)
+        {
+            decimal totalNG = LstChiTietGiaTri.Sum(x => x.Nguyen_gia ?? 0);
+            if (totalNG > 0)
+            {
+                CurDmts.Nguyen_gia = totalNG;
+                CurDmts.Gt_da_kh = LstChiTietGiaTri.Sum(x => x.Gt_da_kh ?? 0);
+                CurDmts.Gt_cl = LstChiTietGiaTri.Sum(x => x.Gt_cl ?? 0);
+                CurDmts.Gt_kh_ky = LstChiTietGiaTri.Sum(x => x.Gt_kh_ky ?? 0);
+            }
+        }
+
+        if (GridChiTiet != null) ((IGrid)GridChiTiet).Reload();
+
+        StateHasChanged();
+    }
+    void AddRowChiTiet()
+    {
+        if (LstChiTietGiaTri == null) LstChiTietGiaTri = new List<CtDmts>();
+        var newItem = new CtDmts()
+        {
+            Stt = LstChiTietGiaTri.Count + 1,
+            Ngay_ct = CurDmts.Ngay_mua ?? DateTime.Now,
+            Nguyen_gia = 0
+        };
+        LstChiTietGiaTri.Add(newItem);
+        StateHasChanged();
+    }
+
+    void DeleteRowChiTiet(CtDmts item)
+    {
+        if (LstChiTietGiaTri.Contains(item)) { LstChiTietGiaTri.Remove(item); StateHasChanged(); }
+    }
+    void OnCustomizeEditModelPT(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var newItem = (CtCtTs)e.EditModel;
+            newItem.Stt = LstPhuTung.Count + 1;
+            newItem.So_luong = null;
+            newItem.Gia_tri = null;
+        }
+    }
+
+    // Tự động lưu khi nhập xong 1 ô
+    async Task OnGridSavingPT(GridEditModelSavingEventArgs e)
+    {
+        var editModel = (CtCtTs)e.EditModel;
+
+        // KIỂM TRA DÒNG RÁC
+        bool coNhapTen = !string.IsNullOrWhiteSpace(editModel.Ten_ptkt);
+        bool coNhapDvt = !string.IsNullOrWhiteSpace(editModel.Dvt);
+        bool coNhapSL = (editModel.So_luong ?? 0) != 0;
+        bool coNhapGia = (editModel.Gia_tri ?? 0) != 0;
+
+        bool laDongTrong = !coNhapTen && !coNhapDvt && !coNhapSL && !coNhapGia;
+
+        if (e.IsNew && laDongTrong)
+        {
+            return; // Nếu không nhập gì mà thoát -> Tự hủy dòng
+        }
+
+        if (e.IsNew)
+        {
+            var newItem = new CtCtTs();
+            newItem.Stt = LstPhuTung.Count + 1;
+            newItem.Ten_ptkt = editModel.Ten_ptkt;
+            newItem.Dvt = editModel.Dvt;
+            newItem.So_luong = editModel.So_luong;
+            newItem.Gia_tri = editModel.Gia_tri;
+            LstPhuTung.Add(newItem);
+            SelectedDataItemPhuTung = newItem;
+        }
+        else
+        {
+            var dataItem = (CtCtTs)e.DataItem;
+            dataItem.Ten_ptkt = editModel.Ten_ptkt;
+            dataItem.Dvt = editModel.Dvt;
+            dataItem.So_luong = editModel.So_luong;
+            dataItem.Gia_tri = editModel.Gia_tri;
+            SelectedDataItemPhuTung = dataItem;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Xóa dòng phụ tùng
+    async Task OnGridDeletingPT(GridDataItemDeletingEventArgs e)
+    {
+        var item = (CtCtTs)e.DataItem;
+        LstPhuTung.Remove(item);
+        // Đánh lại số thứ tự
+        int stt = 1; foreach (var r in LstPhuTung) r.Stt = stt++;
+        await Task.CompletedTask;
+    }
+    void AddRowPhuTung()
+    {
+        if (LstPhuTung == null) LstPhuTung = new List<CtCtTs>();
+        var newItem = new CtCtTs() { Stt = LstPhuTung.Count + 1, So_luong = 1 };
+        LstPhuTung.Add(newItem);
+        StateHasChanged();
+    }
+
+    void DeleteRowPhuTung(CtCtTs item)
+    {
+        if (LstPhuTung.Contains(item)) { LstPhuTung.Remove(item); StateHasChanged(); }
+    }
+
+    void CalculateEndDate()
+    {
+        if (CurDmts.Kieu_kh == "1" && CurDmts.Ngay_kh0.HasValue && CurDmts.So_ky_kh > 0)
+        {
+            CurDmts.Ngay_kt_kh = CurDmts.Ngay_kh0.Value.AddMonths((int)CurDmts.So_ky_kh).AddDays(-1);
+        }
+        else
+        {
+            CurDmts.Ngay_kt_kh = null;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Gọi các hàm khởi tạo cơ bản (nếu có)
+        // await PageLoad();
+
+        // 2. Câu lệnh SQL CHUẨN cho bảng dmnv của bạn
+        // - RTRIM(ma_nv): Cắt khoảng trắng thừa (Quan trọng nhất)
+        // - ISNULL: Tránh lỗi nếu tên bị null
+        string sqlNV = @"
+            SELECT
+                RTRIM(ma_nv) AS ma_item,
+                ISNULL(ten_nv, '') AS ten_item,
+                ISNULL(ten_nv2, '') AS ten_item2
+            FROM dmnv
+            ORDER BY ma_nv"; // Sắp xếp cho dễ tìm
+
+        try
+        {
+            // Load dữ liệu vào biến
+            LsNguonVon = await mySqldb.Loaddata<listItem, dynamic>(sqlNV, new { });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi load Nguồn vốn: " + ex.Message);
+        }
+    }
+    // Hàm tính toán tự động cho 1 dòng chi tiết
+    // --- A. XỬ LÝ KHI ĐỔI KIỂU KHẤU HAO ---
+    void OnKieuKhChanged(string newValue)
+    {
+        CurDmts.Kieu_kh = newValue;
+
+        // 1. Tính lại ngày kết thúc (Logic cũ của bạn)
+        CalculateEndDate();
+
+        // 2. Tính lại số liệu trên lưới Chi tiết
+        RecalculateAllGrid();
+    }
+
+    // --- B. XỬ LÝ KHI ĐỔI SỐ KỲ KHẤU HAO ---
+    void OnSoKyChanged(decimal? newValue)
+    {
+        CurDmts.So_ky_kh = newValue;
+
+        // 1. Tính lại ngày kết thúc
+        CalculateEndDate();
+
+        // 2. Tính lại số liệu trên lưới Chi tiết
+        RecalculateAllGrid();
+    }
+
+    // --- C. HÀM TÍNH TOÁN LẠI TOÀN BỘ LƯỚI ---
+    void RecalculateAllGrid()
+    {
+        if (LstChiTietGiaTri != null)
+        {
+            foreach (var item in LstChiTietGiaTri)
+            {
+                CalculateRowDepreciation(item);
+            }
+        }
+    }
+
+    // HÀM TÍNH TOÁN (Đã điều chỉnh theo Winform của bạn)
+    void CalculateRowDepreciation(CtDmts item)
+    {
+        if (item == null) return;
+        decimal nguyenGia = item.Nguyen_gia ?? 0;
+        decimal daKh = item.Gt_da_kh ?? 0;
+        decimal soKy = CurDmts.So_ky_kh ?? 0;
+
+        // 1. Luôn tính lại Giá trị còn lại
+        item.Gt_cl = nguyenGia - daKh;
+
+        // 2. Tính Gt k.hao 1 kỳ (CHỈ TÍNH NẾU LÀ ĐƯỜNG THẲNG)
+        if (CurDmts.Kieu_kh == "1" && soKy > 0)
+        {
+            decimal ketQua = (nguyenGia - daKh) / soKy;
+            item.Gt_kh_ky = Math.Round(ketQua, 0, MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            item.Gt_kh_ky = 0; // Nếu là Sản lượng (Kieu_kh = 2) thì Gt_kh_ky phải = 0
+        }
+
+        // 3. Cập nhật tổng cộng
+        UpdateMasterTotals();
+    }
+
+    // 3. CÁC HÀM CRUD (Thêm, Sửa, Xóa)
+    async void AddNewChiTiet()
+    {
+        if (!AllowEditMode || GridChiTiet == null) return;
+
+        if (GridChiTiet.IsEditing())
+            await GridChiTiet.SaveChangesAsync();
+
+        await GridChiTiet.StartEditNewRowAsync();
+    }
+
+    void Grid_CustomizeEditModelChiTiet(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var newItem = (CtDmts)e.EditModel;
+            newItem.Stt = LstChiTietGiaTri.Count + 1;
+            
+            // ---> BỔ SUNG LẠI DÒNG NÀY ĐỂ TỰ ĐỘNG ĐIỀN NGÀY <---
+            newItem.Ngay_ct = CurDmts.Ngay_mua ?? DateTime.Now; 
+            
+            newItem.Nguyen_gia = null;
+            newItem.Gt_da_kh = null;
+        }
+        else
+        {
+            // Khi sửa dòng cũ -> Tính toán lại ngay
+            var item = (CtDmts)e.EditModel;
+            CalculateRowDepreciation(item);
+        }
+    }
+
+    void Grid_DataItemDeletingChiTiet(GridDataItemDeletingEventArgs e)
+    {
+        var item = (CtDmts)e.DataItem;
+        LstChiTietGiaTri.Remove(item);
+        
+        // Tính lại tổng Master sau khi xóa
+        UpdateMasterTotals();
+    }
+
+    // 4. HÀM LƯU DỮ LIỆU GRID CHI TIẾT (ĐÃ FIX LỖI MẤT DỮ LIỆU)
+    // 1. HÀM LƯU DÒNG (Đã fix lỗi mất Giá trị khấu hao 1 kỳ)
+    async Task Grid_EditModelSavingChiTiet(GridEditModelSavingEventArgs e)
+    {
+        var editModel = (CtDmts)e.EditModel;
+
+        // KIỂM TRA DỮ LIỆU: Chỉ cần 1 trong các điều kiện này thỏa mãn là sẽ LƯU
+        bool coNhapMaNV = !string.IsNullOrWhiteSpace(editModel.Ma_nv);
+        bool coNhapDienGiai = !string.IsNullOrWhiteSpace(editModel.Dien_giai);
+        bool coNhapSoCt = !string.IsNullOrWhiteSpace(editModel.So_ct);
+        bool coNhapNguyenGia = (editModel.Nguyen_gia ?? 0) != 0;
+        bool coNhapHaoMon = (editModel.Gt_da_kh ?? 0) != 0;
+        // Kiểm tra nếu ngày chứng từ khác null (giả sử mặc định ban đầu bạn để null hoặc ngày hiện tại)
+        bool coNhapNgay = editModel.Ngay_ct != null;
+
+        bool laDongTrong = !coNhapMaNV && !coNhapDienGiai && !coNhapSoCt && !coNhapNguyenGia && !coNhapHaoMon && !coNhapNgay;
+
+        if (e.IsNew && laDongTrong)
+        {
+            return; // Click ra ngoài mà không gõ gì thì tự mất dòng
+        }
+
+        // Logic lưu dữ liệu (giữ nguyên như các bước trước)
+        decimal nGia = editModel.Nguyen_gia ?? 0;
+        decimal daKh = editModel.Gt_da_kh ?? 0;
+        decimal conLai = nGia - daKh;
+
+        if (e.IsNew)
+        {
+            var newItem = new CtDmts();
+            newItem.Stt = LstChiTietGiaTri.Count + 1;
+            newItem.Ngay_ct = editModel.Ngay_ct;
+            newItem.So_ct = editModel.So_ct;
+            newItem.Ma_nv = editModel.Ma_nv;
+            newItem.Dien_giai = editModel.Dien_giai;
+            newItem.Nguyen_gia = nGia;
+            newItem.Gt_da_kh = daKh;
+            newItem.Gt_cl = conLai;
+            newItem.Gt_kh_ky = editModel.Gt_kh_ky;
+            newItem.Gt_da_kh0 = editModel.Gt_da_kh0;
+
+            LstChiTietGiaTri.Add(newItem);
+            SelectedDataItemChiTiet = newItem;
+        }
+        else
+        {
+            var dataItem = (CtDmts)e.DataItem;
+            // Cập nhật các trường tương tự...
+            dataItem.Ngay_ct = editModel.Ngay_ct;
+            dataItem.So_ct = editModel.So_ct;
+            dataItem.Ma_nv = editModel.Ma_nv;
+            dataItem.Dien_giai = editModel.Dien_giai;
+            dataItem.Nguyen_gia = nGia;
+            dataItem.Gt_da_kh = daKh;
+            dataItem.Gt_cl = conLai;
+            dataItem.Gt_kh_ky = editModel.Gt_kh_ky;
+            dataItem.Gt_da_kh0 = editModel.Gt_da_kh0;
+            SelectedDataItemChiTiet = dataItem;
+        }
+
+        UpdateMasterTotals();
+        await InvokeAsync(StateHasChanged);
+    }
+    async Task HandleGridKeyDown<T>(KeyboardEventArgs e, DxGrid grid, List<T> list, object selectedItem, 
+                                    Func<Task> onEnterAction, Action onAddAction)
+    {
+        if (!AllowEditMode) return;
+
+        switch (e.Key)
+        {
+            case "Enter":
+                await onEnterAction(); // Gọi hàm Save & Next riêng của từng lưới
+                break;
+            case "F4":
+                onAddAction();
+                break;
+            case "F8":
+                if (selectedItem != null)
+                {
+                    // Dùng ShowDataItemDeleteConfirmation tiện hơn ShowRowDeleteConfirmation
+                    grid.ShowDataItemDeleteConfirmation(selectedItem);
+                }
+                break;
+            case "Escape":
+                try 
+                { 
+                    await grid.CancelEditAsync();
+                    // Logic xóa dòng rác nếu hủy dòng mới thêm (Generic)
+                    if (list.Count > 0 && selectedItem is T item)
+                    {
+                        // Kiểm tra logic dòng rác: ở đây ta check tạm nếu property đầu tiên null hoặc = 0
+                        // Hoặc bạn có thể truyền thêm Func<T, bool> để check điều kiện xóa
+                        grid.ClearSelection(); 
+                    }
+                } catch { }
+                break;
+        }
+    }
+
+    // 2. Xử lý Logic Save & Move Next chung
+    async Task HandleSaveAndMoveNext<T>(DxGrid grid, List<T> list, object selectedItem, Action onAddAction)
+    {
+        if (grid != null && grid.IsEditing())
+            await grid.SaveChangesAsync();
+
+        // Chờ 1 chút để lưới đồng bộ hoàn tất (Quan trọng)
+        await Task.Delay(100);
+
+        if (selectedItem != null && selectedItem is T currentItem)
+        {
+            var index = list.IndexOf(currentItem);
+            // Nếu chưa phải dòng cuối -> Xuống dòng kế tiếp
+            if (index >= 0 && index < list.Count - 1)
+            {
+                await grid.StartEditDataItemAsync(list[index + 1]);
+            }
+            else
+            {
+                // Dòng cuối -> Thêm dòng mới
+                onAddAction();
+            }
+        }
+        else
+        {
+            onAddAction();
+        }
+    }
+
+    // 3. Xử lý Click dòng để sửa chung
+    void HandleStartEditByClick(GridRowClickEventArgs e, DxGrid grid)
+    {
+        if (AllowEditMode)
+        {
+            var item = grid.GetDataItem(e.VisibleIndex);
+            if (item != null) grid.StartEditDataItemAsync(item);
+        }
+    }
+    private async Task GridPhuTung_OnKeyDown(KeyboardEventArgs e)
+    {
+        await HandleGridKeyDown(e, GridPhuTung, LstPhuTung, SelectedDataItemPhuTung, 
+                                SaveAndMoveNextRowPhuTung, AddNewPhuTung);
+    }
+
+    void StartEditDataItemByClickPT(GridRowClickEventArgs e) => HandleStartEditByClick(e, GridPhuTung);
+
+    [JSInvokable]
+    public async Task SaveAndMoveNextRowPhuTung()
+    {
+        await HandleSaveAndMoveNext(GridPhuTung, LstPhuTung, SelectedDataItemPhuTung, AddNewPhuTung);
+    }
+
+    async void AddNewPhuTung()
+    {
+        if (AllowEditMode) 
+        {
+            await GridPhuTung.SaveChangesAsync(); // Lưu trước
+            await GridPhuTung.StartEditNewRowAsync(); // Thêm sau
+        }
+    }
+    string grd_Css = "";
+    GridEditNewRowPosition NewItemRowPosition { get; set; } = GridEditNewRowPosition.Bottom;
+   // =========================================================================
+    // 1. KHAI BÁO CÁC BIẾN JS INTEROP & WRAPPER
+    // =========================================================================
+    private DotNetObjectReference<FrmZcfats> objRef; // Cầu nối C# và Javascript
+    public ElementReference GridWrapperChiTiet;
+
+    public void Dispose()
+    {
+        // Hủy cầu nối khi đóng form để tránh tràn bộ nhớ
+        objRef?.Dispose(); 
+    }
+
+    // =========================================================================
+    // 2. ONAFTERRENDERASYNC: ĐĂNG KÝ PHÍM TẮT QUA JAVASCRIPT
+    // =========================================================================
+    private DotNetObjectReference<FrmZcfats> Pageobj;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // --- Logic cũ của bạn ---
+            switch (curActionTask)
+            {
+                case ActionTask.New: CreateNewDM(); break;
+                case ActionTask.Edit:
+                case ActionTask.View: if (!string.IsNullOrEmpty(Ma_ma)) await LoadData(Ma_ma); break;
+                case ActionTask.Copy: if (!string.IsNullOrEmpty(Ma_ma)) await CopyDM(Ma_ma); break;
+            }
+            StateHasChanged();
+
+            // --- Lời sếp dặn: Đăng ký JS Interop ---
+            Pageobj = DotNetObjectReference.Create(this);
+            await JavacriptS.InvokeVoidAsync("SetPageObj", Pageobj);
+            await JavacriptS.InvokeVoidAsync("AttachEnterAsTab");
+            await Task.Delay(200);
+
+            if (curActionTask == ActionTask.New || curActionTask == ActionTask.Copy)
+            {
+                // Nếu là Thêm mới hoặc Sao chép -> Nháy vào ô Mã tài sản
+                if (txtMaTaiSan != null)
+                {
+                    await txtMaTaiSan.FocusAsync();
+                }
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                // Nếu là Sửa -> Nháy vào ô Mã phụ (vì mã chính bị khóa)
+                if (txtMaPhu != null)
+                {
+                    await txtMaPhu.FocusAsync();
+                }
+            }
+            // (Tùy chọn: Focus vào ô đầu tiên của bạn, ví dụ ô nhập Mã tài sản)
+            // await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('txtMaTaiSan')?.focus()");
+        }
+
+        // Lời sếp dặn: Đặt lệnh đổi chữ ở ngoài if (firstRender)
+        if (AllowEditMode)
+        {
+            try
+            {
+                await JavacriptS.InvokeVoidAsync("changeTextNewRowButton", "Click vào đây để thêm dòng mới");
+            }
+            catch { }
+        }
+    }
+
+    // 3. Hàm sếp nhắc nhở: JSInvokable để Javascript gọi lại C# khi click vào chữ
+    [JSInvokable]
+    public void CallGridEditMode(string value)
+    {
+        if (AllowEditMode)
+        {
+            // ActiveTabIndex == 2 là tab "Phụ tùng kèm theo"
+            if (ActiveTabIndex == 2) 
+                AddNewPhuTung();
+            else 
+                AddNewChiTiet();
+                
+            StateHasChanged();
+        }
+    }
+    // =========================================================================
+    // 3. CÁC HÀM XỬ LÝ FOCUS VÀ PHÍM TẮT (GIỐNG Y HỆT SOCTHDA)
+    // =========================================================================
+    async void OnGridChiTietLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            // ID "grid-wrapper" ở đây phải khớp 100% với HTML ở trên
+            // Nếu chuột vẫn ở trong grid-wrapper (đang click vào ô nhập liệu) -> Không làm gì cả
+            bool stillInside = await JavacriptS.InvokeAsync<bool>("focusInside", "grid-wrapper");
+            if (stillInside)
+                return;
+
+            // Nếu click ra ngoài hẳn -> Tự động lưu dòng
+            if (GridChiTiet != null && GridChiTiet.IsEditing())
+                await GridChiTiet.SaveChangesAsync();
+        }
+        catch { }
+    }
+    async void OnGridPhuTungLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            // Nhớ truyền đúng ID lưới phụ tùng
+            bool stillInside = await JavacriptS.InvokeAsync<bool>("focusInside", "grid-wrapper-pt");
+            if (stillInside)
+                return;
+
+            if (GridPhuTung != null && GridPhuTung.IsEditing())
+                await GridPhuTung.SaveChangesAsync();
+        }
+        catch { }
+    }
+
+    // 2. HÀM XỬ LÝ NHẢY DÒNG / THÊM DÒNG KHI ẤN ENTER
+    [JSInvokable]
+    public async Task SaveAndMoveNextRow()
+    {
+        if (!AllowEditMode || GridChiTiet == null) return;
+
+        // Lưu dòng hiện tại trước
+        if (GridChiTiet.IsEditing())
+            await GridChiTiet.SaveChangesAsync();
+
+        // Chờ 1 chút để lưới đồng bộ hoàn tất
+        await Task.Delay(100);
+
+        if (SelectedDataItemChiTiet != null)
+        {
+            var currentItem = (CtDmts)SelectedDataItemChiTiet;
+            var index = LstChiTietGiaTri.IndexOf(currentItem);
+
+            // Nếu chưa phải dòng cuối -> Xuống dòng kế tiếp
+            if (index >= 0 && index < LstChiTietGiaTri.Count - 1)
+            {
+                await GridChiTiet.StartEditDataItemAsync(LstChiTietGiaTri[index + 1]);
+            }
+            else
+            {
+                // Nếu đang ở dòng cuối cùng -> Thêm dòng mới
+                AddNewChiTiet();
+            }
+        }
+        else
+        {
+            AddNewChiTiet();
+        }
+    }
+
+    // 3. BẮT SỰ KIỆN PHÍM ENTER TRÊN LƯỚI
+    private async Task GridChiTiet_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                // Giao việc nhảy/thêm dòng cho hàm chuyên dụng
+                await SaveAndMoveNextRow();
+                break;
+            case "F4":
+                AddNewChiTiet();
+                break;
+            case "F8":
+                if (SelectedDataItemChiTiet != null)
+                    GridChiTiet.ShowDataItemDeleteConfirmation(SelectedDataItemChiTiet);
+                break;
+            case "Escape":
+                try { await GridChiTiet.CancelEditAsync(); } catch { }
+                break;
+        }
+    }
+
+    // =========================================================================
+    // 4. CÁC HÀM [JSINVOKABLE] ĐỂ JAVASCRIPT GỌI NGƯỢC LẠI C#
+    // =========================================================================
+    
+    // =========================================================================
+    // 5. CÁC HÀM CLICK CHUỘT VÀ CRUD LƯỚI
+    // =========================================================================
+    async Task StartEditDataItemByClickChiTiet(GridRowClickEventArgs e)
+    {
+        if (!AllowEditMode) return;
+
+        // 1. Lưu dòng cũ đang sửa dở (nếu có)
+        if (GridChiTiet.IsEditing())
+            await GridChiTiet.SaveChangesAsync();
+
+        // 2. Tìm dữ liệu của dòng vừa click thông qua vị trí VisibleIndex
+        var item = GridChiTiet.GetDataItem(e.VisibleIndex);
+
+        // 3. Mở chế độ nhập liệu cho dòng đó
+        if (item != null)
+            await GridChiTiet.StartEditDataItemAsync(item);
+    }
+   void OnNguyenGiaChanged(decimal? v, CtDmts item)
+    {
+        item.Nguyen_gia = v;
+        CalculateRowDepreciation(item); 
+    }
+
+    void OnGtDaKhChanged(decimal? v, CtDmts item)
+    {
+        item.Gt_da_kh = v;
+        CalculateRowDepreciation(item);
+    }
+
+    void OnGtDaKh0Changed(decimal? v, CtDmts item)
+    {
+        item.Gt_da_kh0 = v;
+        UpdateMasterTotals();
+    }
+    void CloseForm()
+    {
+        if (ShowAdd == true) OnClose.InvokeAsync();
+        else myNavi.NavigateTo("/" + ParentPage);
+    }
+}

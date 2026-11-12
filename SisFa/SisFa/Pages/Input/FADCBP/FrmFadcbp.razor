@@ -1,0 +1,404 @@
+﻿@inherits FrmListBaseComponent
+@using SisFa.Pages.Input.FADCBP
+@using DevExpress.Blazor
+@using System.Data
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveFadcbp" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                @* --- NĂM --- *@
+                <DxFormLayoutItem Caption="Năm:" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit Id="nam_input"
+                                    Enabled="@AllowEditMode"
+                                    Value="@CurFadcbp.Nam"
+                                    DisplayFormat="####"
+                                    ValueChanged="@((int v) => Nam_ValueChanged(v))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- KỲ --- *@
+                <DxFormLayoutItem Caption="Kỳ (1-12):" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit Id="ky_input"
+                                    Enabled="@AllowEditMode"
+                                    Value="@CurFadcbp.Ky"
+                                    DisplayFormat="##"
+                                    MinValue="1"
+                                    MaxValue="12"
+                                    ValueChanged="@((int v) => Ky_ValueChanged(v))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- MÃ BỘ PHẬN SỬ DỤNG --- *@
+                <DxFormLayoutItem Caption="Mã bộ phận sử dụng:" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_bpts_input" Ma_dm="dmbpts"
+                                               @bind-Value="@CurFadcbp.Ma_bpts"
+                                               IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- TK TÀI SẢN --- *@
+                <DxFormLayoutItem Caption="TK tài sản:" ColSpanMd="12">
+                    <Template>
+                        <AutocompleteComponent Id="tk_ts_input" Ma_dm="dmtk"
+                                               @bind-Value="@CurFadcbp.Tk_ts"
+                                               IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- TK KHẤU HAO --- *@
+                <DxFormLayoutItem Caption="TK khấu hao:" ColSpanMd="12">
+                    <Template>
+                        <AutocompleteComponent Id="tk_kh_input" Ma_dm="dmtk"
+                                               @bind-Value="@CurFadcbp.Tk_kh"
+                                               IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- TK CHI PHÍ --- *@
+                <DxFormLayoutItem Caption="TK chi phí:" ColSpanMd="12">
+                    <Template>
+                        <AutocompleteComponent Id="tk_cp_input" Ma_dm="dmtk"
+                                               @bind-Value="@CurFadcbp.Tk_cp"
+                                               IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+public Fadcbp CurFadcbp;
+private string menu_id = "wf.dc.01";
+private string thoiGianKy = "";
+
+// Tên hiển thị bên cạnh mã
+private string ten_bpts  = string.Empty;
+private string ten_tk_ts = string.Empty;
+private string ten_tk_kh = string.Empty;
+private string ten_tk_cp = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "ctbpts";
+        sqlTableView = "ctbpts";
+        SqlTableKey = "so_the_ts;nam;ky";
+        CheckSqlTableKey = "so_the_ts";
+        ParentPage = string.IsNullOrEmpty(ParentPage) ? "fadcbp" : ParentPage;
+        CurFadcbp = new Fadcbp();
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Lỗi: " + ex.Message);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('nam_input')?.focus()");
+
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task ViewRecord(string key)
+    {
+        CurFadcbp = new Fadcbp();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(key);
+    }
+
+    async Task EditRecord(string key)
+    {
+        CurFadcbp = new Fadcbp();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(key);
+    }
+
+    async Task NewRecord(string keyHint)
+    {
+        CurFadcbp = new Fadcbp();
+        CurFadcbp.Ts0 = "0";
+
+        // Lấy năm/kỳ mặc định từ hệ thống
+        var sysDate = DateTime.Now;
+        CurFadcbp.Nam = sysDate.Year;
+        CurFadcbp.Ky = sysDate.Month;
+
+        // Ma_ma truyền từ danh sách chính là mã tài sản đang lọc -> gán luôn
+        if (!string.IsNullOrWhiteSpace(keyHint))
+            CurFadcbp.So_the_ts = keyHint.Trim();
+
+        UpdateThoiGianKy();
+        AllowEditMode = true;
+        AllowEditMa   = false;  // Không cho sửa mã TS khi thêm từ danh sáchLoadData
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string[] strarr = SqlTableKey.Split(";");
+            string strwhere = string.Join(" AND ", strarr.Select(c => $"{c} = @{c}"));
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {strwhere}";
+            DataSet ds = await myDb.LoadDataset(sql, SqlTableKey, key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                List<Fadcbp> list = myDb.ConvertDataTable<Fadcbp>(ds.Tables[0]);
+                if (list != null && list.Count > 0)
+                {
+                    CurFadcbp = list[0];
+                    await LoadLookupInfo();
+                    UpdateThoiGianKy();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Lỗi tải dữ liệu: " + ex.Message);
+        }
+    }
+
+    // Hàm tiện ích tra tên từ DB
+    private string GetTen(string table, string keyCol, string keyVal, string nameCol)
+    {
+        if (string.IsNullOrWhiteSpace(keyVal)) return string.Empty;
+        string safe = keyVal.Trim().Replace("'", "''");
+        return myDb.GetValue($"SELECT {nameCol} FROM {table} WHERE {keyCol} = '{safe}'")?.ToString() ?? string.Empty;
+    }
+
+    async Task LoadLookupInfo()
+    {
+        ten_bpts  = GetTen("dmbpts", "ma_bpts",  CurFadcbp.Ma_bpts, "ten_bpts");
+        ten_tk_ts = GetTen("dmtk",   "tk",      CurFadcbp.Tk_ts,   "ten_tk");
+        ten_tk_kh = GetTen("dmtk",   "tk",      CurFadcbp.Tk_kh,   "ten_tk");
+        ten_tk_cp = GetTen("dmtk",   "tk",      CurFadcbp.Tk_cp,   "ten_tk");
+        StateHasChanged();
+    }
+
+    // --- SelectChanged handlers ---
+    void MaBpts_Changed(ExpandoObject value)
+    {
+        ten_bpts = GetTen("dmbpts", "ma_bpts", CurFadcbp.Ma_bpts, "ten_bpts");
+        StateHasChanged();
+    }
+
+    void TkTs_Changed(ExpandoObject value)
+    {
+        ten_tk_ts = GetTen("dmtk", "tk", CurFadcbp.Tk_ts, "ten_tk");
+        StateHasChanged();
+    }
+
+    void TkKh_Changed(ExpandoObject value)
+    {
+        ten_tk_kh = GetTen("dmtk", "tk", CurFadcbp.Tk_kh, "ten_tk");
+        StateHasChanged();
+    }
+
+    void TkCp_Changed(ExpandoObject value)
+    {
+        ten_tk_cp = GetTen("dmtk", "tk", CurFadcbp.Tk_cp, "ten_tk");
+        StateHasChanged();
+    }
+
+    void Nam_ValueChanged(int newValue)
+    {
+        CurFadcbp.Nam = newValue;
+        UpdateThoiGianKy();
+    }
+
+    void Ky_ValueChanged(int newValue)
+    {
+        CurFadcbp.Ky = newValue;
+        UpdateThoiGianKy();
+    }
+
+    void UpdateThoiGianKy()
+    {
+        thoiGianKy = "";
+        if (CurFadcbp.Nam > 0 && CurFadcbp.Ky >= 1 && CurFadcbp.Ky <= 12)
+        {
+            var ngayDau = new DateTime(CurFadcbp.Nam, CurFadcbp.Ky, 1);
+            var ngayCuoi = ngayDau.AddMonths(1).AddDays(-1);
+            thoiGianKy = $"Từ ngày {ngayDau:dd/MM/yyyy} -> Đến ngày {ngayCuoi:dd/MM/yyyy}";
+        }
+    }
+
+    async Task SaveFadcbp()
+    {
+        try
+        {
+            if (!await CheckValid())
+                return;
+
+            DateTime now = DateTime.Now;
+            string currentTime = now.ToString("HH:mm:ss");
+
+            if (curActionTask == ActionTask.Edit)
+            {
+                // Tách khóa gốc từ Ma_ma (so_the_ts;nam;ky)
+                string[] origParts = (Ma_ma ?? string.Empty).Split(';');
+                int origNam = origParts.Length > 1 && int.TryParse(origParts[1], out int pn) ? pn : 0;
+                int origKy  = origParts.Length > 2 && int.TryParse(origParts[2], out int pk) ? pk : 0;
+
+                // Kiểm tra trùng nếu người dùng đổi Nam hoặc Ky
+                if (CurFadcbp.Nam != origNam || CurFadcbp.Ky != origKy)
+                {
+                    string sSoTheChk = CurFadcbp.So_the_ts.Trim().Replace("'", "''");
+                    string sqlChk = $"SELECT so_the_ts FROM {sqlTableName} WHERE so_the_ts = '{sSoTheChk}' AND nam = {CurFadcbp.Nam} AND ky = {CurFadcbp.Ky}";
+                    DataTable dtChk = myDb.GetTable(sqlChk);
+                    if (dtChk != null && dtChk.Rows.Count > 0)
+                    {
+                        myStateMN.SetNewThongbao("Khai báo trùng! Tổ hợp (Mã TS, Năm, Kỳ) này đã tồn tại.");
+                        await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('nam_input')?.focus()");
+                        return;
+                    }
+                }
+
+                CurFadcbp.Date = now.Date;
+                CurFadcbp.Time = currentTime;
+                if (curUser != null)
+                {
+                    CurFadcbp.User_id   = curUser.User_id;
+                    CurFadcbp.User_name = curUser.User_name;
+                }
+
+                string _where = "";
+                string[] strkey   = SqlTableKey.Split(';');
+                string[] strvalue = Ma_ma.Split(';');
+                if (strkey.Length == strvalue.Length)
+                {
+                    for (int x = 0; x < strkey.Length; x++)
+                        _where += strkey[x] + " = '" + strvalue[x] + "' and ";
+                }
+                if (_where.Length > 0)
+                {
+                    _where = _where.Substring(0, _where.Length - 4);
+                    await myDb.UpdateOneRow1<Fadcbp>(CurFadcbp, sqlTableName, "", _where);
+                    myStateMN.SetNewThongbao($"Cập nhật thành công: {CurFadcbp.So_the_ts} - Năm {CurFadcbp.Nam}, Kỳ {CurFadcbp.Ky}");
+                }
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                // Kiểm tra trùng khóa chính
+                string sSoThe = CurFadcbp.So_the_ts.Trim().Replace(@"'", @"''");
+                string sqlCheck = $"SELECT so_the_ts FROM {sqlTableName} WHERE so_the_ts = '{sSoThe}' AND nam = {CurFadcbp.Nam} AND ky = {CurFadcbp.Ky}";
+                DataTable dtCheck = myDb.GetTable(sqlCheck);
+                if (dtCheck != null && dtCheck.Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao("Khai báo trùng! Bản ghi này đã tồn tại.");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('nam_input')?.focus()");
+                    return;
+                }
+
+                CurFadcbp.Date = now.Date;
+                CurFadcbp.Time = currentTime;
+                CurFadcbp.Date0 = now.Date;
+                CurFadcbp.Time0 = currentTime;
+                if (curUser != null)
+                {
+                    CurFadcbp.User_id = curUser.User_id;
+                    CurFadcbp.User_id0 = curUser.User_id;
+                    CurFadcbp.User_name = curUser.User_name;
+                    CurFadcbp.User_name0 = curUser.User_name;
+                }
+
+                await myDb.InsertOneRow<Fadcbp>(CurFadcbp, sqlTableName);
+                myStateMN.SetNewThongbao($"Thêm mới thành công: {CurFadcbp.So_the_ts} - Năm {CurFadcbp.Nam}, Kỳ {CurFadcbp.Ky}");
+            }
+
+            if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo(ParentPage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Lưu thất bại: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    async Task<bool> CheckValid()
+    {
+        // So_the_ts luon duoc gan tu danh sach nen chi kiem tra khi thuc su rong
+        if (string.IsNullOrWhiteSpace(CurFadcbp.So_the_ts))
+        {
+            myStateMN.SetNewThongbao("Chua co ma tai san. Vui long chon tai san tu danh sach!");
+            return false;
+        }
+        if (CurFadcbp.Nam <= 0)
+        {
+            myStateMN.SetNewThongbao("Nam khong hop le!");
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('nam_input')?.focus()");
+            return false;
+        }
+        if (CurFadcbp.Ky < 1 || CurFadcbp.Ky > 12)
+        {
+            myStateMN.SetNewThongbao("Ky phai tu 1 den 12!");
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ky_input')?.focus()");
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(CurFadcbp.Ma_bpts))
+        {
+            myStateMN.SetNewThongbao("Chua nhap ma bo phan su dung!");
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_bpts_input')?.focus()");
+            return false;
+        }
+        return true;
+    }
+}
+

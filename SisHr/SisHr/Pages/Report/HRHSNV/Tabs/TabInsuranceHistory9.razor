@@ -1,0 +1,355 @@
+﻿@namespace SisHr.Pages.Report.HRHSNV.Tabs
+
+@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using SisCom.Model
+@using SisCom.Shared
+@using SisLib.Lib
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using System.Linq
+
+@* ===== 9. INSURANCE HISTORY (Quá trình tham gia bảo hiểm) ===== *@
+<DxFormLayoutGroup id="section-9" Caption="@Lap["Insurance history"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="12">
+        <Template>
+            @if (AllowEditMode)
+            {
+                <div class="alert alert-info p-2 mb-2">
+                    <small><kbd>F4</kbd> để thêm dòng mới</small>
+                </div>
+            }
+            <div @ref="GridWrapperQtbh" id="grid-wrapper-qtbh" @onfocusout="OnGridQtbhLostFocus" @onfocusin="OnGridFocus" @onkeydown="GridQtbh_OnKeyDown" @onkeydown:stopPropagation="true" class="mt-2 mb-3">
+                <DxGrid @ref="GridQtbh"
+                        Data="@(CurRow.ListQtbh ?? new List<QtbhRow>())"
+                        SizeMode="SizeMode.Small"
+                        CssClass="w-100 grid-height-dynamic"
+                        AllowSelectRowByClick="true"
+                        KeyboardNavigationEnabled="true"
+                        @bind-SelectedDataItem="@SelectedQtbh"
+                        ValidationEnabled="false"
+                        EditMode="GridEditMode.EditRow"
+                        RowClick="@StartEditRow"
+                        SelectionMode="GridSelectionMode.Single"
+                        CustomizeEditModel="GridQtbh_CustomizeEditModel"
+                        EditModelSaving="GridQtbh_EditModelSaving"
+                        DataItemDeleting="GridQtbh_DataItemDeleting"
+                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                        EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                        ShowAllRows="true"
+                        TextWrapEnabled="false"
+                        AllowSort="false"
+                        HighlightRowOnHover="true"
+                        FooterDisplayMode="GridFooterDisplayMode.Always">
+                    <Columns>
+                        <DxGridCommandColumn Width="70px" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                            <CellDisplayTemplate Context="ctx">
+                                <div class="grid-cell-align-center">
+                                    <a class="text-danger fw-bold cursor-pointer" tabindex="-1"
+                                       @onclick="@(() => GridQtbh.ShowRowDeleteConfirmation(ctx.VisibleIndex))" title="Xóa dòng">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                </div>
+                            </CellDisplayTemplate>
+                            <CellEditTemplate Context="ctx">
+                            </CellEditTemplate>
+                        </DxGridCommandColumn>
+
+                        <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                        @* 1. Số sổ BHXH (so_the_bhxh) *@
+                        <DxGridDataColumn FieldName="So_the_bhxh" Caption="@Lap["SI Book No."]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.So_the_bhxh" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 2. BHXH từ ngày (tu_ngay) *@
+                        <DxGridDataColumn FieldName="Tu_ngay" Caption="@Lap["SI From Date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Tu_ngay" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 3. BHXH đến ngày (den_ngay) *@
+                        <DxGridDataColumn FieldName="Den_ngay" Caption="@Lap["SI To Date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Den_ngay" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 4. Đơn vị (donvi_bh) *@
+                        <DxGridDataColumn FieldName="Donvi_bh" Caption="@Lap["Unit"]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Donvi_bh" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 5. Chức vụ/Nghề nghiệp (donvi_cv) *@
+                        <DxGridDataColumn FieldName="Donvi_cv" Caption="@Lap["Position/Job"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Donvi_cv" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 6. Số thẻ BHYT (so_the_bhyt) *@
+                        <DxGridDataColumn FieldName="So_the_bhyt" Caption="@Lap["HI Card No."]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.So_the_bhyt" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 7. BHYT Từ ngày (bhyt_tungay) *@
+                        <DxGridDataColumn FieldName="Bhyt_tungay" Caption="@Lap["HI From Date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Bhyt_tungay" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 8. BHYT Đến ngày (bhyt_denngay) *@
+                        <DxGridDataColumn FieldName="Bhyt_denngay" Caption="@Lap["HI To Date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Bhyt_denngay" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 9. Trạng thái (status) *@
+                        <DxGridDataColumn FieldName="Status" Caption="@Lap["Status"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxComboBox Data="@StatusList"
+                                            @bind-Value="item.Status"
+                                            TextFieldName="Text"
+                                            ValueFieldName="Value" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 10. Ghi chú (ghi_chu) *@
+                        <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"]" Width="200px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QtbhRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ghi_chu" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+                    </Columns>
+                </DxGrid>
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+<style>
+    .grid-height-dynamic {
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .grid-cell-align-center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+@code {
+    [Parameter] public HsnvDetailModel CurRow { get; set; }
+    [Parameter] public bool AllowEditMode { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public dynamic Lap { get; set; }
+
+    [Inject] public IJSRuntime JS { get; set; }
+
+    public DxGrid GridQtbh;
+    private object SelectedQtbh;
+    private ElementReference GridWrapperQtbh;
+    private string LastFocusedGrid = "QTBH";
+
+    private List<StatusItem> StatusList = new() {
+        new StatusItem { Value = "1", Text = "1 - Sử dụng" },
+        new StatusItem { Value = "2", Text = "2 - Không sử dụng" }
+    };
+    public class StatusItem { public string Value { get; set; } public string Text { get; set; } }
+
+    void GridQtbh_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var model = (QtbhRow)e.EditModel;
+            model.Stt = CurRow.ListQtbh.Count > 0 ? CurRow.ListQtbh.Max(a => a.Stt) + 1 : 1;
+            model.Status = "1";
+        }
+    }
+
+    async Task GridQtbh_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var item = (QtbhRow)e.EditModel;
+
+        if (e.IsNew)
+        {
+            CurRow.ListQtbh.Add(item);
+
+            // Dọn dẹp dòng trống
+            if (CurRow.ListQtbh.Any(x => !string.IsNullOrEmpty(x.So_the_bhxh) && x != item))
+            {
+                CurRow.ListQtbh.RemoveAll(x => string.IsNullOrEmpty(x.So_the_bhxh) && x != item);
+            }
+
+            SelectedQtbh = item;
+        }
+        else
+        {
+            SelectedQtbh = item;
+        }
+
+        // Cập nhật STT
+        int stt = 1;
+        CurRow.ListQtbh.ForEach(x => x.Stt = stt++);
+
+        e.Cancel = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void GridQtbh_DataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var item = (QtbhRow)e.DataItem;
+        CurRow.ListQtbh.Remove(item);
+
+        // Cập nhật lại số thứ tự sau khi xóa
+        int stt = 1;
+        foreach (var r in CurRow.ListQtbh)
+        {
+            r.Stt = stt++;
+        }
+
+        e.Cancel = true;
+        StateHasChanged();
+    }
+
+    private async Task GridQtbh_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await SaveAndMoveNextRow();
+                break;
+            case "F4":
+                AddNewRow();
+                break;
+            case "F8":
+                if (SelectedQtbh != null) GridQtbh.ShowDataItemDeleteConfirmation(SelectedQtbh);
+                break;
+            case "Escape":
+                try { await GridQtbh.CancelEditAsync(); GridQtbh.ClearSelection(); } catch { }
+                break;
+        }
+    }
+
+    private async Task HandleSaveAndMoveNext(DxGrid grid, List<QtbhRow> list, object selectedItem, Func<Task> onAddAction)
+    {
+        try
+        {
+            if (grid != null && grid.IsEditing())
+                await grid.SaveChangesAsync();
+
+            await Task.Delay(100);
+
+            // Luôn thêm dòng mới sau khi lưu
+            await onAddAction();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("HandleSaveAndMoveNext Error: " + ex.Message);
+        }
+    }
+
+    [JSInvokable]
+    public async Task SaveAndMoveNextRow()
+    {
+        try
+        {
+            await HandleSaveAndMoveNext(GridQtbh, CurRow.ListQtbh, SelectedQtbh, AddNewRowAsync);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SaveAndMoveNextRow Error: " + ex.Message);
+        }
+    }
+
+    private async Task OnGridFocus()
+    {
+        LastFocusedGrid = "QTBH";
+    }
+
+    private async Task AddNewRowAsync()
+    {
+        if (AllowEditMode && GridQtbh != null)
+        {
+            if (GridQtbh.IsEditing())
+                await GridQtbh.SaveChangesAsync();
+            await GridQtbh.StartEditNewRowAsync();
+        }
+    }
+
+    private async void AddNewRow()
+    {
+        await AddNewRowAsync();
+    }
+
+    private void StartEditRow()
+    {
+        if (GridQtbh != null && SelectedQtbh != null && AllowEditMode)
+        {
+            if (GridQtbh.IsEditing())
+                _ = GridQtbh.SaveChangesAsync();
+            _ = GridQtbh.StartEditDataItemAsync(SelectedQtbh);
+        }
+    }
+
+    async void OnGridQtbhLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            await Task.Delay(150);
+            bool inside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-qtbh");
+            if (!inside && GridQtbh != null && GridQtbh.IsEditing())
+            {
+                await GridQtbh.SaveChangesAsync();
+            }
+        }
+        catch { }
+    }
+}

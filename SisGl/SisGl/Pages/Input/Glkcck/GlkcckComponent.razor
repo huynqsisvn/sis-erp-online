@@ -1,0 +1,645 @@
+﻿@page "/glkcck"
+@page "/glkcck/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,glkcck")]
+
+@if (!ShowLoading)
+{
+    <div class="row my-1 py-1">
+        <div class="col-auto d-flex align-items-center">
+            <label class="me-2 fw-bold">@Lap["Year"]</label>
+            <DxComboBox Data="@Years" @bind-Value="@Year" CssClass="p-0 m-0"></DxComboBox>
+        </div>
+        <div class="col-auto d-flex align-items-center">
+            <label class="me-2 fw-bold">@Lap["From month"]</label>
+            <DxComboBox Data="@Months" @bind-Value="@Month1" CssClass="p-0 m-0"></DxComboBox>
+        </div>
+        <div class="col-auto d-flex align-items-center">
+            <label class="me-2 fw-bold">@Lap["To month"]</label>
+            <DxComboBox Data="@Months" @bind-Value="@Month2" CssClass="p-0 m-0"></DxComboBox>
+        </div>
+    </div>
+
+    <div class="row mt-1">
+        <FrmBrowse3Component @ref="oBrowse"
+                             TblData="@TblData"
+                             Page_size="@PageSize"
+                             IsPageSize="true"
+                             CssClass="grid-frm-height"
+                             Fbrowse="@Fbrowse"
+                             SelectItem="CurItem"
+                             SelectCol="tag"
+                             IsLangEn="@IsLangEn">
+        </FrmBrowse3Component>
+    </div>
+}
+else
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    CssClass="w-100"
+                    IndicatorVisible="@ShowLoading"
+                    IndicatorAreaVisible="@ShowLoading"
+                    Visible="@ShowLoading"
+                    Text="@Lap["Processing..."]"
+                    TextAlignment="LoadingPanelTextAlignment.Right">
+        <div style="min-height: 250px;"></div>
+    </DxLoadingPanel>
+}
+
+@* Popup chọn tham số kết chuyển *@
+<DxPopup @ref="popKetcuyen"
+         CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         @bind-Visible="@PopupKcVisible"
+         Width="65%"
+         Height="Auto"
+         ShowFooter="true"
+         HeaderText="@Lap["Transfer criteria"]">
+    <BodyTemplate>
+        <div class="p-3">
+            <DxFormLayout CssClass="w-100">
+                <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Document date"]">
+                    <Template Context="kc_ngay">
+                        <DxDateEdit @bind-Date="KcNgayCt" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Document no."]">
+                    <Template Context="kc_soct">
+                        <DxTextBox @bind-Text="KcSoCt" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Description"]">
+                    <Template Context="kc_dg">
+                        <DxTextBox @bind-Text="KcDienGiai" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Loại k/c"]">
+                    <Template Context="kc_loai">
+                        <DxComboBox Data="@KcLoaikcList" TextFieldName="Text" ValueFieldName="Value" @bind-Value="KcLoai_kc" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Thực hiện k/c"]">
+                    <Template Context="kc_thkc">
+                        <DxComboBox Data="@KcThkcList" TextFieldName="Text" ValueFieldName="Value" @bind-Value="KcTh_kc" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Tk k/c đi"]">
+                    <Template Context="kc_tkno">
+                        <DxTextBox Text="@KcTkDiDisplay" ReadOnly="true" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Tk nhận k/c"]">
+                    <Template Context="kc_tkco">
+                        <AutocompleteComponent Ma_dm="dmtk" @bind-Value="KcTk_co" IsEnable="true" IsLangEn="@IsLangEn" />
+                        <div class="small mt-1 text-muted">@KcLblTenTkCo</div>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["K/c theo mã"]">
+                    <Template Context="kc_ma">
+                        <div class="row">
+                            <div class="col-6">
+                                <DxCheckBox @bind-Checked="KcKc_ma_vv"> @Lap["Dự án"] </DxCheckBox>
+                                <DxCheckBox @bind-Checked="KcKc_ma_bpht"> @Lap["Bộ phận hạch toán"] </DxCheckBox>
+                                <DxCheckBox @bind-Checked="KcKc_ma_phi"> @Lap["Mã phí"] </DxCheckBox>
+                                <DxCheckBox @bind-Checked="KcKc_ma_hd"> @Lap["Đơn hàng bán"] </DxCheckBox>
+                                <DxCheckBox @bind-Checked="KcKc_ma_hdm"> @Lap["Đơn hàng mua"] </DxCheckBox>
+                                <DxCheckBox @bind-Checked="KcKc_ma_px"> @Lap["Mã cđ(px)"] </DxCheckBox>
+                            </div>
+                            <div class="col-6">
+                                <DxCheckBox @bind-Checked="KcKc_ma_sp"> @Lap["Sản phẩm"] </DxCheckBox>
+                                <DxCheckBox @bind-Checked="KcKc_so_lsx"> @Lap["Lệnh sx"] </DxCheckBox>
+                                <DxCheckBox @bind-Checked="KcKc_ma_td"> @Lap["Free code"] </DxCheckBox>
+                                <DxCheckBox @bind-Checked="KcKc_ma_td2"> @(Lap["Free code"] + " 2") </DxCheckBox>
+                                <DxCheckBox @bind-Checked="KcKc_ma_td3"> @(Lap["Free code"] + " 3") </DxCheckBox>
+                            </div>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12">
+                    <Template Context="kc_hr">
+                        <hr />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+            @if (PopupErrors.Any())
+            {
+                <div class="mt-2 alert alert-danger p-2">
+                    <ul class="mb-0">
+                        @foreach (var err in PopupErrors)
+                        {
+                            <li>@err</li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="row m-0 justify-content-end align-content-end">
+            <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@OnKcConfirm" />
+            <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@(() => { PopupKcVisible = false; StateHasChanged(); })" />
+        </div>
+    </FooterTemplate>
+</DxPopup>
+
+<style>
+    .grid-frm-height {
+        height: 70vh;
+    }
+
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+
+    .tb-icon-btntoolbar1 {
+        width: 24px;
+        height: 24px;
+        background-image: url('.\\Images\\Icon_them_moi.svg');
+    }
+
+    .tb-icon-btntoolbar2 {
+        width: 24px;
+        height: 24px;
+        background-image: url('.\\Images\\Icon_xoa.svg');
+    }
+</style>
+
+@code {
+    FrmBrowse3Component oBrowse;
+    DxPopup popKetcuyen;
+
+    public List<int> Years { get; set; } = Enumerable.Range(DateTime.Now.Year - 20, 30).OrderByDescending(y => y).ToList();
+    public List<int> Months { get; set; } = Enumerable.Range(1, 12).ToList();
+    public int _month1 { get; set; } = DateTime.Now.Month;
+    public int _month2 { get; set; } = DateTime.Now.Month;
+    private int _year = DateTime.Now.Year;
+    public string Ma_ct { get; set; } = "PK3";
+    public string Ma_dvcs { get; set; } = "";
+
+    public DataTable TblData { get; set; }
+    public int PageSize { get; set; } = 20;
+
+    public string Fbrowse { get; set; }
+    public bool ShowLoading { get; set; } = false;
+
+    // Popup kết chuyển
+    private bool PopupKcVisible { get; set; } = false;
+    private string KcDienGiai { get; set; } = "";
+    private int KcMonth1 { get; set; } = DateTime.Now.Month;
+    private int KcMonth2 { get; set; } = DateTime.Now.Month;
+    private DateTime KcNgayCt { get; set; } = DateTime.Now.Date;
+    private string KcSoCt { get; set; } = "";
+    private List<string> PopupErrors { get; set; } = new();
+
+    // Tham số kết chuyển
+    private string KcLoai_kc { get; set; } = "1";
+    private string KcTh_kc   { get; set; } = "3";
+    private string KcTkDiDisplay { get; set; } = "";  // danh sách tk đã check, read-only
+    private string KcTk_co   { get; set; } = "";
+    private string KcLblTenTkCo { get; set; } = "";
+    private bool KcKc_ma_vv   { get; set; }
+    private bool KcKc_ma_bpht { get; set; }
+    private bool KcKc_ma_phi  { get; set; }
+    private bool KcKc_ma_hd   { get; set; }
+    private bool KcKc_ma_hdm  { get; set; }
+    private bool KcKc_ma_px   { get; set; }
+    private bool KcKc_ma_sp   { get; set; }
+    private bool KcKc_so_lsx  { get; set; }
+    private bool KcKc_ma_td   { get; set; }
+    private bool KcKc_ma_td2  { get; set; }
+    private bool KcKc_ma_td3  { get; set; }
+
+    private List<object> KcLoaikcList = new()
+    {
+        new { Value = "1", Text = "1 - Tk có -> tk nợ" },
+        new { Value = "2", Text = "2 - Tk nợ -> tk có" },
+        new { Value = "3", Text = "3 - K/c lãi lỗ" }
+    };
+    private List<object> KcThkcList = new()
+    {
+        new { Value = "1", Text = "1 - Chỉ k/c các ps có mã" },
+        new { Value = "2", Text = "2 - K/c tất cả các ps" },
+        new { Value = "3", Text = "3 - K/c số dư cuối kỳ" }
+    };
+
+    public int Year
+    {
+        get => _year;
+        set
+        {
+            if (_year == value) return;
+            _year = value;
+            _ = OnPeriodChangedAsync();
+        }
+    }
+    public int Month1
+    {
+        get => _month1;
+        set
+        {
+            if (_month1 == value) return;
+            _month1 = value;
+            _ = OnPeriodChangedAsync();
+        }
+    }
+    public int Month2
+    {
+        get => _month2;
+        set
+        {
+            if (_month2 == value) return;
+            _month2 = value;
+            _ = OnPeriodChangedAsync();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Ma_dvcs = myStateMN.GetDvcs().Ma_dvcs.Trim();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            SqlTableKey = "tk";
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            Fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", false));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", false));
+                myStateMN.SetToolBar(new MyToolbar("View", false));
+                myStateMN.AddOrderToolBarButton("Button1", Lap["Transfer"], 1);
+                myStateMN.AddOrderToolBarButton("Button2", Lap["Cancel transfer"], 2);
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            await LoadDataAsync();
+            await Language();
+        }
+    }
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Button1:
+                myStateMN.SetCurrentActionTask(ActionTask.Button1);
+                OpenKetcuyenPopup();
+                break;
+            case ActionTask.Button2:
+                myStateMN.SetCurrentActionTask(ActionTask.Button2);
+                HuyKetcuyenAsync();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        ShowLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Ngày đầu kỳ của Từ kỳ, ngày cuối kỳ của Đến kỳ
+            var tuNgay  = new DateTime(Year, Month1, 1);
+            var denNgay = new DateTime(Year, Month2, DateTime.DaysInMonth(Year, Month2));
+
+            // Dùng lại store proc của glcd1 (Store_proc lấy từ curCommand)
+            string storeProc = curCommand?.Store_proc?.Split('|')[0] ?? "";
+            if (!string.IsNullOrEmpty(storeProc))
+            {
+                string paramName  = "Ngay_ct1;Ngay_ct2;Ma_dvcs;Advance";
+                string paramValue = $"{tuNgay.ToString("yyyyMMdd")};{denNgay.ToString("yyyyMMdd")};{Ma_dvcs}%;";
+                var ds = await myDb.LoadStoreProcedure(storeProc, paramName, paramValue);
+                var raw = (ds != null && ds.Tables.Count > 0) ? ds.Tables[0] : new DataTable();
+                // SetNoneReadOnlyDataTable để có thể ghi cột tag
+                TblData = myDb.SetNoneReadOnlyDataTable(raw.Copy());
+                // Thêm cột tag nếu chưa có (FrmBrowse3Component dùng SelectCol="tag")
+                if (!TblData.Columns.Contains("tag"))
+                {
+                    var tagCol = new DataColumn("tag", typeof(string));
+                    tagCol.DefaultValue = "0";
+                    TblData.Columns.Add(tagCol);
+                }
+                foreach (DataRow r in TblData.Rows)
+                    r["tag"] = "0";
+            }
+            else
+            {
+                TblData = new DataTable();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("LoadDataAsync error: " + ex.Message);
+            TblData = new DataTable();
+        }
+
+        ShowLoading = false;
+        StateHasChanged();
+    }
+
+    private DataRow[] GetCheckedRows()
+    {
+        if (TblData == null) return Array.Empty<DataRow>();
+        return TblData.Rows.Cast<DataRow>()
+            .Where(r => r["tag"]?.ToString().Trim() == "1")
+            .ToArray();
+    }
+
+    private void OpenKetcuyenPopup()
+    {
+        if (TblData == null || TblData.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No data to transfer"]);
+            return;
+        }
+
+        DataRow[] rows = GetCheckedRows();
+        if (rows == null || rows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No entries selected for posting"]);
+            return;
+        }
+
+        PopupErrors.Clear();
+        KcDienGiai   = "";
+        KcSoCt       = "";
+        KcMonth1     = Month1;
+        KcMonth2     = Month2;
+        KcNgayCt     = new DateTime(Year, Month2, DateTime.DaysInMonth(Year, Month2));
+        KcLoai_kc    = "1";
+        KcTh_kc      = "3";
+        KcTkDiDisplay = string.Join(", ", rows.Select(r => r["tk"].ToString().Trim()));
+        KcTk_co      = "";
+        KcLblTenTkCo = "";
+        KcKc_ma_vv   = false; KcKc_ma_bpht = false; KcKc_ma_phi = false;
+        KcKc_ma_hd   = false; KcKc_ma_hdm  = false; KcKc_ma_px  = false;
+        KcKc_ma_sp   = false; KcKc_so_lsx  = false;
+        KcKc_ma_td   = false; KcKc_ma_td2  = false; KcKc_ma_td3 = false;
+        // Nạp trước từ dmkc nếu tài khoản đang chọn có khai báo
+        _ = LoadDmkcForSelectedTk(rows);
+        PopupKcVisible = true;
+        StateHasChanged();
+    }
+
+    private async void OnKcConfirm()
+    {
+        PopupErrors.Clear();
+        if (KcNgayCt == default)
+            PopupErrors.Add(Lap["Document date is required"]);
+        if (string.IsNullOrWhiteSpace(KcSoCt))
+            PopupErrors.Add(Lap["Document no. is required"]);
+        if (string.IsNullOrWhiteSpace(KcTk_co))
+            PopupErrors.Add(Lap["Chưa nhập tài khoản nhận k/c"]);
+
+        if (PopupErrors.Any())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        PopupKcVisible = false;
+        await KetcuyenAsync();
+    }
+
+    private async Task KetcuyenAsync()
+    {
+        DataRow[] rows = GetCheckedRows();
+        if (rows == null || rows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No entries selected for posting"]);
+            return;
+        }
+
+        var tkList = rows.OfType<DataRow>()
+                         .Select(r => r["tk"].ToString().Trim())
+                         .ToList();
+        string strTkList = string.Join(",", tkList.Select(t => $"'{t}'"));
+
+        ShowLoading = true;
+        StateHasChanged();
+
+        var startPeriod = new DateTime(Year, KcMonth1, 1);
+        if (!SisLib.Ctrl.NgayTC.CheckValidNgayKs(mySysvar, myDb, startPeriod, Ma_ct))
+        {
+            myStateMN.SetNewThongbao(Lap["Data is locked, cannot post"]);
+            ShowLoading = false;
+            StateHasChanged();
+            return;
+        }
+
+        // Kiểm tra đã kết chuyển chưa
+        var dsCheck = await myDb.LoadDataset("dbo.Glkcck", new Dictionary<string, object>
+        {
+            ["@Year"]     = Year,
+            ["@Period1"]  = KcMonth1,
+            ["@Period2"]  = KcMonth2,
+            ["@TkList"]   = strTkList,
+            ["@Ma_dvcs"]  = Ma_dvcs,
+            ["@Type"]     = "CHECK"
+        });
+
+        if (dsCheck != null && dsCheck.Tables.Count > 0 && dsCheck.Tables[0].Rows.Count > 0
+            && Convert.ToInt32(dsCheck.Tables[0].Rows[0][0]) == 1)
+        {
+            ShowLoading = false;
+            StateHasChanged();
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text  = Lap["Transfering entries have already existed. Do you want to transfer again"] + " ?",
+                Title = Lap["Confirm"],
+                OkButtonText     = Lap["Yes"],
+                CancelButtonText = Lap["No"],
+                ShowIcon    = true,
+                RenderStyle = MessageBoxRenderStyle.Warning
+            });
+            if (!confirm)
+                return;
+            ShowLoading = true;
+            StateHasChanged();
+        }
+
+        await myDb.LoadDataset("dbo.Glkcck", new Dictionary<string, object>
+        {
+            ["@Year"]      = Year,
+            ["@Period1"]   = KcMonth1,
+            ["@Period2"]   = KcMonth2,
+            ["@TkList"]    = strTkList,
+            ["@Ngay_ct"]   = KcNgayCt.ToString("yyyyMMdd"),
+            ["@So_ct"]     = KcSoCt,
+            ["@Dien_giai"] = KcDienGiai,
+            ["@Loai_kc"]   = KcLoai_kc,
+            ["@Th_kc"]     = KcTh_kc,
+            ["@Tk_co"]     = KcTk_co,
+            ["@Kc_ma_vv"]   = KcKc_ma_vv   ? 1 : 0,
+            ["@Kc_ma_bpht"] = KcKc_ma_bpht ? 1 : 0,
+            ["@Kc_ma_phi"]  = KcKc_ma_phi  ? 1 : 0,
+            ["@Kc_ma_hd"]   = KcKc_ma_hd   ? 1 : 0,
+            ["@Kc_ma_hdm"]  = KcKc_ma_hdm  ? 1 : 0,
+            ["@Kc_ma_px"]   = KcKc_ma_px   ? 1 : 0,
+            ["@Kc_ma_sp"]   = KcKc_ma_sp   ? 1 : 0,
+            ["@Kc_so_lsx"]  = KcKc_so_lsx  ? 1 : 0,
+            ["@Kc_ma_td"]   = KcKc_ma_td   ? 1 : 0,
+            ["@Kc_ma_td2"]  = KcKc_ma_td2  ? 1 : 0,
+            ["@Kc_ma_td3"]  = KcKc_ma_td3  ? 1 : 0,
+            ["@Ma_dvcs"]   = Ma_dvcs,
+            ["@Type"]      = "NEW"
+        });
+
+        await LoadDataAsync();
+        myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        ShowLoading = false;
+        StateHasChanged();
+    }
+
+    private async void HuyKetcuyenAsync()
+    {
+        if (TblData == null || TblData.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No data to transfer"]);
+            return;
+        }
+
+        DataRow[] rows = GetCheckedRows();
+        if (rows == null || rows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No entries selected for deletion"]);
+            return;
+        }
+
+        var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+        {
+            Text  = Lap["Are you sure you want to delete?"],
+            Title = Lap["Confirm deletion"],
+            OkButtonText     = Lap["OK"],
+            CancelButtonText = Lap["Cancel"],
+            ShowIcon    = true,
+            RenderStyle = MessageBoxRenderStyle.Danger
+        });
+        if (!confirm)
+            return;
+
+        var tkList = rows.OfType<DataRow>()
+                         .Select(r => r["tk"].ToString().Trim())
+                         .ToList();
+        string strTkList = string.Join(",", tkList.Select(t => $"'{t}'"));
+
+        ShowLoading = true;
+        StateHasChanged();
+
+        var startPeriod = new DateTime(Year, Month1, 1);
+        if (!SisLib.Ctrl.NgayTC.CheckValidNgayKs(mySysvar, myDb, startPeriod, Ma_ct))
+        {
+            myStateMN.SetNewThongbao(Lap["Data is locked, cannot delete"]);
+            ShowLoading = false;
+            StateHasChanged();
+            return;
+        }
+
+        await myDb.LoadDataset("dbo.Glkcck", new Dictionary<string, object>
+        {
+            ["@Year"]    = Year,
+            ["@Period1"] = Month1,
+            ["@Period2"] = Month2,
+            ["@TkList"]  = strTkList,
+            ["@Ma_dvcs"] = Ma_dvcs,
+            ["@Type"]    = "DEL"
+        });
+
+        await LoadDataAsync();
+        myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        ShowLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadDmkcForSelectedTk(DataRow[] checked_rows)
+    {
+        try
+        {
+            if (checked_rows.Length == 0) return;
+            // Lấy tk đầu tiên đã chọn để đề xuất tham số từ dmkc
+            string tk = checked_rows[0]["tk"].ToString().Trim();
+            string sql = $"SELECT TOP 1 * FROM dmkc WHERE nam = {Year} AND (tk_no LIKE '{tk}%' OR tk_co LIKE '{tk}%') AND status = '1' ORDER BY stt";
+            var ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var r = ds.Tables[0].Rows[0];
+                KcLoai_kc    = r["loai_kc"].ToString();
+                KcTh_kc      = r["th_kc"].ToString();
+                KcTk_co      = r["tk_co"].ToString();
+                KcKc_ma_vv   = ToBool(r["kc_ma_vv"]);
+                KcKc_ma_bpht = ToBool(r["kc_ma_bpht"]);
+                KcKc_ma_phi  = ToBool(r["kc_ma_phi"]);
+                KcKc_ma_hd   = ToBool(r["kc_ma_hd"]);
+                KcKc_ma_hdm  = ToBool(r["kc_ma_hdm"]);
+                KcKc_ma_px   = ToBool(r["kc_ma_px"]);
+                KcKc_ma_sp   = ToBool(r["kc_ma_sp"]);
+                KcKc_so_lsx  = ToBool(r["kc_so_lsx"]);
+                KcKc_ma_td   = ToBool(r["kc_ma_td"]);
+                KcKc_ma_td2  = ToBool(r["kc_ma_td2"]);
+                KcKc_ma_td3  = ToBool(r["kc_ma_td3"]);
+                KcLblTenTkCo = await GetTenTk(KcTk_co);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex) { Console.WriteLine("LoadDmkcForSelectedTk: " + ex.Message); }
+    }
+
+    private async Task<string> GetTenTk(string tk)
+    {
+        if (string.IsNullOrWhiteSpace(tk)) return "";
+        try
+        {
+            var obj = myDb.GetValue($"SELECT TOP 1 ten_tk FROM dmtk WHERE tk = '{tk.Trim()}'");
+            return obj?.ToString() ?? "";
+        }
+        catch { return ""; }
+    }
+
+    private bool ToBool(object o) =>
+        !(o is DBNull) && (o is bool b ? b : (o.ToString() == "1" || o.ToString().ToLower() == "true"));
+
+    public override async void ExportData(int type)
+    {
+        oBrowse.ExPortGrid(type);
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+
+    private async Task OnPeriodChangedAsync()
+    {
+        await LoadDataAsync();
+        StateHasChanged();
+    }
+}

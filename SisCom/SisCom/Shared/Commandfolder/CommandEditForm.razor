@@ -1,0 +1,104 @@
+﻿@using DevExpress.Blazor
+@using SisData.Model
+
+<div style="padding: 20px">
+    <DxFormLayout>
+        <DxFormLayoutItem Caption="Menu id:" ColSpanMd="6">
+            <Template>
+                <DxTextBox Text="@curCommand.Menu_id" ReadOnly="true" />
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Menu id0:" ColSpanMd="6">
+            <Template>
+                <DxTextBox Text="@curCommand.Menu_id0" ReadOnly="true" />
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Stt  :" ColSpanMd="6">
+            <Template>
+                <DxSpinEdit @bind-Value="@curCommand.Stt" MinValue="1" />
+            </Template>
+        </DxFormLayoutItem>
+        <DxFormLayoutItem Caption="Ma ct  :" ColSpanMd="6">
+            <Template>
+                <DxTextBox Text="@curCommand.Ma_ct" />
+            </Template>
+        </DxFormLayoutItem>
+        <DxFormLayoutItem Caption="Ma phan he  :" ColSpanMd="6">
+            <Template>
+                <DxTextBox Text="@curCommand.Ma_phan_he" />
+            </Template>
+        </DxFormLayoutItem>
+        <DxFormLayoutItem Caption="Page  :" ColSpanMd="6">
+            <Template>
+                <DxTextBox Text="@curCommand.Mobile_page"/>
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Bar  :" ColSpanMd="12">
+            <Template>
+                <DxTextBox @bind-Text="@curCommand.Bar" />
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Bar 2:" ColSpanMd="12">
+            <Template>
+                <DxTextBox @bind-Text="@curCommand.Bar2" />
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Vbrowse1:" ColSpanMd="12">
+            <Template>
+                <DxMemo @bind-Text="@curCommand.Vbrowse1" Rows="3"/>
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Ebrowse1:" ColSpanMd="12">
+            <Template>
+                <DxMemo @bind-Text="@curCommand.Ebrowse1" Rows="3" />
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Vbrowse2:" ColSpanMd="12">
+            <Template>
+                <DxMemo @bind-Text="@curCommand.Vbrowse2" Rows="3" />
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Ebrowse2:" ColSpanMd="12">
+            <Template>
+                <DxMemo @bind-Text="@curCommand.Ebrowse2" Rows="3" />
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Store proc:" ColSpanMd="12">
+            <Template>
+                <DxTextBox @bind-Text="@curCommand.Store_proc" />
+            </Template>
+        </DxFormLayoutItem>
+
+          <DxFormLayoutItem Caption="Rep_file:" ColSpanMd="6">
+            <Template>
+                <DxTextBox @bind-Text="@curCommand.Rep_file" />
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Parameter:" ColSpanMd="6">
+            <Template>
+                <DxTextBox @bind-Text="@curCommand.Parameter" />
+            </Template>
+        </DxFormLayoutItem>
+
+        <DxFormLayoutItem Caption="Image:" ColSpanMd="6">
+            <Template>
+                <DxTextBox @bind-Text="@curCommand.Picture" />
+            </Template>
+        </DxFormLayoutItem>
+
+    </DxFormLayout>
+</div>
+@code {
+    [CascadingParameter(Name = "curCommand")]
+    public Command curCommand { get; set; }
+}

@@ -1,0 +1,51 @@
+@page "/frmfaplts"
+@page "/frmfaplts/{menu_id}"
+@page "/frmfaplts/{menu_id}/{ma_loai}"
+@inject Statemanagerment myStatemanagerment
+@inject NavigationManager navigation
+@inject IDbManager myDb
+@inject IJSRuntime JavacriptS
+@inject IStringLocalizer<FapltsComponent> Lap
+
+<DxPopup @bind-Visible="@PopVisible"
+         ShowFooter="false" ShowHeader="false"
+         CloseOnEscape="false"
+         CloseOnOutsideClick="false"
+         ShowCloseButton="false"
+         Width="auto"
+         MinWidth="650px"
+         MinHeight="200px"
+         MaxHeight="98vh"
+         AllowResize="true"
+         AllowDrag="true"
+         AllowDragByHeaderOnly="true">
+    <BodyTemplate>
+        <div class="row">
+            <EditFaplts Ma_ma="@ma_loai" Menu_id="@menu_id" curActionTask="@curActionTask" ShowAdd="@ShowAdd" OnClose="ClickHandler"></EditFaplts>
+        </div>
+    </BodyTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public string menu_id { get; set; }
+    [Parameter] public string ma_loai { get; set; }
+    [Parameter] public ActionTask curActionTask { get; set; } = ActionTask.None;
+    [Parameter] public bool ShowAdd { get; set; }
+
+    public bool PopVisible { get; set; } = true;
+
+    protected override void OnInitialized()
+    {
+        if (curActionTask == ActionTask.None)
+        {
+            curActionTask = myStatemanagerment.GetCurrentActionTask();
+        }
+    }
+
+    private void ClickHandler()
+    {
+        PopVisible = false;
+        OnClose.InvokeAsync();
+    }
+}

@@ -1,0 +1,69 @@
+@page "/glnhtk0"
+@page "/glnhtk0/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,glnhtk0")]
+
+<FrmBrowseComponent @ref="oBrowse" Page_size="@Page_size" TblData="@TblData" Fbrowse="@fbrowse" SelectItem="@CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm" CloseOnEscape="true" Width="40vw"
+              MinWidth="400px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.dm.02";
+        mPage = "glnhtk0";
+        FrmType = typeof(List.Glnhtk0.EditGlnhtk0);
+        LanguageID = "Glnhtk0Component";
+        base.OnInitialized();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", false));
+                if (IsShowCopy) myStateMN.SetToolBar(new MyToolbar("Copy", false));
+                if (IsShowImport) myStateMN.SetToolBar(new MyToolbar("Import", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", false));
+                myStateMN.SetToolBar(new MyToolbar("Change", false));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            await Loaddata();
+            await Language();            
+        }
+    }
+}

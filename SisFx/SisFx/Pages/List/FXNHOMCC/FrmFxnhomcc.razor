@@ -1,0 +1,51 @@
+@page "/frmfxnhomcc"
+@page "/frmfxnhomcc/{menu_id}"
+@page "/frmfxnhomcc/{menu_id}/{nh_cc}"
+@inject Statemanagerment myStatemanagerment
+@inject NavigationManager navigation
+@inject IDbManager myDb
+@inject IJSRuntime JavacriptS
+@inject IStringLocalizer<FxnhomccComponent> Lap
+
+<DxPopup @bind-Visible="@PopVisible"
+         ShowFooter="false" ShowHeader="false"
+         CloseOnEscape="false"
+         CloseOnOutsideClick="false"
+         ShowCloseButton="false"
+         Width="auto"
+         MinWidth="650px"
+         MinHeight="200px"
+         MaxHeight="98vh"
+         AllowResize="true"
+         AllowDrag="true"
+         AllowDragByHeaderOnly="true">
+    <BodyTemplate>
+        <div class="row">
+            <EditFxnhomcc Ma_ma="@nh_cc" Menu_id="@menu_id" curActionTask="@curActionTask" ShowAdd="@ShowAdd" OnClose="ClickHandler"></EditFxnhomcc>
+        </div>
+    </BodyTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public string menu_id { get; set; }
+    [Parameter] public string nh_cc { get; set; }
+    [Parameter] public ActionTask curActionTask { get; set; } = ActionTask.None;
+    [Parameter] public bool ShowAdd { get; set; }
+
+    public bool PopVisible { get; set; } = true;
+
+    protected override void OnInitialized()
+    {
+        if (curActionTask == ActionTask.None)
+        {
+            curActionTask = myStatemanagerment.GetCurrentActionTask();
+        }
+    }
+
+    private void ClickHandler()
+    {
+        PopVisible = false;
+        OnClose.InvokeAsync();
+    }
+}

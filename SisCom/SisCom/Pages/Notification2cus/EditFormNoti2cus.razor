@@ -1,0 +1,416 @@
+﻿@inject IDbManager myDb
+@inject ILocalStorageService Localstore
+@inject Statemanagerment myStatemanagerment
+@inject NavigationManager navigation
+@inject ICommandManager Commands
+@inject IWebHostEnvironment hostEnvironment;
+@inject IOptionsManager Options
+@inject IStringLocalizer<EditFormNoti2cus> Lat
+@inject IJSRuntime JavacriptS
+@inject IChatService SisChatService
+@inject HttpClient Http
+<div class="row m-2">
+    <EditForm Context="contextEdit" Model="@CurNotification">
+        <DataAnnotationsValidator></DataAnnotationsValidator>
+        <DxFormLayout>
+        <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None">
+            <DxFormLayout CssClass="w-100">
+                <DxFormLayoutItem Caption="@Lat["From Date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurNotification.Ngay1" Enabled="@AllowEditMode"></DxDateEdit>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["To Date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurNotification.Ngay2" Enabled="@AllowEditMode"></DxDateEdit>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["Title"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxMemo Rows="1" @bind-Text="@CurNotification.Tieu_de" Enabled="@AllowEditMode"></DxMemo>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lat["Image link"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurNotification.Img_link" Enabled="@AllowEditMode"></DxTextBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lat["Notification Link"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurNotification.No_link" Enabled="@AllowEditMode"></DxTextBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lat["Content"]" ColSpanMd="12">
+                    <Template>
+                        <DxMemo Rows="3" @bind-Text="@CurNotification.Noi_dung" Enabled="@AllowEditMode"></DxMemo>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["Note"]" ColSpanMd="12">
+                    <Template>
+                        <DxMemo Rows="2" @bind-Text="@CurNotification.Ghi_chu" Enabled="@AllowEditMode"></DxMemo>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["Customer list"]" ColSpanMd="12">
+                    <Template>
+                        <div class="d-flex">
+                            <DxMemo CssClass="col" Rows="2" Enabled="false" @bind-Text="@CurNotification.Ma_kh"></DxMemo>
+                            <DxButton SizeMode="SizeMode.Small" Text="..." Enabled="@AllowEditMode" RenderStyle="ButtonRenderStyle.Success" Click="@ChonUser"></DxButton>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["Product list"]" ColSpanMd="12">
+                    <Template>
+                        <div class="d-flex">
+                            <DxTextBox CssClass="col" Enabled="false" @bind-Text="@CurNotification.Ma_sp"></DxTextBox>
+                            <DxButton SizeMode="SizeMode.Small" Text="..." Enabled="@AllowEditMode" RenderStyle="ButtonRenderStyle.Success" Click="@ChonSanpham"></DxButton>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </DxFormLayoutGroup>
+    </DxFormLayout>
+    </EditForm>
+    <div class="row justify-content-end pt-2">
+        <div class="row justify-content-end">
+            @if (curActionTask == ActionTask.New || curActionTask == ActionTask.Edit)
+            {
+                <DxButton CssClass="btnokcancel col mr-2" RenderStyle="ButtonRenderStyle.Primary" Text="@Lat["Save"].ToString()" Click="@SaveData" />
+            }
+            <DxButton CssClass="btnokcancel col ml-2" RenderStyle="ButtonRenderStyle.Danger" Text="@Lat["Cancel"].ToString()" Click="@HideVoucher" />
+        </div>
+    </div>
+</div>
+
+@if (PopupVisible)
+{
+    <DxPopup @ref="@PopUp"
+             @bind-Visible="@PopupVisible"
+             ShowFooter="true"
+             CloseOnEscape="false"
+             ShowCloseButton="false"
+             AllowResize="true"
+             HeaderText="@Lat["Choose Employees"].ToString()"
+             MinWidth="600px">
+        <BodyTemplate>
+            <div class="m-2">
+                <MultiChooseGridComponent TblData="@Tbldmns" SelectCol="selected" Fbrowse="@fbrowse" IsLangEn="@IsLangEn"></MultiChooseGridComponent>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate>
+            <div class="row m-2 p-0 justify-content-end">
+                <div class="row col-4 m-0 p-0 justify-content-end">
+                    <DxButton CssClass="col" Click="@OkFrmChonfl" Text="@Lat["Save"].ToString()" RenderStyle="ButtonRenderStyle.Primary" RenderStyleMode="ButtonRenderStyleMode.Outline" />
+                    <DxButton CssClass="col" Click="@CloseFrmChonfl" Text="@Lat["Cancel"].ToString()" RenderStyle="ButtonRenderStyle.Danger" RenderStyleMode="ButtonRenderStyleMode.Outline" />
+                </div>
+            </div>
+        </FooterTemplate>
+    </DxPopup>
+}
+@if (PopupSpVisible)
+{
+    <DxPopup @ref="@PopUpSp"
+             @bind-Visible="@PopupSpVisible"
+             ShowFooter="true"
+             CloseOnEscape="false"
+             ShowCloseButton="false"
+             AllowResize="true"
+             HeaderText="@Lat["Choose Products"]"
+             MinWidth="600px">
+        <BodyTemplate>
+            <div class="m-2">
+                <MultiChooseGridComponent TblData="@Tbldmsp" SelectCol="selected" Fbrowse="@fspbrowse" IsLangEn="@IsLangEn"></MultiChooseGridComponent>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate>
+            <div class="row m-2 p-0 justify-content-end">
+                <div class="row col-4 m-0 p-0 justify-content-end">
+                    <DxButton CssClass="col mr-2" Click="@OkFrmChonSp" Text="@Lat["Save"].ToString()" RenderStyle="ButtonRenderStyle.Primary" RenderStyleMode="ButtonRenderStyleMode.Outline" />
+                    <DxButton CssClass="col ml-2" Click="@CloseFrmChonSp" Text="@Lat["Cancel"].ToString()" RenderStyle="ButtonRenderStyle.Danger" RenderStyleMode="ButtonRenderStyleMode.Outline" />
+                </div>
+            </div>
+        </FooterTemplate>
+    </DxPopup>
+}
+@code {
+    [Parameter]
+    public string notificationID { get; set; }
+    [CascadingParameter(Name = "Menu_id")]
+    public string Menu_id { get; set; }
+
+    public ActionTask actTask { get; set; }
+    Notification2cus CurNotification = new Notification2cus();
+    private ActionTask curActionTask { get; set; }
+    private string SqlTableView = "v_notificationfromS";
+    private string SqlTableName = "notificationfromS";
+    private string SqlTableKey = "notificationID";
+    private static string SqlTableKeyValue = "";
+    private bool AllowEditMode;   
+    private string UserLang = "";
+
+    [CascadingParameter(Name = "IsLangEn")]
+    public bool IsLangEn { get; set; } = false;
+
+    private Users _curUser;
+    private Command curCommand;
+    private string message = "";
+
+    private string fbrowse = "stt:50:h=Stt;ma_kh:120:h=Mã khách;ten_kh:200:h=Tên khách hàng;ten_kh2:200:h=Tên 2";
+    private string fspbrowse = "stt:50:h=Stt;ma_sp:120:h=Mã sản phẩm;ten_sp:200:h=Tên sản phẩm;ten_sp2:200:h=Tên 2";
+    DxPopup PopUp { get; set; }
+    private bool PopupVisible { get; set; } = false;
+    DxPopup PopUpSp { get; set; }
+    private bool PopupSpVisible { get; set; } = false;
+
+    DataTable TblData = null;
+    DataTable Tbldmns;
+    DataTable Tbldmsp;
+    ColumnLength columnLength = new ColumnLength();
+    private DateTime Ngay_ct = DateTime.Now;
+    string CheckCol = "checkcol";
+    string gui_file = "";
+    void OnCheckChanged(bool changed)
+    {
+        DataRow[] rows = TblData.Select("checkcol=1");
+        CurNotification.Users_show = string.Join(";", rows.Select(a => a["user_name"].ToString()));
+        StateHasChanged();
+    }
+
+
+    private void Hidemessage(bool state)
+    {
+        if (state)
+        {
+            message = "";
+            StateHasChanged();
+        }
+    }
+    void HideVoucher()
+    {
+        GoBackToParent();
+    }
+    void GoBackToParent()
+    {
+        ParentPages _parentPage = myStatemanagerment.GetParentPage();
+        if (_parentPage != null)
+        {
+            myStatemanagerment.ResetParentPage();
+            navigation.NavigateTo(_parentPage.CurPage);
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        CurNotification = new Notification2cus();
+        curActionTask = myStatemanagerment.GetCurrentActionTask();
+        _curUser = myStatemanagerment.GetCurUser();
+        curCommand = await Commands.GetSubMenuBymenuId(Menu_id.Replace('_', '.'));
+        LoadUserinfo();
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                {
+                    if (!string.IsNullOrEmpty(notificationID))
+                        ViewData(notificationID);
+                    break;
+                }
+            case ActionTask.Edit:
+                {
+                    if (!string.IsNullOrEmpty(notificationID))
+                        EditData(notificationID);
+                    break;
+                }
+            case ActionTask.New:
+                {
+                    CreateNew();
+                    break;
+                }
+            default:
+                {
+                    if (!string.IsNullOrEmpty(notificationID))
+                        ViewData(notificationID);
+                    break;
+                }
+        }
+    }
+    void ViewData(string notificationID)
+    {
+        AllowEditMode = false;
+        LoadData(notificationID);
+    }
+
+    void EditData(string notificationID)
+    {
+        AllowEditMode = true;
+        LoadData(notificationID);
+    }
+    void CreateNew()
+    {
+        gui_file = Guid.NewGuid().ToString();       
+        CurNotification = new Notification2cus();
+        CurNotification.Ngay1 = DateTime.Now;
+        CurNotification.Ngay2 = DateTime.Now;
+        CurNotification.Ma_kh = "";
+        CurNotification.Ma_sp = "";
+        AllowEditMode = true;
+        StateHasChanged();
+    }
+
+    async Task SaveData()
+    {
+        if (!CheckValid())
+            return;
+
+        if (curActionTask == ActionTask.New)
+        {           
+            CurNotification.Ngay1 = CurNotification.Ngay1.Date;
+            CurNotification.Ngay2 = CurNotification.Ngay2.Date;
+            CurNotification.NotificationID = Guid.NewGuid();
+            CurNotification.Status = "1";
+            CurNotification.No_type = "1";
+            CurNotification.Date2 = DateTime.Now.Date;
+            CurNotification.Date0 = DateTime.Now.Date;
+            CurNotification.Time2 = DateTime.Now.ToString("HH:mm:ss");
+            CurNotification.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (_curUser != null)
+            {
+                CurNotification.User_id2 = _curUser.User_id;
+                CurNotification.User_id0 = _curUser.User_id;
+            }
+            await myDb.InsertOneRow<Notification2cus>(CurNotification, SqlTableName);         
+            GoBackToParent();
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurNotification.Date2 = DateTime.Now.Date;
+            CurNotification.Time2 = DateTime.Now.ToString("HH:mm:ss");
+            if (_curUser != null)
+            {
+                CurNotification.User_id2 = _curUser.User_id;
+            }
+            string condition = String.Format(" NotificationID = '{0}'", CurNotification.NotificationID);
+            await myDb.UpdateOneRow1<Notification2cus>(CurNotification, SqlTableName, SqlTableKey, condition);
+            myStatemanagerment.SetNewThongbao(String.Format("Sửa thành công {0}", CurNotification.NotificationID));
+            GoBackToParent();
+        }
+    }
+  
+    bool CheckValid()
+    {
+        if (CurNotification.Ngay1 < new DateTime(1900,1,1))
+        {
+            message = "Từ ngày không hợp lệ.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        if (CurNotification.Ngay2 < new DateTime(1900, 1, 1))
+        {
+            message = "Đến ngày không hợp lệ.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        if (CurNotification.Ngay2 < CurNotification.Ngay1)
+        {
+            message = "Đến ngày phải >= từ ngày.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurNotification.Tieu_de))
+        {
+            message = "Chưa vào tiêu đề.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurNotification.Noi_dung))
+        {
+            message = "Chưa vào nội dung.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }        
+        return true;
+    }
+    void LoadUserinfo()
+    {
+        string sql = string.Format("Select '0' as {0}, row_number() over(order by user_name) as stt , user_name, comment from userinfo where user_name is not null", CheckCol);
+        DataSet ds = myDb.LoadDataSet(sql);
+        if (ds != null && ds.Tables.Count > 0)
+        {
+            TblData = myDb.SetNoneReadOnlyDataTable(ds.Tables[0]);
+        }
+    }
+    async void LoadData(string notificationID)
+    {
+        string sql = String.Format("Select * from " + SqlTableName + " where {0} = '{1}' ", SqlTableKey, notificationID);
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Notification2cus> lshdld = myDb.ConvertDataTable<Notification2cus>(DsTrans.Tables[0]);
+            if (lshdld != null && lshdld.Count > 0)
+            {
+                CurNotification = lshdld[0];
+            }
+        }
+        StateHasChanged();
+    }
+    async void ChonUser()
+    {
+        string strsql = "Select Case when Charindex((RTRIM(ma_kh) + ';'),'" + (String.IsNullOrEmpty(CurNotification.Ma_kh) ? "" : CurNotification.Ma_kh.Trim()) + ";')>0 then  '1' else '0' END as selected, row_number() over(order by ma_kh) as stt, ma_kh,ten_kh,Rtrim(ten_kh2) as ten_kh2 from dmkhcr where status = '1' order by ma_kh";
+        DataSet ds = myDb.LoadDataSet(strsql);
+        if (ds != null && ds.Tables.Count > 0)
+        {
+            Tbldmns = ds.Tables[0];
+            Tbldmns.Columns["selected"].ReadOnly = false;
+            PopupVisible = true;
+            StateHasChanged();
+        }
+    }
+    void OkFrmChonfl()
+    {
+        CurNotification.Ma_kh = "";
+        foreach (DataRow row in Tbldmns.Rows)
+        {
+            if (row["selected"].ToString().Trim() == "1")
+                CurNotification.Ma_kh += row["ma_kh"].ToString().Trim() + ";";
+        }
+        PopupVisible = false;
+        PopUp.CloseAsync();
+    }
+    void CloseFrmChonfl()
+    {
+        PopupVisible = false;
+        PopUp.CloseAsync();
+    }
+
+    async void ChonSanpham()
+    {
+        string strsql = "Select Case when Charindex((RTRIM(ma_sp) + ';'),'" + (String.IsNullOrEmpty(CurNotification.Ma_sp) ? "" : CurNotification.Ma_sp.Trim()) + ";')>0 then  '1' else '0' END as selected,row_number() over(order by ma_nhsp,ma_sp) as stt, ma_sp,ma_nhsp,ten_sp,Rtrim(ten_sp2) as ten_sp2 from v_DMSANPHAM where status = 1 order by ma_nhsp,ma_sp";
+        DataSet ds = myDb.LoadDataSet(strsql);
+        if (ds != null && ds.Tables.Count > 0)
+        {
+            Tbldmsp = ds.Tables[0];
+            Tbldmsp.Columns["selected"].ReadOnly = false;
+            PopupSpVisible = true;
+            StateHasChanged();
+        }
+    }
+    void OkFrmChonSp()
+    {
+        CurNotification.Ma_sp = "";
+        foreach (DataRow row in Tbldmsp.Rows)
+        {
+            if (row["selected"].ToString().Trim() == "1")
+                CurNotification.Ma_sp += row["ma_sp"].ToString().Trim() + ";";
+        }
+        PopupSpVisible = false;
+        PopUpSp.CloseAsync();
+    }
+    void CloseFrmChonSp()
+    {
+        PopupSpVisible = false;
+        PopUpSp.CloseAsync();
+    }
+}

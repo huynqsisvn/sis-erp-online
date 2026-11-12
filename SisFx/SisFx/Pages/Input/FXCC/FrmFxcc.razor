@@ -1,0 +1,618 @@
+﻿@inherits FrmListBaseComponent
+@using SisFx.Pages.Input.FXCC
+@using DevExpress.Blazor
+@using System.Data
+@using System.Linq
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+<FormList Title="@Title"
+          @bind-curActionTask="@curActionTask"
+          OnSave="@SaveDM"
+          OnCancel="@CancelForm">
+
+    <div class="row m-1 me-2" style="min-height: 340px; align-content: flex-start;">
+        <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header">
+            <DxFormLayoutTabPages ColSpanMd="12" CssClass="css-fxcc-detail" @bind-ActiveTabIndex="@ActiveTabIndex">
+
+                @* ===== TAB 1: THÔNG TIN CHÍNH ===== *@
+                <DxFormLayoutTabPage Caption="@Lap["Main info"]" CaptionCssClass="fw-bold">
+                    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" CssClass="mt-3">
+
+                        @* --- DÒNG 1: MÃ Công cụ & MÃ PHỤ --- *@
+                        <DxFormLayoutItem Caption="@Lap["Tool code:"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                            <Template>
+                                <DxTextBox @ref="txtMaCcMe" @bind-Text="@CurDmcc.Ma_cc_me"
+                                           CharacterCasing="CharacterCasing.Upper" Enabled="@AllowEditMa" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Alt code:"]" ColSpanMd="6">
+                            <Template>
+                                <DxTextBox @ref="txtMaTraCuu" @bind-Text="@CurDmcc.Ma_tra_cuu" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        @* --- TÊN Công cụ full dòng --- *@
+                        <DxFormLayoutItem Caption="@Lap["Tool name:"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.Ten_cc" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        @* --- 3 CỘT TỪ ĐÂY --- *@
+                        <DxFormLayoutItem Caption="@Lap["Tool group:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmnhomcc" @bind-Value="@CurDmcc.Nh_cc"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Tool type:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmplcc" @bind-Value="@CurDmcc.Loai_cc"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Increase reason:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmtgcc" Filter="loai_tg_cc = 1"
+                                                       @bind-Value="@CurDmcc.Ma_tg_cc"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Increase date:"]" ColSpanMd="4">
+                            <Template>
+                                <DxDateEdit Date="@CurDmcc.Ngay_mua" Format="dd/MM/yyyy" Enabled="@AllowEditMode"
+                                            DateChanged="@((DateTime? d) => { CurDmcc.Ngay_mua = d; SyncHeaderToFirstCtRow(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Voucher date:"]" ColSpanMd="4">
+                            <Template>
+                                <DxDateEdit Date="@CurDmcc.Ngay_ct" Format="dd/MM/yyyy" Enabled="@AllowEditMode"
+                                            DateChanged="@((DateTime? d) => { CurDmcc.Ngay_ct = d; SyncHeaderToFirstCtRow(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Voucher no:"]" ColSpanMd="4">
+                            <Template>
+                                <DxTextBox Text="@CurDmcc.So_ct" Enabled="@AllowEditMode"
+                                           TextChanged="@((string v) => { CurDmcc.So_ct = v; SyncHeaderToFirstCtRow(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Alloc. type:"]" ColSpanMd="4">
+                            <Template>
+                                <DxComboBox Data="@ListKieuKH"
+                                            Value="@CurDmcc.Kieu_kh_str"
+                                            ValueFieldName="Value"
+                                            TextFieldName="Text"
+                                            Enabled="@AllowEditMode"
+                                            ValueChanged="@((string v) => OnKieuKhChanged(v))" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Alloc. periods:"]" ColSpanMd="4">
+                            <Template>
+                                <DxSpinEdit Value="@CurDmcc.So_ky_kh"
+                                            DisplayFormat="N0"
+                                            Enabled="@(AllowEditMode && CurDmcc.Kieu_kh_str == "1")"
+                                            ValueChanged="@((decimal? v) => { CurDmcc.So_ky_kh = v; CalculateEndDate(); RecalculateAllCtGrid(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Alloc. start date:"]" ColSpanMd="4">
+                            <Template>
+                                <DxDateEdit Date="@CurDmcc.Ngay_kh0" Format="dd/MM/yyyy" Enabled="@AllowEditMode"
+                                            DateChanged="@((DateTime? d) => { CurDmcc.Ngay_kh0 = d; CalculateEndDate(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Residual value <=:"]" ColSpanMd="4">
+                            <Template>
+                                <DxSpinEdit @bind-Value="@CurDmcc.Tien_cl" DisplayFormat="N0" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Alloc. end date:"]" ColSpanMd="4">
+                            <Template>
+                                <DxDateEdit @bind-Date="@CurDmcc.Ngay_kt_kh" Format="dd/MM/yyyy" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Unit:"]" ColSpanMd="4">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.Dvt" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Deferred alloc. acc:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@CurDmcc.Tk_kh"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Expense account:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmtk1"
+                                                       Value="@CurDmcc.Tk_cp"
+                                                       ValueChanged="@((string v) => { CurDmcc.Tk_cp = v; SyncHeaderToFirstCtRow(); })"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        @* --- Nguyên giá / GT đã p.bổ / GT còn lại / GT p.bổ 1 kỳ --- *@
+                        <DxFormLayoutItem Caption="@Lap["Original cost:"]" ColSpanMd="4">
+                            <Template>
+                                <DxSpinEdit Value="@CurDmcc.Nguyen_gia"
+                                            DisplayFormat="N0" ShowSpinButtons="false"
+                                            Enabled="@AllowEditMode"
+                                            ValueChanged="@((decimal? v) => { CurDmcc.Nguyen_gia = v; RecalculateAllCtGrid(); SyncHeaderToFirstCtRow(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Allocated value:"]" ColSpanMd="4">
+                            <Template>
+                                <DxSpinEdit Value="@CurDmcc.Gt_da_kh"
+                                            DisplayFormat="N0" ShowSpinButtons="false"
+                                            Enabled="@AllowEditMode"
+                                            ValueChanged="@((decimal? v) => { CurDmcc.Gt_da_kh = v; RecalculateAllCtGrid(); SyncHeaderToFirstCtRow(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Remaining value:"]" ColSpanMd="4">
+                            <Template>
+                                <DxSpinEdit Value="@CurDmcc.Gt_cl" DisplayFormat="N0" ShowSpinButtons="false" ReadOnly="true" Enabled="false" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        @* GT p.bổ 1 kỳ: cho phép sửa thủ công theo winform (txtgt_kh_ky) *@
+                        <DxFormLayoutItem Caption="@Lap["Alloc. value/period:"]" ColSpanMd="4">
+                            <Template>
+                                <DxSpinEdit Value="@CurDmcc.Gt_kh_ky"
+                                            DisplayFormat="N0" ShowSpinButtons="false"
+                                            Enabled="@AllowEditMode"
+                                            ValueChanged="@((decimal? v) => { CurDmcc.Gt_kh_ky = v; SyncHeaderGtKhKyToCtRow(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Cost dept:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmbpht" Filter="1=1"
+                                                       Value="@CurDmcc.Ma_bpht"
+                                                       ValueChanged="@((string v) => { CurDmcc.Ma_bpht = v; SyncHeaderToFirstCtRow(); })"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Workshop (dc):"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmpx" Filter="1=1"
+                                                       Value="@CurDmcc.Ma_px"
+                                                       ValueChanged="@((string v) => { CurDmcc.Ma_px = v; SyncHeaderToFirstCtRow(); })"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Fee code:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmphi" @bind-Value="@CurDmcc.Ma_phi"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Project:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmvv" Filter="1=1"
+                                                       Value="@CurDmcc.Ma_vv"
+                                                       ValueChanged="@((string v) => { CurDmcc.Ma_vv = v; SyncHeaderToFirstCtRow(); })"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Sub-group 1:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmnhcc" Filter="loai_nh = 1" @bind-Value="@CurDmcc.Nh_cc1"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Sub-group 2:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmnhcc" Filter="loai_nh = 2" @bind-Value="@CurDmcc.Nh_cc2"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Sub-group 3:"]" ColSpanMd="4">
+                            <Template>
+                                <AutocompleteComponent Ma_dm="dmnhcc" Filter="loai_nh = 3" @bind-Value="@CurDmcc.Nh_cc3"
+                                                       IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Company unit:"]" ColSpanMd="4">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.Ma_dvcs" ReadOnly="true" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                    </DxFormLayoutGroup>
+                </DxFormLayoutTabPage>
+
+                @* ===== TAB 2: THÔNG TIN PHỤ ===== *@
+                <DxFormLayoutTabPage Caption="@Lap["Additional info"]" CaptionCssClass="fw-bold">
+                    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" CssClass="mt-3">
+
+                        <DxFormLayoutItem Caption="@Lap["Name 2 (EN):"]" ColSpanMd="12">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.Ten_cc2" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Handover record no:"]" ColSpanMd="6">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.So_bbbg" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Handover date:"]" ColSpanMd="6">
+                            <Template>
+                                <DxDateEdit Date="@CurDmcc.Ngay_bbbg" Format="dd/MM/yyyy" Enabled="@AllowEditMode"
+                                            DateChanged="@((DateTime? d) => CurDmcc.Ngay_bbbg = d)" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Tool serial no:"]" ColSpanMd="6">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.So_hieu_cc" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Technical specs:"]" ColSpanMd="6">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.Cc_kt" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Country of origin:"]" ColSpanMd="6">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.Nuoc_sx" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Manufacture year:"]" ColSpanMd="6">
+                            <Template>
+                                <DxSpinEdit Value="@CurDmcc.Nam_sx" DisplayFormat="####" Enabled="@AllowEditMode"
+                                            ValueChanged="@((decimal? v) => CurDmcc.Nam_sx = v)" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["In-service date:"]" ColSpanMd="6">
+                            <Template>
+                                <DxDateEdit Date="@CurDmcc.Ngay_dvsd" Format="dd/MM/yyyy" Enabled="@AllowEditMode"
+                                            DateChanged="@((DateTime? d) => CurDmcc.Ngay_dvsd = d)" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Suspension date:"]" ColSpanMd="6">
+                            <Template>
+                                <DxDateEdit Date="@CurDmcc.Ngay_dc" Format="dd/MM/yyyy" Enabled="@AllowEditMode"
+                                            DateChanged="@((DateTime? d) => CurDmcc.Ngay_dc = d)" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Suspension reason:"]" ColSpanMd="12">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.Ly_do_dc" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Note:"]" ColSpanMd="12">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmcc.Ghi_chu" Enabled="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                    </DxFormLayoutGroup>
+                </DxFormLayoutTabPage>
+
+                @* ===== TAB 3: PHỤ TÙNG KÈM THEO ===== *@
+                <DxFormLayoutTabPage Caption="@Lap["Accessories"]" CaptionCssClass="fw-bold">
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <Template>
+                            <div id="grid-wrapper-ctct" @onfocusout="OnGridCtctLostFocus" @onfocusin='() => LastFocusedGrid = "CTCT"' class="mt-2 mb-3">
+                                <DxGrid @ref="GridCtct"
+                                        Data="@LstCtCtcc"
+                                        SizeMode="@Itemsizemode"
+                                        CssClass="w-100 grid-height-dynamic"
+                                        @onkeydown="GridCtct_OnKeyDown"
+                                        AllowSelectRowByClick="true"
+                                        KeyboardNavigationEnabled="true"
+                                        @bind-SelectedDataItem="@SelectedCtCtcc"
+                                        ValidationEnabled="false"
+                                        EditMode="GridEditMode.EditRow"
+                                        RowClick="@StartEditCtctByClick"
+                                        SelectionMode="GridSelectionMode.Single"
+                                        CustomizeEditModel="Grid_CustomizeEditModelCtct"
+                                        EditModelSaving="Grid_EditModelSavingCtct"
+                                        DataItemDeleting="Grid_DataItemDeletingCtct"
+                                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                        EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                        ShowAllRows="true"
+                                        TextWrapEnabled="false"
+                                        AllowSort="false"
+                                        HighlightRowOnHover="true"
+                                        FooterDisplayMode="GridFooterDisplayMode.Always">
+                                    <Columns>
+                                        <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                            <CellDisplayTemplate Context="ctx">
+                                                <div class="grid-cell-align-center">
+                                                    <a class="text-danger fw-bold cursor-pointer" tabindex="-1"
+                                                       @onclick="@(() => GridCtct.ShowRowDeleteConfirmation(ctx.VisibleIndex))" title="Xóa dòng">
+                                                        <i class="fa fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </CellDisplayTemplate>
+                                            <CellEditTemplate Context="ctx">
+                                            </CellEditTemplate>
+                                        </DxGridCommandColumn>
+                                        <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+                                        <DxGridDataColumn FieldName="Ten_ptkt" Caption="@Lap["Accessory name"]" MinWidth="200">
+                                            <CellEditTemplate Context="ctx">
+                                                @{ var item = (CtCtcc)ctx.EditModel; }
+                                                <DxTextBox @bind-Text="@item.Ten_ptkt" NullText="Nhập tên phụ tùng..." CssClass="w-100" />
+                                            </CellEditTemplate>
+                                        </DxGridDataColumn>
+                                        <DxGridDataColumn FieldName="Dvt" Caption="@Lap["UOM"]" Width="100px">
+                                            <CellEditTemplate Context="ctx">
+                                                @{ var item = (CtCtcc)ctx.EditModel; }
+                                                <DxTextBox @bind-Text="@item.Dvt" CssClass="w-100" />
+                                            </CellEditTemplate>
+                                        </DxGridDataColumn>
+                                        <DxGridDataColumn FieldName="So_luong" Caption="@Lap["Quantity"]" Width="120px" DisplayFormat="N0">
+                                            <CellEditTemplate Context="ctx">
+                                                @{ var item = (CtCtcc)ctx.EditModel; }
+                                                <DxSpinEdit @bind-Value="@item.So_luong" DisplayFormat="N0" ShowSpinButtons="false" />
+                                            </CellEditTemplate>
+                                        </DxGridDataColumn>
+                                        <DxGridDataColumn FieldName="Gia_tri" Caption="@Lap["Value"]" Width="150px" DisplayFormat="N0">
+                                            <CellEditTemplate Context="ctx">
+                                                @{ var item = (CtCtcc)ctx.EditModel; }
+                                                <DxSpinEdit @bind-Value="@item.Gia_tri" DisplayFormat="N0" ShowSpinButtons="false" />
+                                            </CellEditTemplate>
+                                        </DxGridDataColumn>
+                                    </Columns>
+                                </DxGrid>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayoutTabPage>
+
+            </DxFormLayoutTabPages>
+        </DxFormLayout>
+    </div>
+
+    @* ===== LƯỚI CHI TIẾT CCDC (phần dưới giống FrmZcfats) ===== *@
+    <div id="grid-detail" class="mt-2 m-1 me-2 border rounded p-2">
+        <h6 class="fw-bold text-primary m-0 mb-1">@Lap["Tool detail cards"]</h6>
+
+        <div @ref="GridWrapperCt" id="grid-wrapper-ct" @onfocusout="OnGridCtLostFocus" @onfocusin='() => LastFocusedGrid = "CT"' class="mt-2 mb-3">
+            <DxGrid @ref="GridCt"
+                    Data="@LstCtDmcc"
+                    SizeMode="@Itemsizemode"
+                    CssClass="w-100 grid-height-dynamic"
+                    @onkeydown="GridCt_OnKeyDown"
+                    AllowSelectRowByClick="true"
+                    KeyboardNavigationEnabled="true"
+                    @bind-SelectedDataItem="@SelectedCtDmcc"
+                    ValidationEnabled="false"
+                    EditMode="GridEditMode.EditRow"
+                    RowClick="@StartEditCtByClick"
+                    SelectionMode="GridSelectionMode.Single"
+                    CustomizeEditModel="Grid_CustomizeEditModelCt"
+                    EditModelSaving="Grid_EditModelSavingCt"
+                    DataItemDeleting="Grid_DataItemDeletingCt"
+                    ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                    EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                    ShowFilterRow="false"
+                    ShowAllRows="true"
+                    TextWrapEnabled="false"
+                    AllowSort="false"
+                    HighlightRowOnHover="true"
+                    FooterDisplayMode="GridFooterDisplayMode.Always">
+                <Columns>
+                    <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                        <CellDisplayTemplate Context="ctx">
+                            <div class="grid-cell-align-center">
+                                <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                          RenderStyle="ButtonRenderStyle.Link"
+                                          CssClass="grid-delete-btn"
+                                          aria-label="Delete"
+                                          Click="@(() => GridCt.ShowRowDeleteConfirmation(ctx.VisibleIndex))" />
+                            </div>
+                        </CellDisplayTemplate>
+                        <CellEditTemplate Context="ctx">
+                            <div class="grid-cell-align-center">
+                                <DxButton Enabled="false" CssClass="grid-disabled-button"
+                                          IconCssClass="grid-icon grid-icon-delete"
+                                          aria-label="Delete"
+                                          RenderStyle="ButtonRenderStyle.Link" />
+                            </div>
+                        </CellEditTemplate>
+                    </DxGridCommandColumn>
+                    @* Thứ tự: STT – Số thẻ – Ngày CT – Số CT – Mã bpsd – Tên bpsd – SL – Nguyên giá – GT đã p.bổ – GT còn lại – GT p.bổ 1 kỳ – Tk cp – Mã bpht – Mã dự án – Ghi chú *@
+                    <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+                    <DxGridDataColumn FieldName="Ma_cc" Caption="@Lap["Tool card no."]" Width="130px">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <DxTextBox @bind-Text="@item.Ma_cc" CssClass="w-100" CharacterCasing="CharacterCasing.Upper" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ngay_ct" Caption="@Lap["Voucher date"]" DisplayFormat="dd/MM/yyyy" Width="110px">
+                        <EditSettings><DxDateEditSettings Format="dd/MM/yyyy" /></EditSettings>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="So_ct" Caption="@Lap["Voucher no."]" Width="100px">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <DxTextBox @bind-Text="@item.So_ct" CssClass="w-100" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ma_bpcc" Caption="@Lap["Use dept. code"]" Width="110px">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <AutocompleteComponent Ma_dm="dmbpts" Filter="1=1"
+                                                   @bind-Value="@item.Ma_bpcc"
+                                                   SelectChanged="@((ExpandoObject v) => OnCtGrid_BpccChanged(v, item))"
+                                                   IsEnable="@AllowEditMode"
+                                                   IsLangEn="@IsLangEn" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ten_bpcc" Caption="@Lap["Use dept. name"]" MinWidth="140" ReadOnly="true">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <DxTextBox Text="@item.Ten_bpcc" ReadOnly="true" Enabled="false" CssClass="w-100" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Sl_cc" Caption="@Lap["Qty"]" Width="80px" DisplayFormat="N2">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <DxSpinEdit Value="@item.Sl_cc"
+                                        ValueExpression="@(() => item.Sl_cc)"
+                                        DisplayFormat="N2" ShowSpinButtons="false"
+                                        ValueChanged="@((decimal? v) => OnCtGrid_SlChanged(v, item))" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Nguyen_gia" Caption="@Lap["Original cost"]" Width="130px" DisplayFormat="N0">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <DxSpinEdit Value="@item.Nguyen_gia"
+                                        ValueExpression="@(() => item.Nguyen_gia)"
+                                        DisplayFormat="N0" ShowSpinButtons="false"
+                                        ValueChanged="@((decimal? v) => OnCtGrid_NguyenGiaChanged(v, item))" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Gt_da_kh" Caption="@Lap["Allocated value"]" Width="130px" DisplayFormat="N0">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <DxSpinEdit Value="@item.Gt_da_kh"
+                                        ValueExpression="@(() => item.Gt_da_kh)"
+                                        DisplayFormat="N0" ShowSpinButtons="false"
+                                        ValueChanged="@((decimal? v) => OnCtGrid_GtDaKhChanged(v, item))" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Gt_cl" Caption="@Lap["Remaining value"]" Width="130px" DisplayFormat="N0" ReadOnly="true">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <DxSpinEdit Value="@item.Gt_cl" DisplayFormat="N0" ShowSpinButtons="false" ReadOnly="true" Enabled="false" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Gt_kh_ky" Caption="@Lap["Alloc. value/period"]" Width="130px" DisplayFormat="N0">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <DxSpinEdit Value="@item.Gt_kh_ky" DisplayFormat="N0" ShowSpinButtons="false" ReadOnly="true" Enabled="false" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Tk_cp" Caption="@Lap["Expense acc."]" Width="110px">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@item.Tk_cp"
+                                                   IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ma_bpht" Caption="@Lap["Cost dept"]" Width="100px">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <AutocompleteComponent Ma_dm="dmbpht" Filter="1=1" @bind-Value="@item.Ma_bpht"
+                                                   IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ma_px" Caption="@Lap["Workshop"]" Width="100px">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <AutocompleteComponent Ma_dm="dmpx" Filter="1=1" @bind-Value="@item.Ma_px"
+                                                   IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ma_vv" Caption="@Lap["Project"]" Width="100px">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <AutocompleteComponent Ma_dm="dmvv" Filter="1=1" @bind-Value="@item.Ma_vv"
+                                                   IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"]" MinWidth="120">
+                        <CellEditTemplate Context="ctx">
+                            @{ var item = (CtDmcc)ctx.EditModel; }
+                            <DxTextBox @bind-Text="@item.Ghi_chu" CssClass="w-100" />
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                </Columns>
+                <TotalSummary>
+                    <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="Sl_cc"      DisplayText="{0:N2}" />
+                    <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="Nguyen_gia" DisplayText="{0:N0}" />
+                    <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="Gt_da_kh"   DisplayText="{0:N0}" />
+                    <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="Gt_cl"      DisplayText="{0:N0}" />
+                    <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="Gt_kh_ky"   DisplayText="{0:N0}" />
+                </TotalSummary>
+            </DxGrid>
+        </div>
+    </div>
+
+</FormList>
+
+<style>
+    .css-fxcc-detail .dxbl-formlayout-tabpage {
+        display: block;
+        padding: 0;
+        min-height: inherit;
+    }
+    .css-fxcc-detail .dxbl-formlayout-tabpage .dxbl-formlayout-group {
+        margin: 0;
+        padding: 0;
+    }
+    .popup-header {
+        display: none !important;
+    }
+</style>
+
+@code {
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmcc";
+        SqlTableKey = "ma_cc_me";
+        Itemsizemode = SizeMode.Medium;
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.New:
+                    CreateNewDM();
+                    break;
+                case ActionTask.Edit:
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await LoadData(Ma_ma);
+                    break;
+                case ActionTask.Copy:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await CopyDM(Ma_ma);
+                    break;
+            }
+            StateHasChanged();
+
+            Pageobj = DotNetObjectReference.Create(this);
+            await JavacriptS.InvokeVoidAsync("SetPageObj", Pageobj);
+            await JavacriptS.InvokeVoidAsync("AttachEnterAsTab");
+            await Task.Delay(200);
+
+            if ((curActionTask == ActionTask.New || curActionTask == ActionTask.Copy) && txtMaCcMe != null)
+                await txtMaCcMe.FocusAsync();
+            else if (curActionTask == ActionTask.Edit && txtMaTraCuu != null)
+                await txtMaTraCuu.FocusAsync();
+        }
+
+        if (AllowEditMode)
+        {
+            try { await JavacriptS.InvokeVoidAsync("changeTextNewRowButton", "Click vào đây để thêm dòng mới"); }
+            catch { }
+        }
+    }
+
+    public void CloseForm()
+    {
+        if (ShowAdd == true) OnClose.InvokeAsync();
+        else myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    public void CancelForm()
+    {
+        CloseForm();
+    }
+}
+

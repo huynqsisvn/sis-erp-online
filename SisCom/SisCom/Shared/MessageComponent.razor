@@ -1,0 +1,35 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+@if (!string.IsNullOrEmpty(Content))
+{
+    <div class="modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true" style="display:block">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info">
+                    <h5 class="modal-title text-warning" id="exampleModalLongTitle">Thông báo</h5>                   
+                </div>
+                <div class="modal-body" style="font-size:14pt;">
+                    @Content
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger text-white" data-dismiss="modal" @onclick="Hidemodal">@string_ok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@code {
+
+    [Parameter]
+    public string Content { get; set; }
+    [Parameter]
+    public string string_ok { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> HideMessage { get; set; }
+    public void Hidemodal()
+    {
+        HideMessage.InvokeAsync(true);
+    }
+}

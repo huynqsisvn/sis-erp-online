@@ -1,0 +1,265 @@
+﻿@inherits FrmListBaseComponent
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmlo" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                <DxFormLayoutItem Caption="@Lap["Batch code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmlo.Ma_lo" maxlength="@tblLength["ma_lo"]" Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Lookup code"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmlo.Ma_tra_cuu" maxlength="@tblLength["ma_tra_cuu"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Batch name"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmlo.Ten_lo" maxlength="@tblLength["ten_lo"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Batch name 2"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmlo.Ten_lo2" maxlength="@tblLength["ten_lo2"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Production date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurDmlo.Ngay_sx" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Expiry date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurDmlo.Ngay_hh" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmlo.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>                        
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmlo.Ghi_chu" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>                
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmlo CurDmlo { get; set; } = new Dmlo();
+    private string menu_id = "ws_dm_lo";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "Dmlo";
+        SqlTableKey = "Ma_lo";
+        CheckSqlTableKey = "Ma_lo";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "inlo" : ParentPage;
+        CurDmlo = new Dmlo();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+        // Load status list, etc. if needed
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        ViewDM(Ma_ma);
+                    myStateMN.SetToolBar(new MyToolbar("save", false));
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        EditDM(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    CreateNewDM();
+                    break;
+                case ActionTask.Copy:
+                    CreateCopyDM(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        ViewDM(Ma_ma);
+                    break;
+            }
+        }
+    }
+    void ViewDM(string SqlTableKeyValue)
+    {
+        CurDmlo = new Dmlo();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+    void EditDM(string SqlTableKeyValue)
+    {
+        CurDmlo = new Dmlo();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+    async Task OnCopy()
+    {
+        CreateCopyDM(CurDmlo.Ma_lo);
+    }
+    async Task SaveDM()
+    {
+        if (curActionTask == ActionTask.New)
+            if (!CheckValidCode())
+                return;
+
+        if (!CheckValid())
+            return;
+
+        CurDmlo.Ma_lo = CurDmlo.Ma_lo.ToUpper().Trim();
+        SqlTableKeyValue = CurDmlo.Ma_lo;
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmlo.Date = DateTime.Now.Date;
+            CurDmlo.Date0 = DateTime.Now.Date;
+            CurDmlo.Time = DateTime.Now.ToString("HH:MM:ss");
+            CurDmlo.Time0 = DateTime.Now.ToString("HH:MM:ss");
+            if (curUser != null)
+            {
+                CurDmlo.User_id = curUser.User_id;
+                CurDmlo.User_id0 = curUser.User_id;
+                CurDmlo.User_name = curUser.User_name;
+                CurDmlo.User_name0 = curUser.User_name;
+            }
+            CheckSqlTableKeyValue = CurDmlo.Ma_lo.Trim();
+            string condition = $"{SqlTableKey} = '{CheckSqlTableKeyValue}'";
+            string check = $"Select {SqlTableKey} from {sqlTableName} where {condition}";
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao($"Code [{SqlTableKeyValue}] already exists !");
+                StateHasChanged();
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmlo>(CurDmlo, sqlTableName);
+                myStateMN.SetNewThongbao($"Successfully added new : {SqlTableKeyValue}");
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmlo.Date = DateTime.Now.Date;
+            CurDmlo.Time = DateTime.Now.ToString("HH:MM:ss");
+            if (curUser != null)
+            {
+                CurDmlo.User_id = curUser.User_id;
+                CurDmlo.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmlo>(CurDmlo, sqlTableName, SqlTableKey, SqlTableKeyValue);
+            myStateMN.SetNewThongbao($"Edit successfully : {SqlTableKeyValue}");
+        }
+        // Đóng Form nhập
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmlo.Ten_lo))
+        {
+            myStateMN.SetNewThongbao("No batch name entered");
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+    bool CheckValidCode()
+    {
+        if (string.IsNullOrEmpty(CurDmlo.Ma_lo))
+        {
+            myStateMN.SetNewThongbao("No batch code entered");
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = $"Select * from {sqlTableName} where {SqlTableKey} = '{SqlTableKeyValue}'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmlo> lsdetai = myDb.ConvertDataTable<Dmlo>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurDmlo = lsdetai[0];
+        }
+    }
+    public async void CreateNewDM()
+    {
+        CurDmlo = new Dmlo();
+        CurDmlo.Status = "1";
+        CurDmlo.Ma_lo = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+
+        if (!String.IsNullOrEmpty(Ma_ma))
+        {
+            string sql = $"Select Ten_lo,Ten_lo2 from {sqlTableName} where {SqlTableKey} = '{Ma_ma}'";
+            DataSet DsTrans = await myDb.LoadDataset(sql);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                CurDmlo.Ten_lo = DsTrans.Tables[0].Rows[0]["Ten_lo"].ToString();
+                CurDmlo.Ten_lo2 = DsTrans.Tables[0].Rows[0]["Ten_lo2"].ToString();
+            }
+        }
+        StateHasChanged();
+    }
+    public async void CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmlo = new Dmlo();
+        await LoadData(SqlTableKeyValue);
+
+        CurDmlo.Status = "1";
+        CurDmlo.Ma_lo = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,88 @@
+﻿@namespace SisHr.Pages.Report.HRHSNV.Tabs
+
+@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using SisCom.Model
+@using SisCom.Shared
+@using SisLib.Lib
+@using SisLib.List
+@using Microsoft.AspNetCore.Components
+
+@* ===== 4. SOCIAL INSURANCE (Bảo hiểm xã hội) ===== *@
+<DxFormLayoutGroup id="section-4" Caption="@Lap["Social insurance"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+    @* Row 1 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Policy code"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmcs" @bind-Value="@CurRow.Ma_chinhsach" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Policy effective date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_huong_chinhsach" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 2 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Health insurance card number"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.So_the_bhyt" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Health insurance expiry date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_het_han_bhyt" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 3 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Health insurance issue place"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmnctbh" @bind-Value="@CurRow.Ma_noi_cap_tbhyt" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Social insurance from date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_tham_gia_bhxh" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 4 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Social insurance book number"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.So_so_bhxh" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Social insurance issue date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_cap_so_bhxh" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 5 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Social insurance issue place"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Noi_cap_so_bhxh" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Medical facility"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmnkcb" @bind-Value="@CurRow.Ma_noi_kcb" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+@code {
+    [Parameter] public HsnvDetailModel CurRow { get; set; }
+    [Parameter] public bool AllowEditMode { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public dynamic Lap { get; set; }
+}

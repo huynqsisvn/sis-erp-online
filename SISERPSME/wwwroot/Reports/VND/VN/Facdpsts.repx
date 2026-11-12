@@ -1,0 +1,363 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<XtraReportsLayoutSerializer SerializerVersion="24.2.3.0" Ref="1" ControlType="DevExpress.XtraReports.UI.XtraReport, DevExpress.XtraReports.v24.2, Version=24.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" Name="Facdpsts" Landscape="true" Margins="26, 30, 27, 23" PaperKind="A4" PageWidth="1169" PageHeight="827" ScriptReferencesString="..\PROGRAM\SysLib.dll&#xD;&#xA;..\PROGRAM\SmLib.dll&#xD;&#xA;..\PROGRAM\WindowsBase.dll" Version="24.2" DataSource="#Ref-0" Font="Times New Roman, 9.75pt, charSet=0">
+  <CalculatedFields>
+    <Item1 Ref="2" Name="FieldNgay" Expression="Upper(Iif([Ky1] != [Ky2],'Từ kỳ: ' +  [Ky1] + ' đến kỳ: '+[Ky2],'Kỳ: '+[Ky1] )+ ' năm '+[Nam])" DataMember="tbInfo" />
+    <Item2 Ref="3" Name="lblSo_ct" Expression="[so_ct]+';'+[stt_rec]+';'+[ma_ct]" DataMember="tbDetail" />
+  </CalculatedFields>
+  <Bands>
+    <Item1 Ref="4" ControlType="TopMarginBand" Name="topMarginBand1" HeightF="27" />
+    <Item2 Ref="5" ControlType="DetailBand" Name="detailBand1" Expanded="false" HeightF="56.25" />
+    <Item3 Ref="6" ControlType="BottomMarginBand" Name="bottomMarginBand1" HeightF="23" />
+    <Item4 Ref="7" ControlType="ReportHeaderBand" Name="ReportHeader" HeightF="174.0416">
+      <Controls>
+        <Item1 Ref="8" ControlType="XRLabel" Name="lbldia_chi" Text="lbldia_chi" TextAlignment="MiddleLeft" SizeF="765.9999,20" LocationFloat="0,39.99999" Font="Arial, 9pt" Padding="2,2,0,0,100">
+          <StylePriority Ref="9" UseFont="false" UseTextAlignment="false" />
+        </Item1>
+        <Item2 Ref="10" ControlType="XRLabel" Name="label2" Text="label2" TextAlignment="MiddleCenter" SizeF="1112,20" LocationFloat="0.0001589457,131.9167" Font="Arial, 10pt" Padding="2,2,0,0,100" Tag_type="System.String" Tag="NS">
+          <ExpressionBindings>
+            <Item1 Ref="11" EventName="BeforePrint" PropertyName="Text" Expression="'TỪ KỲ: ' + [Ky1] + ' ĐẾN KỲ ' + [Ky2] + ' NĂM ' +[Nam]" />
+          </ExpressionBindings>
+          <StylePriority Ref="12" UseFont="false" UseTextAlignment="false" />
+        </Item2>
+        <Item3 Ref="13" ControlType="XRLabel" Name="lblten_cty" Text="lblten_cty" TextAlignment="MiddleLeft" SizeF="765.9999,20" LocationFloat="0.0001430511,20" Font="Arial, 9pt" Padding="2,2,0,0,100">
+          <StylePriority Ref="14" UseFont="false" UseTextAlignment="false" />
+        </Item3>
+        <Item4 Ref="15" ControlType="XRLabel" Name="lbltitle" Text="BÁO CÁO CHI TIẾT TSCĐ" TextAlignment="MiddleCenter" SizeF="1112,25.00001" LocationFloat="0.0001589457,106.9167" Font="Arial, 14pt, style=Bold" Padding="2,2,0,0,100">
+          <StylePriority Ref="16" UseFont="false" UseTextAlignment="false" />
+        </Item4>
+      </Controls>
+    </Item4>
+    <Item5 Ref="17" ControlType="ReportFooterBand" Name="ReportFooter" HeightF="200">
+      <Controls>
+        <Item1 Ref="18" ControlType="XRPanel" Name="panel1" SizeF="1112,200" LocationFloat="0,0">
+          <Controls>
+            <Item1 Ref="19" ControlType="XRTable" Name="table3" SizeF="1112,20" LocationFloat="0,0" Padding="2,2,2,2,100" BorderColor="Gray" Borders="Left, Right, Bottom">
+              <Rows>
+                <Item1 Ref="20" ControlType="XRTableRow" Name="tableRow3" Weight="0.8">
+                  <Cells>
+                    <Item1 Ref="21" ControlType="XRTableCell" Name="tableCell23" Weight="2.1447478970763547" Text="TỔNG CỘNG:" TextAlignment="MiddleRight" Font="Arial, 9pt, style=Bold, charSet=0" Padding="2,2,2,2,100">
+                      <StylePriority Ref="22" UseFont="false" UsePadding="false" UseTextAlignment="false" />
+                    </Item1>
+                    <Item2 Ref="23" ControlType="XRTableCell" Name="tableCell39" Weight="0.43658940888032338" TextFormatString="N0" Text="tableCell39" TextAlignment="MiddleRight" Font="Times New Roman, 9.75pt, style=Bold, charSet=0">
+                      <ExpressionBindings>
+                        <Item1 Ref="24" EventName="BeforePrint" PropertyName="Text" Expression="[T_nguyen_gia_dk]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="25" UseFont="false" UseTextAlignment="false" />
+                    </Item2>
+                    <Item3 Ref="26" ControlType="XRTableCell" Name="tableCell40" Weight="0.43659025007291913" TextFormatString="N0" Text="tableCell40" TextAlignment="MiddleRight" Font="Times New Roman, 9.75pt, style=Bold, charSet=0">
+                      <ExpressionBindings>
+                        <Item1 Ref="27" EventName="BeforePrint" PropertyName="Text" Expression="[T_gt_kh_dk]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="28" UseFont="false" UseTextAlignment="false" />
+                    </Item3>
+                    <Item4 Ref="29" ControlType="XRTableCell" Name="tableCell37" Weight="0.43659025007291918" TextFormatString="N0" Text="tableCell37" TextAlignment="MiddleRight" Font="Times New Roman, 9.75pt, style=Bold, charSet=0">
+                      <ExpressionBindings>
+                        <Item1 Ref="30" EventName="BeforePrint" PropertyName="Text" Expression="[T_gt_cl_dk]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="31" UseFont="false" UseTextAlignment="false" />
+                    </Item4>
+                    <Item5 Ref="32" ControlType="XRTableCell" Name="tableCell38" Weight="0.43658924233448387" TextFormatString="N0" Text="tableCell38" TextAlignment="MiddleRight" Font="Times New Roman, 9.75pt, style=Bold, charSet=0">
+                      <ExpressionBindings>
+                        <Item1 Ref="33" EventName="BeforePrint" PropertyName="Text" Expression="[T_nguyen_gia_tg]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="34" UseFont="false" UseTextAlignment="false" />
+                    </Item5>
+                    <Item6 Ref="35" ControlType="XRTableCell" Name="tableCell36" Weight="0.43658990851784174" TextFormatString="N0" Text="tableCell36" TextAlignment="MiddleRight" Font="Times New Roman, 9.75pt, style=Bold, charSet=0">
+                      <ExpressionBindings>
+                        <Item1 Ref="36" EventName="BeforePrint" PropertyName="Text" Expression="[T_gt_kh_tg]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="37" UseFont="false" UseTextAlignment="false" />
+                    </Item6>
+                    <Item7 Ref="38" ControlType="XRTableCell" Name="tableCell24" Weight="0.4365899410103708" TextFormatString="N0" Text="tableCell15" TextAlignment="MiddleRight" Font="Arial, 9pt, style=Bold, charSet=0" Padding="2,2,2,2,100">
+                      <ExpressionBindings>
+                        <Item1 Ref="39" EventName="BeforePrint" PropertyName="Text" Expression="[T_gt_kh_ky]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="40" UseFont="false" UsePadding="false" UseTextAlignment="false" />
+                    </Item7>
+                    <Item8 Ref="41" ControlType="XRTableCell" Name="tableCell25" Weight="0.43658987704145052" TextFormatString="N0" Text="tableCell17" TextAlignment="MiddleRight" Font="Arial, 9pt, style=Bold, charSet=0">
+                      <ExpressionBindings>
+                        <Item1 Ref="42" EventName="BeforePrint" PropertyName="Text" Expression="[T_nguyen_gia_ck]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="43" UseFont="false" UseTextAlignment="false" />
+                    </Item8>
+                    <Item9 Ref="44" ControlType="XRTableCell" Name="tableCell26" Weight="0.43658991975371853" TextFormatString="N0" Text="tableCell14" TextAlignment="MiddleRight" Font="Arial, 9pt, style=Bold, charSet=0" Padding="2,2,2,2,100">
+                      <ExpressionBindings>
+                        <Item1 Ref="45" EventName="BeforePrint" PropertyName="Text" Expression="[T_gt_kh_ck]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="46" UseFont="false" UsePadding="false" UseTextAlignment="false" />
+                    </Item9>
+                    <Item10 Ref="47" ControlType="XRTableCell" Name="tableCell27" Weight="0.43113326892009629" TextFormatString="N0" Text="tableCell6" TextAlignment="MiddleRight" Font="Arial, 9pt, style=Bold, charSet=0" Padding="2,2,2,2,100">
+                      <ExpressionBindings>
+                        <Item1 Ref="48" EventName="BeforePrint" PropertyName="Text" Expression="[T_gt_cl_ck]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="49" UseFont="false" UsePadding="false" UseTextAlignment="false" />
+                    </Item10>
+                  </Cells>
+                </Item1>
+              </Rows>
+              <StylePriority Ref="50" UsePadding="false" UseBorderColor="false" UseBorders="false" />
+            </Item1>
+            <Item2 Ref="51" ControlType="XRLabel" Name="lblten_ktt" Text="lblten_ktt" TextAlignment="MiddleCenter" SizeF="554.8171,20.00002" LocationFloat="548.1829,180" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+              <StylePriority Ref="52" UseFont="false" UseTextAlignment="false" />
+            </Item2>
+            <Item3 Ref="53" ControlType="XRLabel" Name="label7" Multiline="true" Text="NGƯỜI LẬP BIỂU&#xD;&#xA;(Ký, họ tên)" TextAlignment="MiddleCenter" SizeF="547,40" LocationFloat="0,63.99997" Font="Arial, 10pt" Padding="2,2,5,0,100" Tag_type="System.String" Tag="NS">
+              <StylePriority Ref="54" UseFont="false" UsePadding="false" UseTextAlignment="false" />
+            </Item3>
+            <Item4 Ref="55" ControlType="XRLabel" Name="label5" Text="Ngày ..... tháng ..... năm .........." TextAlignment="MiddleCenter" SizeF="554.8171,20.00002" LocationFloat="548.1829,43.99995" Font="Arial, 10pt" Padding="2,2,0,0,100" Tag_type="System.String" Tag="NS">
+              <StylePriority Ref="56" UseFont="false" UseTextAlignment="false" />
+            </Item4>
+            <Item5 Ref="57" ControlType="XRLabel" Name="label6" Multiline="true" Text="lblten_goi_ktt&#xD;&#xA;(Ký, họ tên)" TextAlignment="MiddleCenter" SizeF="554.8171,40" LocationFloat="548.1829,63.99994" Font="Arial, 10pt" Padding="2,2,5,0,100" Tag_type="System.String" Tag="NS">
+              <StylePriority Ref="58" UseFont="false" UsePadding="false" UseTextAlignment="false" />
+            </Item5>
+          </Controls>
+        </Item1>
+      </Controls>
+    </Item5>
+    <Item6 Ref="59" ControlType="DetailReportBand" Name="DetailReport" Level="0" DataMember="LsData" DataSource="#Ref-0">
+      <Bands>
+        <Item1 Ref="60" ControlType="DetailBand" Name="Detail" HeightF="20">
+          <Controls>
+            <Item1 Ref="61" ControlType="XRTable" Name="table2" SizeF="1112,20" LocationFloat="0.0001589457,0" Padding="2,2,2,2,100" BorderColor="Gray" Borders="Left, Right, Bottom">
+              <Rows>
+                <Item1 Ref="62" ControlType="XRTableRow" Name="tableRow2" Weight="0.8">
+                  <Cells>
+                    <Item1 Ref="63" ControlType="XRTableCell" Name="tableCell4" Weight="0.19100803152567458" Text="tableCell4" TextAlignment="MiddleRight" Font="Arial, 9pt" Padding="2,2,2,2,100">
+                      <ExpressionBindings>
+                        <Item1 Ref="64" EventName="BeforePrint" PropertyName="Text" Expression="Iif([Stt] == 0, '', [Stt])&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="65" UsePadding="false" UseTextAlignment="false" />
+                    </Item1>
+                    <Item2 Ref="66" ControlType="XRTableCell" Name="tableCell12" Weight="0.3820160993431615" Text="tableCell12" TextAlignment="MiddleLeft" Font="Arial, 9pt" Padding="2,2,2,2,100">
+                      <Scripts Ref="67" OnBeforePrint="tableCell_BeforePrint" OnPreviewMouseDown="tableCell12_PreviewMouseDown" OnPreviewMouseMove="tableCell12_PreviewMouseMove" />
+                      <ExpressionBindings>
+                        <Item1 Ref="68" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                        <Item2 Ref="69" EventName="BeforePrint" PropertyName="Text" Expression="[So_the_ts]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="70" UsePadding="false" UseTextAlignment="false" />
+                    </Item2>
+                    <Item3 Ref="71" ControlType="XRTableCell" Name="tableCell11" Weight="0.50753567871789851" Text="tableCell11" TextAlignment="MiddleLeft" Font="Arial, 9pt" Padding="2,2,2,2,100">
+                      <Scripts Ref="72" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="73" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                        <Item2 Ref="74" EventName="BeforePrint" PropertyName="Text" Expression="[Ten_ts]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="75" UsePadding="false" UseTextAlignment="false" />
+                    </Item3>
+                    <Item4 Ref="76" ControlType="XRTableCell" Name="tableCell13" Weight="0.38203392239588047" TextFormatString="{0:dd/MM/yyyy}" Text="tableCell13" TextAlignment="MiddleCenter" Font="Arial, 9pt" Padding="2,2,2,2,100">
+                      <ExpressionBindings>
+                        <Item1 Ref="77" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                        <Item2 Ref="78" EventName="BeforePrint" PropertyName="Text" Expression="[Ngay_tang]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="79" UsePadding="false" UseTextAlignment="false" />
+                    </Item4>
+                    <Item5 Ref="80" ControlType="XRTableCell" Name="tableCell20" Weight="0.36018677706122448" Text="tableCell20" TextAlignment="MiddleLeft">
+                      <ExpressionBindings>
+                        <Item1 Ref="81" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                        <Item2 Ref="82" EventName="BeforePrint" PropertyName="Text" Expression="[Tk_cp]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="83" UseTextAlignment="false" />
+                    </Item5>
+                    <Item6 Ref="84" ControlType="XRTableCell" Name="tableCell5" Weight="0.32196618806408672" TextFormatString="N0" Text="tableCell5" TextAlignment="MiddleRight" Font="Arial, 9pt" Padding="2,2,2,2,100" Tag_type="System.String" Tag="I0">
+                      <ExpressionBindings>
+                        <Item1 Ref="85" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                        <Item2 Ref="86" EventName="BeforePrint" PropertyName="Text" Expression="[So_ky_kh]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="87" UsePadding="false" UseTextAlignment="false" />
+                    </Item6>
+                    <Item7 Ref="88" ControlType="XRTableCell" Name="tableCell29" Weight="0.43658915950841481" TextFormatString="N0" Text="tableCell29" TextAlignment="MiddleRight" Tag_type="System.String" Tag="I0">
+                      <Scripts Ref="89" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="90" EventName="BeforePrint" PropertyName="Text" Expression="[nguyen_gia_dk]" />
+                        <Item2 Ref="91" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="92" UseTextAlignment="false" />
+                    </Item7>
+                    <Item8 Ref="93" ControlType="XRTableCell" Name="tableCell30" Weight="0.43659018155111395" TextFormatString="N0" Text="tableCell30" TextAlignment="MiddleRight" Tag_type="System.String" Tag="I0">
+                      <Scripts Ref="94" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="95" EventName="BeforePrint" PropertyName="Text" Expression="[gt_kh_dk]" />
+                        <Item2 Ref="96" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="97" UseTextAlignment="false" />
+                    </Item8>
+                    <Item9 Ref="98" ControlType="XRTableCell" Name="tableCell28" Weight="0.43659049382449444" TextFormatString="N0" Text="tableCell28" TextAlignment="MiddleRight" Tag_type="System.String" Tag="I0">
+                      <Scripts Ref="99" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="100" EventName="BeforePrint" PropertyName="Text" Expression="[gt_cl_dk]" />
+                        <Item2 Ref="101" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="102" UseTextAlignment="false" />
+                    </Item9>
+                    <Item10 Ref="103" ControlType="XRTableCell" Name="tableCell31" Weight="0.43658918032664018" TextFormatString="N0" Text="tableCell31" TextAlignment="MiddleRight" Tag_type="System.String" Tag="I0">
+                      <Scripts Ref="104" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="105" EventName="BeforePrint" PropertyName="Text" Expression="[nguyen_gia_tg]" />
+                        <Item2 Ref="106" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="107" UseTextAlignment="false" />
+                    </Item10>
+                    <Item11 Ref="108" ControlType="XRTableCell" Name="tableCell32" Weight="0.436589494549677" TextFormatString="N0" Text="tableCell32" TextAlignment="MiddleRight" Tag_type="System.String" Tag="I0">
+                      <Scripts Ref="109" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="110" EventName="BeforePrint" PropertyName="Text" Expression="[gt_kh_tg]" />
+                        <Item2 Ref="111" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="112" UseTextAlignment="false" />
+                    </Item11>
+                    <Item12 Ref="113" ControlType="XRTableCell" Name="tableCell15" Weight="0.4365901607328887" TextFormatString="N0" Text="tableCell15" TextAlignment="MiddleRight" Font="Arial, 9pt" Padding="2,2,2,2,100" Tag_type="System.String" Tag="I0">
+                      <Scripts Ref="114" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="115" EventName="BeforePrint" PropertyName="Text" Expression="[gt_kh_ky]" />
+                        <Item2 Ref="116" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="117" UsePadding="false" UseTextAlignment="false" />
+                    </Item12>
+                    <Item13 Ref="118" ControlType="XRTableCell" Name="tableCell17" Weight="0.43658981773195554" TextFormatString="N0" Text="tableCell17" TextAlignment="MiddleRight" Font="Arial, 9pt" Tag_type="System.String" Tag="I0">
+                      <Scripts Ref="119" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="120" EventName="BeforePrint" PropertyName="Text" Expression="[nguyen_gia_ck]" />
+                        <Item2 Ref="121" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="122" UseTextAlignment="false" />
+                    </Item13>
+                    <Item14 Ref="123" ControlType="XRTableCell" Name="tableCell14" Weight="0.436589485716158" TextFormatString="N0" Text="tableCell14" TextAlignment="MiddleRight" Font="Arial, 9pt" Padding="2,2,2,2,100" Tag_type="System.String" Tag="I0">
+                      <Scripts Ref="124" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="125" EventName="BeforePrint" PropertyName="Text" Expression="[gt_kh_ck]" />
+                        <Item2 Ref="126" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="127" UsePadding="false" UseTextAlignment="false" />
+                    </Item14>
+                    <Item15 Ref="128" ControlType="XRTableCell" Name="tableCell6" Weight="0.43113396026478518" TextFormatString="N0" Text="tableCell6" TextAlignment="MiddleRight" Font="Arial, 9pt" Padding="2,2,2,2,100" Tag_type="System.String" Tag="I0">
+                      <Scripts Ref="129" OnBeforePrint="tableCell_BeforePrint" />
+                      <ExpressionBindings>
+                        <Item1 Ref="130" EventName="BeforePrint" PropertyName="Text" Expression="[gt_cl_ck]" />
+                        <Item2 Ref="131" EventName="BeforePrint" PropertyName="Font.Bold" Expression="Iif([Stt] == 0)&#xA;" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="132" UsePadding="false" UseTextAlignment="false" />
+                    </Item15>
+                  </Cells>
+                </Item1>
+              </Rows>
+              <StylePriority Ref="133" UsePadding="false" UseBorderColor="false" UseBorders="false" />
+            </Item1>
+          </Controls>
+        </Item1>
+      </Bands>
+    </Item6>
+    <Item7 Ref="134" ControlType="PageHeaderBand" Name="PageHeader" HeightF="80.00002">
+      <Controls>
+        <Item1 Ref="135" ControlType="XRTable" Name="table7" AnchorVertical="Bottom" SizeF="719,20.00001" LocationFloat="393,0" Font="Times New Roman, 9.75pt, charSet=0" BackColor="255,228,242,228" BorderColor="Gray" Borders="All">
+          <Rows>
+            <Item1 Ref="136" ControlType="XRTableRow" Name="tableRow7" Weight="0.4">
+              <Cells>
+                <Item1 Ref="137" ControlType="XRTableCell" Name="tableCell41" Weight="0.66703388956777987" CanGrow="false" Text="SỐ ĐẦU KỲ" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" Borders="Top, Right">
+                  <StylePriority Ref="138" UseFont="false" UseBorders="false" UseTextAlignment="false" />
+                </Item1>
+                <Item2 Ref="139" ControlType="XRTableCell" Name="tableCell42" Weight="0.66703485441340038" CanGrow="false" Multiline="true" Text="SỐ PHÁT SINH" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" Borders="Top, Right">
+                  <StylePriority Ref="140" UseFont="false" UseBorders="false" UseTextAlignment="false" />
+                </Item2>
+                <Item3 Ref="141" ControlType="XRTableCell" Name="tableCell43" Weight="0.664255518369869" CanGrow="false" Multiline="true" Text="SỐ CUỐI KỲ" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" Borders="Top, Right">
+                  <StylePriority Ref="142" UseFont="false" UseBorders="false" UseTextAlignment="false" />
+                </Item3>
+              </Cells>
+            </Item1>
+          </Rows>
+          <StylePriority Ref="143" UseFont="false" UseBackColor="false" UseBorderColor="false" UseBorders="false" />
+        </Item1>
+        <Item2 Ref="144" ControlType="XRTable" Name="table6" AnchorVertical="Bottom" SizeF="239.0001,60" LocationFloat="872.9999,20.00001" Font="Times New Roman, 9.75pt, charSet=0" BackColor="255,228,242,228" BorderColor="Gray" Borders="All">
+          <Rows>
+            <Item1 Ref="145" ControlType="XRTableRow" Name="tableRow6" Weight="0.4">
+              <Cells>
+                <Item1 Ref="146" ControlType="XRTableCell" Name="tableCell16" Weight="0.66703388956777987" CanGrow="false" Text="NGUYÊN GIÁ" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" Borders="Top, Right, Bottom">
+                  <StylePriority Ref="147" UseFont="false" UseBorders="false" UseTextAlignment="false" />
+                </Item1>
+                <Item2 Ref="148" ControlType="XRTableCell" Name="tableCell21" Weight="0.66703485441340038" CanGrow="false" Multiline="true" Text="ĐÃ KHẤU HAO" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold">
+                  <StylePriority Ref="149" UseFont="false" UseTextAlignment="false" />
+                </Item2>
+                <Item3 Ref="150" ControlType="XRTableCell" Name="tableCell22" Weight="0.65869766069455471" CanGrow="false" Multiline="true" Text="GIÁ TRỊ CÒN LẠI" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold">
+                  <StylePriority Ref="151" UseFont="false" UseTextAlignment="false" />
+                </Item3>
+              </Cells>
+            </Item1>
+          </Rows>
+          <StylePriority Ref="152" UseFont="false" UseBackColor="false" UseBorderColor="false" UseBorders="false" />
+        </Item2>
+        <Item3 Ref="153" ControlType="XRTable" Name="table5" AnchorVertical="Bottom" SizeF="240,60" LocationFloat="632.9999,20.00001" Font="Times New Roman, 9.75pt, charSet=0" BackColor="255,228,242,228" BorderColor="Gray" Borders="All">
+          <Rows>
+            <Item1 Ref="154" ControlType="XRTableRow" Name="tableRow5" Weight="0.4">
+              <Cells>
+                <Item1 Ref="155" ControlType="XRTableCell" Name="tableCell1" Weight="0.66703388956777987" CanGrow="false" Text="TĂNG GIẢM NG" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" Borders="Top, Right, Bottom">
+                  <StylePriority Ref="156" UseFont="false" UseBorders="false" UseTextAlignment="false" />
+                </Item1>
+                <Item2 Ref="157" ControlType="XRTableCell" Name="tableCell3" Weight="0.66703485441340038" CanGrow="false" Multiline="true" Text="TĂNG GIẢM KH" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold">
+                  <StylePriority Ref="158" UseFont="false" UseTextAlignment="false" />
+                </Item2>
+                <Item3 Ref="159" ControlType="XRTableCell" Name="tableCell8" Weight="0.66703482888774246" CanGrow="false" Multiline="true" Text="KH &#xD;&#xA;TRONG KỲ" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold">
+                  <StylePriority Ref="160" UseFont="false" UseTextAlignment="false" />
+                </Item3>
+              </Cells>
+            </Item1>
+          </Rows>
+          <StylePriority Ref="161" UseFont="false" UseBackColor="false" UseBorderColor="false" UseBorders="false" />
+        </Item3>
+        <Item4 Ref="162" ControlType="XRTable" Name="table4" AnchorVertical="Bottom" SizeF="240,60" LocationFloat="393,20.00001" Font="Times New Roman, 9.75pt, charSet=0" BackColor="255,228,242,228" BorderColor="Gray" Borders="All">
+          <Rows>
+            <Item1 Ref="163" ControlType="XRTableRow" Name="tableRow4" Weight="0.4">
+              <Cells>
+                <Item1 Ref="164" ControlType="XRTableCell" Name="tableCell33" Weight="0.66703388956777987" CanGrow="false" Text="NGUYÊN GIÁ" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" Borders="Top, Right, Bottom">
+                  <StylePriority Ref="165" UseFont="false" UseBorders="false" UseTextAlignment="false" />
+                </Item1>
+                <Item2 Ref="166" ControlType="XRTableCell" Name="tableCell34" Weight="0.66703485441340038" CanGrow="false" Multiline="true" Text="ĐÃ KHẤU HAO" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold">
+                  <StylePriority Ref="167" UseFont="false" UseTextAlignment="false" />
+                </Item2>
+                <Item3 Ref="168" ControlType="XRTableCell" Name="tableCell35" Weight="0.66703482888774246" CanGrow="false" Multiline="true" Text="GIÁ TRỊ CÒN LẠI" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold">
+                  <StylePriority Ref="169" UseFont="false" UseTextAlignment="false" />
+                </Item3>
+              </Cells>
+            </Item1>
+          </Rows>
+          <StylePriority Ref="170" UseFont="false" UseBackColor="false" UseBorderColor="false" UseBorders="false" />
+        </Item4>
+        <Item5 Ref="171" ControlType="XRTable" Name="table1" AnchorVertical="Bottom" SizeF="392.9998,80.00002" LocationFloat="0.0001589457,0" Font="Times New Roman, 9.75pt, charSet=0" BackColor="255,228,242,228" BorderColor="Gray" Borders="All">
+          <Rows>
+            <Item1 Ref="172" ControlType="XRTableRow" Name="tableRow1" Weight="0.4">
+              <Cells>
+                <Item1 Ref="173" ControlType="XRTableCell" Name="tableCell7" Weight="0.23346219761284337" CanGrow="false" Text="STT" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold">
+                  <StylePriority Ref="174" UseFont="false" UseTextAlignment="false" />
+                </Item1>
+                <Item2 Ref="175" ControlType="XRTableCell" Name="tableCell19" Weight="0.46692442869764761" CanGrow="false" Text="MÃ TÀI SẢN" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" BackColor="255,224,242,224" Padding="0,0,0,0,100">
+                  <StylePriority Ref="176" UseFont="false" UseBackColor="false" UsePadding="false" UseTextAlignment="false" />
+                </Item2>
+                <Item3 Ref="177" ControlType="XRTableCell" Name="tableCell2" Weight="0.620342233479615" CanGrow="false" Text="TÊN TÀI SẢN" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" BackColor="255,224,242,224" Padding="0,0,0,0,100">
+                  <StylePriority Ref="178" UseFont="false" UseBackColor="false" UsePadding="false" UseTextAlignment="false" />
+                </Item3>
+                <Item4 Ref="179" ControlType="XRTableCell" Name="tableCell10" Weight="0.46694638395771554" CanGrow="false" Multiline="true" Text="NGÀY TĂNG" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" BackColor="255,224,242,224" Padding="0,0,0,0,100">
+                  <StylePriority Ref="180" UseFont="false" UseBackColor="false" UsePadding="false" UseTextAlignment="false" />
+                </Item4>
+                <Item5 Ref="181" ControlType="XRTableCell" Name="tableCell18" Weight="0.44024299993328697" CanGrow="false" Text="TK CP" TextAlignment="MiddleCenter" Font="Times New Roman, 9.75pt, style=Bold, charSet=0">
+                  <StylePriority Ref="182" UseFont="false" UseTextAlignment="false" />
+                </Item5>
+                <Item6 Ref="183" ControlType="XRTableCell" Name="tableCell9" Weight="0.39352735942337069" CanGrow="false" Text="SỐ KỲ KH (THÁNG)" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" BackColor="255,224,242,224" Padding="0,0,0,0,100">
+                  <StylePriority Ref="184" UseFont="false" UseBackColor="false" UsePadding="false" UseTextAlignment="false" />
+                </Item6>
+              </Cells>
+            </Item1>
+          </Rows>
+          <StylePriority Ref="185" UseFont="false" UseBackColor="false" UseBorderColor="false" UseBorders="false" />
+        </Item5>
+      </Controls>
+    </Item7>
+    <Item8 Ref="186" ControlType="PageFooterBand" Name="PageFooter" HeightF="27.16669">
+      <Controls>
+        <Item1 Ref="187" ControlType="XRLine" Name="line1" SizeF="1112,2.166684" LocationFloat="0,0" />
+        <Item2 Ref="188" ControlType="XRLabel" Name="lblpageinfo" Text="Trang:" TextAlignment="MiddleLeft" SizeF="758.3333,25" LocationFloat="0,2.166684" Font="Arial, 9pt" Padding="2,2,0,0,100">
+          <StylePriority Ref="189" UseTextAlignment="false" />
+        </Item2>
+      </Controls>
+    </Item8>
+  </Bands>
+  <ComponentStorage>
+    <Item1 Ref="0" ObjectType="DevExpress.DataAccess.ObjectBinding.ObjectDataSource,DevExpress.DataAccess.v24.2" Name="objectDataSource1" Base64="PE9iamVjdERhdGFTb3VyY2UgTmFtZT0ib2JqZWN0RGF0YVNvdXJjZTEiPjxEYXRhU291cmNlIFR5cGU9IlNpc0ZhLlBhZ2VzLk9wZW5pbmcuRmFjZHBzdHMuRmFjZHBzdHNNb2RlbCwgU2lzRmEsIFZlcnNpb249MS4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1udWxsIiAvPjwvT2JqZWN0RGF0YVNvdXJjZT4=" />
+  </ComponentStorage>
+</XtraReportsLayoutSerializer>

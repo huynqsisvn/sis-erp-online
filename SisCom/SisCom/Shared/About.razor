@@ -1,0 +1,269 @@
+﻿@page "/about"
+@using Blazored.LocalStorage
+@using SisData.Data
+@inject IOptionsManager Options
+@inject ILocalStorageService Localstore
+@inject XmlStringLocalizer Lap
+
+<div class="about-page d-flex justify-content-center py-5">
+    <div class="about-wrap">
+        <!-- License card -->
+        <section class="about-card mb-4">
+            <div class="about-header d-flex align-items-center">
+                <div class="about-icon-license d-flex align-items-center justify-content-center" aria-hidden="true">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M36.2187 3.6524C34.51 2.01219 31.74 2.01219 30.0313 3.6524L28.1028 5.50384L34.29 11.4435L36.2187 9.59209C37.9272 7.9519 37.9272 5.29261 36.2187 3.6524Z" fill="#FFBC00" />
+                        <path d="M32.5222 13.1406L26.335 7.20093L12.3337 20.6423C11.3057 21.6291 10.5501 22.8464 10.135 24.1839L8.80206 28.4797C8.67102 28.9019 8.79159 29.3592 9.11614 29.6707C9.44069 29.9824 9.91701 30.0981 10.3569 29.9723L14.8317 28.6927C16.225 28.2943 17.4929 27.5688 18.5209 26.5819L32.5222 13.1406Z" fill="#FFBC00" />
+                        <path d="M8.75 8.42224C5.98858 8.42224 3.75 10.5713 3.75 13.2222V30.0222C3.75 32.6733 5.98858 34.8222 8.75 34.8222H26.25C29.0115 34.8222 31.25 32.6733 31.25 30.0222V21.6222C31.25 20.9595 30.6903 20.4222 30 20.4222C29.3097 20.4222 28.75 20.9595 28.75 21.6222V30.0222C28.75 31.3477 27.6307 32.4222 26.25 32.4222H8.75C7.36928 32.4222 6.25 31.3477 6.25 30.0222V13.2222C6.25 11.8968 7.36928 10.8222 8.75 10.8222H17.5C18.1903 10.8222 18.75 10.285 18.75 9.62224C18.75 8.95949 18.1903 8.42224 17.5 8.42224H8.75Z" fill="#005FFF" />
+                    </svg>
+                </div>
+                <h5 class="about-title mb-0">@Lap["License for"]</h5>
+            </div>
+
+            <ul class="about-list">
+                <li><strong>@Lap["Company"]:</strong> <a class="company-link">@Options.GetOptionsValue("M_TEN_CTY")</a></li>
+                <li><strong>@Lap["Address"]:</strong> <span class="muted">@Lap["Sisaddress"]</span></li>
+                <li><strong>MST:</strong> <span class="muted">@Options.GetOptionsValue("M_MA_THUE")</span></li>
+                <li><strong>@Lap["Version"]:</strong> <span class="muted">@((Options.GetOptionsValue("M_IS_DEMO")?.Trim().Equals("TRUE", System.StringComparison.OrdinalIgnoreCase) == true) ? "SIS ERP Online - DEMO" : "SIS ERP Online")</span></li>
+                <li><strong>@Lap["Contract number"]:</strong> <span class="mono">@GetContractNumber()</span></li>
+                <li>
+                    <strong>@Lap["Warranty period"]:</strong>
+                    @if (!string.IsNullOrEmpty(WarrantyDate))
+                    {
+                        <span class="warranty">@WarrantyDate</span>
+                        @if (M_IS_Expire)
+                        {
+                            <span class="text-danger ms-2">(@Lap["Warranty expires"])</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="muted">-</span>
+                    }
+                </li>
+            </ul>
+        </section>
+
+        <!-- Contact card -->
+        <section class="about-card">
+            <div class="about-header d-flex align-items-center">
+                <div class="about-icon-phone d-flex align-items-center justify-content-center" aria-hidden="true">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M2.5 7.5C2.5 4.73858 4.73858 2.5 7.5 2.5H9.78604C11.22 2.5 12.47 3.47593 12.8177 4.86708L14.6607 12.239C14.9657 13.4588 14.5099 14.7426 13.504 15.497L11.348 17.114C11.1241 17.2819 11.0754 17.5278 11.1383 17.6995C13.0308 22.8658 17.1342 26.9692 22.3005 28.8617C22.4722 28.9246 22.7181 28.8759 22.886 28.652L24.503 26.496C25.2574 25.4901 26.5412 25.0343 27.761 25.3393L35.1329 27.1823C36.5241 27.53 37.5 28.78 37.5 30.214V32.5C37.5 35.2614 35.2614 37.5 32.5 37.5H28.75C14.2525 37.5 2.5 25.7475 2.5 11.25V7.5Z" fill="#005FFF" />
+                    </svg>
+                </div>
+                <h5 class="about-title mb-0">@Lap["For more details, please contact:"]</h5>
+            </div>
+
+            <ul class="about-list">
+                <li><strong>@Lap["Company"]:</strong> <a class="company-link">@Options.GetOptionsValue("M_TEN_CTY")</a></li>
+                <li><strong>@Lap["Address"]:</strong> <span class="muted">@Lap["Sisaddress"]</span></li>
+                <li><strong>@Lap["Phone"]:</strong> <span class="muted">@Lap["Sisphone"]</span></li>
+                <li><strong>@Lap["Email"]:</strong> <a class="link-blue" href="mailto:Sales@sis.vn">sales@sis.vn</a></li>
+                <li>
+                    <strong>@Lap["Website"]:</strong>
+                    <span class="link-group">
+                        <a class="link-blue" href="https://www.sis.vn" target="_blank" rel="noopener">www.sis.vn</a>
+                        <a class="link-blue" href="https://www.erpsme.vn" target="_blank" rel="noopener">www.erpsme.vn</a>
+                        <a class="link-blue" href="https://www.phanmemketoan.vn" target="_blank" rel="noopener">www.phanmemketoan.vn</a>
+                    </span>
+                </li>
+            </ul>
+        </section>
+        <div/>
+    </div>
+</div>
+
+<style>
+    .about-page {        
+        min-height: calc(100vh - 80px);
+    }
+    .about-wrap {
+        max-width: 920px;
+        width: 100%;
+        height: 100%;
+        padding: 0 18px;
+    }
+
+    /* elevate .about-card on hover / keyboard focus */
+    .about-card {
+      transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms cubic-bezier(.2,.8,.2,1);
+      will-change: transform, box-shadow;
+    }
+
+    .about-card:hover,
+    .about-card:focus-within {
+      transform: translateY(-6px);
+      box-shadow: 0 24px 48px rgba(43,124,255,0.14), 0 6px 12px rgba(43,124,255,0.06);
+      border-color: rgba(43,124,255,0.12);
+    }
+
+    .about-card {
+        background: #fff;
+        border-radius: 14px;
+        padding: 20px;
+        margin: 18px 0;
+        border: 1px solid rgba(43,124,255,0.06);
+        box-shadow: 0 14px 30px rgba(43,124,255,0.06);
+    }
+
+    .about-header {
+        gap: 14px;
+        margin-bottom: 8px;
+    }
+
+    .about-icon-license, .about-icon-phone {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: linear-gradient(180deg,#fff,#f4fbff);
+        box-shadow: 0 6px 18px rgba(43,124,255,0.04);
+        color: #fff;
+    }
+
+    .about-title {
+        color: #f6a623;
+        font-weight: 600;
+        font-size: 1.02rem;
+    }
+
+    /* force classic vertical bullets and line breaks, override global resets */
+    .about-card .about-list {
+        display: block !important;
+        margin: 6px 0 0 0 !important;
+        padding-left: 48px !important;
+        list-style-type: disc !important;
+        list-style-position: outside !important;
+        white-space: normal !important;
+    }
+
+        .about-card .about-list li {
+            display: list-item !important;
+            list-style-type: disc !important;
+            margin: 8px 0 !important;
+            color: #222;
+            font-size: 0.98rem;
+            line-height: 1.45;
+            text-indent: 0;
+        }
+
+            /* ensure inline elements inside li wrap correctly */
+            .about-card .about-list li > * {
+                display: inline; /* keep inline content but allow wrapping */
+            }
+
+            /* Optional: adjust bullet appearance */
+            .about-card .about-list li::marker {
+                color: #6c757d;
+                font-size: 1rem;
+            }
+
+            .about-card .about-list li strong {
+                margin-right: 6px;
+                color: #000;
+            }
+
+    .company-link {
+        color: #0d6efd;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+        .company-link:hover {
+            text-decoration: underline;
+        }
+
+    .link-blue {
+        color: #0d6efd;
+        text-decoration: underline;
+    }
+
+    .muted {
+        color: #333;
+    }
+
+    .warranty {
+        color: #f6a623;
+        font-weight: 700;
+    }
+
+    .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+        color: #333;
+    }
+    
+    .link-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0; /* spacing handled by pseudo-element margins */
+    }
+
+    /* vertical divider between the two links (renders before the 2nd link) */
+    .link-group a + a::before {
+        content: "";
+        display: inline-block;
+        width: 1px;
+        height: 18px; /* adjust height to match text */
+        background: black; /* blue-ish thin line, adjust color/opacity if needed */
+        margin: 0 10px; /* horizontal spacing between link and divider */
+        vertical-align: middle;
+    }
+    /* Respect users who prefer reduced motion */
+    @@media (prefers-reduced-motion: reduce) {
+      .about-card,
+      .about-card:hover,
+      .about-card:focus-within {
+        transition: none !important;
+        transform: none !important;
+      }
+    }
+</style>
+
+@code {
+    bool M_IS_Expire = false;
+    string WarrantyDate = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        string userLang = await Localstore.GetItemAsync<string>("userlang") ?? "Vi";
+        await Lap.LoadLocalizationAsync(userLang.Trim());
+
+        string ngay_bh2 = Options.GetOptionsValue("M_NGAY_BH2")?.Trim() ?? "";
+        DateTime dngay_bh2 = StrtoDate(ngay_bh2);
+
+        if (!string.IsNullOrEmpty(ngay_bh2) && dngay_bh2 > DateTime.MinValue)
+        {
+            WarrantyDate = dngay_bh2.ToString("dd/MM/yyyy");
+            string mType = Options.GetOptionsValue("M_TYPE_BH")?.Trim() ?? "1";
+            if (mType == "1" || mType == "4")
+                M_IS_Expire = dngay_bh2 <= DateTime.Today;
+            else if (mType == "2")
+                M_IS_Expire = dngay_bh2 < DateTime.Today;
+        }
+
+        StateHasChanged();
+    }
+
+    string GetContractNumber()
+    {
+        var val = Options.GetOptionsValue("M_SO_HD")?.Trim();
+        return string.IsNullOrEmpty(val) ? Options.GetOptionsValue("M_CONT_ID")?.Trim() ?? "" : val;
+    }
+
+    public DateTime StrtoDate(string datestr)
+    {
+        if (!string.IsNullOrEmpty(datestr) && datestr.Length >= 8)
+        {
+            try
+            {
+                return new DateTime(Convert.ToInt32(datestr.Substring(0, 4)),
+                                    Convert.ToInt32(datestr.Substring(4, 2)),
+                                    Convert.ToInt32(datestr.Substring(6, 2)));
+            }
+            catch { }
+        }
+        return DateTime.MinValue;
+    }
+}

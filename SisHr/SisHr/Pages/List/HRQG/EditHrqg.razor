@@ -1,0 +1,330 @@
+@inherits FrmListBaseComponent
+@using SisHr.Pages.List.HRQG
+
+<div class="popup-body-container w-100" style="overflow:auto;max-width:1200px;">
+    <FormList Title="@Title"
+              @bind-curActionTask="@curActionTask"
+              OnSave="@SaveDM"
+              OnEdit="@OnEdit"
+              OnCopy="@OnCopy"
+              OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmqg"
+                          ItemSizeMode="@Itemsizemode"
+                          CssClass="frm-header sis-form"
+                          onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                @* 1. Mã qu?c gia *@
+                <DxFormLayoutItem Caption="@Lap["Country code"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox Id="ma_quocgia_input"
+                                   @bind-Text="@CurDmqg.Ma_quocgia"
+                                   maxlength="@tblLength["ma_quocgia"]"
+                                   InputCssClass="uppercase"
+                                   Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 2. Tên qu?c gia *@
+                <DxFormLayoutItem Caption="@Lap["Country name"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmqg.Ten_quocgia"
+                                   maxlength="@tblLength["ten_quocgia"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 3. Tên qu?c gia 2 *@
+                <DxFormLayoutItem Caption="@(Lap["Country name"] + " 2")" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmqg.Ten_quocgia2"
+                                   maxlength="@tblLength["ten_quocgia2"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 4. Ghi chú *@
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxMemo @bind-Text="@CurDmqg.Ghi_chu"
+                                Rows="3"
+                                Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 5. Tr?ng thái *@
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmqg.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="" ColSpanMd="6">
+                    <Template>
+                        <span class="text-muted">@Lap["0 - No, 1 - Yes"]</span>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem ColSpanMd="12">
+                    <Template>
+                        <hr />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmqg CurDmqg;
+    private string menu_id = "wr.dm.14";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmqg";
+        SqlTableKey = "ma_quocgia";
+        CheckSqlTableKey = "ma_quocgia";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "hrqg" : ParentPage;
+        CurDmqg = new Dmqg();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    myStateMN.SetToolBar(new MyToolbar("save", false));
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditDM(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await CreateNewDM();
+                    break;
+                case ActionTask.Copy:
+                    await CreateCopyDM(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    break;
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_quocgia_input')?.focus()");
+            StateHasChanged();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    async Task ViewDM(string key)
+    {
+        CurDmqg = new Dmqg();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(key);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string key)
+    {
+        CurDmqg = new Dmqg();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(key);
+
+        int checkResult = await CheckDeleteListIdAsync(key);
+        if (checkResult <= 0)
+        {
+            AllowEditMa = false;
+        }
+
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(CurDmqg.Ma_quocgia);
+    }
+
+    async Task SaveDM()
+    {
+        CurDmqg.Ma_quocgia = CurDmqg.Ma_quocgia?.ToUpper().Trim().Replace(" ", "") ?? "";
+        if (!CheckValid())
+            return;
+
+        CurDmqg.Ten_quocgia2 = CurDmqg.Ten_quocgia2 ?? "";
+        CurDmqg.Ghi_chu = CurDmqg.Ghi_chu ?? "";
+
+        SqlTableKeyValue = CurDmqg.Ma_quocgia.ToUpper().Trim();
+        SqlTableKeyValueOld = (curActionTask == ActionTask.New ? "" : Ma_ma);
+        if (!CheckValidCode())
+            return;
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmqg.Date = DateTime.Now.Date;
+            CurDmqg.Date0 = DateTime.Now.Date;
+            CurDmqg.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmqg.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmqg.User_id = curUser.User_id;
+                CurDmqg.User_id0 = curUser.User_id;
+                CurDmqg.User_name = curUser.User_name;
+                CurDmqg.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmqg.Ma_quocgia.Trim();
+            string check = "Select " + SqlTableKey + " from " + sqlTableName + " where " + CheckSqlTableKey + " = '" + CheckSqlTableKeyValue + "'";
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+                return;
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmqg>(CurDmqg, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmqg.Date = DateTime.Now.Date;
+            CurDmqg.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmqg.User_id = curUser.User_id;
+                CurDmqg.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmqg>(CurDmqg, sqlTableName, SqlTableKey, Ma_ma, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmqg.Ma_quocgia))
+        {
+            myStateMN.SetNewThongbao(Lap["Country code is required"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(CurDmqg.Ten_quocgia))
+        {
+            myStateMN.SetNewThongbao(Lap["Country name is required"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        return true;
+    }
+
+    async Task LoadData(string key)
+    {
+        string sql = "Select * from " + sqlTableName + " where " + SqlTableKey + " = '" + key + "'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmqg> lsdetai = myDb.ConvertDataTable<Dmqg>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurDmqg = lsdetai[0];
+        }
+
+        if (!string.IsNullOrEmpty(CurDmqg.Ma_quocgia))
+            CurDmqg.Ma_quocgia = CurDmqg.Ma_quocgia.Trim();
+
+        if (!string.IsNullOrEmpty(CurDmqg.Status))
+            CurDmqg.Status = CurDmqg.Status.Trim();
+
+        StateHasChanged();
+    }
+
+    async Task CreateNewDM()
+    {
+        CurDmqg = new Dmqg();
+        CurDmqg.Status = "1";
+        CurDmqg.Ma_quocgia = GetNewSttDM();
+        CurDmqg.Ten_quocgia2 = "";
+        CurDmqg.Ghi_chu = "";
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string key)
+    {
+        CurDmqg = new Dmqg();
+        await LoadData(key);
+        CurDmqg.Status = "1";
+        CurDmqg.Ma_quocgia = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+
+    async Task<int> CheckDeleteListIdAsync(string maQuocgia)
+    {
+        int result = 0;
+        try
+        {
+            string sql = $"SET NOCOUNT ON; exec dbo.CheckDeleteListId 'dmqg', '{maQuocgia}'";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                result = Convert.ToInt32(ds.Tables[0].Rows[0][0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("CheckDeleteListIdAsync error: " + ex.Message);
+        }
+        return result;
+    }
+}

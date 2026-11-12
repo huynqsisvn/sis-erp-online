@@ -1,0 +1,345 @@
+﻿@page "/Dmtk"
+@page "/Dmtk/{Menu_id}"
+@inherits ListBaseComponent
+@implements IAsyncDisposable
+
+@using SisLib.List
+@using Microsoft.Extensions.Localization
+
+@attribute [Authorize(Roles = "admin,dmtk")]
+
+<div class="row mt-1">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+    CloseOnEscape="true"
+    Width="60vw"
+    MinWidth="700px"
+    Scrollable="true"
+    MaxHeight="98vh"
+    AllowResize="true"
+    AllowDrag="true"    
+    AllowDragByHeaderOnly="true"
+    ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par"/>
+        </BodyTemplate>
+    </DxWindow>
+}
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+    ShowFooter="false"
+    ShowHeader="false"
+    MinWidth="50vw"
+    @bind-Visible="@IDVisible"
+    CloseOnEscape="true"
+    ShowCloseButton="false"
+    AllowResize="true"
+    AllowDrag="true"
+    AllowDragByHeaderOnly="true">
+        <BodyContentTemplate Context="another_name">
+            <div class="row">
+                <div class="row align-items-center clearfix bg-light mx-2">
+                    <div class="col fw-bold float-start" style="color:#005FFF;">
+                        @Lap["Change Item code"]
+                    </div>
+                    <div class="col float-end d-flex justify-content-end">
+                        <DxButton CssClass="btncmdgroup m-1" IconCssClass="btn-icon-save" RenderStyleMode="ButtonRenderStyleMode.Outline"
+                        IconPosition="ButtonIconPosition.BeforeText" RenderStyle="ButtonRenderStyle.Secondary" @onclick="@SaveDM" Text="@Lap["OK"]"></DxButton>           
+
+                        <DxButton CssClass="btncmdgroup m-1 text-danger" IconCssClass="btn-icon-close" RenderStyleMode="ButtonRenderStyleMode.Outline"
+                        IconPosition="ButtonIconPosition.BeforeText" RenderStyle="ButtonRenderStyle.Secondary" @onclick="@HideVoucher" Text="@Lap["Cancel"]"></DxButton>
+
+                    </div>
+                </div>
+                @if (ShowLoadding)
+                {
+                    <div class="row m-0 p-0 justify-content-center">
+                        <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <DxFormLayout class="p-3 m-2 border border-1 rounded-1" onkeydown="ModifyEnterKeyPressAsTab(event);">        
+                        <DxFormLayoutItem ColSpanMd="12" BeginRow="true">
+                            <Template>                
+                                <div class="row">
+                                    <label class="col-3 fw-bold">@Lap["Old code"]</label>
+                                    <DxTextBox CssClass="col-3 fw-bold" Text="@Ma_ma" ReadOnly="true" Enabled="false"></DxTextBox>
+                                    <div class="col-6">@Ten_item</div>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="12" BeginRow="true">
+                            <Template>                
+                                <div class="row">
+                                    <label class="col-3 fw-bold">@Lap["New code"]</label>
+                                    <DxTextBox CssClass="col-3 fw-bold" @bind-Text="@New_id"></DxTextBox>
+                                    <div class="col-6"></div>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="12" BeginRow="true">
+                            <Template>                
+                                <div class="row">
+                                    <label class="col-3 fw-bold">@Lap["Parent account"]</label>
+                                    <AutocompleteComponent CssClass="col-6" Ma_dm="dmtk0" @bind-Value="@Tk_me" IsLangEn="@IsLangEn"></AutocompleteComponent>                                    
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="12" BeginRow="true" Visible="false">
+                            <hr style="height:1px;background-color:dimgrey;margin:0px;padding:0px;">
+                        </DxFormLayoutItem>
+                    </DxFormLayout>
+                }
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible" CurDmimex="@CurDmimex" OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    public bool ShowLoadding { get; set; } = false;
+    public string Ma_ma { get; set; } = "";
+    public string New_id { get; set; } = "";
+    public string Tk_me { get; set; } = "";
+    public string Title { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        mPage = "Dmtk";
+        IsShowCopy = true;
+        IsShowImport = true;
+        LanguageID = "";
+        FrmType = typeof(List.Dmtk.EditDmtk);
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.dm.01";
+
+        base.OnInitialized();
+    }
+    public override async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            if (!rview.DataView.Table.Columns.Contains(SqlTableKey.Split(";").LastOrDefault()))
+                return;
+            if (!string.IsNullOrEmpty(rview[SqlTableKey.Split(";").LastOrDefault()].ToString()))
+                SqlTableKeyValue = rview[SqlTableKey.Split(";").LastOrDefault()].ToString().Trim();
+
+            string sqlcmd = "exec dbo.CheckDeleteListId @ma_dm, @" + SqlTableKey.Split(";").LastOrDefault();
+            DataSet resultcf = await myDb.LoadDataset(sqlcmd, new Dictionary<string, object>()
+                {
+                    { "@ma_dm", CurDmdm.Ma_dm },
+                    { "@" + SqlTableKey.Split(";").LastOrDefault(), SqlTableKeyValue }
+                });
+
+            if (resultcf.Tables.Count > 0)
+            {
+                int checkdel = int.Parse(resultcf.Tables[0].Rows[0][0].ToString());
+                if (checkdel == 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["Unremoved data has been generated"] + " !");
+                    return;
+                }
+            }
+            sqlcmd = $"Select Count(tk0) as _count from {CurDmdm.Table_name} where tk_me = @value";
+            resultcf = await myDb.LoadDataset(sqlcmd, new Dictionary<string, object>()
+                {                 
+                    { "@value", SqlTableKeyValue }
+                });
+
+            if (resultcf.Tables.Count > 0)
+            {
+                int checkdel = int.Parse(resultcf.Tables[0].Rows[0][0].ToString());
+                if (checkdel != 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["Can not delete Mother account"] + " !");
+                    return;
+                }
+            }
+
+            MessageDl = String.Format(Lap["Do you want to delete :{0} ?"], SqlTableKeyValue);
+            ResultDl = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+            {
+                Text = MessageDl,
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["OK"],
+                CancelButtonText = Lap["Cancel"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger,
+            });
+            if (ResultDl == true)
+            {
+                Dongyxoa(true);
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+    public override void ChangeID()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            if (!string.IsNullOrEmpty(rview[SqlTableKey.Split(";").LastOrDefault()].ToString()))
+                SqlTableKeyValue = rview[SqlTableKey.Split(";").LastOrDefault()].ToString().Trim();
+            if (!String.IsNullOrEmpty(SqlItemName) && rview.Row.Table.Columns.Contains(SqlItemName))
+                Ten_item = IsLangEn ? rview[SqlItemName.Trim() + "2"].ToString().Trim() : rview[SqlItemName].ToString().Trim();
+
+            Ma_ma = rview[SqlTableKey.Split(";").LastOrDefault()].ToString().Trim();
+            New_id = Ma_ma;
+            Tk_me = rview["tk_me"].ToString();
+            IDVisible = true;         
+            StateHasChanged();
+        }
+    }
+
+
+    public async void ChangeOK()
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+    async Task SaveDM()
+    {
+        if (New_id.Trim() == Ma_ma.Trim())
+        {
+            myStateMN.SetNewThongbao(Lap["New code and old code are the same"] + "!");
+            return;
+        }
+        else if (String.IsNullOrEmpty(New_id))
+        {
+            myStateMN.SetNewThongbao(Lap["Empty code"] + "!");
+            return;
+        }
+
+        string str = CtlFunc.CheckInValidCode(myStateMN, New_id.Trim());
+        if (str != "")
+        {
+            string _mes = Lap["The code cannot contain characters"] + String.Format(" [{0}]", str) + "!";
+            myStateMN.SetNewThongbao(_mes);
+            return;
+        }
+        DataSet _dsContain = await myDb.LoadDataset("exec [CheckTKContain] @table_name,@new_value,@tk_me,@old_value", "table_name;new_value;tk_me;old_value", sqlTableName.Trim() + ";" + New_id + ";" + Tk_me + ";" + Ma_ma);
+        if (_dsContain.Tables[0].Rows.Count > 0)
+        {
+            myStateMN.SetNewThongbao(Lap["The account has already existed or declare wrong parent account"] + " !");
+            return;
+        }
+
+        DataSet _ds = await myDb.LoadDataset("exec [ChangeOrIncludeTK] @new_value,@tk_me,@old_value,@isDeleted", "new_value;tk_me;old_value;isDeleted", New_id.Trim() + ";" + Tk_me.Trim() + ";" + Ma_ma.Trim() + ";0");
+
+        if (_ds.Tables[0].Rows.Count > 0)
+        {            
+            switch (_ds.Tables[0].Rows[0][0].ToString().Trim())
+            {
+                case "1":
+                    myStateMN.SetNewThongbao(Lap["There have been incurred for account"] + " !");
+                    return;
+                    break;
+                case "2":
+                    ResultDl = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+                        {
+                            Text = String.Format(Lap["New account is general account and detail accounts haven't arisen, do you want to delete all detail accounts"],Ma_ma) + " ?",
+                            Title = Lap["Confirm"],
+                            OkButtonText = Lap["OK"],CancelButtonText = Lap["Cancel"], 
+                            ShowIcon = true,ShowCloseButton = false,RenderStyle = MessageBoxRenderStyle.Warning,
+                        });
+                    if (ResultDl == false)
+                    {
+                        DataSet _ds01 = await myDb.LoadDataset("exec [ChangeOrIncludeTK] @new_value,@tk_me,@old_value,@isDeleted", "new_value;tk_me;old_value;isDeleted", New_id.Trim() + ";" + Tk_me.Trim() + ";" + Ma_ma.Trim() + ";1");
+                        StateHasChanged();
+                        return;
+                    }
+                    break;
+                case "3":
+                    break;
+            }
+        }       
+
+        IDVisible = false;
+        ShowLoadding = false;
+        ChangeOK();
+        return;
+    }
+    public void HideVoucher()
+    {
+        IDVisible = false;
+        StateHasChanged();
+    }
+    public async void UpdateAll()
+    {
+        try
+        {
+            await myDb.ExecuteSqlQueryAsync("exec GLTK0_CreateDMTK");
+            await myDb.ExecuteSqlQueryAsync("exec UpdateBacTk");
+            await myDb.ExecuteSqlQueryAsync("exec UpdateAllLoaiTk");
+        }
+        catch (Exception ex)
+        {
+            //ErrorLog.CatchMessage(ex);
+        }
+    }
+    public async ValueTask DisposeAsync()
+    {
+        DataSet table = myDb.LoadDataSet("exec [GetListTKContain]");
+        if (table.Tables.Count > 0)
+        {
+            string result = string.Join(", ",table.Tables[0].AsEnumerable().Select(row => row["tk0"].ToString() + "-" + row["tk_me"].ToString()));
+            if (!String.IsNullOrEmpty(result.Trim()))
+            {
+
+                MessageDl = Lap["List of nested accounts. Please declare again"] + " : " + result;
+                await myDlSvc.AlertAsync(new MessageBoxOptions()
+                    {
+                        Text = MessageDl,
+                        Title = Lap["Confirm deletion of list"],
+                        OkButtonText = Lap["OK"],
+                        CancelButtonText = Lap["Cancel"],
+                        ShowIcon = true,
+                        ShowCloseButton = false,
+                        RenderStyle = MessageBoxRenderStyle.Danger,
+                    });
+            }
+            else
+			{
+                UpdateAll();
+			}
+		}
+		else
+		{
+            UpdateAll();
+		}        
+        _dotNetHelper?.Dispose();
+	    base.Dispose();
+    }
+}

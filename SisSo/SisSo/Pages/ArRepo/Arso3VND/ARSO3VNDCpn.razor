@@ -1,0 +1,577 @@
+﻿@page "/arso3vnd"
+@page "/arso3vnd/{menu_id}"
+@inherits RepoBaseComponent
+
+@attribute [Authorize(Roles = "admin,arso3vnd")]
+
+<div class="row" @onkeydown:preventDefault="true">
+    <FrmBrowseComponent @ref="@oBrowse" TblData="@TblData" Fbrowse="@Fbrowse" SelectItem="@SelectedItem" RowStyleFunc="@GetRowStyle" CustomSummaryTextFormatter="@FormatSummaryText" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="500px"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Account"]">
+                        <Template>
+                            <div class="col p-0">
+                                <AutocompleteComponent TblData="@TblDmtkFilteredAsync"
+                                                       Ma_dm="dmtk"
+                                                       @bind-Value="@Tk"
+                                                       IsEnable="@AllowEditMode"
+                                                       IsLangEn="@IsLangEn"
+                                                       CssClass="@(string.IsNullOrWhiteSpace(Tk) ? "input-invalid" : "")">
+                                </AutocompleteComponent>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Customer code"]">
+                        <Template>
+                            <div class="col p-0">
+                                <AutocompleteComponent Ma_dm="dmkh"
+                                                       @bind-Value="@Ma_kh"
+                                                       IsEnable="@AllowEditMode"
+                                                       IsLangEn="@IsLangEn"
+                                                       CssClass="@(string.IsNullOrWhiteSpace(Ma_kh) ? "input-invalid" : "")">
+                                </AutocompleteComponent>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idTu_Ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idDen_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Ngày mở sổ"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@NgayMs" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idNgayMs" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Mã ĐVCS"]">
+                        <Template>
+                            <DxTextBox CssClass="col" @bind-Text="@Ma_dvcs" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Report template"]">
+                        <DxComboBox Data="@StatusList2"
+                                    @bind-Value="@Ma_nt"
+                                    ValueField="Value"
+                                    TextField="Text"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    NullText="VND" />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@BtnSave" />
+                <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@if (ShowPrint)
+{
+    <DxPopup @ref="popPrint"
+             CloseOnOutsideClick="false"
+             CssClass="dxPopup"
+             @bind-Visible="@ShowPrint"
+             Width="80%" Height="90%"
+             ShowFooter="false"
+             HeaderText="@Lap["Printer"]">
+        <BodyTemplate Context="popupCtx2">
+            <ReportOptionComponent LSItems="@LsData" Menu_id="@Menu_id.Replace('_','.')" OnBack="()=>{ShowPrint=false;}" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+<style>
+    .grid-wrapper {
+        display: grid;
+        grid-template-rows: 1fr;
+        height: 100vh;
+        gap: 0;
+    }
+
+    .grid-container {
+        position: relative;
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    .grid-item.detail {
+        overflow-y: auto;
+    }
+
+    .input-invalid {
+        border: 1px solid red !important;
+        border-radius: 4px;
+    }
+
+    .grid0-frm-height {
+        height: 86vh;
+    }
+
+    .summary-row {
+        font-weight: bold;
+        background-color: #edf2fa;
+    }
+</style>
+
+@code {
+public DataTable TblDmtkFilteredAsync { get; set; } 
+public FrmBrowseComponent oBrowse;
+    public List<ARSO3VND> LstData;
+    public List<ARSO3VNDModel> LsData;
+    private bool AllowEditMode = true;
+    public DataTable TblSumData;
+    private DataSet ds;
+    string _store_proc = "";
+    private string Tk = "131";
+    private string Ma_kh = "  ";
+    private DateTime? NgayMs { get; set; }
+    private string Ma_nt = "VND";
+    private string M_IP_TIEN = "N0"; 
+    private string M_IP_TIEN_NT = "N0"; 
+    public string Fbrowse = "";
+    decimal SoDuNoDauKy = 0;
+    decimal SoDuCoDauKy = 0;
+    decimal SoDuNoDauKyNt = 0;
+    decimal SoDuCoDauKyNt = 0;
+
+    decimal TongPsNo = 0;
+    decimal TongPsCo = 0;
+    decimal TongPsNoNt = 0;
+    decimal TongPsCoNt = 0;
+
+    decimal SoDuNoCuoiKy = 0;
+    decimal SoDuCoCuoiKy = 0;
+    decimal SoDuNoCuoiKyNt = 0;
+    decimal SoDuCoCuoiKyNt = 0;
+
+    public string[] sFieldArrays;
+
+    private async Task<DataTable> LoadTblDmtkFilteredAsync()
+    {
+        string sqlTk = "SELECT * FROM dmtk WHERE tk_cn = 1";
+        var dsTk = await myDb.LoadDataset(sqlTk);
+
+        if (dsTk != null && dsTk.Tables.Count > 0 && dsTk.Tables[0].Rows.Count > 0)
+        {
+            return dsTk.Tables[0].Copy();
+        }
+        else
+        {
+            return new DataTable();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    private List<object> StatusList2;
+
+    public override async Task ShowToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.SetToolBar(new MyToolbar("Search", true));
+        myStateMN.SetToolBar(new MyToolbar("Print", true));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+    }
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+        }
+        base.OnActionTaskchanged(ac);
+    }
+
+    public override async void ExportData(int type)
+    {
+        if (oBrowse == null) return;
+        oBrowse.ExPortGrid(type);
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+
+    #region "Tim kiem"
+    
+    private void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "ws.cn.05";
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        Ngay_ct1 = myStateMN.GetStartDate();
+        Ngay_ct2 = myStateMN.GetEndDate();
+        Tk = myStateMN.GetItem("M_TK")?.ToString() ?? "131";
+        NgayMs = DateTime.Now.Date;
+        TblDmtkFilteredAsync = await LoadTblDmtkFilteredAsync();
+        if (curCommand != null)
+        {
+            _store_proc = curCommand.Store_proc.Split('|')[0];
+        }
+        StatusList2 = new()
+        {
+            new { Value = "VND", Text = Lap["VND form"] },
+            new { Value = "NT", Text = Lap["FC form"] },
+        };
+    }
+
+    private string UserLang { get; set; } = "";
+    private bool IsLangEn = false;
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    string NormalizeOptionNegativeFormat(string s)
+    {
+        if (s == null) return s;
+        var parts = s.Split(';');
+        if (parts.Length > 1 && parts[1].StartsWith("-"))
+        {
+            parts[1] = "(" + parts[1].Substring(1).Trim() + ")";
+            return string.Join(";", parts);
+        }
+        return s;
+    }
+
+    string GetOpt(string name) => myOption.GetOptionsValue(name) ?? "";
+    string GetOptInt(string name)
+    {
+        string f = GetOpt(name).ToString();
+        if (GetOpt("M_KIEU_SO_AM").ToString().Equals("2"))
+            f = NormalizeOptionNegativeFormat(f);
+        return "{0:" + f + "}";
+    }
+
+    string FormatSummaryText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        string F(decimal v) => string.Format(GetOptInt("M_IP_TIEN"), v);
+
+        switch (e.Item.Name)
+        {
+            // ===== diễn giải =====
+            case "dien_giai01": return Lap["Beginning balance"];
+            case "dien_giai02": return Lap["Total arising during the period"];
+            case "dien_giai03": return Lap["Ending balance"];
+
+            // ===== Số dư đầu kỳ =====
+            case "ps_no01": return F(SoDuNoDauKy);
+            case "ps_co01": return F(SoDuCoDauKy);
+            case "ps_no_nt01": return F(SoDuNoDauKyNt);
+            case "ps_co_nt01": return F(SoDuCoDauKyNt);
+
+            // ===== Phát sinh trong kỳ =====
+            case "ps_no02": return F(TongPsNo);
+            case "ps_co02": return F(TongPsCo);
+            case "ps_no_nt02": return F(TongPsNoNt);
+            case "ps_co_nt02": return F(TongPsCoNt);
+
+            // ===== Số dư cuối kỳ =====
+            case "ps_no03": return F(SoDuNoCuoiKy);
+            case "ps_co03": return F(SoDuCoCuoiKy);
+            case "ps_no_nt03": return F(SoDuNoCuoiKyNt);
+            case "ps_co_nt03": return F(SoDuCoCuoiKyNt);
+        }
+
+        return null;
+    }
+
+    async void OnDvcsChanged(string ma_dvcs)
+    {
+        Ma_dvcs = ma_dvcs;
+        Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStateMN.GetCurUser();
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+
+            await PageLoad();
+            await Language();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}",
+            String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            Tk = !String.IsNullOrEmpty(Tk) ? Tk : curCommand.Parameter.Trim();
+            
+            if (!String.IsNullOrEmpty(Tk))
+            {
+                Tk = TblDmtkFilteredAsync.AsEnumerable().Where(r => r.Field<string>("tk").Trim() == Tk.Trim()).FirstOrDefault()?.Field<string>("tk") ?? Tk;
+            }
+            if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+                myStateMN.SetToolBar(new MyToolbar("Print", true));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+            await Loaddata();
+            PopupVisible = false;
+            StateHasChanged();
+        }
+        else
+        {
+            await oBrowse?.FocusGridAsync();
+        }
+    }
+
+    string GetRowStyle(DataRowView row)
+    {
+        if (row.Row.Table.Columns.Contains("Bold") && row["Bold"].ToString().Trim() == "1")
+        {
+            return "bold-item";
+        }
+        return "";
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+    private async void BtnSave()
+    {
+        ShowLoadding = true;
+
+        myStateMN.SetStartDate((DateTime)Ngay_ct1);
+        myStateMN.SetEndDate((DateTime)Ngay_ct2);
+
+        bool ok = await Loaddata();   
+
+        ShowLoadding = false;
+
+        if (ok)
+            PopupVisible = false;     
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    public override async Task<bool> Loaddata()
+    {
+        PopupVisible = true;        
+        if (Ngay_ct1 == null || Ngay_ct2 == null || Ngay_ct1 > Ngay_ct2)
+        {
+            myStateMN.SetNewThongbao(Lap["Incorrect date declaration"] + " !");
+            return false;
+        }        
+
+        if (string.IsNullOrWhiteSpace(Tk))
+        {
+            myStateMN.SetNewThongbao(Lap["Account is empty"] + " !");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(Ma_kh))
+        {
+            myStateMN.SetNewThongbao(Lap["Customer code is empty"] + " !");
+            return false;
+        }
+        
+        if (curCommand != null)
+        {
+            Fbrowse = !IsLangEn
+                ? (Ma_nt == "VND" ? curCommand.Vbrowse1 : curCommand.Vbrowse2)
+                : (Ma_nt == "VND" ? curCommand.Ebrowse1 : curCommand.Ebrowse2);
+        }
+
+        ShowLoadding = true;        
+        string maDvcs = myStateMN.GetDvcs().Ma_dvcs.Trim();
+        maDvcs = maDvcs == "ALL" ? "" : maDvcs;
+
+        DataSet ds = await myDb.LoadStoreProcedure(
+            "ARSO3VND",
+            "@tk;@ma_kh;@tu_ngay;@den_ngay;@ma_dvcs;@filter",
+            $"{Tk.Trim()};" +
+            $"{Ma_kh.Trim()};" +
+            $"{Ngay_ct1:yyyyMMdd};" +
+            $"{Ngay_ct2:yyyyMMdd};" +           
+            $"{maDvcs};1=1"
+        );
+
+        if (ds?.Tables?.Count > 0)
+        {
+            TblSumData = ds.Tables[0].Copy();
+        }
+
+        if (ds?.Tables?.Count > 1)
+        {
+            TblData = ds.Tables[1].Copy();
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+            TblData = new DataTable();
+
+            ShowLoadding = false;
+            return false;   
+        }
+
+        if (TblSumData != null && TblSumData.Rows.Count > 0)
+        {
+            SoDuNoDauKy = (decimal)TblSumData.Rows[0]["du_no_dau_ky"];
+            SoDuCoDauKy = (decimal)TblSumData.Rows[0]["du_co_dau_ky"];
+            SoDuNoDauKyNt = (decimal)TblSumData.Rows[0]["du_no_dau_ky_nt"];
+            SoDuCoDauKyNt = (decimal)TblSumData.Rows[0]["du_co_dau_ky_nt"];
+
+            TongPsNo = (decimal)TblSumData.Rows[0]["ps_no"];
+            TongPsCo = (decimal)TblSumData.Rows[0]["ps_co"];
+            TongPsNoNt = (decimal)TblSumData.Rows[0]["ps_no_nt"];
+            TongPsCoNt = (decimal)TblSumData.Rows[0]["ps_co_nt"];
+
+            SoDuNoCuoiKy = (decimal)TblSumData.Rows[0]["du_no_cuoi_ky"];
+            SoDuCoCuoiKy = (decimal)TblSumData.Rows[0]["du_co_cuoi_ky"];
+            SoDuNoCuoiKyNt = (decimal)TblSumData.Rows[0]["du_no_cuoi_ky_nt"];
+            SoDuCoCuoiKyNt = (decimal)TblSumData.Rows[0]["du_co_cuoi_ky_nt"];
+        }        
+        ShowLoadding = false;
+        return true;      
+    }
+
+    private async Task<(string ten_tk, string ten_tk2, string ten_kh, string ten_kh2)>
+    LayThongTinTheoDieuKien(string Tk, string Ma_kh)
+    {
+        string ten_tk = "", ten_tk2 = "", ten_kh = "", ten_kh2 = "";
+
+        if (!string.IsNullOrEmpty(Tk))
+        {
+            string sqlTk = $"SELECT ten_tk, ten_tk2 FROM dmtk WHERE tk = '{Tk}'";
+            var dsTk = await myDb.LoadDataset(sqlTk);
+            if (dsTk != null && dsTk.Tables[0].Rows.Count > 0)
+            {
+                ten_tk = dsTk.Tables[0].Rows[0]["ten_tk"]?.ToString();
+                ten_tk2 = dsTk.Tables[0].Rows[0]["ten_tk2"]?.ToString();
+            }
+        }
+
+        if (!string.IsNullOrEmpty(Ma_kh))
+        {
+            string sqlKh = $"SELECT ten_kh, ten_kh2 FROM dmkh WHERE ma_kh = '{Ma_kh}'";
+            var dsKh = await myDb.LoadDataset(sqlKh);
+            if (dsKh != null && dsKh.Tables[0].Rows.Count > 0)
+            {
+                ten_kh = dsKh.Tables[0].Rows[0]["ten_kh"]?.ToString();
+                ten_kh2 = dsKh.Tables[0].Rows[0]["ten_kh2"]?.ToString();
+            }
+        }
+
+        return (ten_tk, ten_tk2, ten_kh, ten_kh2);
+    }
+
+    public override async void Print()
+    {
+        var info = await LayThongTinTheoDieuKien(Tk, Ma_kh);
+
+        LsData = new List<ARSO3VNDModel>();
+        ARSO3VNDModel Data = new ARSO3VNDModel();
+
+        Data.Startdate = (DateTime)Ngay_ct1;
+        Data.Enddate = (DateTime)Ngay_ct2;
+        Data.Ngay_ms = (DateTime)Ngay_ct2;
+        Data.Ma_nt = myOption.GetOptionsValue("M_MA_NT0") ?? "";
+
+        Data.Tk = Tk;
+        Data.Ten_tk = info.ten_tk;
+        Data.Ten_tk2 = info.ten_tk2;
+
+        Data.Ma_kh = Ma_kh;
+        Data.Ten_kh = info.ten_kh;
+        Data.Ten_kh2 = info.ten_kh2;
+
+        Data.SoDuNoDauKy = SoDuNoDauKy;
+        Data.SoDuCoDauKy = SoDuCoDauKy;
+        Data.SoDuNoDauKyNt = SoDuNoDauKyNt;
+        Data.SoDuCoDauKyNt = SoDuCoDauKyNt;
+
+        Data.TongPsNo = TongPsNo;
+        Data.TongPsCo = TongPsCo;
+        Data.TongPsNoNt = TongPsNoNt;
+        Data.TongPsCoNt = TongPsCoNt;
+
+        Data.SoDuNoCuoiKy = SoDuNoCuoiKy;
+        Data.SoDuCoCuoiKy = SoDuCoCuoiKy;
+        Data.SoDuNoCuoiKyNt = SoDuNoCuoiKyNt;
+        Data.SoDuCoCuoiKyNt = SoDuCoCuoiKyNt;
+
+        Data.LsData = myDb.ConvertDataTable<ARSO3VND>(TblData);
+
+        LsData.Add(Data);
+
+        ShowReport(LsData, typeof(ARSO3VNDModel));
+    }
+
+    #endregion
+}

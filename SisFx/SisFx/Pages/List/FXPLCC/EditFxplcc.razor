@@ -1,0 +1,341 @@
+﻿@inherits FrmListBaseComponent
+@using SisFx.Pages.List.FXPLCC
+
+<div class="popup-body-container w-100" style="overflow:auto;max-width:800px;">
+    <FormList Title="@Title"
+              @bind-curActionTask="@curActionTask"
+              OnSave="@SaveDM"
+              OnEdit="@OnEdit"
+              OnCopy="@OnCopy"
+              OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmplcc"
+                          ItemSizeMode="@Itemsizemode"
+                          CssClass="frm-header sis-form"
+                          onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                <DxFormLayoutItem Caption="@Lap["Tool type code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="loai_cc_input"
+                                   @bind-Text="@CurDmplcc.Loai_cc"
+                                   maxlength="@tblLength["loai_cc"]"
+                                   InputCssClass="uppercase"
+                                   Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Tool type name"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmplcc.Ten_loai"
+                                   maxlength="@tblLength["ten_loai"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@(Lap["Name"] + " 2")" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmplcc.Ten_loai2"
+                                   maxlength="@tblLength["ten_loai2"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem ColSpanMd="12">
+                    <Template>
+                        <hr />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmplcc CurDmplcc;
+    private string menu_id = "wf.xd.03";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmplcc";
+        SqlTableKey = "loai_cc";
+        CheckSqlTableKey = "loai_cc";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "fxplcc" : ParentPage;
+        CurDmplcc = new Dmplcc();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();       
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            base.OnAfterRenderAsync(firstRender);
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    myStateMN.SetToolBar(new MyToolbar("save", false));
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditDM(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await CreateNewDM();
+                    break;
+                case ActionTask.Copy:
+                    await CreateCopyDM(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    break;
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('loai_cc_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmplcc = new Dmplcc();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmplcc = new Dmplcc();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        await LoadData(SqlTableKeyValue);
+
+        int checkResult = await CheckDeleteListIdAsync(SqlTableKeyValue);
+
+        // <= 0: đã có phát sinh → không cho sửa mã
+        if (checkResult <= 0)
+        {
+            AllowEditMa = false;
+        }
+
+        StateHasChanged();
+    }
+
+    async Task<int> CheckDeleteListIdAsync(string loaiCc)
+    {
+        int result = 0;
+        try
+        {
+            string sql = $"SET NOCOUNT ON; exec dbo.CheckDeleteListId 'dmplcc', '{loaiCc}'";
+            DataSet ds = await myDb.LoadDataset(sql);
+
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var val = ds.Tables[0].Rows[0][0];
+                if (val != DBNull.Value)
+                    result = Convert.ToInt32(val);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi kiểm tra sửa: " + ex.Message);
+        }
+        return result;
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(CurDmplcc.Loai_cc);
+    }
+
+    async Task SaveDM()
+    {
+        CurDmplcc.Loai_cc = CurDmplcc.Loai_cc.ToUpper().Trim().Replace(" ", "");
+        if (!CheckValid())
+            return;
+
+        SqlTableKeyValue = CurDmplcc.Loai_cc.ToUpper().Trim();
+        SqlTableKeyValueOld = (curActionTask == ActionTask.New ? "" : Ma_ma);
+        if (curCommand != null)
+        {
+            if (!CheckValidCode())
+                return;
+        }
+        else
+        {
+            if (curActionTask == ActionTask.Edit && SqlTableKeyValue != SqlTableKeyValueOld)
+            {
+                string chk = "Select " + SqlTableKey + " from " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+                DataSet dsChk = await myDb.LoadDataset(chk);
+                if (dsChk != null && dsChk.Tables[0].Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(String.Format(Lap["Mã [{0} ] đã tồn tại !"], SqlTableKeyValue));
+                    StateHasChanged();
+                    return;
+                }
+            }
+        }
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmplcc.Date = DateTime.Now.Date;
+            CurDmplcc.Date0 = DateTime.Now.Date;
+            CurDmplcc.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmplcc.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmplcc.User_id = curUser.User_id;
+                CurDmplcc.User_id0 = curUser.User_id;
+                CurDmplcc.User_name = curUser.User_name;
+                CurDmplcc.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmplcc.Loai_cc.Trim();
+            string check = "Select " + SqlTableKey + " from " + sqlTableName + " where " + SqlTableKey + " = '" + CheckSqlTableKeyValue + "'";
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Mã [{0} ] đã tồn tại !"], SqlTableKeyValue));
+                StateHasChanged();
+                return;
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmplcc>(CurDmplcc, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Thêm mới thành công : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmplcc.Date = DateTime.Now.Date;
+            CurDmplcc.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmplcc.User_id = curUser.User_id;
+                CurDmplcc.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmplcc>(CurDmplcc, sqlTableName, SqlTableKey, Ma_ma, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Cập nhật thành công : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmplcc.Loai_cc))
+        {
+            myStateMN.SetNewThongbao(Lap["Mã loại cc trống"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(CurDmplcc.Ten_loai))
+        {
+            myStateMN.SetNewThongbao(Lap["Tên loại cc trống"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = "Select * from " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmplcc> lsdetai = myDb.ConvertDataTable<Dmplcc>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+            {
+                CurDmplcc = lsdetai[0];
+            }
+        }
+    }
+
+    async Task CreateNewDM()
+    {
+        CurDmplcc = new Dmplcc();
+        CurDmplcc.Status = "1";
+        CurDmplcc.Loai_cc = GetNewSttDM();
+        if (string.IsNullOrEmpty(CurDmplcc.Loai_cc))
+            CurDmplcc.Loai_cc = await GetNextLoaiCc();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmplcc = new Dmplcc();
+        await LoadData(SqlTableKeyValue);
+        CurDmplcc.Status = "1";
+        CurDmplcc.Loai_cc = GetNewSttDM();
+        if (string.IsNullOrEmpty(CurDmplcc.Loai_cc))
+            CurDmplcc.Loai_cc = await GetNextLoaiCc();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+
+    async Task<string> GetNextLoaiCc()
+    {
+        try
+        {
+            string sql = @"SELECT TOP 1 loai_cc FROM dmplcc ORDER BY loai_cc DESC";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                string lastCode = ds.Tables[0].Rows[0][0].ToString().Trim();
+                string prefix = "";
+                string numPart = "";
+                for (int i = 0; i < lastCode.Length; i++)
+                {
+                    if (char.IsDigit(lastCode[i]))
+                    {
+                        prefix = lastCode.Substring(0, i);
+                        numPart = lastCode.Substring(i);
+                        break;
+                    }
+                }
+                if (string.IsNullOrEmpty(numPart))
+                    numPart = lastCode;
+                if (!string.IsNullOrEmpty(numPart) && int.TryParse(numPart, out int num))
+                {
+                    return prefix + (num + 1).ToString().PadLeft(numPart.Length, '0');
+                }
+            }
+        }
+        catch { }
+        return "";
+    }
+}

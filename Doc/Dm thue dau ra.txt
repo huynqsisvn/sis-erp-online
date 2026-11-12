@@ -1,0 +1,56 @@
+Thêm mới chức năng : Danh mục thuế suất thuế GTGT bán ra Danh mục thuế suất GTGT đầu vào
+- Menu_id = 'wp.dm.08', Page ='apthue', ma_dm = 'dmthue30'
+- Thư mục : \SisPo\SisPo\Pages\List\Apthue\
+- Các Component kế thừa như các danh mục khác. Xem 'Danh mục thuế suất GTGT đầu vào' trong thu mục : \SisPo\SisPo\Pages\List\Apthue\
+- Form thêm mới như ảnh
+- Tham khảo chức năng đã làm trên wpf ở project APTHUE, không build lại các project trên Wpf => quan trọng
+- Ko cần viết file md nhiều. chỉ cần 1 README.md ở dạng đơn giản
+- Bảng dữ liệu đã có, không cần tạo các query liên quan SQL server: 
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[dmthue](
+	[ma_thue] [dbo].[udt_ma_thue] NOT NULL,
+	[ten_thue] [dbo].[udt_ten_dien_giai] NULL,
+	[ten_thue2] [dbo].[udt_ten_dien_giai] NULL,
+	[thue_suat] [dbo].[udt_thue_suat] NULL,
+	[tk_thue_co] [dbo].[udt_tk] NULL,
+	[tk_thue_no] [dbo].[udt_tk] NULL,
+	[tokhaithue] [char](8) NULL,
+	[date] [dbo].[udt_ngay_ct] NULL,
+	[time] [dbo].[udt_time] NULL,
+	[user_id] [dbo].[udt_user_id] NULL,
+	[date0] [dbo].[udt_ngay_ct] NULL,
+	[time0] [dbo].[udt_time] NULL,
+	[user_id0] [dbo].[udt_user_id] NULL,
+	[status] [char](1) NULL,
+	[ma_td1] [dbo].[udt_ma_td] NULL,
+	[ma_td2] [dbo].[udt_ma_td] NULL,
+	[ma_td3] [dbo].[udt_ma_td] NULL,
+	[ngay_td1] [dbo].[udt_ngay_ct] NULL,
+	[ngay_td2] [dbo].[udt_ngay_ct] NULL,
+	[ngay_td3] [dbo].[udt_ngay_ct] NULL,
+	[sl_td1] [dbo].[udt_so_luong] NULL,
+	[sl_td2] [dbo].[udt_so_luong] NULL,
+	[sl_td3] [dbo].[udt_so_luong] NULL,
+	[gc_td1] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_td2] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_td3] [dbo].[udt_ghi_chu_td] NULL,
+	[stt_in] [dbo].[udt_sl_ct] NULL,
+	[ma_nh] [dbo].[udt_ma_nh] NULL,
+	[post_gt] [int] NULL,
+	[non_tax] [int] NULL,
+	[user_name] [dbo].[udt_user_name] NULL,
+	[user_name0] [dbo].[udt_user_name] NULL,
+	[search] [dbo].[udt_search] NULL,
+ CONSTRAINT [PK_dmthue] PRIMARY KEY CLUSTERED 
+(
+	[ma_thue] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+

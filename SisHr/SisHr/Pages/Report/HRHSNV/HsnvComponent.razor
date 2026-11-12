@@ -1,0 +1,259 @@
+﻿@page "/hrhsnv"
+@page "/hrhsnv/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,hrhsnv")]
+@using SisHr.Pages.Report.HRHSNV
+
+
+<div class="row g-0 bg-light" @onkeydown="OnoBrowseKeyDown" tabindex="0"> 
+    <div class="col-12 d-flex flex-column overflow-hidden" style="height:100%;">
+
+        @* --- CẢI TIẾN: Dashboard thẻ thông tin và biểu đồ --- *@
+        @if (ShowDashboard)
+        {
+            <div class="dashboard-tong-quan p-3 border-bottom bg-white shadow-sm">
+                <div class="row g-3 flex-wrap align-items-center">
+
+                    @* ========================================== *@
+                    @* KHỐI BÊN TRÁI: 6 THẺ SỐ LIỆU TỔNG QUAN *@
+                    @* ========================================== *@
+                    <div class="col-12 col-xl-4">
+                        @* Ép buộc lưới: 2 thẻ/dòng (màn nhỏ) và 3 thẻ/dòng (màn to) *@
+                        <div class="row row-cols-2 row-cols-xl-3 g-2">
+
+                            @* 1. Thẻ Tổng nhân viên *@
+                            <div class="col">
+                                @* Đã đổi shadow-sm thành shadow *@
+                                <div class="card border-0 shadow rounded-4 bg-primary text-white h-100">
+                                    <div class="card-body p-3 d-flex align-items-center gap-2">
+                                        <div class="d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; flex-shrink: 0;">
+                                            <i class="fa fa-users fs-4"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <div class="small fw-medium opacity-75 mb-1 text-truncate" title="Tổng nhân sự">Tổng nhân sự</div>
+                                            <div class="fs-5 fw-bold">@TongNhanVien</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* 2. Thẻ Nhân sự mới *@
+                            <div class="col">
+                                <div class="card border-0 shadow rounded-4 h-100">
+                                    <div class="card-body p-3 d-flex align-items-center gap-2">
+                                        <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; flex-shrink: 0;">
+                                            <i class="fa fa-user-plus fs-6"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <div class="small text-muted fw-semibold mb-1 text-truncate" title="Mới (Tháng)">Mới (Tháng)</div>
+                                            <div class="fs-5 fw-bold text-dark">@SoNhanVienMoi</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* 3. Thẻ Chưa có sổ BHXH *@
+                            <div class="col">
+                                <div class="card border-0 shadow rounded-4 h-100">
+                                    <div class="card-body p-3 d-flex align-items-center gap-2">
+                                        <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; flex-shrink: 0;">
+                                            <i class="fa fa-id-card fs-6"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <div class="small text-danger fw-semibold mb-1 text-truncate" title="Thiếu BHXH">Thiếu BHXH</div>
+                                            <div class="fs-5 fw-bold text-danger">@SoChuaCoBhxh</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* 4. Thẻ Thiếu Mã số thuế (MST) *@
+                            <div class="col">
+                                <div class="card border-0 shadow rounded-4 h-100">
+                                    <div class="card-body p-3 d-flex align-items-center gap-2">
+                                        <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; flex-shrink: 0;">
+                                            <i class="fa fa-file-text fs-6"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <div class="small text-warning fw-bold mb-1 text-truncate" title="Thiếu MST">Thiếu MST</div>
+                                            <div class="fs-5 fw-bold text-dark">@SoChuaCoMst</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* 5. Thẻ Sinh nhật tháng này *@
+                            <div class="col">
+                                <div class="card border-0 shadow rounded-4 h-100">
+                                    <div class="card-body p-3 d-flex align-items-center gap-2">
+                                        <div class="text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: #e83e8c; flex-shrink: 0;">
+                                            <i class="fa fa-birthday-cake fs-6"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <div class="small text-muted fw-semibold mb-1 text-truncate" title="Sinh nhật">Sinh nhật</div>
+                                            <div class="fs-5 fw-bold text-dark">@SoSinhNhatThang</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* 6. Thẻ Đảng viên *@
+                            <div class="col">
+                                <div class="card border-0 shadow rounded-4 h-100">
+                                    <div class="card-body p-3 d-flex align-items-center gap-2">
+                                        <div class="text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: #dc3545; flex-shrink: 0;">
+                                            <i class="fa fa-star fs-6"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <div class="small text-muted fw-semibold mb-1 text-truncate" title="Đảng viên">Đảng viên</div>
+                                            <div class="fs-5 fw-bold text-dark">@SoDangVien</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    @* ========================================== *@
+                    @* KHỐI BÊN PHẢI: HAI BIỂU ĐỒ TRÒN *@
+                    @* ========================================== *@
+                    <div class="col-12 col-xl-8 d-flex align-items-stretch">
+                        <div class="card border-0 shadow rounded-4 w-100 p-2 d-flex flex-row align-items-center justify-content-around">
+
+                            @* 1. Biểu đồ Cơ cấu Hợp đồng *@
+                            <div style="width: 45%;" class="d-flex flex-column">
+                                <div class="small fw-bold text-muted mb-0 text-center">CƠ CẤU HỢP ĐỒNG</div>
+                                <div class="text-start">
+                                    @* Tăng Height lên 200px và thêm CssClass *@
+                                    <DxPieChart Data="@ContractBreakdownData" Height="200px" InnerRadius="0.5" CssClass="custom-pie-chart">
+                                        <DxPieChartSeries T="ChartDataPoint"
+                                                          TArgument="string"
+                                                          TValue="int"
+                                                          ArgumentField="@(s => s.Category)"
+                                                          ValueField="@(s => s.Value)">
+                                            <DxChartSeriesLabel Visible="true" Position="RelativePosition.Outside">
+                                                <DxChartSeriesLabelConnector Visible="true" Width="1" />
+                                            </DxChartSeriesLabel>
+                                        </DxPieChartSeries>
+
+                                        <DxChartLegend Visible="true"
+                                                       Position="RelativePosition.Outside"
+                                                       HorizontalAlignment="HorizontalAlignment.Right"
+                                                       Orientation="Orientation.Vertical" />
+                                    </DxPieChart>
+                                </div>
+                            </div>
+
+                            @* 2. Biểu đồ Giới tính *@
+                            <div style="width: 45%;" class="d-flex flex-column">
+                                <div class="small fw-bold text-muted mb-0 text-center">GIỚI TÍNH</div>
+                                <div class="text-start">
+                                    <DxPieChart Data="@GenderBreakdownData" Height="200px" InnerRadius="0.5" CssClass="custom-pie-chart">
+                                        <DxPieChartSeries T="ChartDataPoint" TArgument="string" TValue="int" ArgumentField="@(s => s.Category)" ValueField="@(s => s.Value)">
+                                            <DxChartSeriesLabel Visible="true" Position="RelativePosition.Outside">
+                                                <DxChartSeriesLabelConnector Visible="true" Width="1" />
+                                            </DxChartSeriesLabel>
+                                        </DxPieChartSeries>
+
+                                        <DxChartLegend Visible="true"
+                                                       Position="RelativePosition.Outside"
+                                                       HorizontalAlignment="HorizontalAlignment.Right"
+                                                       Orientation="Orientation.Vertical" />
+                                    </DxPieChart>
+                                </div>
+                            </div>
+
+                            @* Nút Ẩn Dashboard *@
+                            <div class="ms-1 ps-3 border-start d-flex align-items-center justify-content-center">
+                                <DxButton RenderStyle="ButtonRenderStyle.Light"
+                                          CssClass="rounded-pill shadow px-3 fw-bold text-muted"
+                                          Text="Thu gọn"
+                                          IconCssClass="fa fa-angle-up fs-5 me-1"
+                                          Click="@ToggleDashboard" />
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="px-3 py-2 border-bottom bg-white shadow-sm d-flex justify-content-end">
+                <DxButton RenderStyle="ButtonRenderStyle.Light"
+                          CssClass="rounded-pill px-3"
+                          Text="@Lap["Show dashboard"]"
+                          IconCssClass="fa fa-eye"
+                          Click="@ToggleDashboard" />
+            </div>
+        }
+
+        @* --- Lưới dữ liệu --- *@
+        <div class="flex-fill d-flex flex-column mt-2 border-top" style="min-height: 0; overflow: hidden;">
+            <FrmBrowseComponent @ref="oBrowse"
+                                TblData="@TblData"
+                                Fbrowse="@fbrowse"
+                                Page_size="@Page_size"
+                                SelectItem="CurItem"
+                                OnRowDbClick="@OnRDBClick"
+                                IsLangEn="@IsLangEn"
+                                CssClass="flex-fill h-100">
+            </FrmBrowseComponent>
+        </div>
+    </div>
+</div>
+@* ===== POPUP XEM / SỬA / THÊM NHÂN VIÊN (TO) ===== *@
+@if (IsShowFrm && FrmType != null && !IsShowQuickUpdate)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="80vw"
+              Height="90vh"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false"
+              HeaderText="@Lap["Employee profile"]">
+        <BodyTemplate>
+            <div style="height: 100%; overflow: auto;">
+                <DynamicComponent Type="@FrmType" Parameters="@Par" />
+            </div>
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@* --- CSS TÙY CHỈNH --- *@
+<style>
+    /* Nền trắng và bóng đổ cho giao diện hiện đại */
+    .dashboard-tong-quan {
+        border-radius: 20px 20px 0 0;
+    }
+
+        /* Làm mềm các card */
+        .dashboard-tong-quan .card {
+            border-radius: 12px;
+            transition: transform 0.2s ease-in-out;
+        }
+
+            .dashboard-tong-quan .card:hover {
+                transform: translateY(-2px);
+            }
+
+    /* Ghi đè (Override) CSS Grid để nhìn thanh thoát hơn (tùy chọn) */
+    .custom-grid-wrapper table th {
+        background-color: #f8f9fa !important;
+        border-bottom: 2px solid #e9ecef !important;
+    }
+
+    /* Giúp bóng đổ đè lên grid */
+    .z-index-1 {
+        z-index: 1;
+        position: relative;
+    }
+
+    .custom-pie-chart text {
+        font-size: 11px !important;
+        font-weight: 500 !important;
+    }
+</style>

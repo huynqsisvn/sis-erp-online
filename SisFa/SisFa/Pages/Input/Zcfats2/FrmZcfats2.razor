@@ -1,0 +1,1894 @@
+﻿@inherits FrmListBaseComponent
+@using SisFa.Pages.Input.Zcfats2
+@using DevExpress.Blazor
+@using System.Data
+@using System.Linq
+@inject IJSRuntime JSRuntime
+<FormList Title="@Title"
+          @bind-curActionTask="@curActionTask"
+          OnCancel="@CloseForm">
+
+    <div class="row m-1 me-2" style="min-height: 290px; align-content: flex-start;">
+        <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header" onkeydown="ModifyEnterKeyPressAsTab(event);">
+            <DxFormLayoutTabPages ColSpanMd="12" CssClass="css-detail" @bind-ActiveTabIndex="@ActiveTabIndex">
+
+                <DxFormLayoutTabPage Caption="Thông tin chính" CaptionCssClass="fw-bold">
+                    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" CssClass="mt-3">
+                        <DxFormLayoutItem Caption="Mã tài sản (số thẻ):" ColSpanMd="6" CaptionCssClass="fw-bold">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmts.So_the_ts" CharacterCasing="CharacterCasing.Upper" Enabled="false" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã phụ:" ColSpanMd="6">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmts.Ma_tra_cuu" Enabled="false" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        @* --- DÒNG 2: TÊN TÀI SẢN (Trải dài full 100%) --- *@
+                        <DxFormLayoutItem Caption="Tên tài sản:" ColSpanMd="12" CaptionCssClass="fw-bold">
+                            <Template>
+                                <DxTextBox @bind-Text="@CurDmts.Ten_ts" Enabled="false" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        @* --- CHIA 3 CỘT ĐỂ RÚT NGẮN CHIỀU CAO FORM --- *@
+                        <DxFormLayoutItem Caption="Nhóm tài sản:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmnhomts" @bind-Value="@CurDmts.Nh_ts" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Loại tài sản:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmplts" @bind-Value="@CurDmts.Loai_ts" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Lý do tăng:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmtgts" @bind-Value="@CurDmts.Ma_tg_ts" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Ngày tăng:" ColSpanMd="4">
+                            <Template><DxDateEdit @bind-Date="@CurDmts.Ngay_mua" Format="dd/MM/yyyy" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã bpsd:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmbpts" @bind-Value="@CurDmts.Ma_bpts" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Kiểu k.hao:" ColSpanMd="4">
+                            <Template><DxComboBox Data="@ListKieuKH" Value="@CurDmts.Kieu_kh" ValueFieldName="Value" TextFieldName="Text" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Số kỳ k.hao:" ColSpanMd="4" Visible="@(CurDmts.Kieu_kh == "1")">
+                            <Template><DxSpinEdit Value="@CurDmts.So_ky_kh" DisplayFormat="N0" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Tổng sản lượng:" ColSpanMd="4" Visible="@(CurDmts.Kieu_kh == "2")">
+                            <Template><DxSpinEdit @bind-Value="@CurDmts.Tong_sl" DisplayFormat="N2" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ngày bắt đầu tính KH:" ColSpanMd="4">
+                            <Template><DxDateEdit Date="@CurDmts.Ngay_kh0" Format="dd/MM/yyyy" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="GTCL tính KH <= :" ColSpanMd="4">
+                            <Template><DxSpinEdit @bind-Value="@CurDmts.Tien_cl" DisplayFormat="N0" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ngày kết thúc k.hao:" ColSpanMd="4">
+                            <Template><DxDateEdit @bind-Date="@CurDmts.Ngay_kt_kh" Format="dd/MM/yyyy" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Tk khấu hao:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmtk" @bind-Value="@CurDmts.Tk_kh" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Tk chi phí:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmtk" @bind-Value="@CurDmts.Tk_cp" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã phí:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmphi" @bind-Value="@CurDmts.Ma_phi" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã bpht:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmbpht" @bind-Value="@CurDmts.Ma_bpht" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Mã phân xưởng(cđ):" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmpx" @bind-Value="@CurDmts.Ma_px" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã dự án:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmvv" @bind-Value="@CurDmts.Ma_vv" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Phân nhóm 1:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmnhts1" @bind-Value="@CurDmts.Nh_ts1" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Phân nhóm 2:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmnhts2" @bind-Value="@CurDmts.Nh_ts2" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Phân nhóm 3:" ColSpanMd="4">
+                            <Template><AutocompleteComponent Ma_dm="dmnhts3" @bind-Value="@CurDmts.Nh_ts3" IsEnable="false" IsLangEn="@IsLangEn" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Mã ĐVCS:" ColSpanMd="4">
+                            <Template><DxTextBox @bind-Text="@CurDmts.Ma_dvcs" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+                </DxFormLayoutTabPage>
+                <DxFormLayoutTabPage Caption="Thông tin phụ" CaptionCssClass="fw-bold">
+                    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" CssClass="mt-3">
+                        <DxFormLayoutItem Caption="Biên bản giao nhận số:" ColSpanMd="6">
+                            <Template><DxTextBox @bind-Text="@CurDmts.So_bbbg" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ngày:" ColSpanMd="6">
+                            <Template><DxDateEdit Date="@CurDmts.Ngay_bbbg" Format="dd/MM/yyyy" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Số lượng:" ColSpanMd="6">
+                            <Template><DxSpinEdit Value="@CurDmts.So_luong" DisplayFormat="N2" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Đvt:" ColSpanMd="6">
+                            <Template><DxTextBox @bind-Text="@CurDmts.Dvt" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Số hiệu tài sản:" ColSpanMd="6">
+                            <Template><DxTextBox @bind-Text="@CurDmts.So_hieu_ts" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Nước sản xuất:" ColSpanMd="6">
+                            <Template><DxTextBox @bind-Text="@CurDmts.Nuoc_sx" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Năm sản xuất:" ColSpanMd="6">
+                            <Template><DxSpinEdit Value="@CurDmts.Nam_sx" DisplayFormat="####" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Thông số kỹ thuật:" ColSpanMd="6">
+                            <Template><DxTextBox @bind-Text="@CurDmts.Ts_kt" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Ngày đưa vào SD:" ColSpanMd="6">
+                            <Template><DxDateEdit Date="@CurDmts.Ngay_dvsd" Format="dd/MM/yyyy" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ngày đình chỉ SD:" ColSpanMd="6">
+                            <Template><DxDateEdit Date="@CurDmts.Ngay_dc" Format="dd/MM/yyyy" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Lý do đình chỉ:" ColSpanMd="6">
+                            <Template><DxTextBox @bind-Text="@CurDmts.Ly_do_dc" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Tên 2:" ColSpanMd="6">
+                            <Template><DxTextBox @bind-Text="@CurDmts.Ten_ts2" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Ghi chú" ColSpanMd="12">
+                            <Template><DxTextBox @bind-Text="@CurDmts.Ghi_chu" Enabled="false" /></Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+                </DxFormLayoutTabPage>
+                <DxFormLayoutTabPage Caption="Phụ tùng kèm theo" CaptionCssClass="fw-bold">
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <Template>
+                            <div id="grid-wrapper-pt" class="mt-2 mb-3">
+                                <DxGrid Data="@LstPhuTung"
+                                        ShowGroupPanel="false"
+                                        ShowFilterRow="false"
+                                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                        FooterDisplayMode="GridFooterDisplayMode.Always">
+                                    <Columns>
+                                        <DxGridDataColumn FieldName="Stt" Caption="Stt" Width="50px" />
+                                        <DxGridDataColumn FieldName="Ten_ptkt" Caption="Tên phụ tùng" MinWidth="200" />
+                                        <DxGridDataColumn FieldName="Dvt" Caption="ĐVT" Width="100px" />
+                                        <DxGridDataColumn FieldName="So_luong" Caption="Số lượng" Width="120px" DisplayFormat="N0" />
+                                        <DxGridDataColumn FieldName="Gia_tri" Caption="Giá trị" Width="150px" DisplayFormat="N0" />
+                                    </Columns>
+                                </DxGrid>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayoutTabPage>
+                <DxFormLayoutTabPage Caption="Điều chuyển ts" CaptionCssClass="fw-bold">
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <Template>
+                            <div id="grid-wrapper-pt" class="mt-2 mb-3">
+                                <DxGrid @ref="GridDieuChuyen" Data="@LstDieuChuyen" SizeMode="@Itemsizemode"
+                                        CssClass="w-100 grid-height-dynamic hide-default-footer"
+                                        EditMode="GridEditMode.PopupEditForm"
+                                        PopupEditFormHeaderText="Điều chuyển tài sản"
+                                        PopupEditFormCssClass="custom-popup-dc"
+                                        ShowGroupPanel="false" ValidationEnabled="false"
+                                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                        DataItemDeleting="OnGridDeletingDC"
+                                        HighlightRowOnHover="true">
+
+                                    <Columns>
+                                        @* CHÚ Ý: Bắt buộc phải có NewButtonVisible="true" để hiện nút + *@
+                                        <DxGridCommandColumn Width="100px" Caption="" Visible="true" EditButtonVisible="false" NewButtonVisible="false" DeleteButtonVisible="false">
+                                            <CellDisplayTemplate Context="gridCtx">
+                                                @{
+                                                    var item = (CtBpts)gridCtx.DataItem;
+                                                }
+                                                <div class="d-flex justify-content-around">
+                                                    <a class="text-success fw-bold cursor-pointer" @onclick="@(() => OpenViewDC(item))" title="Xem"><i class="fa fa-eye"></i></a>                                                    @if (item != null && item.Ts0 != "1")
+                                                    {
+                                                        <a class="text-primary fw-bold cursor-pointer" @onclick="@(() => OpenEditDC(item))" title="Sửa"><i class="fa fa-edit"></i></a>
+                                                        <a class="text-danger fw-bold cursor-pointer" @onclick="@(() => GridDieuChuyen.ShowRowDeleteConfirmation(gridCtx.VisibleIndex))" title="Xóa dòng"><i class="fa fa-trash"></i></a>
+                                                    }
+                                                </div>
+                                            </CellDisplayTemplate>
+                                        </DxGridCommandColumn>
+
+                                        <DxGridDataColumn FieldName="Stt" Caption="Stt" Width="50px" ReadOnly="true" />
+                                        <DxGridDataColumn FieldName="Ma_bpts" Caption="Mã bpsd" Width="100px" />
+                                        <DxGridDataColumn FieldName="Ngay_kh" Caption="Ngày tính k.hao" Width="120px" DisplayFormat="dd/MM/yyyy" />
+                                        <DxGridDataColumn FieldName="Tk_cp" Caption="Tk chi phí" Width="80px" />
+                                        <DxGridDataColumn FieldName="Ma_bpht" Caption="Mã bpht" Width="80px" />
+                                        <DxGridDataColumn FieldName="Ma_vv" Caption="Mã dự án" Width="90px" />
+                                        <DxGridDataColumn FieldName="Ghi_chu" Caption="Ghi chú" Width="200px" />
+                                        <DxGridDataColumn FieldName="Date0" Caption="Ngày tạo" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                        <DxGridDataColumn FieldName="Time0" Caption="Giờ tạo" Width="80px" />
+                                        <DxGridDataColumn FieldName="User_name0" Caption="Người tạo" Width="90px" />
+                                        <DxGridDataColumn FieldName="Date" Caption="Ngày sửa" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                        <DxGridDataColumn FieldName="Time" Caption="Giờ sửa" Width="80px" />
+                                        <DxGridDataColumn FieldName="User_name" Caption="Người sửa" Width="90px" />
+                                    </Columns>
+                                </DxGrid>
+                                <div class="custom-add-row-bar" @onclick="AddNewDieuChuyen">
+                                    <i class="fa fa-plus"></i>
+                                    <span class="ms-2" style="color:black; font-size: 11px;">Click vào đây để thêm dòng mới</span>
+                                </div>
+                                <DxPopup @bind-Visible="@isShowPopupDC"
+                                         HeaderText="Điều chuyển tài sản"
+                                         Width="600px"
+                                         ShowFooter="true"
+                                         CloseOnOutsideClick="false"
+                                         Shown="OnPopupShownDC">
+                                    <BodyContentTemplate Context="popupContext">
+                                        @* Đổi tên context của Popup *@
+                                        @{
+                                            bool isLocked = (editItemDC.Ts0 == "1") || isViewingDC;
+                                        }
+                                        <DxFormLayout CssClass="w-100 p-2">
+                                            <DxFormLayoutItem Caption="Mã bpsd:" ColSpanMd="12">
+                                                <Template Context="ctx">
+                                                    @* Đặt tên ctx để không trùng *@
+                                                    <DxComboBox @ref="cbMaBpts" Data="@LsBpts" @bind-Value="@editItemDC.Ma_bpts" ValueFieldName="ma_item" TextFieldName="ma_item" EditFormat="{0} - {1}" FilteringMode="DataGridFilteringMode.Contains" Enabled="@(!isLocked)">
+                                                        <Columns>
+                                                            <DxListEditorColumn FieldName="ma_item" Caption="Mã" Width="60px" />
+                                                            <DxListEditorColumn FieldName="ten_item" Caption="Tên bộ phận" />
+                                                        </Columns>
+                                                    </DxComboBox>
+                                                </Template>
+                                            </DxFormLayoutItem>
+
+                                            <DxFormLayoutItem Caption="Ngày tính k.hao:" ColSpanMd="12">
+                                                <Template Context="ctx">
+                                                    <DxDateEdit @bind-Date="@editItemDC.Ngay_kh" Format="dd-MM-yyyy" Enabled="@(!isLocked)" />
+                                                </Template>
+                                            </DxFormLayoutItem>
+
+                                            <DxFormLayoutItem Caption="Tk chi phí:" ColSpanMd="12">
+                                                <Template Context="ctx">
+                                                    <DxComboBox Data="@LsTk" @bind-Value="@editItemDC.Tk_cp" ValueFieldName="ma_item" TextFieldName="ma_item" EditFormat="{0} - {1}" FilteringMode="DataGridFilteringMode.Contains" Enabled="@(!isLocked)">
+                                                        <Columns>
+                                                            <DxListEditorColumn FieldName="ma_item" Caption="TK" Width="60px" />
+                                                            <DxListEditorColumn FieldName="ten_item" Caption="Tên tài khoản" />
+                                                        </Columns>
+                                                    </DxComboBox>
+                                                </Template>
+                                            </DxFormLayoutItem>
+
+                                            <DxFormLayoutItem Caption="Mã bpht:" ColSpanMd="12">
+                                                <Template Context="ctx">
+                                                    <DxComboBox Data="@LsBpht" @bind-Value="@editItemDC.Ma_bpht" ValueFieldName="ma_item" TextFieldName="ma_item" EditFormat="{0} - {1}" FilteringMode="DataGridFilteringMode.Contains" Enabled="@(!isLocked)">
+                                                        <Columns>
+                                                            <DxListEditorColumn FieldName="ma_item" Caption="Mã" Width="60px" />
+                                                            <DxListEditorColumn FieldName="ten_item" Caption="Tên bộ phận HT" />
+                                                        </Columns>
+                                                    </DxComboBox>
+                                                </Template>
+                                            </DxFormLayoutItem>
+
+                                            <DxFormLayoutItem Caption="Mã dự án:" ColSpanMd="12">
+                                                <Template Context="ctx">
+                                                    <DxComboBox Data="@LsVv" @bind-Value="@editItemDC.Ma_vv" ValueFieldName="ma_item" TextFieldName="ma_item" EditFormat="{0} - {1}" FilteringMode="DataGridFilteringMode.Contains" Enabled="@(!isLocked)">
+                                                        <Columns>
+                                                            <DxListEditorColumn FieldName="ma_item" Caption="Mã" Width="60px" />
+                                                            <DxListEditorColumn FieldName="ten_item" Caption="Tên dự án" />
+                                                        </Columns>
+                                                    </DxComboBox>
+                                                </Template>
+                                            </DxFormLayoutItem>
+
+                                            <DxFormLayoutItem Caption="Ghi chú:" ColSpanMd="12">
+                                                <Template Context="ctx">
+                                                    <DxTextBox @bind-Text="@editItemDC.Ghi_chu" Enabled="@(!isLocked)" />
+                                                </Template>
+                                            </DxFormLayoutItem>
+                                        </DxFormLayout>
+                                    </BodyContentTemplate>
+                                    <FooterContentTemplate Context="footerContext">
+                                        <div class="w-100 d-flex justify-content-end">
+                                            @if (!isViewingDC)
+                                            {
+                                                <DxButton RenderStyle="ButtonRenderStyle.Primary" Text="Nhận" Click="SaveDCCustom" CssClass="me-2 fw-bold" />
+                                            }
+                                            <DxButton RenderStyle="ButtonRenderStyle.Secondary" Text='@(isViewingDC ? "Đóng" : "Hủy bỏ")' Click="@(() => isShowPopupDC = false)" />
+                                        </div>
+                                    </FooterContentTemplate>
+                                </DxPopup>
+
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayoutTabPage>
+                <DxFormLayoutTabPage Caption="Tạm dừng khấu hao" CaptionCssClass="fw-bold">
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <Template Context="tabCtx">
+                            <div id="grid-wrapper-td" class="mt-2 mb-3">
+                                @* 1. LƯỚI GRID TẠM DỪNG *@
+                                <DxGrid @ref="GridTamDung" Data="@LstTamDung" SizeMode="@Itemsizemode"
+                                        CssClass="w-100 grid-height-dynamic hide-default-footer"
+                                        EditMode="GridEditMode.PopupEditForm"
+                                        PopupEditFormHeaderText="Tạm dừng khấu hao"
+                                        PopupEditFormCssClass="custom-popup-td"
+                                        ShowGroupPanel="false" ValidationEnabled="false"
+                                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                        DataItemDeleting="OnGridDeletingTD"
+                                        HighlightRowOnHover="true">
+
+                                    <Columns>
+                                        <DxGridCommandColumn Width="100px" Caption="" Visible="true" EditButtonVisible="false" NewButtonVisible="false" DeleteButtonVisible="false">
+                                            <CellDisplayTemplate Context="gridCtx">
+                                                @{
+                                                    var item = (CtTsThoiKc)gridCtx.DataItem;
+                                                }
+                                                <div class="d-flex justify-content-around">
+                                                    <a class="text-success fw-bold cursor-pointer" @onclick="@(() => OpenViewTD(item))" title="Xem"><i class="fa fa-eye"></i></a>
+                                                    <a class="text-primary fw-bold cursor-pointer" @onclick="@(() => OpenEditTD(item))" title="Sửa"><i class="fa fa-edit"></i></a>
+                                                    <a class="text-danger fw-bold cursor-pointer" @onclick="@(() => GridTamDung.ShowRowDeleteConfirmation(gridCtx.VisibleIndex))" title="Xóa dòng"><i class="fa fa-trash"></i></a>
+                                                </div>
+                                            </CellDisplayTemplate>
+                                        </DxGridCommandColumn>
+
+                                        <DxGridDataColumn FieldName="Stt" Caption="Stt" Width="50px" ReadOnly="true" />
+                                        <DxGridDataColumn FieldName="Ngay_thoi_kh1" Caption="Từ ngày" Width="120px" DisplayFormat="dd/MM/yyyy" />
+                                        <DxGridDataColumn FieldName="Ngay_thoi_kh2" Caption="Đến hết ngày" Width="120px" DisplayFormat="dd/MM/yyyy" />
+                                        <DxGridDataColumn FieldName="Ly_do_thoi" Caption="Ghi chú" MinWidth="200" />
+                                        <DxGridDataColumn FieldName="Date0" Caption="Ngày tạo" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                        <DxGridDataColumn FieldName="Time0" Caption="Giờ tạo" Width="80px" />
+                                        <DxGridDataColumn FieldName="User_name0" Caption="Người tạo" Width="90px" />
+                                        <DxGridDataColumn FieldName="Date" Caption="Ngày sửa" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                        <DxGridDataColumn FieldName="Time" Caption="Giờ sửa" Width="80px" />
+                                        <DxGridDataColumn FieldName="User_name" Caption="Người sửa" Width="90px" />
+                                    </Columns>
+                                </DxGrid>
+
+                                @* 2. NÚT THÊM DÒNG TỰ XÂY *@
+                                <div class="custom-add-row-bar" @onclick="AddNewTamDung">
+                                    <i class="fa fa-plus"></i>
+                                    <span class="ms-2" style="color:black; font-size: 11px;">Click vào đây để thêm dòng mới</span>
+                                </div>
+
+                                @* 3. POPUP FORM NHẬP LIỆU *@
+                                <DxPopup @bind-Visible="@isShowPopupTD"
+                                         HeaderText="Tạm dừng khấu hao"
+                                         Width="500px"
+                                         ShowFooter="true"
+                                         CloseOnOutsideClick="false"
+                                         Shown="OnPopupShownTD">
+                                    <BodyContentTemplate Context="popupContext">
+                                        @{
+                                            bool isLocked = isViewingTD;
+                                        }
+                                        <DxFormLayout CssClass="w-100 p-2">
+                                            <DxFormLayoutItem Caption="Từ ngày:" ColSpanMd="12">
+                                                <Template Context="ctx">
+                                                    <DxDateEdit @ref="deNgay1" @bind-Date="@editItemTD.Ngay_thoi_kh1" Format="dd/MM/yyyy" Enabled="@(!isLocked)" />
+                                                </Template>
+                                            </DxFormLayoutItem>
+
+                                            <DxFormLayoutItem Caption="Đến hết ngày:" ColSpanMd="12">
+                                                <Template Context="ctx">
+                                                    <DxDateEdit @bind-Date="@editItemTD.Ngay_thoi_kh2" Format="dd/MM/yyyy" Enabled="@(!isLocked)" />
+                                                </Template>
+                                            </DxFormLayoutItem>
+
+                                            <DxFormLayoutItem Caption="Ghi chú:" ColSpanMd="12">
+                                                <Template Context="ctx">
+                                                    <DxTextBox @bind-Text="@editItemTD.Ly_do_thoi" Enabled="@(!isLocked)" />
+                                                </Template>
+                                            </DxFormLayoutItem>
+                                        </DxFormLayout>
+                                    </BodyContentTemplate>
+                                    <FooterContentTemplate Context="footerContext">
+                                        <div class="w-100 d-flex justify-content-end">
+                                            @if (!isViewingTD)
+                                            {
+                                                <DxButton RenderStyle="ButtonRenderStyle.Primary" Text="Nhận" Click="SaveTDCustom" CssClass="me-2 fw-bold" />
+                                            }
+                                            <DxButton RenderStyle="ButtonRenderStyle.Secondary" Text='@(isViewingTD ? "Đóng" : "Hủy bỏ")' Click="@(() => isShowPopupTD = false)" />
+                                        </div>
+                                    </FooterContentTemplate>
+                                </DxPopup>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayoutTabPage>
+                <DxFormLayoutTabPage Caption="Giảm tài sản" CaptionCssClass="fw-bold">
+                    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" CssClass="mt-3">
+                        @* CÁC TRƯỜNG HIỂN THỊ DỮ LIỆU (READ-ONLY) *@
+                        <DxFormLayoutItem Caption="Mã giảm:" ColSpanMd="4"><Template><DxTextBox Text="@CurDmts.Ma_giam_ts" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ngày giảm:" ColSpanMd="4"><Template><DxDateEdit Date="@CurDmts.Ngay_giam" Format="dd/MM/yyyy" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ngày thôi k.hao:" ColSpanMd="4"><Template><DxDateEdit Date="@CurDmts.Ngay_kh1" Format="dd/MM/yyyy" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Số chứng từ:" ColSpanMd="4"><Template><DxTextBox Text="@CurDmts.So_ct" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ghi chú:" ColSpanMd="8"><Template><DxTextBox Text="@CurDmts.Ly_do_giam" Enabled="false" /></Template></DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="12"><Template><hr class="m-1" /></Template></DxFormLayoutItem>
+
+                        @* PHẦN AUDIT (NGÀY TẠO, NGƯỜI TẠO...) *@
+                        <DxFormLayoutItem Caption="Ngày tạo:" ColSpanMd="3"><Template><DxDateEdit Date="@CurDmts.Date_giam0" Format="dd/MM/yyyy" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Giờ tạo:" ColSpanMd="3"><Template><DxTextBox Text="@CurDmts.Time_giam0" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Người tạo:" ColSpanMd="6"><Template><DxTextBox Text="@CurDmts.User_name_giam0" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ngày sửa:" ColSpanMd="3"><Template><DxDateEdit Date="@CurDmts.Date_giam" Format="dd/MM/yyyy" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Giờ sửa:" ColSpanMd="3"><Template><DxTextBox Text="@CurDmts.Time_giam" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Người sửa:" ColSpanMd="6"><Template><DxTextBox Text="@CurDmts.User_name_giam" Enabled="false" /></Template></DxFormLayoutItem>
+
+                        @* 2 NÚT CHỨC NĂNG (LUÔN BẬT ĐỂ SỬA TRONG CHẾ ĐỘ XEM) *@
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template Context="btnCtx">
+                                <div class="d-flex justify-content-start mt-3 pt-2 border-top">
+                                    <DxButton Text="Sửa dữ liệu" RenderStyle="ButtonRenderStyle.Primary" Click="OpenEditGiam" CssClass="me-2 fw-bold" />
+                                    <DxButton Text="Xóa dữ liệu" RenderStyle="ButtonRenderStyle.Danger" Click="ConfirmXoaGiam" CssClass="fw-bold" />
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+
+                    @* POPUP SỬA GIẢM TÀI SẢN *@
+                    <DxPopup @bind-Visible="@isShowPopupGiam" Shown="OnPopupShownGiam" HeaderText="Sửa giảm tài sản" Width="500px" ShowFooter="true" CloseOnOutsideClick="false">
+                        <BodyContentTemplate Context="popupCtx">
+                            <DxFormLayout CssClass="w-100 p-3">
+                                @* Đã bỏ fieldset Thông tin chung *@
+                                <DxFormLayoutItem Caption="Mã giảm:" ColSpanMd="12">
+                                    <Template Context="g1">
+                                        <DxComboBox @ref="cbMaGiam"
+                                                    Data="@LsMaGiam"
+                                                    @bind-Value="@editGiamTs.Ma_giam_ts"
+                                                    ValueFieldName="ma_item"
+                                                    TextFieldName="ten_item"
+                                                    EditFormat="{0} - {1}"
+                                                    FilteringMode="DataGridFilteringMode.Contains">
+                                            <Columns>
+                                                <DxListEditorColumn FieldName="ma_item" Caption="Mã" Width="60px" />
+                                                <DxListEditorColumn FieldName="ten_item" Caption="Tên lý do giảm" />
+                                            </Columns>
+                                        </DxComboBox>
+                                    </Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem Caption="Ngày giảm:" ColSpanMd="12">
+                                    <Template Context="g2"><DxDateEdit Date="@editGiamTs.Ngay_giam" DateChanged="@((DateTime? v) => OnNgayGiamChanged_Popup(v))" Format="dd-MM-yyyy" /></Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem Caption="Ngày thôi k.hao:" ColSpanMd="12">
+                                    <Template Context="g3"><DxDateEdit @bind-Date="@editGiamTs.Ngay_kh1" Format="dd-MM-yyyy" /></Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem Caption="Số c.từ:" ColSpanMd="12">
+                                    <Template Context="g4"><DxTextBox @bind-Text="@editGiamTs.So_ct" /></Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem Caption="Ghi chú:" ColSpanMd="12">
+                                    <Template Context="g5"><DxTextBox @bind-Text="@editGiamTs.Ly_do_giam" /></Template>
+                                </DxFormLayoutItem>
+                            </DxFormLayout>
+                        </BodyContentTemplate>
+                        <FooterContentTemplate Context="footerCtx">
+                            <div class="w-100 d-flex justify-content-end">
+                                @* Sửa màu giống Điều chuyển ts: Nhận (Primary, Bold) *@
+                                <DxButton RenderStyle="ButtonRenderStyle.Primary" Text="Nhận" Click="SaveGiamPopup" CssClass="me-2 fw-bold" />
+                                <DxButton RenderStyle="ButtonRenderStyle.Secondary" Text="Hủy bỏ" Click="@(() => isShowPopupGiam = false)" />
+                            </div>
+                        </FooterContentTemplate>
+                    </DxPopup>
+                </DxFormLayoutTabPage>
+                <DxFormLayoutTabPage Caption="Thôi khấu hao" CaptionCssClass="fw-bold">
+                    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" CssClass="mt-3">
+
+                        @* CÁC TRƯỜNG HIỂN THỊ DỮ LIỆU (READ-ONLY) *@
+                        <DxFormLayoutItem Caption="Ngày thôi k.hao:" ColSpanMd="4"><Template><DxDateEdit Date="@CurDmts.Ngay_kh1" Format="dd/MM/yyyy" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Ghi chú:" ColSpanMd="8"><Template><DxTextBox Text="@CurDmts.Ly_do_thoi" Enabled="false" /></Template></DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="12"><Template><hr class="m-1" /></Template></DxFormLayoutItem>
+
+                        @* PHẦN AUDIT (NGÀY TẠO, NGƯỜI TẠO...) *@
+                        <DxFormLayoutItem Caption="Ngày tạo:" ColSpanMd="3"><Template><DxDateEdit Date="@CurDmts.Date_thoi0" Format="dd/MM/yyyy" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Giờ tạo:" ColSpanMd="3"><Template><DxTextBox Text="@CurDmts.Time_thoi0" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Người tạo:" ColSpanMd="6"><Template><DxTextBox Text="@CurDmts.User_name_thoi0" Enabled="false" /></Template></DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="Ngày sửa:" ColSpanMd="3"><Template><DxDateEdit Date="@CurDmts.Date_thoi" Format="dd/MM/yyyy" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Giờ sửa:" ColSpanMd="3"><Template><DxTextBox Text="@CurDmts.Time_thoi" Enabled="false" /></Template></DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="Người sửa:" ColSpanMd="6"><Template><DxTextBox Text="@CurDmts.User_name_thoi" Enabled="false" /></Template></DxFormLayoutItem>
+
+                        @* 2 NÚT CHỨC NĂNG (LUÔN BẬT ĐỂ SỬA TRONG CHẾ ĐỘ XEM) *@
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template Context="btnCtx">
+                                <div class="d-flex justify-content-start mt-3 pt-2 border-top">
+                                    <DxButton Text="Sửa dữ liệu" RenderStyle="ButtonRenderStyle.Primary" Click="OpenEditThoi" CssClass="me-2 fw-bold" />
+                                    <DxButton Text="Xóa dữ liệu" RenderStyle="ButtonRenderStyle.Danger" Click="ConfirmXoaThoi" CssClass="fw-bold" />
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+
+                    @* POPUP SỬA THÔI KHẤU HAO *@
+                    <DxPopup @bind-Visible="@isShowPopupThoi" HeaderText="Sửa thôi khấu hao" Width="500px" ShowFooter="true" CloseOnOutsideClick="false" Shown="OnPopupShownThoi">
+                        <BodyContentTemplate Context="popupCtx">
+                            <DxFormLayout CssClass="w-100 p-3">
+                                <DxFormLayoutItem Caption="Ngày thôi k.hao:" ColSpanMd="12">
+                                    <Template Context="t1"><DxDateEdit @ref="deNgayThoiPopup" @bind-Date="@editThoiTs.Ngay_kh1" Format="dd-MM-yyyy" /></Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem Caption="Ghi chú:" ColSpanMd="12">
+                                    <Template Context="t2"><DxTextBox @bind-Text="@editThoiTs.Ly_do_thoi" /></Template>
+                                </DxFormLayoutItem>
+                            </DxFormLayout>
+                        </BodyContentTemplate>
+                        <FooterContentTemplate Context="footerCtx">
+                            <div class="w-100 d-flex justify-content-end">
+                                <DxButton RenderStyle="ButtonRenderStyle.Primary" Text="Nhận" Click="SaveThoiPopup" CssClass="me-2 fw-bold" />
+                                <DxButton RenderStyle="ButtonRenderStyle.Secondary" Text="Hủy bỏ" Click="@(() => isShowPopupThoi = false)" />
+                            </div>
+                        </FooterContentTemplate>
+                    </DxPopup>
+                </DxFormLayoutTabPage>
+            </DxFormLayoutTabPages>
+        </DxFormLayout>
+    </div>
+    <div class="row m-1 me-2 rounded-1 border rounded">
+        <DxTabs CssClass="w-100">
+            <DxTabPage Text="Chi tiết giá trị TS">
+                <div class="p-2">
+                    <DxGrid Data="@LstChiTietGiaTri"
+                            ShowGroupPanel="false"
+                            ShowFilterRow="false"
+                            ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                            FooterDisplayMode="GridFooterDisplayMode.Always">
+                        <Columns>
+                            <DxGridDataColumn FieldName="Stt" Caption="Stt" Width="30px" />
+                            <DxGridDataColumn FieldName="Ngay_ct" Caption="Ngày c.từ" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                            <DxGridDataColumn FieldName="So_ct" Caption="Số c.từ" Width="70px" />
+                            <DxGridDataColumn FieldName="Dien_giai" Caption="Diễn giải" MinWidth="200" />
+
+                            <DxGridDataColumn FieldName="Nguyen_gia" Caption="Nguyên giá" Width="130px" DisplayFormat="N0" />
+                            <DxGridDataColumn FieldName="Gt_da_kh" Caption="Gt đã k.hao" Width="130px" DisplayFormat="N0" />
+                            <DxGridDataColumn FieldName="Gt_cl" Caption="Gt còn lại" Width="130px" DisplayFormat="N0" />
+
+                            <DxGridDataColumn FieldName="Gt_kh_ky" Caption="Gt k.hao 1 kỳ" Width="130px" DisplayFormat="N0" Visible="@(CurDmts.Kieu_kh == "1")" />
+                            <DxGridDataColumn FieldName="Gt_da_kh0" Caption="Gt k.hao đến đk" Width="130px" DisplayFormat="N0" Visible="@(CurDmts.Kieu_kh == "2")" />
+
+                            <DxGridDataColumn FieldName="Ma_nv" Caption="Mã nguồn vốn" Width="130px" />
+                        </Columns>
+                    </DxGrid>
+                </div>
+            </DxTabPage>
+            <DxTabPage Text="Điều chỉnh tăng">
+                <div class="p-2">
+                    <div id="grid-wrapper-tang" class="mt-2 mb-3">
+                        @* 1. LƯỚI GRID ĐIỀU CHỈNH TĂNG *@
+                        <DxGrid @ref="GridDieuChinhTang" Data="@LstDieuChinhTang" SizeMode="@Itemsizemode"
+                                CssClass="w-100 grid-height-dynamic hide-default-footer"
+                                ShowGroupPanel="false" ValidationEnabled="false"
+                                ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                HighlightRowOnHover="true">
+                            <Columns>
+                                <DxGridCommandColumn Width="100px" Caption="" Visible="true" EditButtonVisible="false" NewButtonVisible="false" DeleteButtonVisible="false">
+                                    <CellDisplayTemplate Context="gridCtx">
+                                        @{
+                                            var item = (CtDcTs)gridCtx.DataItem;
+                                        }
+                                        <div class="d-flex justify-content-around">
+                                            <a class="text-success fw-bold cursor-pointer" @onclick="@(() => OpenViewTang(item))" title="Xem"><i class="fa fa-eye"></i></a>
+                                            @if (item != null && item.Ts0 != "1")
+                                            {
+                                                <a class="text-primary fw-bold cursor-pointer" @onclick="@(() => OpenEditTang(item))" title="Sửa"><i class="fa fa-edit"></i></a>
+                                                <a class="text-danger fw-bold cursor-pointer" @onclick="@(() => ConfirmXoaTang(item))" title="Xóa dòng"><i class="fa fa-trash"></i></a>
+                                            }
+                                        </div>
+                                    </CellDisplayTemplate>
+                                </DxGridCommandColumn>
+                                <DxGridDataColumn FieldName="Ngay_ct" Caption="Ngày c.từ" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                <DxGridDataColumn FieldName="So_ct" Caption="Số c.từ" Width="100px" />
+                                <DxGridDataColumn FieldName="Dien_giai" Caption="Diễn giải" MinWidth="200" />
+                                <DxGridDataColumn FieldName="Nguyen_gia" Caption="Nguyên giá" Width="120px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="Gt_da_kh" Caption="Gt đã k.hao" Width="120px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="Gt_cl" Caption="Giá trị CL" Width="120px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="So_ky" Caption="Số kỳ KH" Width="80px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="Gt_kh_ky" Caption="Gt k.hao kỳ" Width="90px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="Ngay_kh" Caption="Ngày tính KH" Width="100px" DisplayFormat="dd/MM/yyyy" />
+
+                                @* --- CỘT BỔ SUNG: MÃ VÀ TÊN LÝ DO TĂNG --- *@
+                                <DxGridDataColumn FieldName="Ma_tg_ts" Caption="Mã ld tăng" Width="80px" />
+                                <DxGridDataColumn FieldName="Ten_tg_ts" Caption="Tên ld tăng" Width="80px" />
+
+                                <DxGridDataColumn FieldName="Ngay_tg" Caption="Ngày tăng" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                <DxGridDataColumn FieldName="Ma_nv" Caption="Mã NV" Width="80px" />
+
+                                @* --- CÁC CỘT BỔ SUNG: THÔNG TIN HỆ THỐNG --- *@
+                                <DxGridDataColumn FieldName="Date_tang0" Caption="Ngày tạo" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                <DxGridDataColumn FieldName="Time_tang0" Caption="Giờ tạo" Width="80px" />
+                                <DxGridDataColumn FieldName="User_name_tang0" Caption="Người tạo" Width="80px" />
+                                <DxGridDataColumn FieldName="Date_tang" Caption="Ngày sửa" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                <DxGridDataColumn FieldName="Time_tang" Caption="Giờ sửa" Width="80px" />
+                                <DxGridDataColumn FieldName="User_name_tang" Caption="Người sửa" Width="80px" />
+                            </Columns>
+                        </DxGrid>
+
+                        @* 2. NÚT THÊM DÒNG TỰ XÂY *@
+                        <div class="custom-add-row-bar" @onclick="AddNewTang">
+                            <i class="fa fa-plus"></i>
+                            <span class="ms-2" style="color:black; font-size: 11px;">Click vào đây để thêm dòng mới</span>
+                        </div>
+
+                        @* 3. POPUP FORM NHẬP LIỆU (Đã sửa giao diện) *@
+                        <DxPopup @bind-Visible="@isShowPopupTang" HeaderText="Thêm điều chỉnh tăng" Width="650px" ShowFooter="true" CloseOnOutsideClick="false" Shown="OnPopupShownTang">
+                            <BodyContentTemplate Context="popupContext">
+                                @{
+                                    bool isLocked = isViewingTang;
+                                }
+                                @* ĐÃ BỎ FIELDSET VÀ LEGEND *@
+                                <DxFormLayout CssClass="w-100 p-2">
+                                    <DxFormLayoutItem Caption="Mã ld tăng:" ColSpanMd="12">
+                                        <Template>
+                                            <DxComboBox @ref="cbMaTangPopup" Data="@LsMaTang" @bind-Value="@editItemTang.Ma_tg_ts" ValueFieldName="ma_item" TextFieldName="ten_item" EditFormat="{0} - {1}" FilteringMode="DataGridFilteringMode.Contains" Enabled="@(!isLocked)">
+                                                <Columns>
+                                                    <DxListEditorColumn FieldName="ma_item" Caption="Mã" Width="60px" />
+                                                    <DxListEditorColumn FieldName="ten_item" Caption="Tên lý do tăng" />
+                                                </Columns>
+                                            </DxComboBox>
+                                        </Template>
+                                    </DxFormLayoutItem>
+
+                                    <DxFormLayoutItem Caption="Ngày tăng:" ColSpanMd="12">
+                                        <Template><DxDateEdit @bind-Date="@editItemTang.Ngay_tg" Format="dd-MM-yyyy" Enabled="@(!isLocked)" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Ngày c.từ:" ColSpanMd="12">
+                                        <Template><DxDateEdit @bind-Date="@editItemTang.Ngay_ct" Format="dd-MM-yyyy" Enabled="@(!isLocked)" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Số c.từ:" ColSpanMd="12">
+                                        <Template><DxTextBox @bind-Text="@editItemTang.So_ct" Enabled="@(!isLocked)" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Diễn giải:" ColSpanMd="12">
+                                        <Template><DxTextBox @bind-Text="@editItemTang.Dien_giai" Enabled="@(!isLocked)" /></Template>
+                                    </DxFormLayoutItem>
+
+                                    <DxFormLayoutItem Caption="Nguyên giá:" ColSpanMd="12">
+                                        <Template>
+                                            @* ĐÃ BỎ CHÚ THÍCH VÀ DIV WRAPPER *@
+                                            <DxSpinEdit Value="@editItemTang.Nguyen_gia" DisplayFormat="N0" ShowSpinButtons="false" ValueChanged="@((decimal? v) => OnNguyenGiaTangChanged(v))" Enabled="@(!isLocked)" CssClass="w-50" />
+                                        </Template>
+                                    </DxFormLayoutItem>
+
+                                    <DxFormLayoutItem Caption="Giá trị đã k.hao:" ColSpanMd="12">
+                                        <Template><DxSpinEdit Value="@editItemTang.Gt_da_kh" DisplayFormat="N0" ShowSpinButtons="false" ValueChanged="@((decimal? v) => OnDaKhTangChanged(v))" Enabled="@(!isLocked)" CssClass="w-50" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Giá trị còn lại:" ColSpanMd="12">
+                                        <Template><DxSpinEdit Value="@editItemTang.Gt_cl" DisplayFormat="N0" ShowSpinButtons="false" Enabled="false" CssClass="w-50" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Số kỳ k.hao:" ColSpanMd="12">
+                                        <Template>
+                                            <DxSpinEdit Value="@editItemTang.So_ky" DisplayFormat="N0" ShowSpinButtons="false" ValueChanged="@((decimal? v) => OnSoKyTangChanged(v))" Enabled="@(!isLocked)" CssClass="w-50" />
+                                        </Template>
+                                    </DxFormLayoutItem>
+
+                                    <DxFormLayoutItem Caption="Giá trị k.hao 1 kỳ:" ColSpanMd="12">
+                                        <Template>
+                                            @* ĐÃ BỎ CHÚ THÍCH VÀ DIV WRAPPER *@
+                                            <DxSpinEdit @bind-Value="@editItemTang.Gt_kh_ky" DisplayFormat="N0" ShowSpinButtons="false" Enabled="@(!isLocked)" CssClass="w-50" />
+                                        </Template>
+                                    </DxFormLayoutItem>
+
+                                    <DxFormLayoutItem Caption="Ngày bắt đầu tính KH:" ColSpanMd="12">
+                                        <Template><DxDateEdit @bind-Date="@editItemTang.Ngay_kh" Format="dd-MM-yyyy" Enabled="@(!isLocked)" CssClass="w-50" /></Template>
+                                    </DxFormLayoutItem>
+
+                                    <DxFormLayoutItem Caption="Mã nv:" ColSpanMd="12">
+                                        <Template>
+                                            <DxComboBox Data="@LsNguonVon" @bind-Value="@editItemTang.Ma_nv" ValueFieldName="ma_item" TextFieldName="ten_item" EditFormat="{0} - {1}" FilteringMode="DataGridFilteringMode.Contains" Enabled="@(!isLocked)" CssClass="w-50">
+                                                <Columns>
+                                                    <DxListEditorColumn FieldName="ma_item" Caption="Mã" Width="60px" />
+                                                    <DxListEditorColumn FieldName="ten_item" Caption="Tên nguồn vốn" />
+                                                </Columns>
+                                            </DxComboBox>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                </DxFormLayout>
+                            </BodyContentTemplate>
+                            <FooterContentTemplate Context="footerContext">
+                                <div class="w-100 d-flex justify-content-end">
+                                    @if (!isViewingTang)
+                                    {
+                                        <DxButton RenderStyle="ButtonRenderStyle.Primary" Text="Nhận" Click="SaveTangCustom" CssClass="me-2 fw-bold" />
+                                    }
+                                    <DxButton RenderStyle="ButtonRenderStyle.Secondary" Text='@(isViewingTang ? "Đóng" : "Hủy bỏ")' Click="@(() => isShowPopupTang = false)" />
+                                </div>
+                            </FooterContentTemplate>
+                        </DxPopup>
+                    </div>
+                </div>
+            </DxTabPage>
+            <DxTabPage Text="Điều chỉnh giảm">
+                <div class="p-2">
+                    <div id="grid-wrapper-giam" class="mt-2 mb-3">
+                        @* 1. LƯỚI GRID ĐIỀU CHỈNH GIẢM *@
+                        <DxGrid @ref="GridDieuChinhGiam" Data="@LstDieuChinhGiam" SizeMode="@Itemsizemode"
+                                CssClass="w-100 grid-height-dynamic hide-default-footer"
+                                ShowGroupPanel="false" ValidationEnabled="false"
+                                ColumnResizeMode="GridColumnResizeMode.ColumnsContainer" HighlightRowOnHover="true">
+                            <Columns>
+                                <DxGridCommandColumn Width="100px" Caption="" Visible="true" EditButtonVisible="false" NewButtonVisible="false" DeleteButtonVisible="false">
+                                    <CellDisplayTemplate Context="gridCtx">
+                                        @{
+                                            var item = (CtDcTs)gridCtx.DataItem;
+                                        }
+                                        <div class="d-flex justify-content-around">
+                                            <a class="text-success fw-bold cursor-pointer" @onclick="@(() => OpenViewGiam_DC(item))" title="Xem"><i class="fa fa-eye"></i></a>
+                                            @if (item != null && item.Ts0 != "1")
+                                            {
+                                                <a class="text-primary fw-bold cursor-pointer" @onclick="@(() => OpenEditGiam_DC(item))" title="Sửa"><i class="fa fa-edit"></i></a>
+                                                <a class="text-danger fw-bold cursor-pointer" @onclick="@(() => ConfirmXoaGiam_DC(item))" title="Xóa dòng"><i class="fa fa-trash"></i></a>
+                                            }
+                                        </div>
+                                    </CellDisplayTemplate>
+                                </DxGridCommandColumn>
+                                <DxGridDataColumn FieldName="Ngay_ct" Caption="Ngày c.từ" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                <DxGridDataColumn FieldName="So_ct" Caption="Số c.từ" Width="100px" />
+                                <DxGridDataColumn FieldName="Dien_giai" Caption="Diễn giải" MinWidth="200" />
+                                <DxGridDataColumn FieldName="Nguyen_gia" Caption="Nguyên giá" Width="120px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="Gt_da_kh" Caption="Gt đã k.hao" Width="120px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="Gt_cl" Caption="Giá trị CL" Width="120px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="So_ky" Caption="Số kỳ KH" Width="80px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="Gt_kh_ky" Caption="Gt k.hao kỳ" Width="120px" DisplayFormat="N0" />
+                                <DxGridDataColumn FieldName="Ngay_thoi_kh" Caption="Ngày thôi KH" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                <DxGridDataColumn FieldName="Ma_tg_ts" Caption="Mã ld giảm" Width="80px" />
+                                <DxGridDataColumn FieldName="Ten_tg_ts" Caption="Tên lý do giảm" Width="150px" />
+                                <DxGridDataColumn FieldName="Ngay_tg" Caption="Ngày giảm" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                <DxGridDataColumn FieldName="Ma_nv" Caption="Mã NV" Width="80px" />
+
+                                @* Audit Giảm *@
+                                <DxGridDataColumn FieldName="Date_giam0" Caption="Ngày tạo" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                <DxGridDataColumn FieldName="Time_giam0" Caption="Giờ tạo" Width="80px" />
+                                <DxGridDataColumn FieldName="User_id_giam0" Caption="Ng tạo" Width="80px" />
+                                <DxGridDataColumn FieldName="Date_giam" Caption="Ngày sửa" Width="100px" DisplayFormat="dd/MM/yyyy" />
+                                <DxGridDataColumn FieldName="Time_giam" Caption="Giờ sửa" Width="80px" />
+                                <DxGridDataColumn FieldName="User_id_giam" Caption="Ng sửa" Width="80px" />
+                            </Columns>
+                        </DxGrid>
+
+                        @* 2. NÚT THÊM DÒNG TỰ XÂY *@
+                        <div class="custom-add-row-bar" @onclick="AddNewGiam_DC">
+                            <i class="fa fa-plus"></i><span class="ms-2" style="color:black; font-size: 11px;">Click vào đây để thêm dòng mới</span>
+                        </div>
+
+                        @* 3. POPUP FORM NHẬP LIỆU *@
+                        <DxPopup @bind-Visible="@isShowPopupGiam_DC" HeaderText="Thêm điều chỉnh giảm" Width="650px" ShowFooter="true" CloseOnOutsideClick="false" Shown="OnPopupShownGiam_DC">
+                            <BodyContentTemplate Context="popupContext">
+                                @{
+                                    bool isLocked = isViewingGiam_DC;
+                                }
+                                <DxFormLayout CssClass="w-100 p-2">
+                                    <DxFormLayoutItem Caption="Mã ld giảm:" ColSpanMd="12">
+                                        <Template>
+                                            <DxComboBox @ref="cbMaGiamPopup_DC" Data="@LsMaGiam" @bind-Value="@editItemGiam_DC.Ma_tg_ts" ValueFieldName="ma_item" TextFieldName="ten_item" EditFormat="{0} - {1}" FilteringMode="DataGridFilteringMode.Contains" Enabled="@(!isLocked)">
+                                                <Columns>
+                                                    <DxListEditorColumn FieldName="ma_item" Caption="Mã" Width="60px" />
+                                                    <DxListEditorColumn FieldName="ten_item" Caption="Tên lý do giảm" />
+                                                </Columns>
+                                            </DxComboBox>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Ngày giảm:" ColSpanMd="12">
+                                        <Template><DxDateEdit @bind-Date="@editItemGiam_DC.Ngay_tg" Format="dd-MM-yyyy" Enabled="@(!isLocked)" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Ngày c.từ:" ColSpanMd="12">
+                                        <Template><DxDateEdit @bind-Date="@editItemGiam_DC.Ngay_ct" Format="dd-MM-yyyy" Enabled="@(!isLocked)" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Số c.từ:" ColSpanMd="12">
+                                        <Template><DxTextBox @bind-Text="@editItemGiam_DC.So_ct" Enabled="@(!isLocked)" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Diễn giải:" ColSpanMd="12">
+                                        <Template><DxTextBox @bind-Text="@editItemGiam_DC.Dien_giai" Enabled="@(!isLocked)" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Nguyên giá:" ColSpanMd="12">
+                                        <Template><DxSpinEdit Value="@editItemGiam_DC.Nguyen_gia" DisplayFormat="N0" ShowSpinButtons="false" ValueChanged="@((decimal? v) => OnNguyenGiaGiamChanged(v))" Enabled="@(!isLocked)" CssClass="w-50" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Giá trị đã k.hao:" ColSpanMd="12">
+                                        <Template><DxSpinEdit Value="@editItemGiam_DC.Gt_da_kh" DisplayFormat="N0" ShowSpinButtons="false" ValueChanged="@((decimal? v) => OnDaKhGiamChanged(v))" Enabled="@(!isLocked)" CssClass="w-50" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Giá trị còn lại:" ColSpanMd="12">
+                                        <Template><DxSpinEdit Value="@editItemGiam_DC.Gt_cl" DisplayFormat="N0" ShowSpinButtons="false" Enabled="false" CssClass="w-50" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Số kỳ k.hao:" ColSpanMd="12">
+                                        <Template>
+                                            <DxSpinEdit Value="@editItemGiam_DC.So_ky" DisplayFormat="N0" ShowSpinButtons="false" ValueChanged="@((decimal? v) => OnSoKyGiamChanged(v))" Enabled="@(!isLocked)" CssClass="w-50" />
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Giá trị k.hao 1 kỳ:" ColSpanMd="12">
+                                        <Template><DxSpinEdit @bind-Value="@editItemGiam_DC.Gt_kh_ky" DisplayFormat="N0" ShowSpinButtons="false" Enabled="@(!isLocked)" CssClass="w-50" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Ngày thôi KH:" ColSpanMd="12">
+                                        <Template><DxDateEdit @bind-Date="@editItemGiam_DC.Ngay_thoi_kh" Format="dd-MM-yyyy" Enabled="@(!isLocked)" CssClass="w-50" /></Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Caption="Mã nv:" ColSpanMd="12">
+                                        <Template>
+                                            <DxComboBox Data="@LsNguonVon" @bind-Value="@editItemGiam_DC.Ma_nv" ValueFieldName="ma_item" TextFieldName="ten_item" EditFormat="{0} - {1}" FilteringMode="DataGridFilteringMode.Contains" Enabled="@(!isLocked)" CssClass="w-50">
+                                                <Columns>
+                                                    <DxListEditorColumn FieldName="ma_item" Caption="Mã" Width="60px" />
+                                                    <DxListEditorColumn FieldName="ten_item" Caption="Tên nguồn vốn" />
+                                                </Columns>
+                                            </DxComboBox>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                </DxFormLayout>
+                            </BodyContentTemplate>
+                            <FooterContentTemplate Context="footerContext">
+                                <div class="w-100 d-flex justify-content-end">
+                                    @if (!isViewingGiam_DC)
+                                    {
+                                        <DxButton RenderStyle="ButtonRenderStyle.Primary" Text="Nhận" Click="SaveGiamCustom_DC" CssClass="me-2 fw-bold" />
+                                    }
+                                    <DxButton RenderStyle="ButtonRenderStyle.Secondary" Text='@(isViewingGiam_DC ? "Đóng" : "Hủy bỏ")' Click="@(() => isShowPopupGiam_DC = false)" />
+                                </div>
+                            </FooterContentTemplate>
+                        </DxPopup>
+                    </div>
+                </div>
+            </DxTabPage>
+        </DxTabs>
+    </div>
+</FormList>
+@* --- POPUP XÁC NHẬN (Dùng chung cho cả Giảm TS và Thôi KH) --- *@
+<DxPopup @bind-Visible="@PopupConfirmVisible"
+         HeaderText="Xác nhận"
+         Width="400px"
+         CloseOnOutsideClick="false"
+         ShowFooter="true">
+    <BodyContentTemplate>
+        <div class="d-flex align-items-center">
+            <i class="fa fa-exclamation-triangle text-warning fa-2x me-3"></i>
+            <span>@PopupConfirmMessage</span>
+        </div>
+    </BodyContentTemplate>
+    <FooterContentTemplate>
+        <DxButton Text="Xóa dữ liệu" 
+                  RenderStyle="ButtonRenderStyle.Danger" 
+                  IconCssClass="fa fa-trash"
+                  Click="OnPopupConfirmClick" />
+        <DxButton Text="Hủy" 
+                  RenderStyle="ButtonRenderStyle.Secondary" 
+                  Click="@(() => PopupConfirmVisible = false)" />
+    </FooterContentTemplate>
+</DxPopup>
+
+@code {
+    // --- 1. KHAI BÁO BIẾN & MODEL ---
+    DxGrid GridDieuChuyen { get; set; }
+    DxGrid GridTamDung { get; set; }
+    public List<CtDcTs> LstDieuChinhTang { get; set; } = new List<CtDcTs>();
+    public List<CtDcTs> LstDieuChinhGiam { get; set; } = new List<CtDcTs>();
+    public List<CtTsThoiKc> LstTamDung { get; set; } = new List<CtTsThoiKc>();
+    public List<CtBpts> LstDieuChuyen { get; set; } = new List<CtBpts>();
+
+    // Danh sách từ điển dùng cho combobox
+    private List<listItem> LsBpts; // dmbpts
+    private List<listItem> LsTk;   // dmtk
+    private List<listItem> LsBpht; // dmbpht
+    private List<listItem> LsVv;   // dmvv
+    private List<listItem> LsMaGiam;
+    private List<listItem> LsMaTang;
+    public Dmts CurDmts { get; set; } = new Dmts();
+    public List<CtCtTs> LstPhuTung { get; set; } = new List<CtCtTs>();
+    public List<CtDmts> LstChiTietGiaTri { get; set; } = new List<CtDmts>();
+    private List<listItem> LsNguonVon;
+    List<object> ListKieuKH = new List<object>() {
+        new { Value = "1", Text = "1. Đường thẳng" },
+        new { Value = "2", Text = "2. Sản lượng" }
+    };
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmts";
+        SqlTableKey = "so_the_ts";
+        // Kích thước vừa phải, dễ nhìn
+        Itemsizemode = SizeMode.Medium;
+        base.OnInitialized();
+    }
+
+    async Task LoadData(string id)
+    {
+        // 1. GỌI STORE PROCEDURE "LoadFATS" 1 LẦN DUY NHẤT
+        // SP này trả về nhiều Table, ta sẽ lấy dữ liệu từ đây map vào các lưới
+        string sqlLoad = $"exec LoadFATS @so_the_ts = '{id}'";
+        DataSet dsFats = await myDb.LoadDataset(sqlLoad);
+
+        if (dsFats != null && dsFats.Tables.Count > 0)
+        {
+            // --- TABLE 0: THÔNG TIN CHÍNH (MASTER) ---
+            if (dsFats.Tables[0].Rows.Count > 0)
+            {
+                var list = myDb.ConvertDataTable<Dmts>(dsFats.Tables[0]);
+                CurDmts = list[0];
+            }
+
+            // --- TABLE 1: CHI TIẾT GIÁ TRỊ (Cũ + Mới) ---
+            if (dsFats.Tables.Count > 1)
+            {
+                var allRows = myDb.ConvertDataTable<CtDmts>(dsFats.Tables[1]);
+                // Lọc chỉ lấy dòng giá trị ban đầu (ts0 = '1') giống Winform
+                LstChiTietGiaTri = allRows.Where(x => x.Ts0 == "1").ToList();
+                // Đánh STT
+                int stt = 1; LstChiTietGiaTri.ForEach(x => x.Stt = stt++);
+            }
+
+            // --- TABLE 2: PHỤ TÙNG KÈM THEO ---
+            if (dsFats.Tables.Count > 2)
+            {
+                LstPhuTung = myDb.ConvertDataTable<CtCtTs>(dsFats.Tables[2]);
+                int stt = 1; LstPhuTung.ForEach(x => x.Stt = stt++);
+            }
+
+            // --- TABLE 4: TẠM DỪNG KHẤU HAO (Thay vì query dmtsthoikc thủ công) ---
+            if (dsFats.Tables.Count > 4)
+            {
+                LstTamDung = myDb.ConvertDataTable<CtTsThoiKc>(dsFats.Tables[4]);
+                int stt = 1; LstTamDung.ForEach(x => x.Stt = stt++);
+            }
+
+            // --- TABLE 6: ĐIỀU CHUYỂN BỘ PHẬN ---
+            if (dsFats.Tables.Count > 6)
+            {
+                LstDieuChuyen = myDb.ConvertDataTable<CtBpts>(dsFats.Tables[6]);
+                int stt = 1; LstDieuChuyen.ForEach(x => x.Stt = stt++);
+            }
+
+            // --- TABLE 7: ĐIỀU CHỈNH TĂNG ---
+            if (dsFats.Tables.Count > 7)
+            {
+                LstDieuChinhTang = myDb.ConvertDataTable<CtDcTs>(dsFats.Tables[7]);
+                // Map dữ liệu nếu cần (ví dụ user_name -> User_name_tang) 
+                // nhưng thường ConvertDataTable đã tự map nếu tên cột trùng tên thuộc tính
+                int stt = 1; LstDieuChinhTang.ForEach(x => x.Stt = stt++);
+            }
+
+            // --- TABLE 8: ĐIỀU CHỈNH GIẢM ---
+            if (dsFats.Tables.Count > 8)
+            {
+                LstDieuChinhGiam = myDb.ConvertDataTable<CtDcTs>(dsFats.Tables[8]);
+                int stt = 1; LstDieuChinhGiam.ForEach(x => x.Stt = stt++);
+            }
+        }
+
+        // 2. XỬ LÝ TRẠNG THÁI FORM (Giữ nguyên)
+        if (curActionTask == ActionTask.Edit)
+        {
+            AllowEditMa = false;
+        }
+        AllowEditMode = (curActionTask != ActionTask.View);
+    }
+
+    //Hàm phụ trợ copy dữ liệu
+    public static class Copier
+    {
+        public static void CopyPropertiesTo<T>(T source, T dest)
+        {
+            var props = typeof(T).GetProperties();
+            foreach (var prop in props)
+            {
+                if (prop.CanRead && prop.CanWrite)
+                    prop.SetValue(dest, prop.GetValue(source));
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                if (!string.IsNullOrEmpty(Ma_ma)) await LoadData(Ma_ma);
+                break;
+        }
+        string sqlNV = @"
+            SELECT
+                RTRIM(ma_nv) AS ma_item,
+                ISNULL(ten_nv, '') AS ten_item,
+                ISNULL(ten_nv2, '') AS ten_item2
+            FROM dmnv
+            ORDER BY ma_nv"; // Sắp xếp cho dễ tìm
+
+        try
+        {
+            // Load dữ liệu vào biến
+            LsNguonVon = await mySqldb.Loaddata<listItem, dynamic>(sqlNV, new { });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi load Nguồn vốn: " + ex.Message);
+        }
+        try 
+        {
+             // Load Bộ phận (dmbpts)
+             LsBpts = await mySqldb.Loaddata<listItem, dynamic>("SELECT ma_bpts AS ma_item, ten_bpts AS ten_item FROM dmbpts", new { });             // Load Tài khoản (dmtk)
+             LsTk = await mySqldb.Loaddata<listItem, dynamic>("SELECT tk AS ma_item, ten_tk AS ten_item FROM dmtk", new { });
+             // Load Bộ phận hạch toán (dmbpht)
+             LsBpht = await mySqldb.Loaddata<listItem, dynamic>("SELECT ma_bpht AS ma_item, ten_bpht AS ten_item FROM dmbpht", new { });
+             // Load Vụ việc (dmvv)
+             LsVv = await mySqldb.Loaddata<listItem, dynamic>("SELECT ma_vv AS ma_item, ten_vv AS ten_item FROM dmvv", new { });
+             LsMaGiam = await mySqldb.Loaddata<listItem, dynamic>("SELECT ma_tg_ts AS ma_item, ten_tg_ts AS ten_item FROM dmtgts WHERE loai_tg_ts = 2", new { });
+            LsMaTang = await mySqldb.Loaddata<listItem, dynamic>("SELECT ma_tg_ts AS ma_item, ten_tg_ts AS ten_item FROM dmtgts WHERE loai_tg_ts = 1", new { });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi load danh mục: " + ex.Message);
+        }
+    }
+    // =========================================================================
+    // LOGIC CỦA Xác nhận xóa
+    // =========================================================================
+
+    bool PopupConfirmVisible { get; set; } = false;
+    string PopupConfirmMessage { get; set; } = "";
+    Func<Task> OnConfirmAction { get; set; } // Biến lưu "Hành động sắp làm"
+
+    // 1. NÚT XÓA GIẢM TÀI SẢN (Gắn vào nút Xóa ở tab Giảm)
+    void ConfirmXoaGiam()
+    {
+        if (string.IsNullOrEmpty(CurDmts.Ma_giam_ts) && !CurDmts.Ngay_giam.HasValue) return;
+        PopupConfirmMessage = "Bạn có chắc chắn muốn xóa thông tin Giảm tài sản này không?";
+        OnConfirmAction = XoaThongTinGiam;
+        PopupConfirmVisible = true;
+    }
+
+    void ConfirmXoaThoi()
+    {
+        if (!CurDmts.Ngay_kh1.HasValue) return;
+        PopupConfirmMessage = "Bạn có chắc chắn muốn xóa thông tin Thôi khấu hao này không?";
+        OnConfirmAction = XoaThongTinThoi;
+        PopupConfirmVisible = true;
+    }
+
+    async Task OnPopupConfirmClick()
+    {
+        if (OnConfirmAction != null) await OnConfirmAction.Invoke();
+        PopupConfirmVisible = false;
+    }
+    void CloseForm()
+    {
+        if (ShowAdd == true) OnClose.InvokeAsync();
+        else myNavi.NavigateTo("/" + ParentPage);
+    }
+    private int ActiveTabIndex = 0;
+    // =========================================================================
+    // JS INTEROP VÀ TÍNH NĂNG "CLICK ĐỂ THÊM DÒNG MỚI" (DÙNG CHUNG)
+    // =========================================================================
+    private DotNetObjectReference<FrmZcfats2> Pageobj;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Pageobj = DotNetObjectReference.Create(this);
+            await JavacriptS.InvokeVoidAsync("SetPageObj", Pageobj);
+            await JavacriptS.InvokeVoidAsync("AttachEnterAsTab");
+        }
+
+        try
+        {
+            await JavacriptS.InvokeVoidAsync("changeTextNewRowButton", "Click vào đây để thêm dòng mới");
+        }
+        catch { }
+    }
+
+    [JSInvokable]
+    public void CallGridEditMode(string value)
+    {
+        if (!AllowEditMode) return;
+        // Tab Điều chuyển là số 3, Tạm dừng là số 4
+        if (ActiveTabIndex == 3) AddNewDieuChuyen();
+        else if (ActiveTabIndex == 4) AddNewTamDung();
+
+        StateHasChanged();
+    }
+    // ===========================================================
+    // LƯU & XÓA ĐIỀU CHUYỂN TÀI SẢN (LƯU TRỰC TIẾP DB)
+    // ===========================================================
+    bool isShowPopupDC = false;
+    bool isViewingDC = false;
+    bool isNewDC = false;
+    CtBpts editItemDC = new CtBpts(); // Biến tạm chứa dữ liệu đang nhập
+
+    void AddNewDieuChuyen()
+    {
+        isViewingDC = false;
+        isNewDC = true;
+        editItemDC = new CtBpts();
+        editItemDC.Stt = LstDieuChuyen.Count + 1;
+        editItemDC.Ngay_kh = DateTime.Now;
+        editItemDC.Ts0 = "0";
+        isShowPopupDC = true;
+    }
+
+    void OpenEditDC(CtBpts item)
+    {
+        if (item.Ts0 == "1")
+        {
+            myStateMN.SetNewThongbao("Không thể sửa dòng thông tin gốc!");
+            return;
+        }
+        isViewingDC = false;
+        isNewDC = false;
+        editItemDC = new CtBpts();
+        Copier.CopyPropertiesTo(item, editItemDC); // Copy ra biến tạm để sửa
+        isShowPopupDC = true;
+    }
+
+    void OpenViewDC(CtBpts item)
+    {
+        isViewingDC = true;
+        isNewDC = false;
+        editItemDC = new CtBpts();
+        Copier.CopyPropertiesTo(item, editItemDC);
+        isShowPopupDC = true;
+    }
+
+    async Task SaveDCCustom()
+    {
+        // 1. Validate
+        if (string.IsNullOrEmpty(editItemDC.Ma_bpts))
+        {
+            myStateMN.SetNewThongbao("Chưa nhập mã bộ phận!"); return;
+        }
+        if (!editItemDC.Ngay_kh.HasValue)
+        {
+            myStateMN.SetNewThongbao("Chưa nhập ngày tính khấu hao!"); return;
+        }
+        if (CurDmts.Ngay_mua.HasValue && editItemDC.Ngay_kh.Value.Date < CurDmts.Ngay_mua.Value.Date)
+        {
+            myStateMN.SetNewThongbao("Ngày tính phân bổ (điều chuyển) phải sau ngày mua!");
+            return;
+        }
+
+        // 2. Chuẩn bị dữ liệu an toàn
+        string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+        string sNgayKh = $"'{editItemDC.Ngay_kh.Value:yyyy-MM-dd}'";
+        string sMaBp = editItemDC.Ma_bpts?.Replace("'", "''") ?? "";
+        string sTkCp = editItemDC.Tk_cp?.Replace("'", "''") ?? "";
+        string sMaBpht = editItemDC.Ma_bpht?.Replace("'", "''") ?? "";
+        string sMaVv = editItemDC.Ma_vv?.Replace("'", "''") ?? "";
+        string sGhiChu = editItemDC.Ghi_chu?.Replace("'", "''") ?? "";
+
+        string sDateNow = $"'{DateTime.Now:yyyy-MM-dd}'";
+        string sTimeNow = $"'{DateTime.Now:HH:mm:ss}'";
+        string sUserIdNow = (curUser?.User_id ?? 0).ToString();
+
+        // 3. Thực thi SQL
+        if (isNewDC)
+        {
+            string sqlInsert = $@"
+                INSERT INTO ctbpts(so_the_ts, ma_bpts, ngay_kh, tk_cp, ma_bpht, ma_vv, ghi_chu, ts0,
+                                   date0, time0, user_id0, date, time, user_id)
+                VALUES (N'{sSoThe}', N'{sMaBp}', {sNgayKh}, N'{sTkCp}', N'{sMaBpht}', N'{sMaVv}', N'{sGhiChu}', '0',
+                        {sDateNow}, {sTimeNow}, {sUserIdNow}, {sDateNow}, {sTimeNow}, {sUserIdNow})";
+            await myDb.ExecuteSqlQueryAsync(sqlInsert);
+        }
+        else
+        {
+            string sqlUpdate = $@"
+                UPDATE ctbpts
+                SET ma_bpts = N'{sMaBp}', ngay_kh = {sNgayKh}, tk_cp = N'{sTkCp}',
+                    ma_bpht = N'{sMaBpht}', ma_vv = N'{sMaVv}', ghi_chu = N'{sGhiChu}',
+                    date = {sDateNow}, time = {sTimeNow}, user_id = {sUserIdNow}
+                WHERE id = {editItemDC.Id}";
+            await myDb.ExecuteSqlQueryAsync(sqlUpdate);
+        }
+
+        // 4. Đóng popup & Tải lại lưới
+        isShowPopupDC = false;
+        await LoadData(CurDmts.So_the_ts);
+        myStateMN.SetNewThongbao("Đã lưu Điều chuyển tài sản thành công!");
+    }
+
+    // Hàm xóa vẫn giữ nguyên vì đã nối thẳng với GridDieuChuyen
+    async Task OnGridDeletingDC(GridDataItemDeletingEventArgs e)
+    {
+        var item = (CtBpts)e.DataItem;
+        if (item.Ts0 == "1")
+        {
+            myStateMN.SetNewThongbao("Không thể xóa dòng thông tin gốc!");
+            return;
+        }
+
+        string sqlDel = $"DELETE FROM ctbpts WHERE id = {item.Id}";
+        await myDb.ExecuteSqlQueryAsync(sqlDel);
+
+        await LoadData(CurDmts.So_the_ts);
+        myStateMN.SetNewThongbao("Đã xóa Điều chuyển tài sản thành công!");
+    }
+    DxComboBox<listItem, string> cbMaBpts;
+
+    // 2. Hàm này sẽ tự động chạy ngay sau khi Popup vẽ xong lên màn hình
+    async Task OnPopupShownDC()
+    {
+        if (cbMaBpts != null && !isViewingDC) // Nếu không phải chế độ Xem thì mới focus
+        {
+            await cbMaBpts.FocusAsync();
+        }
+    }
+    
+    // =========================================================================
+    // LOGIC CỦA LƯỚI "TẠM DỪNG"
+    // =========================================================================
+    // --- BIẾN TRẠNG THÁI TẠM DỪNG ---
+    bool isShowPopupTD = false;
+    bool isViewingTD = false;
+    bool isNewTD = false;
+    CtTsThoiKc editItemTD = new CtTsThoiKc();
+    DxDateEdit<DateTime?> deNgay1; // Để focus vào ngày khi hiện popup
+
+    // --- HÀM ĐIỀU KHIỂN POPUP ---
+    void AddNewTamDung()
+    {
+        isViewingTD = false; isNewTD = true;
+        editItemTD = new CtTsThoiKc();
+        editItemTD.Stt = LstTamDung.Count + 1;
+        editItemTD.Ngay_thoi_kh1 = DateTime.Now;
+        isShowPopupTD = true;
+    }
+
+    void OpenEditTD(CtTsThoiKc item)
+    {
+        isViewingTD = false; isNewTD = false;
+        editItemTD = new CtTsThoiKc();
+        Copier.CopyPropertiesTo(item, editItemTD);
+        isShowPopupTD = true;
+    }
+
+    void OpenViewTD(CtTsThoiKc item)
+    {
+        isViewingTD = true; isNewTD = false;
+        editItemTD = new CtTsThoiKc();
+        Copier.CopyPropertiesTo(item, editItemTD);
+        isShowPopupTD = true;
+    }
+
+    async Task OnPopupShownTD()
+    {
+        if (deNgay1 != null && !isViewingTD) await deNgay1.FocusAsync();
+    }
+
+    // --- LOGIC LƯU TRỰC TIẾP DB ---
+    async Task SaveTDCustom()
+    {
+        // 1. Kiểm tra Từ ngày
+        if (!editItemTD.Ngay_thoi_kh1.HasValue)
+        {
+            myStateMN.SetNewThongbao("Chưa vào từ ngày!");
+            if (deNgay1 != null) await deNgay1.FocusAsync();
+            return;
+        }
+
+        // 2. Kiểm tra Đến ngày
+        if (!editItemTD.Ngay_thoi_kh2.HasValue)
+        {
+            myStateMN.SetNewThongbao("Chưa vào đến ngày!");
+            return;
+        }
+
+        // 3. Kiểm tra logic khoảng thời gian
+        if (editItemTD.Ngay_thoi_kh1.Value > editItemTD.Ngay_thoi_kh2.Value)
+        {
+            myStateMN.SetNewThongbao("Từ ngày đến ngày không hợp lệ!");
+            return;
+        }
+
+        // 4. KIỂM TRA TRÙNG CHÉO VỚI CÁC DÒNG KHÁC (Giống Winform)
+        if (LstTamDung != null && LstTamDung.Count > 0)
+        {
+            // Lấy danh sách các dòng KHÁC dòng đang sửa (Dựa vào ID)
+            var otherItems = isNewTD ? LstTamDung : LstTamDung.Where(x => x.Id != editItemTD.Id).ToList();
+
+            // Logic Winform: Có dòng nào mà Ngay_thoi_kh2 >= Ngay_thoi_kh1 đang nhập không?
+            bool isConflict = otherItems.Any(x => x.Ngay_thoi_kh2.HasValue &&
+                                                  x.Ngay_thoi_kh2.Value >= editItemTD.Ngay_thoi_kh1.Value);
+
+            if (isConflict)
+            {
+                myStateMN.SetNewThongbao("Từ ngày đến ngày không hợp lệ!");
+                if (deNgay1 != null) await deNgay1.FocusAsync();
+                return;
+            }
+        }
+
+        // --- NẾU QUA HẾT VALIDATE THÌ LƯU VÀO DB ---
+        string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+        string sNgay1 = $"'{editItemTD.Ngay_thoi_kh1.Value:yyyy-MM-dd}'";
+        string sNgay2 = $"'{editItemTD.Ngay_thoi_kh2.Value:yyyy-MM-dd}'";
+        string sLyDo = editItemTD.Ly_do_thoi?.Replace("'", "''") ?? "";
+
+        string sDateNow = $"'{DateTime.Now:yyyy-MM-dd}'";
+        string sTimeNow = $"'{DateTime.Now:HH:mm:ss}'";
+        string sUserIdNow = (curUser?.User_id ?? 0).ToString();
+        string sUserNameNow = (curUser?.User_name ?? "").Replace("'", "''");
+
+        if (isNewTD)
+        {
+            string sqlInsert = $@"
+                INSERT INTO dmtsthoikc(so_the_ts, ngay_thoi_kh1, ngay_thoi_kh2, ly_do_thoi, loai_thoi_kh,
+                                       date0, time0, user_id0, user_name0, date, time, user_id, user_name)
+                VALUES (N'{sSoThe}', {sNgay1}, {sNgay2}, N'{sLyDo}', '1',
+                        {sDateNow}, {sTimeNow}, {sUserIdNow}, N'{sUserNameNow}', {sDateNow}, {sTimeNow}, {sUserIdNow}, N'{sUserNameNow}')";
+            await myDb.ExecuteSqlQueryAsync(sqlInsert);
+        }
+        else
+        {
+            string sqlUpdate = $@"
+                UPDATE dmtsthoikc
+                SET ngay_thoi_kh1 = {sNgay1}, ngay_thoi_kh2 = {sNgay2}, ly_do_thoi = N'{sLyDo}',
+                    date = {sDateNow}, time = {sTimeNow}, user_id = {sUserIdNow}, user_name = N'{sUserNameNow}'
+                WHERE id = {editItemTD.Id}";
+            await myDb.ExecuteSqlQueryAsync(sqlUpdate);
+        }
+
+        isShowPopupTD = false;
+        await LoadData(CurDmts.So_the_ts);
+        myStateMN.SetNewThongbao("Đã lưu Tạm dừng khấu hao thành công!");
+    }
+
+    async Task OnGridDeletingTD(GridDataItemDeletingEventArgs e)
+    {
+        var item = (CtTsThoiKc)e.DataItem;
+        string sqlDel = $"DELETE FROM dmtsthoikc WHERE id = {item.Id}";
+        await myDb.ExecuteSqlQueryAsync(sqlDel);
+        await LoadData(CurDmts.So_the_ts);
+        myStateMN.SetNewThongbao("Đã xóa Tạm dừng khấu hao thành công!");
+    }
+
+    // =========================================================================
+    // LOGIC CỦA Giảm tài sản
+    // =========================================================================
+    
+    // --- BIẾN & HÀM XỬ LÝ POPUP GIẢM TÀI SẢN ---
+    bool isShowPopupGiam = false;
+    Dmts editGiamTs = new Dmts(); // Biến tạm để tránh làm ảnh hưởng form chính khi chưa bấm Nhận
+
+    void OpenEditGiam()
+    {
+        editGiamTs = new Dmts();
+        // Copy dữ liệu hiện tại lên biến tạm
+        editGiamTs.Ma_giam_ts = CurDmts.Ma_giam_ts;
+        editGiamTs.Ngay_giam = CurDmts.Ngay_giam;
+        editGiamTs.Ngay_kh1 = CurDmts.Ngay_kh1;
+        editGiamTs.So_ct = CurDmts.So_ct;
+        editGiamTs.Ly_do_giam = CurDmts.Ly_do_giam;
+
+        isShowPopupGiam = true;
+    }
+
+    void OnNgayGiamChanged_Popup(DateTime? newValue)
+    {
+        editGiamTs.Ngay_giam = newValue;
+        if (newValue.HasValue)
+        {
+            if (CurDmts.Ngay_mua.HasValue && newValue.Value.Date < CurDmts.Ngay_mua.Value.Date)
+                myStateMN.SetNewThongbao("Ngày giảm tài sản phải sau ngày mua!");
+
+            // Tự động gán Ngày thôi khấu hao theo Ngày giảm
+            if (!editGiamTs.Ngay_kh1.HasValue)
+                editGiamTs.Ngay_kh1 = newValue;
+        }
+    }
+
+    async Task SaveGiamPopup()
+    {
+        bool hasMaGiam = !string.IsNullOrWhiteSpace(editGiamTs.Ma_giam_ts);
+        bool hasNgayGiam = editGiamTs.Ngay_giam.HasValue;
+
+        if (hasMaGiam && !hasNgayGiam) { myStateMN.SetNewThongbao("Vui lòng nhập Ngày giảm!"); return; }
+        if (!hasMaGiam && hasNgayGiam) { myStateMN.SetNewThongbao("Vui lòng chọn Mã giảm!"); return; }
+        if (hasMaGiam && hasNgayGiam && CurDmts.Ngay_mua.HasValue && editGiamTs.Ngay_giam.Value.Date < CurDmts.Ngay_mua.Value.Date) { myStateMN.SetNewThongbao("Ngày giảm tài sản phải sau ngày mua!"); return; }
+        if (editGiamTs.Ngay_kh1.HasValue && CurDmts.Ngay_mua.HasValue && editGiamTs.Ngay_kh1.Value.Date < CurDmts.Ngay_mua.Value.Date) { myStateMN.SetNewThongbao("Ngày thôi khấu hao phải sau ngày mua!"); return; }
+
+        // Chuẩn bị dữ liệu SQL
+        string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+        string sMaGiam = editGiamTs.Ma_giam_ts?.Replace("'", "''") ?? "";
+        string sNgayGiam = editGiamTs.Ngay_giam.HasValue ? $"'{editGiamTs.Ngay_giam.Value:yyyy-MM-dd}'" : "NULL";
+        string sNgayKh1 = editGiamTs.Ngay_kh1.HasValue ? $"'{editGiamTs.Ngay_kh1.Value:yyyy-MM-dd}'" : "NULL";
+        string sSoCt = editGiamTs.So_ct?.Replace("'", "''") ?? "";
+        string sLyDo = editGiamTs.Ly_do_giam?.Replace("'", "''") ?? "";
+        
+        string sDate = $"'{DateTime.Now:yyyy-MM-dd}'";
+        string sTime = $"'{DateTime.Now:HH:mm:ss}'";
+        string sUserId = (curUser?.User_id ?? 0).ToString();
+        string sUserName = (curUser?.User_name ?? "").Replace("'", "''");
+
+        // Câu lệnh SQL: Dùng ISNULL/CASE WHEN để bảo toàn thông tin Người tạo (0) giống Winform
+        string sqlUpdate = $@"
+            UPDATE dmts SET 
+                ma_giam_ts = N'{sMaGiam}', ngay_giam = {sNgayGiam}, ngay_kh1 = {sNgayKh1},
+                so_ct = N'{sSoCt}', ly_do_giam = N'{sLyDo}',
+                date_giam0 = ISNULL(date_giam0, {sDate}), 
+                time_giam0 = CASE WHEN ISNULL(time_giam0, '') = '' THEN {sTime} ELSE time_giam0 END, 
+                user_id_giam0 = CASE WHEN ISNULL(user_id_giam0, 0) = 0 THEN {sUserId} ELSE user_id_giam0 END,
+                date_giam = {sDate}, time_giam = {sTime}, 
+                user_id_giam = {sUserId}
+            WHERE so_the_ts = N'{sSoThe}'";
+
+        await myDb.ExecuteSqlQueryAsync(sqlUpdate);
+        await LoadData(CurDmts.So_the_ts); 
+        
+        isShowPopupGiam = false;
+        myStateMN.SetNewThongbao("Đã cập nhật thông tin Giảm tài sản!");
+    }
+
+    async Task XoaThongTinGiam()
+    {
+        string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+        string sDate = $"'{DateTime.Now:yyyy-MM-dd}'";
+        string sTime = $"'{DateTime.Now:HH:mm:ss}'";
+        string sUserId = (curUser?.User_id ?? 0).ToString();
+        string sUserName = (curUser?.User_name ?? "").Replace("'", "''");
+
+        string sqlUpdate = $@"
+            UPDATE dmts SET 
+                ma_giam_ts = '', ngay_giam = NULL, ngay_kh1 = NULL,
+                so_ct = '', ly_do_giam = '',
+                date_giam = {sDate}, time_giam = {sTime}, 
+                user_id_giam = {sUserId}
+            WHERE so_the_ts = N'{sSoThe}'";
+
+        await myDb.ExecuteSqlQueryAsync(sqlUpdate);
+        await LoadData(CurDmts.So_the_ts);
+        myStateMN.SetNewThongbao("Đã xóa thông tin Giảm tài sản!");
+    }
+    DxComboBox<listItem, string> cbMaGiam;
+
+    async Task OnPopupShownGiam()
+    {
+        if (cbMaGiam != null)
+        {
+            await Task.Delay(100);
+            await cbMaGiam.FocusAsync();
+        }
+    }
+
+    // ============================================
+    // BIẾN & HÀM XỬ LÝ POPUP THÔI KHẤU HAO
+    // ============================================
+    bool isShowPopupThoi = false;
+    Dmts editThoiTs = new Dmts(); // Biến tạm
+
+    void OpenEditThoi()
+    {
+        editThoiTs = new Dmts();
+        // Copy dữ liệu hiện tại lên biến tạm
+        editThoiTs.Ngay_kh1 = CurDmts.Ngay_kh1;
+        editThoiTs.Ly_do_thoi = CurDmts.Ly_do_thoi;
+
+        isShowPopupThoi = true;
+    }
+
+    async Task SaveThoiPopup()
+    {
+        if (!editThoiTs.Ngay_kh1.HasValue) { myStateMN.SetNewThongbao("Vui lòng nhập Ngày thôi khấu hao!"); return; }
+        if (CurDmts.Ngay_mua.HasValue && editThoiTs.Ngay_kh1.Value.Date < CurDmts.Ngay_mua.Value.Date) { myStateMN.SetNewThongbao("Ngày thôi khấu hao phải sau ngày mua!"); return; }
+
+        string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+        string sNgayKh1 = $"'{editThoiTs.Ngay_kh1.Value:yyyy-MM-dd}'";
+        string sLyDo = editThoiTs.Ly_do_thoi?.Replace("'", "''") ?? "";
+        
+        string sDate = $"'{DateTime.Now:yyyy-MM-dd}'";
+        string sTime = $"'{DateTime.Now:HH:mm:ss}'";
+        string sUserId = (curUser?.User_id ?? 0).ToString();
+        string sUserName = (curUser?.User_name ?? "").Replace("'", "''");
+
+        string sqlUpdate = $@"
+            UPDATE dmts SET 
+                ngay_kh1 = {sNgayKh1}, ly_do_thoi = N'{sLyDo}',
+                date_thoi0 = ISNULL(date_thoi0, {sDate}), 
+                time_thoi0 = CASE WHEN ISNULL(time_thoi0, '') = '' THEN {sTime} ELSE time_thoi0 END, 
+                user_id_thoi0 = CASE WHEN ISNULL(user_id_thoi0, 0) = 0 THEN {sUserId} ELSE user_id_thoi0 END,
+                date_thoi = {sDate}, time_thoi = {sTime}, 
+                user_id_thoi = {sUserId}
+            WHERE so_the_ts = N'{sSoThe}'";
+
+        await myDb.ExecuteSqlQueryAsync(sqlUpdate);
+        await LoadData(CurDmts.So_the_ts);
+
+        isShowPopupThoi = false;
+        myStateMN.SetNewThongbao("Đã cập nhật thông tin Thôi khấu hao!");
+    }
+
+    async Task XoaThongTinThoi()
+    {
+        string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+        string sDate = $"'{DateTime.Now:yyyy-MM-dd}'";
+        string sTime = $"'{DateTime.Now:HH:mm:ss}'";
+        string sUserId = (curUser?.User_id ?? 0).ToString();
+        string sUserName = (curUser?.User_name ?? "").Replace("'", "''");
+
+        string sqlUpdate = $@"
+            UPDATE dmts SET 
+                ngay_kh1 = NULL, ly_do_thoi = '',
+                date_thoi = {sDate}, time_thoi = {sTime}, 
+                user_id_thoi = {sUserId}
+            WHERE so_the_ts = N'{sSoThe}'";
+
+        await myDb.ExecuteSqlQueryAsync(sqlUpdate);
+        await LoadData(CurDmts.So_the_ts);
+        myStateMN.SetNewThongbao("Đã xóa thông tin Thôi khấu hao!");
+    }
+
+    // 3. Tự động Focus vào Ngày thôi khấu hao khi mở Popup
+    DxDateEdit<DateTime?> deNgayThoiPopup;
+    async Task OnPopupShownThoi()
+    {
+        if (deNgayThoiPopup != null)
+        {
+            await Task.Delay(100);
+            await deNgayThoiPopup.FocusAsync();
+        }
+    }
+    // =========================================================================
+    // LOGIC CỦA TAB: ĐIỀU CHỈNH TĂNG
+    // =========================================================================
+    DxGrid GridDieuChinhTang;
+    bool isShowPopupTang = false;
+    bool isViewingTang = false;
+    bool isNewTang = false;
+    CtDcTs editItemTang = new CtDcTs();
+    DxComboBox<listItem, string> cbMaTangPopup;
+
+    void AddNewTang()
+    {
+        isViewingTang = false;
+        isNewTang = true;
+        editItemTang = new CtDcTs();
+        editItemTang.Ngay_tg = DateTime.Now;
+        editItemTang.Ngay_ct = DateTime.Now;
+        editItemTang.Ts0 = "0"; // Dòng phát sinh
+        editItemTang.Tang_giam = "1"; // 1 là Tăng, 2 là Giảm (Chuẩn DB)
+        isShowPopupTang = true;
+    }
+
+    void OpenEditTang(CtDcTs item)
+    {
+        if (item.Ts0 == "1") { myStateMN.SetNewThongbao("Không thể sửa dòng gốc!"); return; }
+        isViewingTang = false;
+        isNewTang = false;
+        editItemTang = new CtDcTs();
+        Copier.CopyPropertiesTo(item, editItemTang);
+        isShowPopupTang = true;
+    }
+
+    void OpenViewTang(CtDcTs item)
+    {
+        isViewingTang = true;
+        isNewTang = false;
+        editItemTang = new CtDcTs();
+        Copier.CopyPropertiesTo(item, editItemTang);
+        isShowPopupTang = true;
+    }
+
+    async Task OnPopupShownTang()
+    {
+        if (cbMaTangPopup != null && !isViewingTang) { await Task.Delay(100); await cbMaTangPopup.FocusAsync(); }
+    }
+
+    async Task SaveTangCustom()
+    {
+        // 1. VALIDATE THEO CHUẨN WINFORM
+        if (string.IsNullOrEmpty(editItemTang.Ma_tg_ts)) { myStateMN.SetNewThongbao("Chưa vào mã lý do tăng!"); return; }
+        if (!editItemTang.Ngay_tg.HasValue) { myStateMN.SetNewThongbao("Chưa vào ngày tăng!"); return; }
+
+        // Bổ sung Validate thiếu từ Winform
+        if (!editItemTang.Ngay_kh.HasValue) { myStateMN.SetNewThongbao("Chưa vào ngày bắt đầu tính khấu hao!"); return; }
+
+        // Bổ sung logic an toàn: Ngày tăng phải sau Ngày mua
+        if (CurDmts.Ngay_mua.HasValue && editItemTang.Ngay_tg.Value.Date < CurDmts.Ngay_mua.Value.Date)
+        {
+            myStateMN.SetNewThongbao("Ngày tăng phải sau ngày mua tài sản gốc!");
+            return;
+        }
+
+        string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+        string sMaTg = editItemTang.Ma_tg_ts?.Replace("'", "''") ?? "";
+        string sNgayTg = editItemTang.Ngay_tg.HasValue ? $"'{editItemTang.Ngay_tg.Value:yyyy-MM-dd}'" : "NULL";
+        string sNgayCt = editItemTang.Ngay_ct.HasValue ? $"'{editItemTang.Ngay_ct.Value:yyyy-MM-dd}'" : "NULL";
+        string sNgayKh = editItemTang.Ngay_kh.HasValue ? $"'{editItemTang.Ngay_kh.Value:yyyy-MM-dd}'" : "NULL";
+        string sSoCt = editItemTang.So_ct?.Replace("'", "''") ?? "";
+        string sDienGiai = editItemTang.Dien_giai?.Replace("'", "''") ?? "";
+        string sMaNv = editItemTang.Ma_nv?.Replace("'", "''") ?? "";
+
+        string sNG = (editItemTang.Nguyen_gia ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string sDKH = (editItemTang.Gt_da_kh ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string sCL = (editItemTang.Gt_cl ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string sSoKy = (editItemTang.So_ky ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string sKHKy = (editItemTang.Gt_kh_ky ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        string sDate = $"'{DateTime.Now:yyyy-MM-dd}'";
+        string sTime = $"'{DateTime.Now:HH:mm:ss}'";
+        string sUserId = (curUser?.User_id ?? 0).ToString();
+
+        // 2. LƯU VÀO BẢNG CHI TIẾT (ctdmts)
+        if (isNewTang)
+        {
+            string sqlInsert = $@"
+                INSERT INTO ctdmts (so_the_ts, tang_giam, ma_tg_ts, ngay_tg, ngay_ct, so_ct, dien_giai,
+                                    nguyen_gia, gt_da_kh, gt_cl, so_ky, gt_kh_ky, ngay_kh, ma_nv, ts0,
+                                    date_tang0, time_tang0, user_id_tang0, date_tang, time_tang, user_id_tang)
+                VALUES (N'{sSoThe}', '1', N'{sMaTg}', {sNgayTg}, {sNgayCt}, N'{sSoCt}', N'{sDienGiai}',
+                        {sNG}, {sDKH}, {sCL}, {sSoKy}, {sKHKy}, {sNgayKh}, N'{sMaNv}', '0',
+                        {sDate}, {sTime}, {sUserId}, {sDate}, {sTime}, {sUserId})";
+            await myDb.ExecuteSqlQueryAsync(sqlInsert);
+        }
+        else
+        {
+            string sqlUpdate = $@"
+                UPDATE ctdmts SET
+                    ma_tg_ts = N'{sMaTg}', ngay_tg = {sNgayTg}, ngay_ct = {sNgayCt}, so_ct = N'{sSoCt}',
+                    dien_giai = N'{sDienGiai}', nguyen_gia = {sNG}, gt_da_kh = {sDKH}, gt_cl = {sCL},
+                    so_ky = {sSoKy}, gt_kh_ky = {sKHKy}, ngay_kh = {sNgayKh}, ma_nv = N'{sMaNv}',
+                    date_tang = {sDate}, time_tang = {sTime}, user_id_tang = {sUserId}
+                WHERE id = {editItemTang.Id}";
+            await myDb.ExecuteSqlQueryAsync(sqlUpdate);
+        }
+
+        // 3. (QUAN TRỌNG NHẤT) CẬP NHẬT TỔNG GIÁ TRỊ LÊN BẢNG MASTER (dmts) GIỐNG HỆT HÀM UpdateThongtints CỦA WINFORM
+        string sqlUpdateMaster = $@"
+            UPDATE dmts
+            SET nguyen_gia = (SELECT ISNULL(SUM(nguyen_gia), 0) FROM ctdmts WHERE so_the_ts = N'{sSoThe}'),
+                gt_da_kh   = (SELECT ISNULL(SUM(gt_da_kh), 0)   FROM ctdmts WHERE so_the_ts = N'{sSoThe}'),
+                gt_cl      = (SELECT ISNULL(SUM(gt_cl), 0)      FROM ctdmts WHERE so_the_ts = N'{sSoThe}'),
+                gt_kh_ky   = (SELECT ISNULL(SUM(gt_kh_ky), 0)   FROM ctdmts WHERE so_the_ts = N'{sSoThe}')
+            WHERE so_the_ts = N'{sSoThe}'";
+        await myDb.ExecuteSqlQueryAsync(sqlUpdateMaster);
+
+        isShowPopupTang = false;
+        await LoadData(CurDmts.So_the_ts);
+        myStateMN.SetNewThongbao("Đã lưu Điều chỉnh tăng thành công!");
+    }
+
+    CtDcTs itemToDeleteTang = null;
+    void ConfirmXoaTang(CtDcTs item)
+    {
+        itemToDeleteTang = item;
+        PopupConfirmMessage = "Bạn có chắc chắn muốn xóa dòng Điều chỉnh tăng này không?";
+        OnConfirmAction = XoaThongTinTang;
+        PopupConfirmVisible = true;
+    }
+
+    async Task XoaThongTinTang()
+    {
+        if (itemToDeleteTang != null)
+        {
+            await myDb.ExecuteSqlQueryAsync($"DELETE FROM ctdmts WHERE id = {itemToDeleteTang.Id}");
+            await LoadData(CurDmts.So_the_ts);
+            myStateMN.SetNewThongbao("Đã xóa Điều chỉnh tăng thành công!");
+        }
+    }
+    void CalculateTang()
+    {
+        decimal nGia = editItemTang.Nguyen_gia ?? 0;
+        decimal daKh = editItemTang.Gt_da_kh ?? 0;
+        decimal soKy = editItemTang.So_ky ?? 0;
+
+        // 1. Tính giá trị còn lại
+        editItemTang.Gt_cl = nGia - daKh;
+
+        // 2. CHỈ TÍNH KHẤU HAO KỲ NẾU LÀ ĐƯỜNG THẲNG
+        if (CurDmts.Kieu_kh == "1" && soKy > 0)
+        {
+            editItemTang.Gt_kh_ky = Math.Round((editItemTang.Gt_cl ?? 0) / soKy, 0, MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            editItemTang.Gt_kh_ky = 0; // Sản lượng thì luôn bằng 0
+        }
+    }
+
+    void OnNguyenGiaTangChanged(decimal? v) { editItemTang.Nguyen_gia = v; CalculateTang(); }
+    void OnDaKhTangChanged(decimal? v) { editItemTang.Gt_da_kh = v; CalculateTang(); }
+    void OnSoKyTangChanged(decimal? v) { editItemTang.So_ky = v; CalculateTang(); }
+    
+    async Task UpdateMasterTotalValue(string soTheTs)
+    {
+        string sqlUpdateMaster = $@"
+            UPDATE dmts
+            SET nguyen_gia = (SELECT ISNULL(SUM(CASE WHEN tang_giam = '2' THEN -nguyen_gia ELSE nguyen_gia END), 0) FROM ctdmts WHERE so_the_ts = N'{soTheTs}'),
+                gt_da_kh   = (SELECT ISNULL(SUM(CASE WHEN tang_giam = '2' THEN -gt_da_kh ELSE gt_da_kh END), 0)   FROM ctdmts WHERE so_the_ts = N'{soTheTs}'),
+                gt_cl      = (SELECT ISNULL(SUM(CASE WHEN tang_giam = '2' THEN -gt_cl ELSE gt_cl END), 0)      FROM ctdmts WHERE so_the_ts = N'{soTheTs}'),
+                gt_kh_ky   = (SELECT ISNULL(SUM(CASE WHEN tang_giam = '2' THEN -gt_kh_ky ELSE gt_kh_ky END), 0)   FROM ctdmts WHERE so_the_ts = N'{soTheTs}')
+            WHERE so_the_ts = N'{soTheTs}'";
+        await myDb.ExecuteSqlQueryAsync(sqlUpdateMaster);
+    }
+    // =========================================================================
+    // LOGIC CỦA TAB: ĐIỀU CHỈNH GIẢM
+    // =========================================================================
+    DxGrid GridDieuChinhGiam;
+    bool isShowPopupGiam_DC = false;
+    bool isViewingGiam_DC = false;
+    bool isNewGiam_DC = false;
+    CtDcTs editItemGiam_DC = new CtDcTs();
+    DxComboBox<listItem, string> cbMaGiamPopup_DC;
+
+    void AddNewGiam_DC()
+    {
+        isViewingGiam_DC = false; isNewGiam_DC = true;
+        editItemGiam_DC = new CtDcTs();
+        editItemGiam_DC.Ngay_tg = DateTime.Now; editItemGiam_DC.Ngay_ct = DateTime.Now;
+        editItemGiam_DC.Ts0 = "0";
+        editItemGiam_DC.Tang_giam = "2"; // 2 là Giảm
+        isShowPopupGiam_DC = true;
+    }
+
+    void OpenEditGiam_DC(CtDcTs item)
+    {
+        if (item.Ts0 == "1") { myStateMN.SetNewThongbao("Không thể sửa dòng gốc!"); return; }
+        isViewingGiam_DC = false; isNewGiam_DC = false;
+        editItemGiam_DC = new CtDcTs();
+        Copier.CopyPropertiesTo(item, editItemGiam_DC);
+        isShowPopupGiam_DC = true;
+    }
+
+    void OpenViewGiam_DC(CtDcTs item)
+    {
+        isViewingGiam_DC = true; isNewGiam_DC = false;
+        editItemGiam_DC = new CtDcTs();
+        Copier.CopyPropertiesTo(item, editItemGiam_DC);
+        isShowPopupGiam_DC = true;
+    }
+
+    async Task OnPopupShownGiam_DC()
+    {
+        if (cbMaGiamPopup_DC != null && !isViewingGiam_DC) { await Task.Delay(100); await cbMaGiamPopup_DC.FocusAsync(); }
+    }
+
+    async Task SaveGiamCustom_DC()
+    {
+        // 1. Validate dựa trên Winform nhánh "GIAM"
+        if (string.IsNullOrEmpty(editItemGiam_DC.Ma_tg_ts)) { myStateMN.SetNewThongbao("Chưa vào mã lý do giảm!"); return; }
+        if (!editItemGiam_DC.Ngay_tg.HasValue) { myStateMN.SetNewThongbao("Chưa vào ngày giảm!"); return; }
+        if (!editItemGiam_DC.Ngay_thoi_kh.HasValue) { myStateMN.SetNewThongbao("Chưa vào ngày thôi khấu hao!"); return; }
+        if (CurDmts.Ngay_mua.HasValue && editItemGiam_DC.Ngay_tg.Value.Date < CurDmts.Ngay_mua.Value.Date) { myStateMN.SetNewThongbao("Ngày giảm phải sau ngày mua!"); return; }
+
+        string sSoThe = CurDmts.So_the_ts?.Replace("'", "''") ?? "";
+        string sMaTg = editItemGiam_DC.Ma_tg_ts?.Replace("'", "''") ?? "";
+        string sNgayTg = editItemGiam_DC.Ngay_tg.HasValue ? $"'{editItemGiam_DC.Ngay_tg.Value:yyyy-MM-dd}'" : "NULL";
+        string sNgayCt = editItemGiam_DC.Ngay_ct.HasValue ? $"'{editItemGiam_DC.Ngay_ct.Value:yyyy-MM-dd}'" : "NULL";
+        string sNgayThoiKh = editItemGiam_DC.Ngay_thoi_kh.HasValue ? $"'{editItemGiam_DC.Ngay_thoi_kh.Value:yyyy-MM-dd}'" : "NULL";
+
+        // Map Ngày KH = Ngày thôi KH giống hệt logic Winform
+        string sNgayKh = sNgayThoiKh;
+
+        string sSoCt = editItemGiam_DC.So_ct?.Replace("'", "''") ?? "";
+        string sDienGiai = editItemGiam_DC.Dien_giai?.Replace("'", "''") ?? "";
+        string sMaNv = editItemGiam_DC.Ma_nv?.Replace("'", "''") ?? "";
+        string sNG = (editItemGiam_DC.Nguyen_gia ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string sDKH = (editItemGiam_DC.Gt_da_kh ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string sCL = (editItemGiam_DC.Gt_cl ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string sSoKy = (editItemGiam_DC.So_ky ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string sKHKy = (editItemGiam_DC.Gt_kh_ky ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        string sDate = $"'{DateTime.Now:yyyy-MM-dd}'";
+        string sTime = $"'{DateTime.Now:HH:mm:ss}'";
+        string sUserId = (curUser?.User_id ?? 0).ToString();
+
+        if (isNewGiam_DC)
+        {
+            // LƯU Ý: Giảm thì dùng Audit _giam0 và _giam
+            string sqlInsert = $@"
+                INSERT INTO ctdmts (so_the_ts, tang_giam, ma_tg_ts, ngay_tg, ngay_ct, so_ct, dien_giai,
+                                    nguyen_gia, gt_da_kh, gt_cl, so_ky, gt_kh_ky, ngay_kh, ngay_thoi_kh, ma_nv, ts0,
+                                    date_giam0, time_giam0, user_id_giam0, date_giam, time_giam, user_id_giam)
+                VALUES (N'{sSoThe}', '2', N'{sMaTg}', {sNgayTg}, {sNgayCt}, N'{sSoCt}', N'{sDienGiai}',
+                        {sNG}, {sDKH}, {sCL}, {sSoKy}, {sKHKy}, {sNgayKh}, {sNgayThoiKh}, N'{sMaNv}', '0',
+                        {sDate}, {sTime}, {sUserId}, {sDate}, {sTime}, {sUserId})";
+            await myDb.ExecuteSqlQueryAsync(sqlInsert);
+        }
+        else
+        {
+            string sqlUpdate = $@"
+                UPDATE ctdmts SET
+                    ma_tg_ts = N'{sMaTg}', ngay_tg = {sNgayTg}, ngay_ct = {sNgayCt}, so_ct = N'{sSoCt}',
+                    dien_giai = N'{sDienGiai}', nguyen_gia = {sNG}, gt_da_kh = {sDKH}, gt_cl = {sCL},
+                    so_ky = {sSoKy}, gt_kh_ky = {sKHKy}, ngay_kh = {sNgayKh}, ngay_thoi_kh = {sNgayThoiKh}, ma_nv = N'{sMaNv}',
+                    date_giam = {sDate}, time_giam = {sTime}, user_id_giam = {sUserId}
+                WHERE id = {editItemGiam_DC.Id}";
+            await myDb.ExecuteSqlQueryAsync(sqlUpdate);
+        }
+
+        // Cập nhật Master Data (Tổng)
+        await UpdateMasterTotalValue(CurDmts.So_the_ts);
+
+        isShowPopupGiam_DC = false;
+        await LoadData(CurDmts.So_the_ts);
+        myStateMN.SetNewThongbao("Đã lưu Điều chỉnh giảm thành công!");
+    }
+
+    CtDcTs itemToDeleteGiam_DC = null;
+    void ConfirmXoaGiam_DC(CtDcTs item)
+    {
+        itemToDeleteGiam_DC = item;
+        PopupConfirmMessage = "Bạn có chắc chắn muốn xóa dòng Điều chỉnh giảm này không?";
+        OnConfirmAction = XoaThongTinGiam_DC;
+        PopupConfirmVisible = true;
+    }
+
+    async Task XoaThongTinGiam_DC()
+    {
+        if (itemToDeleteGiam_DC != null)
+        {
+            await myDb.ExecuteSqlQueryAsync($"DELETE FROM ctdmts WHERE id = {itemToDeleteGiam_DC.Id}");
+            await UpdateMasterTotalValue(CurDmts.So_the_ts); // Xóa xong phải tính lại tổng
+            await LoadData(CurDmts.So_the_ts);
+            myStateMN.SetNewThongbao("Đã xóa Điều chỉnh giảm thành công!");
+        }
+    }
+    void CalculateGiam()
+    {
+        decimal nGia = editItemGiam_DC.Nguyen_gia ?? 0;
+        decimal daKh = editItemGiam_DC.Gt_da_kh ?? 0;
+        decimal soKy = editItemGiam_DC.So_ky ?? 0;
+
+        // 1. Tính giá trị còn lại
+        editItemGiam_DC.Gt_cl = nGia - daKh;
+
+        // 2. CHỈ TÍNH KHẤU HAO KỲ NẾU LÀ ĐƯỜNG THẲNG
+        if (CurDmts.Kieu_kh == "1" && soKy > 0)
+        {
+            editItemGiam_DC.Gt_kh_ky = Math.Round((editItemGiam_DC.Gt_cl ?? 0) / soKy, 0, MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            editItemGiam_DC.Gt_kh_ky = 0; // Sản lượng thì luôn bằng 0
+        }
+    }
+
+    void OnNguyenGiaGiamChanged(decimal? v) { editItemGiam_DC.Nguyen_gia = v; CalculateGiam(); }
+    void OnDaKhGiamChanged(decimal? v) { editItemGiam_DC.Gt_da_kh = v; CalculateGiam(); }
+    void OnSoKyGiamChanged(decimal? v) { editItemGiam_DC.So_ky = v; CalculateGiam(); }
+}
+<style>
+    /* Làm cho div bên ngoài trông giống hàng Footer của lưới */
+    .custom-add-row-bar {
+        background-color: #f8f9fa; /* Màu nền xám nhạt của lưới */
+        padding: 2px 15px;
+        cursor: pointer;
+        border-left: 1px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        transition: background-color 0.2s;
+    }
+
+        .custom-add-row-bar:hover {
+            background-color: #e9ecef; /* Hiệu ứng hover */
+        }
+
+        .custom-add-row-bar i {
+            font-size: 11px;
+        }
+
+    .css-detail {
+        /* Xóa height: auto; Thay bằng min-height */
+        /* Bạn có thể tăng giảm 380px này sao cho vừa khít với Tab Thông tin chính của bạn */
+        min-height: 880px;
+    }
+
+        .css-detail .dxbl-formlayout-tabpage {
+            display: block;
+            padding: 0;
+            /* Ép các Tab con phải dài bằng Tab cha */
+            min-height: inherit;
+        }
+
+            .css-detail .dxbl-formlayout-tabpage .dxbl-formlayout-group {
+                margin: 0;
+                padding: 0;
+            }
+
+    .popup-header {
+        display: none !important;
+    }
+
+    hr[style*="dimgrey"] {
+        display: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+</style>

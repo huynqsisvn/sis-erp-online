@@ -1,0 +1,168 @@
+@page "/Dmtd"
+@page "/Dmtd/{Menu_id}"
+@inherits ListBaseComponent
+@implements IAsyncDisposable
+
+@using SisLib.List
+@using Microsoft.Extensions.Localization
+
+@attribute [Authorize(Roles = "admin,dmtd")]
+
+<div class="row mt-1" tabindex="0" @onkeydown="OnoBrowseKeyDown">
+    <FrmBrowseComponent @ref="oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@fbrowse"
+                        Page_size="@Page_size"
+                        SelectItem="CurItem"
+                        OnRowDbClick="@OnRDBClick"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="60vw"
+              MinWidth="700px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible"
+                                 List_ID="@sqlTableName"
+                                 Ma_ma="@SqlTableKeyValue"
+                                 Title="@Lap["Change Item code"]"
+                                 Ten_item="@Ten_item"
+                                 OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible && CurDmimex != null)
+{
+    <DxPopup @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="true"
+             Width="60vw"
+             MinWidth="700px"
+             MaxHeight="98vh"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true"
+             ShowFooter="false"
+             HeaderText="@CurDmimex.Ten">
+        <BodyTemplate>
+            <ImportExcelComponent Ma_imex="@CurDmimex.Ma_imex"
+                                  Overwrite="@CurDmimex.Overwrite"
+                                  OnClose="@(() => { IsImportPopupVisible = false; StateHasChanged(); })"
+                                  OnOK="@ImportOK" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@code {
+    protected override void OnInitialized()
+    {        
+        mPage = "Dmtd";
+        sqlTableName = "dmtd";             // table_name - dùng cho CUD
+        sqlTableView = "v_dmtd";           // table_view - dùng cho SELECT
+        SqlTableKey = "ma_td";             // key
+
+        IsShowCopy = true;                 // Cho phép copy
+        IsShowImport = false;              // Không có ma_imex
+
+        FrmType = typeof(SisGl.Pages.List.Dmtd.EditDmtd);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.dm.td";
+
+        base.OnInitialized();
+    }
+
+    // ? OVERRIDE Loaddata() - DÙNG VIEW
+    public override async Task Loaddata()
+    {
+        try
+        {
+            // ? ORDER BY t? config ho?c dùng key
+            string orderBy = !String.IsNullOrEmpty(CurDmdm.Order)
+                ? CurDmdm.Order.Trim().Replace(";", ",")
+                : SqlTableKey;
+
+            string sql = $"SELECT * FROM [{sqlTableView}] ORDER BY {orderBy}";
+
+            DataSet ds = await myDb.LoadDataset(sql);
+
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                TblData = ds.Tables[0];
+            }
+            else
+            {
+                TblData = new DataTable();
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+            TblData = new DataTable();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_dotNetHelper != null)
+            {
+                try
+                {
+                    await JavacriptS.InvokeVoidAsync("blazorKeyListener.remove", _dotNetHelper);
+                }
+                catch { }
+                
+                _dotNetHelper?.Dispose();
+                _dotNetHelper = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Dispose warning: {ex.Message}");
+        }
+        finally
+        {
+            try
+            {
+                base.Dispose();
+            }
+            catch { }
+        }
+    }
+}

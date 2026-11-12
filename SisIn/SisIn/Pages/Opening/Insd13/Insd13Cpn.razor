@@ -1,0 +1,144 @@
+@page "/insd13"
+@page "/insd13/{Menu_id}"
+@using DevExpress.Blazor
+@using Microsoft.JSInterop
+@attribute [Authorize(Roles = "admin,insd13")]
+
+@inject IJSRuntime JS
+@inject Statemanagerment myStateMN
+@inject ISysVarManager mySysvar
+@inject IDbManager myDb
+@inject ICommandManager myCommand
+@inject ILocalStorageService myLcStore
+@inject XmlStringLocalizer Lap
+@inject IDialogService myDlSvc
+
+<DxPopup Visible="true" ShowCloseButton="false" Modal="true" Width="600" HeaderText="@Title"
+         CloseOnOutsideClick="false" CloseOnEscape="false" ShowFooter="true" CssClass="sas-popup">
+    <ChildContent>
+        <DxFormLayout SizeMode="SizeMode.Medium" CssClass="frm-header">
+            <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box my-2">
+                <DxFormLayoutItem Caption="@Lap["Storage code"]" ColSpanMd="12">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmkho" @bind-Value="@Model.MaKho" IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Item code"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@Model.MaVt" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Year"]" ColSpanMd="12">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@Model.Nam" MinValue="1900" MaxValue="2079" Enabled="@IsEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayoutGroup>
+        </DxFormLayout>
+        <div class="popup-body">
+            @if (!string.IsNullOrEmpty(ValidationMessage))
+            {
+                <div class="text-danger mt-2">@ValidationMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(InfoMessage))
+            {
+                <div class="text-info mt-2">@InfoMessage</div>
+            }
+        </div>
+    </ChildContent>
+    <FooterContentTemplate>
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Primary" Text="@Lap["OK"]" Click="@OnOkClicked" />
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@(() => Back())" />        
+    </FooterContentTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public string Menu_id { get; set; } = "wi.sd.04";
+    public string Title = "";
+    public Insd13Model Model = new Insd13Model();
+    public Command curCommand = new Command();
+    private bool IsEditMode = false;
+    private string ValidationMessage = "";
+    private string InfoMessage = "";
+    public bool IsLangEn = false;
+    public string UserLang = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+            if (curCommand != null)
+            {
+                Title = !IsLangEn ? curCommand.Bar : curCommand.Bar2;
+            }
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+            Model.Nam = DateTime.Now.Year;
+            IsEditMode = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnOkClicked()
+    {
+        ValidationMessage = "";
+        InfoMessage = "";
+
+        if (Model.Nam < 1900 || Model.Nam > 2079)
+        {
+            ValidationMessage = Lap["Invalid year"];
+            return;
+        }
+
+        string maKho = string.IsNullOrEmpty(Model.MaKho) ? "%" : Model.MaKho.Trim();
+        string maVt = string.IsNullOrEmpty(Model.MaVt) ? "%" : Model.MaVt.Trim() + "%";
+
+        string sql = $"EXEC INSD13 @MaKho, @MaVt, @Nam";
+        var parameters = new Dictionary<string, object>
+        {
+            { "@MaKho", maKho },
+            { "@MaVt", maVt },
+            { "@Nam", Model.Nam }
+        };
+
+        await myDb.LoadDataset(sql, parameters);
+
+        InfoMessage = Lap["Operation completed"] + " !";
+        myStateMN.SetNewThongbao(InfoMessage);
+        StateHasChanged();
+    }
+
+    private async Task Back()
+    {
+        await JS.InvokeVoidAsync("goBack");
+    }
+
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    public class Insd13Model
+    {
+        public string MaKho { get; set; } = "";
+        public string MaVt { get; set; } = "";
+        public int Nam { get; set; } = DateTime.Now.Year;
+    }
+}

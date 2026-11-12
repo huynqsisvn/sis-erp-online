@@ -1,0 +1,322 @@
+﻿@page "/notification"
+@page "/notification/{menu_id}"
+@inject SisData.Dataaccess.ISqldataacceess Sqldb
+@inject Statemanagerment myStatemanagerment
+@inject IWebHostEnvironment hostEnvironment
+@inject NavigationManager navigation
+@inject IOptionsManager Options
+@inject ICommandManager Commands
+@inject IStringLocalizer<EditFormNoti> Lap
+@inject IStringLocalizer<App> Lat
+@inject IJSRuntime JavacriptS
+@inject IDbManager myDb
+@implements IDisposable
+@inject ILocalStorageService Localstore
+@attribute [Authorize(Roles = "admin,notification")]
+<div class="row m-0 p-0">
+    <div class="row justify-content-end">
+        <div class="row col">
+            <h5>@Title</h5>
+        </div>
+        <div class="row col-md-5 col-sm-8">
+            <label class="col text-end">@Lat["From date"].ToString()</label>
+            <DxDateEdit CssClass="col" Date="@Tu_ngay" DateChanged="@((DateTime value)=>{OnTuNgayChanged(value);})" DisplayFormat="dd/MM/yyyy" Format="dd/MM/yyyy"></DxDateEdit>
+            <label class="col text-end">@Lat["To date"].ToString()</label>
+            <DxDateEdit CssClass="col" Date="@Den_ngay" DateChanged="@((DateTime value)=>{OnDenNgayChanged(value);})" DisplayFormat="dd/MM/yyyy" Format="dd/MM/yyyy"></DxDateEdit>
+        </div>
+    </div>
+    <div class="row m-0 p-0">
+        <FrmBrowseComponent @ref="@_FrmBrowse1" TblData="@TblData" Fbrowse="@fbrowse" SelectItem="CurItem" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+</div>
+<XacnhanComponent Content="@DeleteMessage" Xacnhanxoa="Dongyxoa"></XacnhanComponent>
+@code {
+    [Parameter]
+    public string menu_id { get; set; }
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
+    ClaimsPrincipal userCliams;
+    FrmBrowseComponent _FrmBrowse1;
+    private string Ma_dvcs;
+    private string _backPage = "notification";
+    private string mPage = "notification";
+    private string editPage = "frmnoti";
+    private string userLang { get; set; } = "";
+    private string DeleteMessage { get; set; } = "";
+    private bool IsLangEn = false;
+    private DataTable TblData { get; set; }
+    object SelectedDataItem { get; set; }
+    private string store_proc = "";
+    private string SqlTableView = "notification";
+    private string SqlTableName = "notification";
+    private string SqlTableKey = "notificationID";
+    private static string SqlTableKeyValue = "";
+    private Command curCommand;
+    private string fbrowse = "";
+    private Users _curUser;
+    private DateTime Tu_ngay = DateTime.Now;
+    private DateTime Den_ngay = DateTime.Now;
+    string Title;
+    private string strKeyValue(string key, DataRow row)
+    {
+        string[] strArray = key.Split(';');
+        string str = string.Empty;
+        string empty = string.Empty;
+        for (int index1 = 0; index1 < ((IEnumerable<string>)strArray).Count<string>(); ++index1)
+        {
+            string index2 = strArray[index1];
+            str = index1 != ((IEnumerable<string>)strArray).Count<string>() - 1 ? str + row[index2].ToString() + ";" : str + string.Format("{0:yyyyMMdd}", (object)(DateTime)row[index2]);
+        }
+        return str;
+    }
+    string SqlJoinKeyValue(string key, string value)
+    {
+        string _sql = "";
+        string[] keys = key.Split(';');
+        string[] keyvls = value.Split(';');
+        if (keys.Length.Equals(keyvls.Length))
+        {
+            for (int x = 0; x < keys.Length; x++)
+            {
+                _sql += string.Format(" {0} = '{1}' and", keys[x], keyvls[x]);
+            }
+        }
+        return _sql.Length > 0 ? _sql.Substring(0, _sql.Length - 3) : "";
+    }
+    async void OnTuNgayChanged(DateTime ngay_ct)
+    {
+        myStatemanagerment.SetStartDate(ngay_ct);
+        Tu_ngay = ngay_ct;
+        if (ngay_ct != null)
+            await PageLoad();
+    }
+    async void OnDenNgayChanged(DateTime ngay_ct)
+    {
+        if (ngay_ct != null)
+        {
+            myStatemanagerment.SetEndDate(ngay_ct);
+            Den_ngay = ngay_ct;
+            await PageLoad();
+        }
+    }
+    void CurItem(object obj)
+    {
+        if (obj != null)
+            SelectedDataItem = obj;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Tu_ngay = myStatemanagerment.GetStartDate();
+            Den_ngay = myStatemanagerment.GetEndDate();
+            if (string.IsNullOrEmpty(menu_id))
+                menu_id = "we_nt_01";
+
+            curCommand = await Commands.GetSubMenuBymenuId(menu_id.Replace('_', '.'));
+            _curUser = myStatemanagerment.GetCurUser();
+            if (curCommand != null)
+            {
+                store_proc = curCommand.Store_proc;
+                fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+                Title = IsLangEn ? curCommand.Bar2 : curCommand.Bar;
+            }
+
+            userCliams = (await authenticationState).User;
+            if (userCliams.IsInRole("admin") || userCliams.IsInRole(mPage))
+            {
+                myStatemanagerment.SetToolBar(new MyToolbar("toolbar", true));
+                myStatemanagerment.SetToolBar(new MyToolbar("View", true));
+                myStatemanagerment.SetToolBar(new MyToolbar("Copy", true));
+                myStatemanagerment.SetToolBar(new MyToolbar("New", true));
+                myStatemanagerment.SetToolBar(new MyToolbar("Delete", true));
+                myStatemanagerment.SetToolBar(new MyToolbar("Export", true));
+            }
+            else
+            {
+                myStatemanagerment.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            Ma_dvcs = myStatemanagerment.GetMa_Dvcs();
+            myStatemanagerment.OnActionTaskChanged += OnActionTaskchanged;
+            myStatemanagerment.OnLangguaChanged += OnLangguachange;
+            myStatemanagerment.OnDvcsChanged += OnDvcsChanged;
+            await PageLoad();
+            await Language();
+        }
+    }
+    async Task PageLoad()
+    {
+        string sql = string.Format("Select row_number() over(order by a.ngay1 desc) as stt1,b.user_name, a.* from {0} a LEFT join userinfo b ON a.user_id0 = b.user_id where  a.ngay1 >= '{1}'  and a.ngay2 <= '{2}'", SqlTableName, Tu_ngay.ToString("yyyyMMdd"), Den_ngay.ToString("yyyyMMdd"));
+        DataSet ds = await myDb.LoadDataset(sql);
+        if (ds != null && ds.Tables.Count > 0)
+        {
+            TblData = ds.Tables[0];
+            _FrmBrowse1.SetSelectRow(0);
+        }
+        StateHasChanged();
+    }
+
+    private void OnActionTaskchanged(ActionTask ac)
+    {
+        myStatemanagerment.SetCurrentActionTask(ac);
+        if (ac == ActionTask.New || ac == ActionTask.Copy || ac == ActionTask.Edit || ac == ActionTask.View)
+            myStatemanagerment.SetParentPage(new ParentPages() { ActiveTabIndex = -1, CurPage = string.Format("{0}/{1}", _backPage, menu_id) });
+
+        switch (ac)
+        {
+            case ActionTask.New:
+                Newitems(editPage);
+                break;
+            case ActionTask.Copy:
+                Copyitems(editPage);
+                break;
+            case ActionTask.Edit:
+                Edititems(editPage);
+                break;
+            case ActionTask.View:
+                Viewitems(editPage);
+                break;
+            case ActionTask.Delete:
+                Deleteitems();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+        }
+    }
+    void ExportData(int type)
+    {
+        _FrmBrowse1.ExPortGrid(type);
+        myStatemanagerment.SetNewThongbao(Lap["Export successfully"].ToString());
+    }
+    void ShowDeleteMessage()
+    {
+        myStatemanagerment.SetNewThongbao(Lat["No active record"]);
+    }
+    void Newitems(string _editPage)
+    {
+        navigation.NavigateTo(_editPage + "/" + menu_id);
+    }
+    void Copyitems(string _editPage)
+    {
+        DataRowView rview = (DataRowView)SelectedDataItem;
+        if (rview != null)
+        {
+            string strkey = SqlTableKey.Split(";").LastOrDefault();
+            if (!String.IsNullOrEmpty(rview[strkey].ToString()))
+                navigation.NavigateTo(editPage + "/" + menu_id + "/" + rview[strkey].ToString());
+        }
+        else
+        {
+            navigation.NavigateTo(_editPage + "/" + menu_id);
+        }
+    }
+    void Edititems(string _editPage)
+    {
+          DataRowView rview = (DataRowView)SelectedDataItem;
+        if (rview == null)
+        {
+            myStatemanagerment.SetNewThongbao(Lat["No active record"]);
+            return;
+        }
+        if (string.IsNullOrEmpty(rview[SqlTableKey].ToString()))
+        {
+            myStatemanagerment.SetNewThongbao(Lat["No active record"]);
+            return;
+        }
+        SqlTableKeyValue = rview[SqlTableKey].ToString();
+        navigation.NavigateTo(_editPage + "/" + menu_id + "/" + SqlTableKeyValue);
+    }
+
+    void Viewitems(string _editPage)
+    {
+        DataRowView rview = (DataRowView)SelectedDataItem;
+        if (rview == null)
+        {
+            myStatemanagerment.SetNewThongbao(Lat["No active record"]);
+            return;
+        }
+        if (string.IsNullOrEmpty(rview[SqlTableKey].ToString()))
+        {
+            myStatemanagerment.SetNewThongbao("Chưa chọn chi tiết");
+            return;
+        }
+        SqlTableKeyValue = rview[SqlTableKey].ToString();
+        navigation.NavigateTo(_editPage + "/" + menu_id + "/" + SqlTableKeyValue);
+    }
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        if (!string.IsNullOrEmpty(_ma_dvcs))
+        {
+            Ma_dvcs = _ma_dvcs;
+          await  PageLoad();
+        }
+    }
+
+    private void Deleteitems()
+    {
+        DataRowView rview = (DataRowView)SelectedDataItem;
+        if (rview == null)
+        {
+            myStatemanagerment.SetNewThongbao(Lat["No active record"]);
+            return;
+        }
+        if (string.IsNullOrEmpty(rview[SqlTableKey].ToString()))
+        {
+            myStatemanagerment.SetNewThongbao(Lat["No active record"]);
+            return;
+        }
+        SqlTableKeyValue = rview[SqlTableKey].ToString();
+        DeleteMessage = String.Format("Có phải bạn muốn xóa: {0}?", SqlTableKeyValue);
+        StateHasChanged();
+    }
+    private async Task Dongyxoa(bool status)
+    {
+        if (status)
+        {
+            string sql = String.Format("Delete " + SqlTableName + " where {0} = '{1}'", SqlTableKey, SqlTableKeyValue);         
+            await myDb.DeleteAsync(sql);
+            SelectedDataItem = null;
+            string DeleteMessage = String.Format("Đã xóa: {0}", SqlTableKeyValue);
+            myStatemanagerment.SetNewThongbao(DeleteMessage);
+            await PageLoad();
+        }
+        DeleteMessage = "";
+    }
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            userLang = await Localstore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(userLang))
+            {
+                if (userLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    public void Dispose()
+    {
+        myStatemanagerment.OnActionTaskChanged -= OnActionTaskchanged;
+        myStatemanagerment.OnLangguaChanged -= OnLangguachange;
+        myStatemanagerment.OnDvcsChanged -= OnDvcsChanged;
+    }
+}
+
+

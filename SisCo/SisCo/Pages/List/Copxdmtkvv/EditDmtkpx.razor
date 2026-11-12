@@ -1,0 +1,257 @@
+@inherits FrmListBaseComponent
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmtkpx" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <DxFormLayoutItem Caption="@Lap["Account"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="tk_input" Ma_dm="dmtk" @bind-Value="@CurDmtkpx.Tk" IsEnable="@AllowEditMa" IsLangEn="@IsLangEn" SelectChanged="@OnTkChanged"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmtkpx CurDmtkpx;
+    private string menu_id = "wo.dm.02";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmtkpx";
+        sqlTableView = "v_dmtkpx";
+        SqlTableKey = "tk";
+        CheckSqlTableKey = "tk";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "copxdmtkvv" : ParentPage;
+        CurDmtkpx = new Dmtkpx();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await EditDM(Ma_ma);
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        await CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        await CreateCopyDM(Ma_ma);
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        break;
+                    }
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('tk_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmtkpx = new Dmtkpx();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmtkpx = new Dmtkpx();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(Ma_ma);
+    }
+
+    async Task OnTkChanged()
+    {
+        if (!string.IsNullOrEmpty(CurDmtkpx.Tk))
+        {
+            var tkInfo = myDb.GetTable($"SELECT ten_tk, ten_tk2 FROM dmtk WHERE tk = '{CurDmtkpx.Tk.Trim()}'");
+            if (tkInfo != null && tkInfo.Rows.Count > 0)
+            {
+                CurDmtkpx.Ten_tk = tkInfo.Rows[0]["ten_tk"]?.ToString();
+                CurDmtkpx.Ten_tk2 = tkInfo.Rows[0]["ten_tk2"]?.ToString();
+                StateHasChanged();
+            }
+        }
+    }
+
+    async Task SaveDM()
+    {
+        if (curActionTask == ActionTask.New)
+            if (!CheckValidCode())
+                return;
+
+        if (!CheckValid())
+            return;
+
+        CurDmtkpx.Tk = CurDmtkpx.Tk.ToUpper().Trim();
+        SqlTableKeyValue = CurDmtkpx.Tk;
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmtkpx.Date = DateTime.Now.Date;
+            CurDmtkpx.Date0 = DateTime.Now.Date;
+            CurDmtkpx.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmtkpx.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmtkpx.User_id = curUser.User_id;
+                CurDmtkpx.User_id0 = curUser.User_id;
+            }
+
+            CheckSqlTableKeyValue = CurDmtkpx.Tk.Trim();
+            string[] strKey = CheckSqlTableKey.Split(';');
+            string[] strKeyValue = CheckSqlTableKeyValue.Split(';');
+            string condition = "";
+            if (strKey.Length > 0)
+            {
+                for (int x = 0; x < strKey.Length; x++)
+                {
+                    condition += strKey[x] + " = N'" + strKeyValue[x].ToUpper() + "' and ";
+                }
+                if (!string.IsNullOrEmpty(condition))
+                    condition = condition.Substring(0, condition.Length - 4);
+            }
+            string check = "Select " + strKey[0] + " from " + sqlTableName + " where " + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmtkpx>(CurDmtkpx, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmtkpx.Date = DateTime.Now.Date;
+            CurDmtkpx.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmtkpx.User_id = curUser.User_id;
+            }
+
+            await myDb.UpdateOneRow<Dmtkpx>(CurDmtkpx, sqlTableName, SqlTableKey, Ma_ma);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmtkpx.Tk))
+        {
+            myStateMN.SetNewThongbao(Lap["Account code is required"]);
+            StateHasChanged();
+            return false;
+        }
+
+        var checkTk = myDb.GetValue($"SELECT tk FROM dmtk WHERE tk = '{CurDmtkpx.Tk.Trim()}'");
+        if (checkTk == null || string.IsNullOrEmpty(checkTk.ToString()))
+        {
+            myStateMN.SetNewThongbao(Lap["Account does not exist"]);
+            StateHasChanged();
+            return false;
+        }
+
+        return true;
+    }
+
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = $"Select * from {sqlTableView} where {SqlTableKey} = '{SqlTableKeyValue}'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmtkpx> lsdetai = myDb.ConvertDataTable<Dmtkpx>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+            {
+                CurDmtkpx = lsdetai[0];
+            }
+        }
+    }
+
+    public async Task CreateNewDM()
+    {
+        CurDmtkpx = new Dmtkpx();
+        
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmtkpx = new Dmtkpx();
+        await LoadData(SqlTableKeyValue);
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,816 @@
+﻿@page "/glsnktt"
+@page "/glsnktt/{Menu_id}"
+@inherits RepoBaseComponent
+
+@attribute [Authorize(Roles = "admin,glsnktt")]
+
+<div class="row" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="@oBrowse" TblData="@TblData" SelectItem="@SelectedItem" Fbrowse="@Fbrowse" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="870px"
+         Height="300px"
+         ShowFooter="true" Context="windowContext"
+         HeaderText='@Lap["Filter"]'>
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 4rem; height:4rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="p-3">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["From date"]">
+                        <DxDateEdit @bind-Date="Ngay_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" ValueChanged="@((DateTime d) => TxtNgayCt1_LostFocus())" />
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["To date"]">
+                        <DxDateEdit @bind-Date="Ngay_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Các tk nợ"]">
+                        <div class="d-flex">
+                            <DxTextBox CssClass="flex-grow-1 me-2" @bind-Text="TkTien" ReadOnly="true" />
+                            <DxButton RenderStyle="ButtonRenderStyle.Success" Text="..." Click="@Btndstk_tien_Click" />
+                        </div>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Các cột tk ghi có"]">
+                        <div class="d-flex">
+                            <DxTextBox CssClass="flex-grow-1 me-2" @bind-Text="TkNoCols" ReadOnly="true" />
+                        </div>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Ngày mở sổ"]">
+                        <DxDateEdit @bind-Date="NgayMs" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <hr />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end mt-2">
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@ConfirmGridView_OnOk" />
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+<DxPopup @bind-Visible="DsTkVisible" Width="800px" Height="500px" CloseOnOutsideClick="false" ShowFooter="true" HeaderText="@Lap["Chọn tài khoản"]">
+    <BodyTemplate>
+        <div class="p-3">
+            <MultiChooseGridComponent Page_size="@_pagesize" EnableCheck="@EnableCheck" SelectCol="@CheckCol" CheckChangedCallBack="@OnCheckTkChanged" TblData="@TblDataTk" Fbrowse="@fbrowseTk"></MultiChooseGridComponent>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="d-flex justify-content-end">
+            <DxButton RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@CloseDsTk" CssClass="me-2" />
+            <DxButton RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@CancelDsTk" />
+        </div>
+    </FooterTemplate>
+</DxPopup>
+
+@if (ShowPrint)
+{
+    <DxPopup @ref="popPrint" CloseOnOutsideClick="false" CssClass="dxPopup"
+             @bind-Visible="@ShowPrint"
+             Width="80%" Height="90%"
+             ShowFooter="false" Context="windowContext"
+             HeaderText="Printer">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="LsData" Menu_id="@Menu_id.Replace('_', '.')" OnBack="@(() => { ShowPrint = false; })"></ReportOptionComponent>
+        </BodyTemplate>
+    </DxPopup>
+}
+
+<style>
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+</style>
+
+@code {
+    bool DsTkVisible { get; set; } = false;
+    bool DsTkEditingCo { get; set; } = false;
+    private string Ma_nkc { get; set; } = "NKT";
+    private bool AllowEditMode = true;
+    private string columnName = nameof(columnName);
+    DataTable TblDataTk { get; set; }
+    private string TkTien { get; set; } = "111,112";
+    private string TkNoCols { get; set; } = "131,511,515,711";
+
+    private DateTime? NgayMs { get; set; }
+    private string TkNo { get; set; } = "";
+    private string TkCo { get; set; } = "";
+    private int Mau_bc;
+    bool DsTkEditingCols { get; set; } = false;
+    private bool isMauNT = false;
+    private string Condition = "";
+    private List<GlsnkttModel> LsData;
+
+    private List<string> Errors { get; set; } = new();
+
+    string CheckCol = "checkcol";
+    private string fbrowseTk = "tk:120:h=Tk;ten_tk:350:h=Tên tk";
+    private bool EnableCheck = true;
+    int _pagesize = 20;
+    public DotNetObjectReference<GlsnkttCpn> Pageobj;
+    private string ActiveComponentId = "oBrowse";
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+        if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowse"))
+        {
+            oBrowseHotKeyFunction(value);
+        }
+    }
+    void oBrowseHotKeyFunction(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Equals("F2"))
+            {
+
+            }
+            if (value.Equals("F3"))
+            {
+
+            }
+            if (value.Equals("F4"))
+            {
+
+            }
+            if (value.Equals("F5"))
+            {
+
+            }
+            else if (value.Equals("F7"))
+            {
+                try
+                {
+                    Print();
+                    StateHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            else if (value.Equals("F8"))
+            {
+
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+
+            }
+        }
+    }
+    private async Task SetActiveComponentIdAsync(string id)
+    {
+        try
+        {
+            ActiveComponentId = id ?? ActiveComponentId;
+            if (Pageobj != null)
+            {
+                await JavacriptS.InvokeVoidAsync("SetPageFModeObj", Pageobj, ActiveComponentId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SetActiveComponentIdAsync error: " + ex.Message);
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "wg.gb.04";
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        Ngay_ct1 = myStateMN.GetStartDate();
+        Ngay_ct2 = myStateMN.GetEndDate();
+        NgayMs = DateTime.Now.Date;
+
+        if (curCommand != null)
+        {
+            Store_proc = curCommand.Store_proc?.Split('|')[0] ?? "";
+            Fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+        }
+        fbrowseTk = IsLangEn ? "tk:120:h=Account;ten_tk:350:h=Account Name" : "tk:120:h=Tài khoản;ten_tk:350:h=Tên tài khoản";
+    }
+
+
+    private void Btndstk_tien_Click()
+    {
+        DsTkEditingCols = false;
+        ChonTkTien();
+    }
+
+    private void Btndstk_cols_Click()
+    {
+        DsTkEditingCols = true;
+        ChonTkCols();
+    }
+    private void ChonTkTien()
+    {
+        EnsureTkTablesLoaded();
+        if (TblDataTk != null)
+        {
+            foreach (DataRow r in TblDataTk.Rows)
+                r[CheckCol] = (object)"0";
+            if (!string.IsNullOrEmpty(TkTien))
+            {
+                var parts = TkTien.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                foreach (var p in parts)
+                {
+                    DataRow r = TblDataTk.Select($"tk = '{p}'").FirstOrDefault();
+                    if (r != null) r[CheckCol] = (object)"1";
+                }
+            }
+        }
+        DsTkVisible = true;
+    }
+
+    private void ChonTkCols()
+    {
+        EnsureTkTablesLoaded();
+        if (TblDataTk != null)
+        {
+            foreach (DataRow r in TblDataTk.Rows)
+                r[CheckCol] = (object)"0";
+            if (!string.IsNullOrEmpty(TkNoCols))
+            {
+                var parts = TkNoCols.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                foreach (var p in parts)
+                {
+                    DataRow r = TblDataTk.Select($"tk = '{p}'").FirstOrDefault();
+                    if (r != null) r[CheckCol] = (object)"1";
+                }
+            }
+        }
+        DsTkVisible = true;
+    }
+
+
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Print:
+                Print();
+                StateHasChanged();
+                break;
+            case ActionTask.Quit:
+                myStateMN.SetCurrentActionTask(ActionTask.None);
+                ShowPrint = false;
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+
+    async void ExportData(int type)
+    {
+        oBrowse?.ExPortGrid(type);
+        myStateMN.SetNewThongbao("Export successfully");
+    }
+
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+            await Language();
+    }
+
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+
+            if (curCommand != null)
+                Fbrowse = GetTableShow(isMauNT ? 1 : 0);
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async void ConfirmGridView_OnOk()
+    {
+        // if (!CheckValid()) return;
+
+        if (NgayMs.HasValue && NgayMs.Value > Ngay_ct1)
+            NgayMs = Ngay_ct1;
+
+        ShowLoadding = true;
+        myStateMN.SetStartDate(Ngay_ct1);
+        myStateMN.SetEndDate(Ngay_ct2);
+
+        await Loaddata();
+
+        ShowLoadding = false;
+        PopupVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public string GetCondition()
+    {
+        string cond = "";
+
+        if (!string.IsNullOrWhiteSpace(TkTien))
+        {
+            var listTk = TkTien
+                .Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrEmpty(x))
+                .ToList();
+
+            if (listTk.Count > 0)
+            {
+                var listCond = listTk.Select(x => $"tk like ''{x}%''");
+
+                cond = "AND (" + string.Join(" or ", listCond) + ")";
+            }
+        }
+
+        return cond;
+    }
+
+
+    public string GetCondition2()
+    {
+        string cond = ConditionTk(TkNo, "tk_du");
+        string MaDVCS = myStateMN.GetDvcs().Ma_dvcs;
+        MaDVCS = MaDVCS == "ALL" ? "" : MaDVCS;
+        if (!string.IsNullOrEmpty(MaDVCS))
+            cond = (string.IsNullOrEmpty(cond) ? "" : cond + " and ") + $"ma_dvcs like '{MaDVCS.Trim()}%'";
+        return cond;
+    }
+
+    private string ConditionTk(string strtk, string typetk)
+    {
+        if (string.IsNullOrWhiteSpace(strtk)) return "";
+        var parts = strtk.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToArray();
+        if (parts.Length == 0) return "";
+        var sb = new System.Text.StringBuilder();
+        sb.Append(" and (");
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (i > 0) sb.Append(" or ");
+            sb.Append($"{typetk} like '{parts[i]}%'");
+        }
+        sb.Append(")");
+        return sb.ToString();
+    }
+
+    private void Btndstk_no_Click()
+    {
+        DsTkEditingCo = false;
+        ChonTkNo();
+    }
+
+    private void Btndstk_du_Click()
+    {
+        DsTkEditingCo = true;
+        ChonTkCo();
+    }
+
+    private void ChonTkNo()
+    {
+        EnsureTkTablesLoaded();
+        if (TblDataTk != null)
+        {
+            foreach (DataRow r in TblDataTk.Rows)
+                r[CheckCol] = (object)"0";
+            if (!string.IsNullOrEmpty(TkNo))
+            {
+                var parts = TkNo.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                foreach (var p in parts)
+                {
+                    DataRow r = TblDataTk.Select($"tk = '{p}'").FirstOrDefault();
+                    if (r != null) r[CheckCol] = (object)"1";
+                }
+            }
+        }
+        DsTkVisible = true;
+    }
+
+    private void ChonTkCo()
+    {
+        EnsureTkTablesLoaded();
+        if (TblDataTk != null)
+        {
+            foreach (DataRow r in TblDataTk.Rows)
+                r[CheckCol] = (object)"0";
+            if (!string.IsNullOrEmpty(TkCo))
+            {
+                var parts = TkCo.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                foreach (var p in parts)
+                {
+                    DataRow r = TblDataTk.Select($"tk = '{p}'").FirstOrDefault();
+                    if (r != null) r[CheckCol] = (object)"1";
+                }
+            }
+        }
+        DsTkVisible = true;
+    }
+
+    private void EnsureTkTablesLoaded()
+    {
+        if (TblDataTk != null) return;
+
+        try
+        {
+            string sql = "Select '0' as checkcol ,RTRIM(tk) as tk, ten_tk,ten_tk2 from dmtk where status = '1' order by tk";
+            DataSet ds = myDb.LoadDataSet(sql);
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                var dt = ds.Tables[0];
+                TblDataTk = myDb.SetNoneReadOnlyDataTable(dt.Copy());
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    void OnCheckTkChanged(bool changed)
+    {
+        if (DsTkEditingCo)
+        {
+            string _tk = "";
+            DataRow[] rows = TblDataTk.Select("checkcol=1");
+            if (rows != null && rows.Length > 0)
+            {
+                foreach (DataRow row in rows)
+                {
+                    _tk += row["tk"].ToString().Trim() + ",";
+                }
+                if (!string.IsNullOrEmpty(_tk))
+                    TkCo = _tk.Substring(0, _tk.Length - 1);
+                else
+                    TkCo = "";
+            }
+            else
+                TkCo = "";
+        }
+        else
+        {
+            string _tk = "";
+            DataRow[] rows = TblDataTk.Select("checkcol=1");
+            if (rows != null && rows.Length > 0)
+            {
+                foreach (DataRow row in rows)
+                {
+                    _tk += row["tk"].ToString().Trim() + ",";
+                }
+                if (!string.IsNullOrEmpty(_tk))
+                    TkNo = _tk.Substring(0, _tk.Length - 1);
+                else
+                    TkNo = "";
+            }
+            else
+                TkNo = "";
+        }
+        StateHasChanged();
+    }
+
+    private void CloseDsTk()
+    {
+        DsTkVisible = false;
+
+        string selectedTks = string.Join(",",
+            TblDataTk.Select("checkcol='1'")
+                     .Select(r => r["tk"].ToString().Trim())
+                     .ToArray());
+
+        if (DsTkEditingCo)
+        {
+            TkCo = selectedTks;
+        }
+        else if (DsTkEditingCols)
+        {
+            TkNoCols = selectedTks;
+        }
+        else
+        {
+            TkTien = selectedTks;
+        }
+
+        StateHasChanged();
+    }
+
+
+    private void CancelDsTk()
+    {
+        DsTkVisible = false;
+    }
+
+    private void DsTkConfirm()
+    {
+        DsTkVisible = false;
+        StateHasChanged();
+    }
+
+    private void DsTkCancel()
+    {
+        DsTkVisible = false;
+    }
+
+    private void TxtNgayCt1_LostFocus()
+    {
+        if (!NgayMs.HasValue || NgayMs.Value == default)
+            NgayMs = Ngay_ct1;
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool flag = true;
+        if (flag && Ngay_ct1 == default)
+        {
+            Errors.Add("Ngày lọc chứng từ không hợp lệ!");
+            flag = false;
+        }
+        if (flag && Ngay_ct2 == default)
+        {
+            Errors.Add("Ngày lọc chứng từ không hợp lệ!");
+            flag = false;
+        }
+        if (flag && Ngay_ct1 > Ngay_ct2)
+        {
+            Errors.Add("Ngày lọc chứng từ không hợp lệ!");
+            flag = false;
+        }
+        if (flag && NgayMs.HasValue && NgayMs != default && NgayMs.Value > Ngay_ct1)
+        {
+            Errors.Add("Ngày mở sổ không hợp lệ!");
+            flag = false;
+        }
+        StateHasChanged();
+        return flag;
+    }
+
+    void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+    private string GetTableShow(int mau_bc)
+    {
+        string str = string.Empty;
+        switch (IsLangEn)
+        {
+            case false:
+                switch (mau_bc)
+                {
+                    case 0:
+                        str = string.Format(curCommand.Vbrowse1.ToString().Replace("{0}:0", "{0}"), (object)GetStringBrowseTks_du().Rows[0]["vbrowse1"].ToString());
+                        break;
+                    case 1:
+                        str = string.Format(curCommand.Vbrowse2.ToString().Replace("{0}:0", "{0}"), (object)GetStringBrowseTks_du().Rows[0]["vbrowse2"].ToString());
+                        break;
+                }
+                break;
+            default:
+                switch (mau_bc)
+                {
+                    case 0:
+                        str = string.Format(curCommand.Ebrowse1.ToString().Replace("{0}:0", "{0}"), (object)GetStringBrowseTks_du().Rows[0]["vbrowse1"].ToString());
+                        break;
+                    case 1:
+                        str = string.Format(curCommand.Ebrowse2.ToString().Replace("{0}:0", "{0}"), (object)GetStringBrowseTks_du().Rows[0]["vbrowse2"].ToString());
+                        break;
+                }
+                break;
+        }
+        return str;
+    }
+    private DataTable GetStringBrowseTks_du()
+    {
+        DataTable dataTable = new DataTable();
+        DataColumn column1 = new DataColumn("vbrowse1");
+        DataColumn column2 = new DataColumn("vbrowse2");
+        string str1 = "";
+        string str2 = "";
+        string str3 = ":130:h=:N0:S";
+        string str4 = ":130:h=:N1:S";
+
+        try
+        {
+            // choose source table based on Ma_nkc
+            string table = (Ma_nkc == "NKT") ? "dmtkdusnkt" : "dmtkdusnkc";
+            DataSet ds = myDb.LoadDataSet($"select * from {table}");
+            DataTable dt = (ds != null && ds.Tables.Count > 0) ? ds.Tables[0] : null;
+
+            if (dt != null && dt.Rows.Count > 0)
+            {
+                bool isVn = !IsLangEn;
+                string colName = columnName ?? "col";
+
+                // first item
+                str1 = colName + "1" + str3.Replace("h=", "h=" + (isVn ? "Ghi có tk " : "Credit account ") + dt.Rows[0]["ten_in"].ToString().Trim());
+                str2 = colName + "1_nt" + str4.Replace("h=", "h=" + (isVn ? "Ghi có n.tệ tk " : "FC credit account ") + dt.Rows[0]["ten_in"].ToString().Trim());
+
+                // remaining items
+                for (int index = 1; index < dt.Rows.Count; ++index)
+                {
+                    int num = index + 1;
+                    string tenIn = dt.Rows[index]["ten_in"].ToString().Trim();
+
+                    str1 += ";" + colName + num.ToString() + str3.Replace("h=", "h=" + (isVn ? "Ghi có tk " : "Credit account ") + tenIn);
+                    str2 += ";" + colName + num.ToString() + "_nt" + str4.Replace("h=", "h=" + (isVn ? "Ghi có n.tệ tk " : "FC credit account ") + tenIn);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        column1.DefaultValue = (object)str1;
+        column2.DefaultValue = (object)str2;
+        dataTable.Columns.Add(column1);
+        dataTable.Columns.Add(column2);
+        DataRow row = dataTable.NewRow();
+        dataTable.Rows.Add(row);
+        return dataTable;
+    }
+    async void OnDvcsChanged(string ma_dvcs)
+    {
+        Ma_dvcs = ma_dvcs;
+        Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+        await Loaddata();
+        StateHasChanged();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStateMN.GetCurUser();
+            Ma_dvcs = myStateMN.GetMa_Dvcs(); Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+            await PageLoad();
+            await Language();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+
+            if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+                myStateMN.SetToolBar(new MyToolbar("Print", true));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+            Pageobj = DotNetObjectReference.Create(this);
+            await SetActiveComponentIdAsync("oBrowse");
+            await Loaddata();
+            StateHasChanged();
+        }
+        else
+        {
+                await oBrowse.FocusGridAsync();
+        }
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+    async Task Loaddata()
+    {
+        try
+        {
+            string parram_name = "ngay_ct1;ngay_ct2;condition;ma_dvcs;amount_debit";
+            string MaDVCS = myStateMN.GetDvcs().Ma_dvcs.Trim();
+            MaDVCS = MaDVCS == "ALL" ? "" : MaDVCS;
+
+            Condition = GetCondition();
+
+
+            // 🔹 Gọi store
+            string strsql = $"exec {Store_proc} '{(Ngay_ct1 != null ? Ngay_ct1.ToString("yyyyMMdd") : "")}'," +
+                            $"'{(Ngay_ct2 != null ? Ngay_ct2.ToString("yyyyMMdd") : "")}'," +
+                            $"'{Condition}','{MaDVCS}','ps_no'";
+
+            DataSet ds = await myDb.LoadDataset(strsql);
+
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                TblData = ds.Tables[0].Copy();
+
+                if (!TblData.Columns.Contains("stt1"))
+                    TblData.Columns.Add("stt1", typeof(int));
+
+                int num = 1;
+                foreach (DataRow row in TblData.Rows)
+                {
+                    if (TblData.Columns.Contains("ngay") && row["ngay"] != DBNull.Value)
+                        row["stt1"] = num++;
+                    else
+                        row["stt1"] = DBNull.Value; // hoặc để trống nếu cần
+                }
+            }
+            else
+            {
+                TblData = new DataTable();
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+
+
+    public override void Print()
+    {
+        LsData = new List<GlsnkttModel>();
+        GlsnkttModel model = GetStringRptTks_du();
+        string modelstr = SisFunc.Converts.DataTable2Model(TblData, "Glsnktt");
+        if (TblData != null)
+        {
+            List<Glsnktt> listObj = myDb.ConvertDataTable<Glsnktt>(TblData);
+            model.LsData = listObj;
+        }
+        string MaDVCS = myStateMN.GetDvcs().Ma_dvcs;
+        MaDVCS = MaDVCS == "ALL" ? "" : MaDVCS;
+        model.Ngay_ct1 = Ngay_ct1;
+        model.Ngay_ct2 = Ngay_ct2;
+        model.Condition = Condition;
+        model.MaDVCS = MaDVCS;
+        model.Mau_bc = Mau_bc;
+        model.ngay_ms = NgayMs.HasValue ? NgayMs.Value.ToString("dd-MM-yyyy") : string.Empty;
+        LsData.Add(model);
+
+        ShowPrint = true;
+    }
+    private GlsnkttModel GetStringRptTks_du()
+    {
+        GlsnkttModel model = new GlsnkttModel();
+        try
+        {
+            string table = (Ma_nkc == "NKT") ? "dmtkdusnkt" : "dmtkdusnkc";
+            DataSet ds = myDb.LoadDataSet($"select * from {table}");
+            DataTable dt = (ds != null && ds.Tables.Count > 0) ? ds.Tables[0] : null;
+
+            if (dt != null && dt.Rows.Count > 0)
+            {
+                model.col_header1 = dt.Select("stt=1").Count() > 0 ? dt.Select("stt=1").First()["ten_in"].ToString().Trim() : "";
+                model.col_header2 = dt.Select("stt=2").Count() > 0 ? dt.Select("stt=2").First()["ten_in"].ToString().Trim() : "";
+                model.col_header3 = dt.Select("stt=3").Count() > 0 ? dt.Select("stt=3").First()["ten_in"].ToString().Trim() : "";
+                model.col_header4 = dt.Select("stt=4").Count() > 0 ? dt.Select("stt=4").First()["ten_in"].ToString().Trim() : "";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        return model;
+    }
+}

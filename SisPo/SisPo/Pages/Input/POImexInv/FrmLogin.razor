@@ -1,0 +1,359 @@
+﻿@using System.Data
+@using System.Data.SqlClient
+@inject XmlStringLocalizer Lap
+@using System.Text.Json;
+@inject IDbManager myDb
+@inject Statemanagerment myStateMN
+
+<div class="container p-2" onkeydown="ModifyEnterKeyPressAsTab(event);">
+<DxFormLayout CssClass="w-100 frm-header">
+    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box my-2">
+    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Tax code"]">
+        <DxTextBox @bind-Text="@MaSoThue" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Username"]">
+        <DxComboBox Data="@UsersData" 
+                    @bind-Value="@TenDangNhap"
+                    TextFieldName="ten_nsd"
+                    ValueFieldName="ten_nsd" />
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Password"]">
+        <DxTextBox @bind-Text="@MatKhau" Password="false" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Security code"]" CaptionCssClass="fw-bold">
+        <div class="d-flex align-items-center">
+            <DxTextBox @bind-Text="@MaBaoMat" CssClass="flex-grow-1 fw-bold" MaxLength="6" />
+        </div>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="12" Caption="">
+        <div class="captcha-container d-flex align-items-center justify-content-between ps-5">
+            <div class="flex-grow-1">
+                @if (!string.IsNullOrEmpty(CaptchaImage))
+                {
+                    @((MarkupString)CaptchaImage)
+                }
+                else
+                {
+                    <div class="bg-light p-3 text-center">@Lap["Loading"]...</div>
+                }
+            </div>
+            <DxButton IconCssClass="oi oi-reload" Hint="@Lap["Refresh"]" Click="@OnRefreshCaptcha" Enabled="@(!IsLoadingCaptcha)" CssClass="ms-2" />
+        </div>
+    </DxFormLayoutItem>
+        <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Note"]">
+            <DxTextBox @bind-Text="@GhiChu" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+        </DxFormLayoutItem>
+            </DxFormLayoutGroup>
+    </DxFormLayout>
+
+    <div class="d-flex justify-content-end gap-2 mt-3">
+        <DxButton Text="@Lap["OK"]" RenderStyle="ButtonRenderStyle.Success" Click="@OnLogin" Enabled="@(!IsLoadingCaptcha)" CssClass="px-4" />
+        <DxButton Text="@Lap["Cancel"]" RenderStyle="ButtonRenderStyle.Danger" Click="@OnCancel" Enabled="@(!IsLoadingCaptcha)" CssClass="px-4" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<string> OnLoginSuccess { get; set; }
+    [Parameter] public EventCallback OnLoginCancel { get; set; }
+
+    private string MaSoThue = "";
+    private string TenDangNhap = "";
+    private string MatKhau = "";
+    private string MaBaoMat = "";
+    private string GhiChu = "";
+    private string CaptchaImage = "";
+    private string CaptchaKey = "";
+    private string CaptchaCaptcha = "";
+    private IEnumerable<object> UsersData;
+    private bool IsLoadingCaptcha = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        base.OnInitialized();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        if (firstRender)
+        {
+            await LoadUsers();
+            await LoadCaptcha();
+            StateHasChanged();
+        }
+    }
+    private async Task LoadUsers()
+    {
+        try
+        {
+            SqlCommand cmd = new SqlCommand("EXEC POImexInv_GetTkHddv");
+            DataSet ds = await myDb.LoadDataset(cmd.CommandText);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                UsersData = ds.Tables[0].AsEnumerable().Select(row => new
+                {
+                    ten_nsd = row["ten_nsd"].ToString(),
+                    ma_dvcs = row["ma_dvcs"].ToString(),
+                    ma_so_thue = row["ma_so_thue"].ToString(),
+                    mat_khau = row["mat_khau"].ToString(),
+                    ghi_chu = row["ghi_chu"].ToString()
+                });
+
+                if (UsersData.Any())
+                {
+                    var firstUser = UsersData.First();
+                    var firstUserType = firstUser.GetType();
+                    
+                    TenDangNhap = firstUserType.GetProperty("ten_nsd")?.GetValue(firstUser)?.ToString() ?? "";
+                    MaSoThue = firstUserType.GetProperty("ma_so_thue")?.GetValue(firstUser)?.ToString() ?? "";
+                    MatKhau = DecryptPassword(firstUserType.GetProperty("mat_khau")?.GetValue(firstUser)?.ToString() ?? "");
+                    GhiChu = firstUserType.GetProperty("ghi_chu")?.GetValue(firstUser)?.ToString() ?? "";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading users: {ex.Message}");
+        }
+    }
+
+    private void OnUserChanged(object selectedItem)
+    {
+        if (selectedItem != null)
+        {
+            var userType = selectedItem.GetType();
+            var matKhauProp = userType.GetProperty("mat_khau");
+            var maSoThueProp = userType.GetProperty("ma_so_thue");
+            var ghiChuProp = userType.GetProperty("ghi_chu");
+
+            if (matKhauProp != null)
+            {
+                string encryptedPassword = matKhauProp.GetValue(selectedItem)?.ToString() ?? "";
+                MatKhau = DecryptPassword(encryptedPassword);
+            }
+            if (maSoThueProp != null)
+            {
+                MaSoThue = maSoThueProp.GetValue(selectedItem)?.ToString() ?? "";
+            }
+            if (ghiChuProp != null)
+            {
+                GhiChu = ghiChuProp.GetValue(selectedItem)?.ToString() ?? "";
+            }
+        }
+    }
+
+    private string DecryptPassword(string encryptedPassword)
+    {
+        try
+        {
+            return AesOperation.Decrypt(encryptedPassword);
+        }
+        catch
+        {
+            return encryptedPassword;
+        }
+    }
+
+    private async Task LoadCaptcha()
+    {
+        try
+        {
+            IsLoadingCaptcha = true;
+            StateHasChanged();
+            
+            using (var httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                
+                // Gọi API để lấy captcha
+                var response = await httpClient.GetStringAsync("https://hoadondientu.gdt.gov.vn:30000/captcha");
+                
+                if (string.IsNullOrEmpty(response))
+                {
+                    myStateMN?.SetNewThongbao("Lỗi: Không thể tải captcha");
+                    return;
+                }
+
+                // Parse JSON response để lấy key và content
+                string key = ExtractJsonValue(response, "key");
+                string content = ExtractJsonValue(response, "content");
+                
+                if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(content))
+                {
+                    myStateMN?.SetNewThongbao("Lỗi: Dữ liệu captcha không hợp lệ");
+                    return;
+                }
+
+                CaptchaKey = key;
+                CaptchaCaptcha = content;
+                CaptchaImage = content;  // Base64 image để hiển thị
+                
+                // Detect captcha value từ image
+                MaBaoMat = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading captcha: {ex.Message}");
+            myStateMN?.SetNewThongbao($"Lỗi tải captcha: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingCaptcha = false;
+            StateHasChanged();
+        }
+    }
+    public string ExtractJsonValue(string json, string key)
+    {
+        if (string.IsNullOrWhiteSpace(json) || string.IsNullOrWhiteSpace(key))
+            return null;
+
+        using var doc = JsonDocument.Parse(json);
+        return FindValue(doc.RootElement, key);
+    }
+    private string FindValue(JsonElement element, string key)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var prop in element.EnumerateObject())
+                {
+                    if (prop.NameEquals(key))
+                        return prop.Value.ToString();
+
+                    var found = FindValue(prop.Value, key);
+                    if (found != null) return found;
+                }
+                break;
+
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    var found = FindValue(item, key);
+                    if (found != null) return found;
+                }
+                break;
+        }
+        return null;
+    }
+    
+    private async Task<string> DetectCaptchaValue(string base64CaptchaImage)
+    {
+        try
+        {            
+            return base64CaptchaImage;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error detecting captcha: {ex.Message}");
+            return "";
+        }
+    }
+
+    private async Task OnRefreshCaptcha()
+    {
+        MaBaoMat = "";
+        await LoadCaptcha();
+    }
+
+    private async Task OnLogin()
+    {
+        if (string.IsNullOrWhiteSpace(TenDangNhap))
+        {
+            myStateMN?.SetNewThongbao(Lap["Username is required"]);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(MatKhau))
+        {
+            myStateMN?.SetNewThongbao(Lap["Password is required"]);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(MaBaoMat))
+        {
+            myStateMN?.SetNewThongbao(Lap["Security code is required"]);
+            return;
+        }
+
+        if (MaBaoMat.Length != 6)
+        {
+            myStateMN?.SetNewThongbao(Lap["Security code must be 6 characters"]);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(MaSoThue))
+        {
+            myStateMN?.SetNewThongbao(Lap["Tax code is required"]);
+            return;
+        }
+
+        try
+        {
+            string token = await GetTaxToken();
+            
+            if (string.IsNullOrEmpty(token) || token.StartsWith("Err:"))
+            {
+                myStateMN?.SetNewThongbao(Lap["Login failed"]);
+                await LoadCaptcha();
+                return;
+            }
+
+            SqlCommand cmd = new SqlCommand("EXEC POImexInv_UpdateToken @Ma_so_thue, @Ma_dvcs, @Ten_nsd, @Mat_khau, @Ghi_chu, @Token");
+            cmd.Parameters.Add("@Ma_so_thue", SqlDbType.VarChar).Value = MaSoThue;
+            cmd.Parameters.Add("@Ma_dvcs", SqlDbType.VarChar).Value = "";
+            cmd.Parameters.Add("@Ten_nsd", SqlDbType.VarChar).Value = TenDangNhap;
+            cmd.Parameters.Add("@Mat_khau", SqlDbType.VarChar).Value = AesOperation.Encrypt(MatKhau);
+            cmd.Parameters.Add("@Ghi_chu", SqlDbType.VarChar).Value = GhiChu;
+            cmd.Parameters.Add("@Token", SqlDbType.VarChar).Value = token;
+            await myDb.ExecuteSqlCommandAsync(cmd);
+
+            await OnLoginSuccess.InvokeAsync(token);
+        }
+        catch (Exception ex)
+        {
+            myStateMN?.SetNewThongbao($"{Lap["Login failed"]}: {ex.Message}");
+        }
+    }
+
+    private async Task<string> GetTaxToken()
+    {
+        try
+        {
+            using (var httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                var loginData = new Dictionary<string, string>
+                {
+                    { "username", TenDangNhap },
+                    { "password", MatKhau },
+                    { "cvalue", MaBaoMat },      // Security code value
+                    { "ckey", CaptchaKey }        // Captcha key
+                };
+
+                var jsonData = System.Text.Json.JsonSerializer.Serialize(loginData);
+                var content = new StringContent(jsonData, System.Text.Encoding.UTF8, "application/json");
+                
+                var response = await httpClient.PostAsync("https://hoadondientu.gdt.gov.vn:30000/security-taxpayer/authenticate", content);
+                var responseText = await response.Content.ReadAsStringAsync();
+
+                string token = ExtractJsonValue(responseText, "token");
+                
+                if (string.IsNullOrEmpty(token))
+                {
+                    return "";
+                }
+
+                return $"Bearer {token}";
+            }
+        }
+        catch (Exception ex)
+        {
+            return $"Err: {ex.Message}";
+        }
+    }
+    
+    private void OnCancel()
+    {
+        OnLoginCancel.InvokeAsync();
+    }
+}

@@ -1,0 +1,380 @@
+@inherits FrmListBaseComponent
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveCakusd0" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurCakusd0" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <DxFormLayoutItem Caption="@Lap["Unit"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurCakusd0.Ma_dvcs" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Loan contract code"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ku_input" Ma_dm="dmku" @bind-Value="@CurCakusd0.Ma_ku" IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Account"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="tk_input" Ma_dm="dmtk1" @bind-Value="@CurCakusd0.Tk" IsEnable="@AllowEditMode" SelectChanged="Tk_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Currency"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurCakusd0.Ma_nt" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Cr. balance in [M_MA_NT0]"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Enabled="@AllowEditMode" Value="@CurCakusd0.Du_co00" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newValue) => Du_co00_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Dr. balance in [M_MA_NT0]"]" ColSpanMd="6" Enabled="false">
+                    <Template>
+                        <DxSpinEdit Enabled="false" Value="@CurCakusd0.Du_no00" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newValue) => Du_no00_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Cr. balance"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Enabled="@(AllowEditMode && NotMaNt0)" Value="@CurCakusd0.Du_co_nt00" DisplayFormat="@M_IP_TIEN_NT" ValueChanged="@((decimal newValue) => Du_co_nt00_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Dr. balance"]" ColSpanMd="6" Enabled="false">
+                    <Template>
+                        <DxSpinEdit Enabled="false" Value="@CurCakusd0.Du_no_nt00" DisplayFormat="@M_IP_TIEN_NT" ValueChanged="@((decimal newValue) => Du_no_nt00_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+[Inject] public ISysVarManager mySysvar { get; set; }
+public Cakusd0 CurCakusd0;
+private string menu_id = "wa.sd.01";
+public bool NotMaNt0 { get; set; } = false;
+public string M_IP_TIEN = "";
+public string M_IP_TIEN_NT = "";
+
+protected override void OnInitialized()
+{
+    sqlTableName = "cdku";
+    sqlTableView = "v_cdku";
+    SqlTableKey = "nam;tk;ma_ku";
+    CheckSqlTableKey = "ma_ku";
+    ParentPage = String.IsNullOrEmpty(ParentPage) ? "cakusd0" : ParentPage;
+    CurCakusd0 = new Cakusd0();
+
+    if (String.IsNullOrEmpty(Menu_id))
+        Menu_id = menu_id;
+
+    M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN");
+    M_IP_TIEN_NT = myOption.GetOptionsValue("M_IP_TIEN_NT");
+
+    base.OnInitialized();
+}
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                Lap.UpdateTranslation("Dr. balance in [M_MA_NT0]", Lap["Dr. balance in [M_MA_NT0]"].ToString().Replace("[M_MA_NT0]", myOption.GetOptionsValue("M_MA_NT0")));
+                Lap.UpdateTranslation("Cr. balance in [M_MA_NT0]", Lap["Cr. balance in [M_MA_NT0]"].ToString().Replace("[M_MA_NT0]", myOption.GetOptionsValue("M_MA_NT0")));
+
+                if (String.IsNullOrEmpty(CurCakusd0.Tk))
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('tk_input')?.focus()");
+                else
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ku_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task ViewRecord(string SqlTableKeyValue)
+    {
+        CurCakusd0 = new Cakusd0();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task EditRecord(string SqlTableKeyValue)
+    {
+        CurCakusd0 = new Cakusd0();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task NewRecord(string SqlTableKeyValue)
+    {
+        CurCakusd0 = new Cakusd0();
+        CurCakusd0.Ma_dvcs = myStateMN.GetDvcs().Ma_dvcs;
+
+        if (SqlTableKeyValue.Split(";").Length > 1)
+        {
+            CurCakusd0.Nam = int.Parse(SqlTableKeyValue.Split(";")[1]);
+            CurCakusd0.Tk = SqlTableKeyValue.Split(";")[0];
+            CurCakusd0.Tk = myDb.GetValue($"select top 1 tk from dmtk where tk like '{CurCakusd0.Tk.Trim()}%' order by tk")?.ToString();
+            
+            string Mant = myDb.GetValue($"select ma_nt from dmtk where tk = '{CurCakusd0.Tk.Trim()}'")?.ToString().Trim();
+            Mant = String.IsNullOrEmpty(Mant) ? myOption.GetOptionsValue("M_MA_NT0") : Mant;
+            CurCakusd0.Ma_nt = Mant;
+            NotMaNt0 = (CurCakusd0.Ma_nt.Trim() != myOption.GetOptionsValue("M_MA_NT0").Trim());
+            M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN");
+            M_IP_TIEN_NT = NotMaNt0 ? myOption.GetOptionsValue("M_IP_TIEN_NT") : M_IP_TIEN;
+        }
+        else if (SqlTableKeyValue.Split(";").Length == 1)
+            CurCakusd0.Nam = int.Parse(SqlTableKeyValue.Split(";")[0]);
+        else
+            CurCakusd0.Nam = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_DN")).Year;
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task SaveCakusd0()
+    {
+        try
+        {
+            if (!CheckValid())
+            {
+                return;
+            }
+
+            if (curActionTask == ActionTask.Edit)
+            {
+                CurCakusd0.Date = DateTime.Now.Date;
+                CurCakusd0.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurCakusd0.User_id = curUser.User_id;
+                    CurCakusd0.User_name = curUser.User_name;
+                }
+
+                string _where = "";
+                string[] strkey = SqlTableKey.Split(';');
+                string[] strvalue = Ma_ma.Split(';');
+                if (strkey.Length == strvalue.Length)
+                {
+                    for (int x = 0; x < strkey.Length; x++)
+                    {
+                        _where += strkey[x] + " = '" + strvalue[x] + "' and ";
+                    }
+                }
+                if (_where.Length > 0)
+                {
+                    _where = _where.Substring(0, _where.Length - 4);
+                    await myDb.UpdateOneRow1<Cakusd0>(CurCakusd0, sqlTableName, "", _where);
+                    myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurCakusd0.Ma_ku));
+                }
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                string strsql = $"Select ma_ku from {sqlTableName} where nam={CurCakusd0.Nam} AND tk='{CurCakusd0.Tk.Trim()}' AND ma_ku='{CurCakusd0.Ma_ku.Trim()}'";
+                DataTable dt = myDb.GetTable(strsql);
+                if (dt.Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["This record already exists, can not add new"] + " !");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ku_input')?.focus()");
+                    return;
+                }
+
+                CurCakusd0.Date = DateTime.Now.Date;
+                CurCakusd0.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurCakusd0.Date0 = DateTime.Now.Date;
+                CurCakusd0.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurCakusd0.User_id = curUser.User_id;
+                    CurCakusd0.User_id0 = curUser.User_id;
+                    CurCakusd0.User_name = curUser.User_name;
+                    CurCakusd0.User_name0 = curUser.User_name;
+                }
+                await myDb.InsertOneRow<Cakusd0>(CurCakusd0, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurCakusd0.Ma_ku));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo(ParentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Save failed: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (String.IsNullOrEmpty(CurCakusd0.Ma_dvcs))
+        {
+            myStateMN.SetNewThongbao(Lap["Unit is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurCakusd0.Tk))
+        {
+            myStateMN.SetNewThongbao(Lap["Account is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurCakusd0.Ma_ku))
+        {
+            myStateMN.SetNewThongbao(Lap["Contract code is required"] + " !");
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {
+            string[] strarr = SqlTableKey.Split(";");
+            string strwhere = string.Join(" AND ", strarr.Select(c => $"{c} = @{c}"));
+            string sql = $"Select * from {sqlTableView} where {strwhere}";
+            DataSet DsTrans = await myDb.LoadDataset(sql, SqlTableKey, SqlTableKeyValue);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<Cakusd0> lsdetai = myDb.ConvertDataTable<Cakusd0>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurCakusd0 = lsdetai[0];
+                }
+            }
+
+            string Mant = CurCakusd0.Tk.Trim();
+            Mant = myDb.GetValue($"select ma_nt from dmtk where tk = '{Mant}'")?.ToString().Trim();
+            Mant = String.IsNullOrEmpty(Mant) ? myOption.GetOptionsValue("M_MA_NT0") : Mant;
+            CurCakusd0.Ma_nt = Mant;
+            NotMaNt0 = (CurCakusd0.Ma_nt.Trim() != myOption.GetOptionsValue("M_MA_NT0").Trim());
+            M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN");
+            M_IP_TIEN_NT = NotMaNt0 ? myOption.GetOptionsValue("M_IP_TIEN_NT") : M_IP_TIEN;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Tk_Changed(ExpandoObject value)
+    {
+        string Mant = value.Where(a => a.Key.Equals("tk")).FirstOrDefault().Value?.ToString() ?? "";
+        Mant = myDb.GetValue($"select ma_nt from dmtk where tk = '{Mant}'")?.ToString().Trim();
+        Mant = String.IsNullOrEmpty(Mant) ? myOption.GetOptionsValue("M_MA_NT0") : Mant;
+        CurCakusd0.Ma_nt = Mant;
+        NotMaNt0 = (CurCakusd0.Ma_nt.Trim() != myOption.GetOptionsValue("M_MA_NT0").Trim());
+        StateHasChanged();
+    }
+
+    void Du_no00_ValueChanged(decimal newValue)
+    {
+        CurCakusd0.Du_no00 = newValue;
+        if (newValue != 0)
+        {
+            CurCakusd0.Du_co00 = 0;
+        }
+        StateHasChanged();
+    }
+
+    void Du_co00_ValueChanged(decimal newValue)
+    {
+        CurCakusd0.Du_co00 = newValue;
+        if (newValue != 0)
+        {
+            CurCakusd0.Du_no00 = 0;
+        }
+        StateHasChanged();
+    }
+
+    void Du_no_nt00_ValueChanged(decimal newValue)
+    {
+        CurCakusd0.Du_no_nt00 = newValue;
+        if (newValue != 0)
+        {
+            CurCakusd0.Du_co_nt00 = 0;
+        }
+        StateHasChanged();
+    }
+
+    void Du_co_nt00_ValueChanged(decimal newValue)
+    {
+        CurCakusd0.Du_co_nt00 = newValue;
+        if (newValue != 0)
+        {
+            CurCakusd0.Du_no_nt00 = 0;
+        }
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,423 @@
+﻿@inherits FrmListBaseComponent
+@using SisFa.Pages.Input.Zcdmslts
+@using DevExpress.Blazor
+@using System.Data
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveCtslts" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                @* --- MÃ TÀI SẢN --- *@
+                <DxFormLayoutItem Caption="Mã tài sản:" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="so_the_ts_input"
+                                               Ma_dm="dmts"
+                                               Filter="kieu_kh = '2'"
+                                               @bind-Value="@CurCtslts.So_the_ts"
+                                               IsEnable="@(AllowEditMode && curActionTask == ActionTask.New)"
+                                               SelectChanged="SoTheTs_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- MÃ BỘ PHẬN SỬ DỤNG --- *@
+                <DxFormLayoutItem Caption="Mã bộ phận sử dụng:" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_bpts_input"
+                                               Ma_dm="dmbpts"
+                                               @bind-Value="@CurCtslts.Ma_bpts"
+                                               IsEnable="@(AllowEditMode && curActionTask == ActionTask.New)"
+                                               SelectChanged="MaBpts_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NĂM --- *@
+                <DxFormLayoutItem Caption="Năm:" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit Id="nam_input"
+                                    Enabled="@(AllowEditMode && curActionTask == ActionTask.New)"
+                                    Value="@CurCtslts.Nam"
+                                    DisplayFormat="####"
+                                    MinValue="2000"
+                                    MaxValue="2099"
+                                    ValueChanged="@((int v) => Nam_ValueChanged(v))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- KỲ --- *@
+                <DxFormLayoutItem Caption="Kỳ (1-12):" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:45%;">
+                                <DxSpinEdit Id="ky_input"
+                                            Enabled="@(AllowEditMode && curActionTask == ActionTask.New)"
+                                            Value="@CurCtslts.Ky"
+                                            DisplayFormat="##"
+                                            MinValue="1"
+                                            MaxValue="12"
+                                            ValueChanged="@((int v) => Ky_ValueChanged(v))" />
+                            </div>
+                            @if (CurCtslts.Nam > 0 && CurCtslts.Ky >= 1 && CurCtslts.Ky <= 12)
+                            {
+                                <span class="badge bg-info text-dark">@thoiGianKy</span>
+                            }
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- SẢN LƯỢNG --- *@
+                <DxFormLayoutItem Caption="Sản lượng:" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit Id="sl_kh_input"
+                                    Enabled="@AllowEditMode"
+                                    Value="@CurCtslts.Sl_kh"
+                                    DisplayFormat="N2"
+                                    MinValue="0"
+                                    ValueChanged="@((decimal v) => { CurCtslts.Sl_kh = v; StateHasChanged(); })" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    [Parameter] public int FilterNam { get; set; }
+    [Parameter] public int FilterTuKy { get; set; }
+    [Parameter] public int FilterDenKy { get; set; }
+    public Ctslts CurCtslts;
+    private string menu_id = "wf.ct.04";
+    private string thoiGianKy = "";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "ctslts";
+        sqlTableView = "ctslts";
+        SqlTableKey = "so_the_ts;ma_bpts;nam;ky";
+        CheckSqlTableKey = "so_the_ts";
+        ParentPage = string.IsNullOrEmpty(ParentPage) ? "Zcdmslts" : ParentPage;
+        CurCtslts = new Ctslts();
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord();
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Lỗi: " + ex.Message);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+
+                if (curActionTask == ActionTask.New)
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('so_the_ts_input')?.focus()");
+                else if (AllowEditMode)
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('sl_kh_input')?.focus()");
+
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task ViewRecord(string key)
+    {
+        CurCtslts = new Ctslts();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(key);
+    }
+
+    async Task EditRecord(string key)
+    {
+        CurCtslts = new Ctslts();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(key);
+    }
+
+    async Task NewRecord()
+    {
+        CurCtslts = new Ctslts();
+        CurCtslts.Nam = DateTime.Now.Year;
+        CurCtslts.Ky = DateTime.Now.Month;
+        AllowEditMode = true;
+        AllowEditMa = true;
+        UpdateThoiGianKy();
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string[] strarr = SqlTableKey.Split(";");
+            string strwhere = string.Join(" AND ", strarr.Select(c => $"{c} = @{c}"));
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {strwhere}";
+            DataSet ds = await myDb.LoadDataset(sql, SqlTableKey, key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                List<Ctslts> list = myDb.ConvertDataTable<Ctslts>(ds.Tables[0]);
+                if (list != null && list.Count > 0)
+                {
+                    CurCtslts = list[0];
+                    LoadLookupNames();
+                    UpdateThoiGianKy();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Lỗi tải dữ liệu: " + ex.Message);
+        }
+    }
+
+    void LoadLookupNames()
+    {
+        if (!string.IsNullOrWhiteSpace(CurCtslts.So_the_ts))
+        {
+            string safe = CurCtslts.So_the_ts.Trim().Replace("'", "''");
+            CurCtslts.Ten_ts = myDb.GetValue($"SELECT ten_ts FROM dmts WHERE so_the_ts = '{safe}'")?.ToString() ?? "";
+        }
+        if (!string.IsNullOrWhiteSpace(CurCtslts.Ma_bpts))
+        {
+            string safe = CurCtslts.Ma_bpts.Trim().Replace("'", "''");
+            CurCtslts.Ten_bpsd = myDb.GetValue($"SELECT ten_bpts FROM dmbpts WHERE ma_bpts = '{safe}'")?.ToString() ?? "";
+        }
+    }
+
+    void SoTheTs_Changed(ExpandoObject value)
+    {
+        CurCtslts.Ten_ts = string.Empty;
+        if (!string.IsNullOrWhiteSpace(CurCtslts.So_the_ts))
+        {
+            string safe = CurCtslts.So_the_ts.Trim().Replace("'", "''");
+            CurCtslts.Ten_ts = myDb.GetValue($"SELECT ten_ts FROM dmts WHERE so_the_ts = '{safe}'")?.ToString() ?? "";
+        }
+        StateHasChanged();
+    }
+
+    void MaBpts_Changed(ExpandoObject value)
+    {
+        CurCtslts.Ten_bpsd = string.Empty;
+        if (!string.IsNullOrWhiteSpace(CurCtslts.Ma_bpts))
+        {
+            string safe = CurCtslts.Ma_bpts.Trim().Replace("'", "''");
+            CurCtslts.Ten_bpsd = myDb.GetValue($"SELECT ten_bpts FROM dmbpts WHERE ma_bpts = '{safe}'")?.ToString() ?? "";
+        }
+        StateHasChanged();
+    }
+
+    void Nam_ValueChanged(int newValue)
+    {
+        CurCtslts.Nam = newValue;
+        UpdateThoiGianKy();
+        StateHasChanged();
+    }
+
+    void Ky_ValueChanged(int newValue)
+    {
+        CurCtslts.Ky = newValue;
+        UpdateThoiGianKy();
+        StateHasChanged();
+    }
+
+    void UpdateThoiGianKy()
+    {
+        thoiGianKy = "";
+        if (CurCtslts.Nam > 0 && CurCtslts.Ky >= 1 && CurCtslts.Ky <= 12)
+        {
+            var ngayDau = new DateTime(CurCtslts.Nam, CurCtslts.Ky, 1);
+            var ngayCuoi = ngayDau.AddMonths(1).AddDays(-1);
+            thoiGianKy = $"{ngayDau:dd/MM/yyyy} -> {ngayCuoi:dd/MM/yyyy}";
+        }
+    }
+
+    async Task SaveCtslts()
+    {
+        try
+        {
+            if (!await CheckValid())
+                return;
+
+            DateTime now         = DateTime.Now;
+            string   currentTime = now.ToString("HH:mm:ss");
+            string   safe_ts     = CurCtslts.So_the_ts.Trim().Replace("'", "''");
+            string   safe_bpts   = CurCtslts.Ma_bpts.Trim().Replace("'", "''");
+
+            // --- Validate trùng khóa chính (cả New lẫn Edit khi thay đổi key) ---
+            if (curActionTask == ActionTask.New)
+            {
+                string sqlCheck = $"SELECT COUNT(1) FROM {sqlTableName} WHERE so_the_ts='{safe_ts}' AND ma_bpts='{safe_bpts}' AND nam={CurCtslts.Nam} AND ky={CurCtslts.Ky}";
+                DataTable dtChk = myDb.GetTable(sqlCheck);
+                if (dtChk != null && dtChk.Rows.Count > 0 && Convert.ToInt32(dtChk.Rows[0][0]) > 0)
+                {
+                    myStateMN.SetNewThongbao("Khai b&#225;o tr&#249;ng! B&#7843;n ghi (M&#227; TS, M&#227; BPSD, N&#259;m, K&#7923;) n&#224;y &#273;&#227; t&#7891;n t&#7841;i.");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ky_input')?.focus()");
+                    return;
+                }
+            }
+
+            // --- Validate h&#7841;n m&#7913;c s&#7843;n l&#432;&#7907;ng qua SP Zcdmslts_check ---
+            try
+            {
+                // SP tr&#7843; v&#7873; 2 c&#7897;t: sl_luy_ke (s&#7843;n l&#432;&#7907;ng &#273;&#227; tr&#237;ch l&#361;y k&#7871;), sl_dinh_muc (t&#7893;ng &#273;&#7883;nh m&#7913;c)
+                DataSet dsCheck = await myDb.LoadStoreProcedure(
+                    "Zcdmslts_check",
+                    "@So_the_ts;@ma_bpts;@nam;@ky",
+                    $"{CurCtslts.So_the_ts.Trim()};{CurCtslts.Ma_bpts.Trim()};{CurCtslts.Nam};{CurCtslts.Ky}"
+                );
+                if (dsCheck != null && dsCheck.Tables.Count > 0 && dsCheck.Tables[0].Rows.Count > 0)
+                {
+                    var row      = dsCheck.Tables[0].Rows[0];
+                    decimal slLuyKe    = row["sl_luy_ke"]    == DBNull.Value ? 0 : Convert.ToDecimal(row["sl_luy_ke"]);
+                    decimal slDinhMuc  = row["sl_dinh_muc"]  == DBNull.Value ? 0 : Convert.ToDecimal(row["sl_dinh_muc"]);
+                    if (slDinhMuc > 0 && (slLuyKe + CurCtslts.Sl_kh) > slDinhMuc)
+                    {
+                        myStateMN.SetNewThongbao($"S&#7843;n l&#432;&#7907;ng kh&#7845;u hao v&#432;&#7907;t qu&#225; t&#7893;ng s&#7843;n l&#432;&#7907;ng! (&#272;&#7883;nh m&#7913;c: {slDinhMuc:N2} | L&#361;y k&#7871;: {slLuyKe:N2} | V&#7915;a nh&#7853;p: {CurCtslts.Sl_kh:N2})");
+                        await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('sl_kh_input')?.focus()");
+                        return;
+                    }
+                }
+            }
+            catch (Exception exSp)
+            {
+                Console.WriteLine("Zcdmslts_check error: " + exSp.Message);
+            }
+
+            if (curActionTask == ActionTask.New)
+            {
+                CurCtslts.Date0      = now.Date;
+                CurCtslts.Time0      = currentTime;
+                CurCtslts.Date       = now.Date;
+                CurCtslts.Time       = currentTime;
+                if (curUser != null)
+                {
+                    CurCtslts.User_id0   = curUser.User_id;
+                    CurCtslts.User_name0 = curUser.User_name;
+                    CurCtslts.User_id    = curUser.User_id;
+                    CurCtslts.User_name  = curUser.User_name;
+                }
+
+                await myDb.InsertOneRow<Ctslts>(CurCtslts, sqlTableName);
+                myStateMN.SetNewThongbao($"Th&#234;m m&#7899;i th&#224;nh c&#244;ng: {CurCtslts.So_the_ts} - N&#259;m {CurCtslts.Nam} K&#7923; {CurCtslts.Ky}");
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                CurCtslts.Date = now.Date;
+                CurCtslts.Time = currentTime;
+                if (curUser != null)
+                {
+                    CurCtslts.User_id   = curUser.User_id;
+                    CurCtslts.User_name = curUser.User_name;
+                }
+
+                string _where = "";
+                string[] strkey   = SqlTableKey.Split(';');
+                string[] strvalue = Ma_ma.Split(';');
+                if (strkey.Length == strvalue.Length)
+                {
+                    for (int x = 0; x < strkey.Length; x++)
+                        _where += strkey[x] + " = '" + strvalue[x] + "' and ";
+                }
+                if (_where.Length > 0)
+                {
+                    _where = _where.Substring(0, _where.Length - 4);
+                    await myDb.UpdateOneRow1<Ctslts>(CurCtslts, sqlTableName, "", _where);
+                    myStateMN.SetNewThongbao($"C&#7853;p nh&#7853;t th&#224;nh c&#244;ng: {CurCtslts.So_the_ts} - N&#259;m {CurCtslts.Nam} K&#7923; {CurCtslts.Ky}");
+                }
+            }
+
+            if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo(ParentPage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("L&#432;u th&#7845;t b&#7841;i: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    async Task<bool> CheckValid()
+    {
+        if (string.IsNullOrWhiteSpace(CurCtslts.So_the_ts))
+        {
+            myStateMN.SetNewThongbao("Ch&#432;a nh&#7853;p m&#227; t&#224;i s&#7843;n!");
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('so_the_ts_input')?.focus()");
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(CurCtslts.Ma_bpts))
+        {
+            myStateMN.SetNewThongbao("Ch&#432;a nh&#7853;p m&#227; b&#7897; ph&#7853;n s&#7917; d&#7909;ng!");
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_bpts_input')?.focus()");
+            return false;
+        }
+        if (CurCtslts.Nam <= 0)
+        {
+            myStateMN.SetNewThongbao("N&#259;m kh&#244;ng h&#7907;p l&#7879;!");
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('nam_input')?.focus()");
+            return false;
+        }
+        if (CurCtslts.Ky < 1 || CurCtslts.Ky > 12)
+        {
+            myStateMN.SetNewThongbao("K&#7923; ph&#7843;i t&#7915; 1 &#273;&#7871;n 12!");
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ky_input')?.focus()");
+            return false;
+        }
+        if (FilterTuKy > 0 && FilterDenKy > 0 && (CurCtslts.Ky < FilterTuKy || CurCtslts.Ky > FilterDenKy))
+        {
+            myStateMN.SetNewThongbao($"K&#7923; ph&#7843;i n&#7857;m trong kho&#7843;ng t&#7915; k&#7923; {FilterTuKy} &#273;&#7871;n k&#7923; {FilterDenKy}!");
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ky_input')?.focus()");
+            return false;
+        }
+        if (CurCtslts.Sl_kh < 0)
+        {
+            myStateMN.SetNewThongbao("S&#7843;n l&#432;&#7907;ng kh&#244;ng &#273;&#432;&#7907;c nh&#7887; h&#417;n 0!");
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('sl_kh_input')?.focus()");
+            return false;
+        }
+        return true;
+    }
+}

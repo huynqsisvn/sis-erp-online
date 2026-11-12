@@ -1,0 +1,969 @@
+﻿@page "/glgsso4t"
+@page "/glgsso4t/{Menu_id}"
+@inherits RepoBaseComponent
+
+@attribute [Authorize(Roles = "admin,glgsso4t")]
+
+<div class="row" onkeydown="_handleFunctionKeys(event);">
+    @if (!IsDetail)
+    {
+        <FrmBrowse3Component @ref="@oBrowse1" TblData="@TblData"
+                             Fbrowse="@Fbrowse"
+                             IsLangEn="@IsLangEn"
+                             SelectItem="@OnRowClick"
+                             SelectCol="tag">
+        </FrmBrowse3Component>
+    }
+    else
+    {
+        <div class="row mx-1 mb-1">
+            <span style="color:dodgerblue;font-weight:600;">@DetailTitle</span>
+            <hr class="my-1" />
+        </div>
+        <FrmBrowseComponent @ref="@oBrowseCT" TblData="@TblDataCT"
+                            Fbrowse="@FbrowseCT"
+                            IsLangEn="@IsLangEn"
+                            CustomSummaryTextFormatter="@FormatDetailSummaryText">
+        </FrmBrowseComponent>
+    }
+</div>
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup" onkeydown="ModifyEnterKeyPressAsTab(event);"
+         @bind-Visible="@PopupVisible"
+         Width="650px"
+         Height="Auto"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width:4rem;height:4rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="p-2">
+                <div class="rounded border border-secondary-subtle shadow-sm p-2 mb-2">
+                    <DxFormLayout CssClass="w-100">
+                        <DxFormLayoutItem Caption="@Lap["Account"]" ColSpanMd="12">
+                            <DxTextBox @bind-Text="Tk" NullText="" />
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Ctgs from date"]" ColSpanMd="6">
+                            <DxDateEdit Date="Ngay_ct1" DateChanged="@(EventCallback.Factory.Create<DateTime>(this, OnNgayCt1Changed))" NullText="" Format="dd-MM-yyyy"
+                                        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["To date"]" ColSpanMd="6">
+                            <DxDateEdit @bind-Date="Ngay_ct2" NullText="" Format="dd-MM-yyyy"
+                                        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Book opening date"]" ColSpanMd="6">
+                            <DxDateEdit @bind-Date="Ngay_ms" NullText="" Format="dd-MM-yyyy"
+                                        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Account ledger type"]" ColSpanMd="6">
+                            <DxComboBox Data="@LstTkSc" @bind-Value="Tk_sc" ValueFieldName="Value" TextFieldName="Text" />
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@(Lap["Account level"] + " <=")" ColSpanMd="6">
+                            <DxTextBox @bind-Text="Bac_tk" NullText="" />
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem Caption="@Lap["Report template"]" ColSpanMd="6">
+                            <DxComboBox Data="@LstMauBC" @bind-Value="Mau_bc" ValueFieldName="Value" TextFieldName="Text" />
+                        </DxFormLayoutItem>
+                    </DxFormLayout>
+                </div>
+
+                @if (FilterErrors.Any())
+                {
+                    <div class="alert alert-danger p-2 mt-1">
+                        <ul class="mb-0">
+                            @foreach (var err in FilterErrors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end mt-2 me-1">
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success"
+                          Text="@Lap["OK"]" Click="@BtnFilterOk" />
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger"
+                          Text="@Lap["Cancel"]" Click="@BtnFilterCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+
+<style>
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 10px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+</style>
+
+@code {
+    private FrmBrowse3Component oBrowse1;
+    private bool IsDetail { get; set; } = false;
+    private FrmBrowseComponent oBrowseCT;
+    private DataTable TblDataCT;
+    private string FbrowseCT = "";
+    private string DetailTitle = "";
+
+    private string Tk { get; set; } = "";
+    private string Tk_sc { get; set; } = "1";
+    private string Bac_tk { get; set; } = "";
+    private DateTime Ngay_ms { get; set; } = DateTime.Today;
+    private List<string> FilterErrors { get; set; } = new();
+
+    private DataSet _dsGlgsso4t;
+    private DataSet _dsDetail;
+
+    private string[] _sFieldArrays = Array.Empty<string>();
+
+    private List<Glgsso4tModel> LsData;
+    public DotNetObjectReference<Glgsso4tCpn> Pageobj;
+    private string ActiveComponentId = "oBrowse1";    
+    private List<object> LstTkSc = new();
+
+    private void OnRowClick(object item)
+    {
+        if (item != null)
+            CurItem = item;
+    }
+
+    [JSInvokable]
+    public void GridFMode(string value, string id)
+    {
+        if (!string.IsNullOrEmpty(id) && id.Equals("oBrowse1"))
+            oBrowse1HotKeyFunction(value);
+        else if (!string.IsNullOrEmpty(id) && id.Equals("oBrowseCT"))
+            oBrowseCTHotKeyFunction(value);
+    }
+
+    private void oBrowse1HotKeyFunction(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        if (value.Equals("F5"))
+        {
+            ShowDetail();
+            StateHasChanged();
+        }
+        else if (value.Equals("F7"))
+        {
+            Print();
+            StateHasChanged();
+        }
+    }
+
+    private void oBrowseCTHotKeyFunction(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        if (value.ToUpper().Equals("ESCAPE"))
+        {
+            HideDetail();
+            StateHasChanged();
+        }
+    }
+
+    private async Task SetActiveComponentIdAsync(string id)
+    {
+        try
+        {
+            ActiveComponentId = id ?? ActiveComponentId;
+            if (Pageobj != null)
+                await JavacriptS.InvokeVoidAsync("SetPageFModeObj", Pageobj, ActiveComponentId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SetActiveComponentIdAsync error: " + ex.Message);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "wg.vb.11";
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+
+        Ngay_ct1 = myStateMN.GetStartDate();
+        Ngay_ct2 = myStateMN.GetEndDate();
+
+        var today = DateTime.Today;
+        if (Ngay_ct1.Date == today && Ngay_ct2.Date == today)
+        {
+            Ngay_ct1 = new DateTime(today.Year, today.Month, 1);
+            Ngay_ct2 = Ngay_ct1.AddMonths(1).AddDays(-1);
+        }
+
+        Ngay_ms = Ngay_ct1;
+
+        if (curCommand != null)
+        {
+            Store_proc = curCommand.Store_proc?.Split('|')[0] ?? "";
+            UpdateBrowseByTemplate();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStateMN.GetCurUser();
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+
+            await PageLoad();
+            await Language();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}",String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+
+            LstMauBC = new()
+            {
+                new { Value = 0, Text = Lap[M_ma_nt0] },
+                new { Value = 1, Text = Lap["Currency"] },
+
+            };
+            LstTkSc = new List<object>
+            {
+                new { Value = "1", Text = "1 - " + Lap["Ledger accounts only"] },
+                new { Value = "2", Text = "2 - " + Lap["All accounts"] }
+            };
+
+            if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+            {
+                ShowMainToolBar();
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            Pageobj = DotNetObjectReference.Create(this);
+            await SetActiveComponentIdAsync("oBrowse1");
+
+            await Loaddata();
+            StateHasChanged();
+        }
+        else
+        {
+            if (IsDetail && oBrowseCT != null)
+            {
+                await oBrowseCT.FocusGridAsync();
+                await SetActiveComponentIdAsync("oBrowseCT");
+            }
+            else if (!IsDetail && oBrowse1 != null)
+            {
+                await SetActiveComponentIdAsync("oBrowse1");
+            }
+        }
+    }
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                ShowLoadding = false;
+                StateHasChanged();
+                break;
+            case ActionTask.Print:
+                Print();
+                StateHasChanged();
+                break;
+            case ActionTask.Button1:
+                ShowDetail();
+                break;
+            case ActionTask.Quit:
+                HideDetail();
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+            await Language();
+    }
+
+    public new async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+
+            if (curCommand != null)
+                UpdateBrowseByTemplate();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async void OnDvcsChanged(string ma_dvcs)
+    {
+        Ma_dvcs = ma_dvcs;
+        Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private Task OnNgayCt1Changed(DateTime value)
+    {
+        Ngay_ct1 = value;       
+        return Task.CompletedTask;
+    }
+
+    private async void ShowDetail()
+    {
+        if (CurItem == null && TblData != null)
+        {
+            var tagged = TblData.DefaultView.Cast<DataRowView>()
+                .FirstOrDefault(r => TblData.Columns.Contains("tag") &&
+                                     r["tag"] != DBNull.Value &&
+                                     (r["tag"] is bool b ? b : r["tag"]?.ToString()?.Trim().ToUpper() is "TRUE" or "1"));
+            if (tagged != null)
+                CurItem = tagged;
+        }
+
+        if (CurItem == null)
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"] + " !");
+            return;
+        }
+
+        var row = (CurItem as DataRowView)?.Row;
+        if (row == null) return;
+
+        string tk = row["tk"]?.ToString()?.Trim() ?? "";
+        if (string.IsNullOrEmpty(tk))
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"] + " !");
+            return;
+        }
+
+        var storeArrays = curCommand?.Store_proc?.Split('|') ?? Array.Empty<string>();
+        if (storeArrays.Length < 2)
+        {
+            myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+            return;
+        }
+
+        ShowLoadding = true;
+        StateHasChanged();
+
+        try
+        {            
+            string dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs?.Trim() ?? "";
+            string locDetail = BuildLocDetailCondition(dvcs);
+
+            string storeDetail = storeArrays[1];
+            string sql = "EXEC @store @ngay_ct1, @ngay_ct2, @loc, @tk";
+            var para = new Dictionary<string, object>
+            {
+                { "@store",    storeDetail },
+                { "@ngay_ct1", Ngay_ct1 },
+                { "@ngay_ct2", Ngay_ct2 },
+                { "@loc",      locDetail },
+                { "@tk",       tk }
+            };
+
+            _dsDetail = await myDb.LoadDataset(sql, para);            
+            if (_dsDetail?.Tables?.Count > 0)
+            {
+                var mainTable = _dsDetail.Tables[_dsDetail.Tables.Count - 1];
+                if (mainTable.Rows.Count > 0)
+                {
+                    TblDataCT = mainTable.Copy();
+                    string tenTk = row["ten_tk"]?.ToString()?.Trim() ?? "";
+                    DetailTitle = IsLangEn
+                        ? $"{Lap["Details of account"]} {tk} - {row["ten_tk2"]?.ToString()?.Trim()}"
+                        : $"{Lap["Details of account"]} {tk} - {tenTk}";
+
+                    IsDetail = true;
+                    ShowDetailToolBar();
+                    _ = SetActiveComponentIdAsync("oBrowseCT");
+                    StateHasChanged();
+                }
+                else
+                {
+                    myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+                }
+            }
+            else
+            {
+                myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("ShowDetail error: " + ex.Message);
+        }
+        finally
+        {
+            ShowLoadding = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HideDetail()
+    {
+        IsDetail = false;
+        TblDataCT = null;
+        _dsDetail = null;
+        ShowMainToolBar();
+        _ = SetActiveComponentIdAsync("oBrowse1");
+        StateHasChanged();
+    }
+
+    private void ShowDetailToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.SetToolBar(new MyToolbar("Quit", true, "Esc"));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+        myStateMN.SetToolBar(new MyToolbar("Print", true, "F7"));
+    }
+
+    private void ShowMainToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+        myStateMN.SetToolBar(new MyToolbar("Print", true, "F7"));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+        myStateMN.AddOrderToolBarButton("button1", Lap["Detail"] + " - F5", 1);
+    }
+
+    private async void BtnFilterOk()
+    {
+        FilterErrors.Clear();
+        if (!ValidateFilter()) return;
+
+        ShowLoadding = true;
+        myStateMN.SetStartDate(Ngay_ct1);
+        myStateMN.SetEndDate(Ngay_ct2);
+
+        await Loaddata();
+
+        ShowLoadding = false;
+        PopupVisible = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void BtnFilterCancel()
+    {
+        PopupVisible = false;
+        FilterErrors.Clear();
+        StateHasChanged();
+    }
+
+    private bool ValidateFilter()
+    {
+        if (Ngay_ct1 == default)
+        {
+            FilterErrors.Add(Lap["Voucher date invalid"]);
+            StateHasChanged();
+            return false;
+        }
+        if (Ngay_ct2 == default)
+        {
+            FilterErrors.Add(Lap["Voucher date invalid"]);
+            StateHasChanged();
+            return false;
+        }
+        if (Ngay_ct1 > Ngay_ct2)
+        {
+            FilterErrors.Add(Lap["From date greater than to date"]);
+            StateHasChanged();
+            return false;
+        }
+        if (Ngay_ms == default)
+        {
+            FilterErrors.Add(Lap["Book opening date"] + " " + Lap["invalid"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+    public override async Task Loaddata()
+    {
+        try
+        {
+            ShowLoadding = true;
+            StateHasChanged();
+
+            UpdateBrowseByTemplate();
+
+            string dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs?.Trim() ?? "";
+            string sql = "EXEC @store @ngay_ct1, @ngay_ct2, @loc, @Tk_sc, @Bac_tk";
+            var para = new Dictionary<string, object>
+            {
+                { "@store",    Store_proc.Split('|')[0] },
+                { "@ngay_ct1", Ngay_ct1 },
+                { "@ngay_ct2", Ngay_ct2 },
+                { "@loc",      BuildLocCondition(dvcs) },
+                { "@Tk_sc",    Tk_sc ?? "1" },
+                { "@Bac_tk",   Bac_tk?.Trim() ?? "" }
+            };
+
+            _dsGlgsso4t = await myDb.LoadDataset(sql, para);
+            if (_dsGlgsso4t?.Tables?.Count > 1)
+            {
+                TblData = _dsGlgsso4t.Tables[1].Copy();
+            }
+            else
+            {
+                TblData = new DataTable();
+                myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Loaddata error: " + ex.Message);
+            TblData = new DataTable();
+        }
+        finally
+        {
+            ShowLoadding = false;
+            StateHasChanged();
+        }
+    }
+
+    private string BuildLocCondition(string dvcs)
+    {
+        string loc = " 1=1 ";
+        if (!string.IsNullOrWhiteSpace(Tk))
+            loc += $" and rtrim(ltrim(tk)) like '{Tk.Trim()}%'";
+        if (!string.IsNullOrWhiteSpace(dvcs))
+            loc += $" and rtrim(ltrim(ma_dvcs)) = '{dvcs}'";
+        return loc;
+    }
+
+    private string BuildLocDetailCondition(string dvcs)
+    {
+        string loc = " 1=1 ";
+        if (!string.IsNullOrWhiteSpace(dvcs))
+            loc += $" and rtrim(ltrim(ma_dvcs)) = '{dvcs}'";
+        return loc;
+    }
+
+    private void UpdateBrowseByTemplate()
+    {
+        string browse = GetTableShow(Mau_bc, false);
+        _sFieldArrays = string.IsNullOrWhiteSpace(browse)
+            ? Array.Empty<string>()
+            : browse.Split('|');
+
+        Fbrowse  = _sFieldArrays.Length > 0 ? _sFieldArrays[0] : "";
+        FbrowseCT = _sFieldArrays.Length > 1 ? _sFieldArrays[1] : "";
+    }
+
+    private string GetTableShow(int mau_bc, bool isDetail)
+    {
+        if (curCommand == null) return string.Empty;
+
+        string browse;
+        if (!IsLangEn)
+            browse = mau_bc == 1 ? (curCommand.Vbrowse2 ?? "") : (curCommand.Vbrowse1 ?? "");
+        else
+            browse = mau_bc == 1 ? (curCommand.Ebrowse2 ?? "") : (curCommand.Ebrowse1 ?? "");
+
+        if (!isDetail) return browse;
+        var parts = browse.Split('|');
+        return parts.Length > 1 ? parts[1] : (parts.Length > 0 ? parts[0] : "");
+    }
+
+    private async void Print()
+    {
+        if (IsDetail)
+        {
+            await PrintDetail();
+            return;
+        }
+
+        if (TblData == null || TblData.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+            return;
+        }
+
+        var taggedRows = TblData.AsEnumerable()
+            .Where(r => TblData.Columns.Contains("tag") &&
+                        r["tag"] != DBNull.Value &&
+                        (r["tag"] is bool bv ? bv : r["tag"]?.ToString()?.Trim().ToUpper() is "TRUE" or "1"))
+            .ToArray();
+
+        if (taggedRows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["Must mark before printing"] + " !");
+            return;
+        }
+
+        var storeArrays = curCommand?.Store_proc?.Split('|') ?? Array.Empty<string>();
+        if (storeArrays.Length < 2)
+        {
+            myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+            return;
+        }
+
+        ShowLoadding = true;
+        StateHasChanged();
+
+        try
+        {
+            string dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs?.Trim() ?? "";
+            string storeDetail = storeArrays[1];
+
+            LsData = new List<Glgsso4tModel>();
+
+            foreach (var tagRow in taggedRows)
+            {
+                string tk      = tagRow["tk"]?.ToString()?.Trim() ?? "";
+                string tenTk   = tagRow["ten_tk"]?.ToString()?.Trim() ?? "";
+                string tenTk2  = tagRow["ten_tk2"]?.ToString()?.Trim() ?? "";
+                if (string.IsNullOrEmpty(tk)) continue;
+
+                string locDetail = BuildLocDetailCondition(dvcs);
+                string sql = "EXEC @store @ngay_ct1, @ngay_ct2, @loc, @tk";
+                var para = new Dictionary<string, object>
+                {
+                    { "@store",    storeDetail },
+                    { "@ngay_ct1", Ngay_ct1 },
+                    { "@ngay_ct2", Ngay_ct2 },
+                    { "@loc",      locDetail },
+                    { "@tk",       tk }
+                };
+
+                var ds = await myDb.LoadDataset(sql, para);
+                if (ds?.Tables?.Count < 1) continue;
+
+                var dtMain    = ds.Tables[ds.Tables.Count - 1];
+                var summary = myDb.ConvertDataRow<Glgsso4tSummary>(tagRow);
+
+                decimal noDk   = GetVal(tagRow, "du_no");
+                decimal coDk   = GetVal(tagRow, "du_co");
+                decimal noDkNt = GetVal(tagRow, "du_no_nt");
+                decimal coDkNt = GetVal(tagRow, "du_co_nt");
+                decimal noCk   = GetVal(tagRow, "du_ck_no");
+                decimal coCk   = GetVal(tagRow, "du_ck_co");
+                decimal noCkNt = GetVal(tagRow, "du_ck_no_nt");
+                decimal coCkNt = GetVal(tagRow, "du_ck_co_nt");
+
+                string noCo1 = tagRow.Table.Columns.Contains("no_co1") ? tagRow["no_co1"]?.ToString() ?? "" : "";
+                string noCo2 = tagRow.Table.Columns.Contains("no_co2") ? tagRow["no_co2"]?.ToString() ?? "" : "";
+
+                decimal soDuDauVnd  = noDk  > coDk   ? noDk   : coDk;
+                decimal soDuDauNt   = noDkNt > coDkNt ? noDkNt : coDkNt;
+                decimal soDuCuoiVnd = noCk  > coCk   ? noCk   : coCk;
+                decimal soDuCuoiNt  = noCkNt > coCkNt ? noCkNt : coCkNt;
+
+                string tenDauVi  = CalcBalanceLabel(noCo1, false, true);
+                string tenDauEn  = CalcBalanceLabel(noCo1, true, true);
+                string tenCuoiVi = CalcBalanceLabel(noCo2, false, false);
+                string tenCuoiEn = CalcBalanceLabel(noCo2, true, false);
+
+                LsData.Add(new Glgsso4tModel
+                {
+                    Startdate = Ngay_ct1,
+                    Enddate   = Ngay_ct2,
+                    Ngay_ms   = Ngay_ms,
+                    Tk        = tk,
+                    Ten_tk    = tenTk,
+                    Ten_tk2   = tenTk2,
+                    Ma_dvcs   = Ma_dvcs,
+                    So_du_dau_vnd  = soDuDauVnd,
+                    So_du_dau_nt   = soDuDauNt,
+                    So_du_cuoi_vnd = soDuCuoiVnd,
+                    So_du_cuoi_nt  = soDuCuoiNt,
+                    Ten_so_du_dau_vi_vnd  = tenDauVi,
+                    Ten_so_du_dau_vi_nt   = tenDauVi,
+                    Ten_so_du_dau_en_vnd  = tenDauEn,
+                    Ten_so_du_dau_en_nt   = tenDauEn,
+                    Ten_so_du_cuoi_vi_vnd = tenCuoiVi,
+                    Ten_so_du_cuoi_vi_nt  = tenCuoiVi,
+                    Ten_so_du_cuoi_en_vnd = tenCuoiEn,
+                    Ten_so_du_cuoi_en_nt  = tenCuoiEn,
+                    LsData    = myDb.ConvertDataTable<Glgsso4t>(dtMain),
+                    LsSummary = new List<Glgsso4tSummary>{ summary }
+                });
+            }
+
+            if (LsData.Count == 0)
+            {
+                myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+                return;
+            }
+
+            var aty = typeof(ReportOptionComponent<>).MakeGenericType(typeof(Glgsso4tModel));
+            int printed = 0;
+            foreach (var item in LsData)
+            {
+                var lsItems = new List<Glgsso4tModel> { item };
+                var par = new Dictionary<string, object>
+                {
+                    { "LSItems", (object)lsItems },
+                    { "Menu_id", (object)Menu_id }
+                };
+                var windowModel = new DxWindowModel(aty, par, true, $"BC{printed.ToString().Trim()}");
+                windowModel.nWitdh = "80vw";
+                par.Add("DxWindowmodel", windowModel);
+                await Modal.Show(windowModel);
+                printed++;
+            }
+
+            if (printed == 0)
+                myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+            else
+            {                
+                if (TblData != null && TblData.Columns.Contains("tag"))
+                {
+                    foreach (DataRow r in TblData.Rows)
+                        r["tag"] = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Print error: " + ex.Message);
+        }
+        finally
+        {
+            ShowLoadding = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PrintDetail()
+    {
+        if (_dsDetail == null || _dsDetail.Tables.Count == 0) return;
+        if (CurItem == null) return;
+
+        var row = (CurItem as DataRowView)?.Row;
+        if (row == null) return;
+
+        string tk     = row["tk"]?.ToString()?.Trim() ?? "";
+        string tenTk  = row["ten_tk"]?.ToString()?.Trim() ?? "";
+        string tenTk2 = row["ten_tk2"]?.ToString()?.Trim() ?? "";
+
+        decimal noDk   = GetVal(row, "du_no");
+        decimal coDk   = GetVal(row, "du_co");
+        decimal noDkNt = GetVal(row, "du_no_nt");
+        decimal coDkNt = GetVal(row, "du_co_nt");
+        decimal noCk   = GetVal(row, "du_ck_no");
+        decimal coCk   = GetVal(row, "du_ck_co");
+        decimal noCkNt = GetVal(row, "du_ck_no_nt");
+        decimal coCkNt = GetVal(row, "du_ck_co_nt");
+        string noCo1   = row.Table.Columns.Contains("no_co1") ? row["no_co1"]?.ToString() ?? "" : "";
+        string noCo2   = row.Table.Columns.Contains("no_co2") ? row["no_co2"]?.ToString() ?? "" : "";
+
+        decimal soDuDauVnd  = noDk  > coDk   ? noDk   : coDk;
+        decimal soDuDauNt   = noDkNt > coDkNt ? noDkNt : coDkNt;
+        decimal soDuCuoiVnd = noCk  > coCk   ? noCk   : coCk;
+        decimal soDuCuoiNt  = noCkNt > coCkNt ? noCkNt : coCkNt;
+
+        string tenDauVi  = CalcBalanceLabel(noCo1, false, true);
+        string tenDauEn  = CalcBalanceLabel(noCo1, true,  true);
+        string tenCuoiVi = CalcBalanceLabel(noCo2, false, false);
+        string tenCuoiEn = CalcBalanceLabel(noCo2, true,  false);
+
+        var dtSummary = _dsDetail.Tables.Count > 0 ? _dsDetail.Tables[0] : null;
+
+        LsData = new List<Glgsso4tModel>
+        {
+            new Glgsso4tModel
+            {
+                Startdate = Ngay_ct1,
+                Enddate   = Ngay_ct2,
+                Ngay_ms   = Ngay_ms,
+                Tk        = tk,
+                Ten_tk    = tenTk,
+                Ten_tk2   = tenTk2,
+                Ma_dvcs   = Ma_dvcs,
+                So_du_dau_vnd  = soDuDauVnd,
+                So_du_dau_nt   = soDuDauNt,
+                So_du_cuoi_vnd = soDuCuoiVnd,
+                So_du_cuoi_nt  = soDuCuoiNt,
+                Ten_so_du_dau_vi_vnd  = tenDauVi,
+                Ten_so_du_dau_vi_nt   = tenDauVi,
+                Ten_so_du_dau_en_vnd  = tenDauEn,
+                Ten_so_du_dau_en_nt   = tenDauEn,
+                Ten_so_du_cuoi_vi_vnd = tenCuoiVi,
+                Ten_so_du_cuoi_vi_nt  = tenCuoiVi,
+                Ten_so_du_cuoi_en_vnd = tenCuoiEn,
+                Ten_so_du_cuoi_en_nt  = tenCuoiEn,
+                LsData    = TblDataCT != null ? myDb.ConvertDataTable<Glgsso4t>(TblDataCT) : new(),
+                LsSummary = dtSummary != null ? myDb.ConvertDataTable<Glgsso4tSummary>(dtSummary) : new()
+            }
+        };
+
+        var aty = typeof(ReportOptionComponent<>).MakeGenericType(typeof(Glgsso4tModel));
+        var lsItems = LsData;
+        var par = new Dictionary<string, object>
+        {
+            { "LSItems", (object)lsItems },
+            { "Menu_id", (object)Menu_id }
+        };
+        var windowModel = new DxWindowModel(aty, par, true, "BCDetail");
+        windowModel.nWitdh = "80vw";
+        par.Add("DxWindowmodel", windowModel);
+        await Modal.Show(windowModel);
+        StateHasChanged();
+    }
+
+    private string FormatDetailSummaryText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        if (_dsDetail?.Tables?.Count < 1 || _dsDetail.Tables[0].Rows.Count == 0)
+            return "0";
+
+        var summaryRow = _dsDetail.Tables[0].Rows[0];
+
+        Func<string, decimal> getVal = (col) =>
+            summaryRow.Table.Columns.Contains(col) && summaryRow[col] != DBNull.Value
+                ? Convert.ToDecimal(summaryRow[col])
+                : 0m;
+
+        string noCo1 = summaryRow.Table.Columns.Contains("no_co1") ? summaryRow["no_co1"]?.ToString() ?? "" : "";
+        string noCo2 = summaryRow.Table.Columns.Contains("no_co2") ? summaryRow["no_co2"]?.ToString() ?? "" : "";
+
+        switch (e.Item.Name)
+        {
+            case "ten_tk_du01":
+            case "ten_tk_du201":
+            case "dien_giai01":
+                return CalcBalanceLabel("#", IsLangEn, true);
+            case "ten_tk_du02":
+            case "ten_tk_du202":
+            case "dien_giai02":
+                return Lap["Total arising amount:"];
+            case "ten_tk_du03":
+            case "ten_tk_du203":
+            case "dien_giai03":
+                return CalcBalanceLabel("#", IsLangEn, false);
+
+            case "ps_no01":   
+                var row = (CurItem as DataRowView)?.Row;
+                return FormatDetailMoney("M_IP_TIEN",(decimal)(row["du_no"]));
+                break;
+            case "ps_no02":   return FormatDetailMoney("M_IP_TIEN",    getVal("ps_no"));
+            case "ps_no03":   
+                var row1 = (CurItem as DataRowView)?.Row;
+                return FormatDetailMoney("M_IP_TIEN", (decimal)(row1["du_ck_no"]));
+                break;
+            case "ps_co01":   
+                var row2 = (CurItem as DataRowView)?.Row;
+                return FormatDetailMoney("M_IP_TIEN", (decimal)(row2["du_co"]));
+                break;
+            case "ps_co02":   return FormatDetailMoney("M_IP_TIEN",    getVal("ps_co"));
+            case "ps_co03":   
+                var row4 = (CurItem as DataRowView)?.Row;
+                return FormatDetailMoney("M_IP_TIEN", (decimal)(row4["du_ck_co"]));
+                break;
+            case "ps_no_nt01": return FormatDetailMoney("M_IP_TIEN_NT", getVal("no_dk_nt"));
+            case "ps_no_nt02": return FormatDetailMoney("M_IP_TIEN_NT", getVal("ps_no_nt"));
+            case "ps_no_nt03": return FormatDetailMoney("M_IP_TIEN_NT", getVal("no_ck_nt"));
+            case "ps_co_nt01": return FormatDetailMoney("M_IP_TIEN_NT", getVal("co_dk_nt"));
+            case "ps_co_nt02": return FormatDetailMoney("M_IP_TIEN_NT", getVal("ps_co_nt"));
+            case "ps_co_nt03": return FormatDetailMoney("M_IP_TIEN_NT", getVal("co_ck_nt"));
+        }
+        return "0";
+    }
+
+    private string CalcBalanceLabel(string noCo, bool isEnglish, bool isOpening)
+    {
+        switch (noCo)
+        {
+            case "N":
+            case "Dr":
+                return isOpening ? Lap["Opening debit balance:"] : Lap["Closing debit balance:"];
+            case "C":
+            case "Cr":
+                return isOpening ? Lap["Opening credit balance:"] : Lap["Closing credit balance:"];
+            default:
+                return isOpening ? Lap["Opening balance:"] : Lap["Closing balance:"];
+        }
+    }
+
+    private decimal GetVal(DataRow row, string col)
+    {
+        if (!row.Table.Columns.Contains(col) || row[col] == DBNull.Value) return 0m;
+        return Convert.ToDecimal(row[col]);
+    }
+
+    private string GetOpt(string name) => myOption.GetOptionsValue(name) ?? "";
+
+    private string GetOptInt(string name)
+    {
+        string f = GetOpt(name);
+        if (string.IsNullOrWhiteSpace(f)) f = "N0";
+        if (GetOpt("M_KIEU_SO_AM").Equals("2"))
+            f = NormalizeNegativeFormat(f);
+        return "{0:" + f + "}";
+    }
+
+    private string NormalizeNegativeFormat(string s)
+    {
+        if (s == null) return s;
+        var parts = s.Split(';');
+        if (parts.Length > 1 && parts[1].StartsWith("-"))
+        {
+            parts[1] = "(" + parts[1].Substring(1).Trim() + ")";
+            return string.Join(";", parts);
+        }
+        return s;
+    }
+
+    private string FormatDetailMoney(string optionName, decimal value)
+        => string.Format(GetOptInt(optionName), value);
+
+    public override async void ExportData(int type)
+    {
+        if (IsDetail)
+            oBrowseCT?.ExPortGrid(type);
+        else
+            oBrowse1?.ExPortGrid(type);
+
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged    -= OnLangguachange;
+        myStateMN.OnDvcsChanged       -= OnDvcsChanged;
+    }
+}

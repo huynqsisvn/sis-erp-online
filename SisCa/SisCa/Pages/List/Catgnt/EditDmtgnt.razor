@@ -1,0 +1,281 @@
+@inherits FrmListBaseComponent
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2">
+            <DxFormLayout Data="@CurDmtgnt" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                <DxFormLayoutItem Caption="@Lap["Currency code"]" ColSpanMd="8" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_nt_input" Ma_dm="dmnt" @bind-Value="@CurDmtgnt.Ma_nt" AllowNull="false" IsEnable="@AllowEditMa" IsLangEn="@IsLangEn" SelectChanged="OnAutNtChanged"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="" ColSpanMd="4">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmtgnt.Ten_nt" Enabled="false" CssClass="fw-bold" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Apply exchange rate from date"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_ct_input" @bind-Date="@CurDmtgnt.Ngay_ct" Format="dd-MM-yyyy" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Exchange rate"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurDmtgnt.Ty_gia" Enabled="@AllowEditMode" DisplayFormat="N3" CssClass="fw-bold" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmtgnt CurDmtgnt;
+    private string menu_id = "wa.dm.04";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmtgnt";
+        sqlTableView = "dmtgnt";
+        SqlTableKey = "ma_nt;ngay_ct";
+        CheckSqlTableKey = "ma_nt;ngay_ct";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "catgnt" : ParentPage;
+        CurDmtgnt = new Dmtgnt();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await EditDM(Ma_ma);
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        await CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        await CreateCopyDM(Ma_ma);
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        break;
+                    }
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_nt_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmtgnt = new Dmtgnt();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmtgnt = new Dmtgnt();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(Ma_ma);
+    }
+
+    async Task SaveDM()
+    {
+        if (curActionTask == ActionTask.New)
+            if (!CheckValidCode())
+                return;
+
+        if (!CheckValid())
+            return;
+
+        CurDmtgnt.Ma_nt = CurDmtgnt.Ma_nt.ToUpper().Trim();
+        if (CurDmtgnt.Ngay_ct.HasValue)
+            CurDmtgnt.Ngay_ct = CurDmtgnt.Ngay_ct.Value.Date;
+
+        SqlTableKeyValue = CurDmtgnt.Ma_nt + ";" + CurDmtgnt.Ngay_ct?.ToString("yyyyMMdd");
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmtgnt.Date = DateTime.Now.Date;
+            CurDmtgnt.Date0 = DateTime.Now.Date;
+            CurDmtgnt.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmtgnt.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmtgnt.User_id = curUser.User_id;
+                CurDmtgnt.User_id0 = curUser.User_id;
+                CurDmtgnt.User_name = curUser.User_name;
+                CurDmtgnt.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmtgnt.Ma_nt + ";" + CurDmtgnt.Ngay_ct?.ToString("yyyyMMdd");
+            string[] strKey = CheckSqlTableKey.Split(';');
+            string[] strKeyValue = CheckSqlTableKeyValue.Split(';');
+            string condition = $"ma_nt = N'{strKeyValue[0].ToUpper()}' and CONVERT(char(8), ngay_ct, 112) = '{strKeyValue[1]}'";
+            string check = $"Select ma_nt from {sqlTableName} where {condition}";
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0} ] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+            }
+            else
+            {
+                CurDmtgnt.Search = $"{CurDmtgnt.Ma_nt} {CurDmtgnt.Ten_nt} {CurDmtgnt.Ngay_ct?.ToString("yyyyMMdd")}";
+                await myDb.InsertOneRow<Dmtgnt>(CurDmtgnt, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            string[] keyValues = Ma_ma.Split(';');
+            CurDmtgnt.Date = DateTime.Now.Date;
+            CurDmtgnt.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmtgnt.User_id = curUser.User_id;
+                CurDmtgnt.User_name = curUser.User_name;
+            }
+
+            CurDmtgnt.Search = $"{CurDmtgnt.Ma_nt} {CurDmtgnt.Ten_nt} {CurDmtgnt.Ngay_ct?.ToString("yyyyMMdd")}";
+            string strwhere = $" where ma_nt = '{keyValues[0]}' and CONVERT(char(8), ngay_ct, 112) = '{keyValues[1]}'";
+            string strUpdate = $"Update {sqlTableName} set ma_nt='{CurDmtgnt.Ma_nt}',ngay_ct='{CurDmtgnt.Ngay_ct?.ToString("yyyyMMdd")}',ty_gia={CurDmtgnt.Ty_gia.ToString().Replace(",", ".")},user_id={CurDmtgnt.User_id},user_name=N'{CurDmtgnt.User_name}',[date]='{CurDmtgnt.Date?.ToString("yyyyMMdd")}',[time]='{CurDmtgnt.Time}',search=N'{CurDmtgnt.Search}'" + strwhere;
+            await myDb.ExecuteSqlQueryAsync(strUpdate);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmtgnt.Ma_nt))
+        {
+            myStateMN.SetNewThongbao(Lap["Currency code is required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (CurDmtgnt.Ngay_ct == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Date is required"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string[] keyValues = SqlTableKeyValue.Split(';');
+        if (keyValues.Length != 2) return;
+
+        string sql = $@"Select g.*, n.ten_nt
+                        from {sqlTableView} g
+                        left join dmnt n on g.ma_nt = n.ma_nt
+                        where g.ma_nt = '{keyValues[0]}' and CONVERT(char(8), g.ngay_ct, 112) = '{keyValues[1]}'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmtgnt> lsdetai = myDb.ConvertDataTable<Dmtgnt>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurDmtgnt = lsdetai[0];
+        }
+    }
+
+    public async Task CreateNewDM()
+    {
+        CurDmtgnt = new Dmtgnt();
+        CurDmtgnt.Ty_gia = 0;
+        CurDmtgnt.Ngay_ct = DateTime.Now;
+        AllowEditMode = true;
+        AllowEditMa = true;
+
+        if (!String.IsNullOrEmpty(Ma_ma))
+        {
+            string[] keyValues = Ma_ma.Split(';');
+            if (keyValues.Length >= 2)
+            {
+                CurDmtgnt.Ma_nt = keyValues[0];
+                if (DateTime.TryParseExact(keyValues[1], "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out DateTime ngayCt))
+                    CurDmtgnt.Ngay_ct = ngayCt;
+            }
+        }
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmtgnt = new Dmtgnt();
+        await LoadData(SqlTableKeyValue);
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+
+    async void OnAutNtChanged(ExpandoObject value)
+    {
+        CurDmtgnt.Ten_nt = value.Where(a => a.Key.Equals("ten_nt")).FirstOrDefault().Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+}

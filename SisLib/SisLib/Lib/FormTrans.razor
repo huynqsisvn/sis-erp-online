@@ -1,0 +1,59 @@
+﻿<div class="popup-container">
+    <div class="popup-body flex-grow-1" onkeydown="ModifyEnterKeyPressAsTab(event);">
+        @ChildContent
+    </div>    
+    <div class="popup-footer">
+        <div class="w-100 justify-content-between me-2">
+            <VcToolbar Title="@Title" @bind-curActionTask="curActionTask" OnSave="OnSave" OnCancel="OnCancel" OnCopy="OnCopy" OnNew="OnNew" OnEdit="OnEdit" OnPrint="OnPrint" OnTemplateChanged="@OnTemplateChanged" IsLangEn="@IsLangEn" Stt_rec="@Stt_rec" Ma_ct="@Ma_ct" Phdbf="@Phdbf" LanguageID="@LanguageID" Stt_mau_temlate="@Stt_mau_temlate" curUser="@curUser" Menu_id="@Menu_id" />
+        </div>
+    </div>
+</div>
+
+<style>
+    .popup-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        max-height: 95vh;
+        overflow: hidden;        
+    }
+
+    .popup-body {
+        flex: 1 1 auto; 
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 1px;
+    }
+
+    .popup-footer {
+        flex-shrink: 0;
+        position: sticky;
+        width:100%;
+        bottom: 0;
+        border-top: 1px solid #dee2e6;
+        padding: 0px 0px 1px 10px;        
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);        
+    }
+</style>
+
+@code {
+    [Parameter] public string Title { get; set; }
+    [Parameter] public ActionTask curActionTask { get; set; }
+    [Parameter] public Users curUser { get; set; }
+    [Parameter] public EventCallback<ActionTask> curActionTaskChanged { get; set; }
+    [Parameter] public string Stt_rec { get; set; }
+    [Parameter] public string Ma_ct { get; set; }
+    [Parameter] public string Menu_id { get; set; }
+    [Parameter] public string Phdbf { get; set; }
+    [Parameter] public string LanguageID { get; set; }
+    [Parameter] public int Stt_mau_temlate { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnCopy { get; set; }
+    [Parameter] public EventCallback OnNew { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+    [Parameter] public EventCallback OnPrint { get; set; }
+    [Parameter] public EventCallback<int> OnTemplateChanged { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+}

@@ -1,0 +1,3726 @@
+﻿@inherits TranBaseComponent
+@using System.Data
+@using DevExpress.Blazor
+@using DevExpress.Blazor.Legacy.Internal
+@using SisCa.Pages.Input.CACTBN1
+@using System.Globalization
+
+<div class="m-0 p-0 w-100" data-spy="scroll">
+    @if (IsShowVoucher)
+    {
+        <FormTrans Title="@Pagetitle" @bind-curActionTask="@curActionTask" OnNew="@OnNew" OnCopy="@OnCopy" OnEdit="@OnEdit" OnSave="@OnSave" OnCancel="@OnCancel" OnPrint="@OnPrint" OnTemplateChanged="@OnTemplateChanged" Stt_rec="@CurPh.Stt_rec" curUser="@curUser" Ma_ct="@Ma_ct" Menu_id="@Menu_id" Phdbf="@M_Phdbf" LanguageID="@LanguageID">
+            <div class="row m-1 me-2 rounded-1 border border-light shadow">
+                <DxFormLayout SizeMode="@Itemsizemode" CssClass="frm-header" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                    <DxFormLayoutGroup ColSpanMd="12" Caption="@Lap["Infomation"]" Decoration="FormLayoutGroupDecoration.Card" HeaderCssClass="css-header-grp" CaptionCssClass="css-header-cap" CssClass="css-header mt-3" ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start" AnimationType="LayoutAnimationType.Slide">
+                        <DxFormLayoutGroup ColSpanMd="8" Decoration="FormLayoutGroupDecoration.None" SizeMode="@Itemsizemode" CssClass="mt-3">
+
+                            <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="12">
+                                <Template>
+                                    <AutocompleteComponent TblData="@TblDmkh" Id="ma_khach_input"
+                                                           Ma_dm="dmkh"
+                                                           @bind-Value="@CurPh.Ma_kh"
+                                                           SelectChanged="OnAutoCompleteKhachhangChanged"
+                                                           IsEnable="@AllowEditMode"
+                                                           IsLangEn="@IsLangEn">
+                                    </AutocompleteComponent>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Address"]" ColSpanMd="8">
+                                <Template>
+                                    <DxTextBox CssClass="w-100"
+                                               @bind-Text="@CurPh.Dia_chi"
+                                               Enabled="@AllowEditMode"
+                                               Id="dia_chi_input"
+                                               @onkeydown="@(e => OnDiaChiKeyDown(e))">
+                                    </DxTextBox>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Tax code"]" ColSpanMd="4">
+                                <Template>
+                                    <DxTextBox CssClass="w-100"
+                                               @bind-Text="@CurPh.Ma_so_thue"
+                                               Enabled="false">
+                                    </DxTextBox>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Receiver"]" ColSpanMd="8">
+                                <Template>
+                                    <DxTextBox CssClass="w-100"
+                                               @bind-Text="@CurPh.Ong_ba"
+                                               Id="ong_ba_input"
+                                               Enabled="@AllowEditMode"
+                                               @onkeydown="@(e => OnNguoiNopKeyDown(e))">
+                                    </DxTextBox>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Balance"]" ColSpanMd="4">
+                                <Template>
+                                    <DxMaskedInput CssClass="w-100"
+                                                   @bind-Value="@CurPh.Du13"
+                                                   Mask="@M_IP_TIEN"
+                                                   DisplayFormat="@M_IP_TIEN"
+                                                   Enabled="false">
+                                    </DxMaskedInput>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Ông bà"]" ColSpanMd="12">
+                                <Template>
+                                    <DxTextBox CssClass="w-100"
+                                               @bind-Text="@CurPh.Ong_ba"
+                                               Enabled="@AllowEditMode"
+                                               Id="dien_giai_input">
+                                    </DxTextBox>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Description"]" ColSpanMd="12">
+                                <Template>
+                                    <DxTextBox CssClass="w-100"
+                                               @bind-Text="@CurPh.Dien_giai"
+                                               Enabled="@AllowEditMode"
+                                               Id="dien_giai_input">
+                                    </DxTextBox>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Credit account"]" ColSpanMd="6">
+                                <Template>
+                                    <AutocompleteComponent TblData="@TblDmnx"
+                                                           Ma_dm="dmnx"
+                                                           @bind-Value="@CurPh.Ma_nx"
+                                                           SelectChanged="OnAutoCompleteDMNXChanged"
+                                                           IsEnable="@AllowEditMode"
+                                                           IsLangEn="@IsLangEn">
+                                    </AutocompleteComponent>
+                                </Template>
+                            </DxFormLayoutItem>
+
+
+                        </DxFormLayoutGroup>
+                        <DxFormLayoutGroup Caption="@Lap["Voucher"].ToString()" ColSpanMd="4" Decoration="FormLayoutGroupDecoration.None" SizeMode="@Itemsizemode">
+                            <DxFormLayoutItem Caption="@Lap["GL date"]" ColSpanMd="12">
+                                <Template>
+                                    <DxDateEdit CssClass="w-100"
+                                                @bind-Date="@CurPh.Ngay_ct"
+                                                DisplayFormat="dd-MM-yyyy"
+                                                Format="dd-MM-yyyy"
+                                                Enabled="@AllowEditMode">
+                                    </DxDateEdit>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["LCT date"]" ColSpanMd="12">
+                                <Template>
+                                    <DxDateEdit CssClass="w-100"
+                                                @bind-Date="@CurPh.Ngay_lct"
+                                                DisplayFormat="dd-MM-yyyy"
+                                                Format="dd-MM-yyyy"
+                                                Enabled="@AllowEditMode">
+                                    </DxDateEdit>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Book code"]" ColSpanMd="12">
+                                <Template>
+                                    <AutocompleteComponent CssClass="w-100"
+                                                           Ma_dm="dmqs"
+                                                           @bind-Value="@CurPh.Ma_qs"
+                                                           SelectChanged="OnAutoCompleteQuyensoChanged"
+                                                           Filter="@_filter_qs"
+                                                           IsEnable="@AllowEditMode"
+                                                           IsLangEn="@IsLangEn">
+                                    </AutocompleteComponent>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Voucher No"]" ColSpanMd="12">
+                                <Template>
+                                    <DxTextBox CssClass="w-100"
+                                               @bind-Text="@CurPh.So_ct"
+                                               Enabled="@AllowEditMode">
+                                    </DxTextBox>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Currency"]" ColSpanMd="12">
+                                <Template>
+                                    <div class="row">
+                                        <AutocompleteComponent CssClass="col" Ma_dm="dmnt" @bind-Value="@CurPh.Ma_nt" SelectChanged="OnAutoCompleteMaNTChanged" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                        <DxSpinEdit CssClass="col" Value="@CurPh.Ty_gia" ValueExpression="@(() => CurPh.Ty_gia)" ValueChanged="@((decimal newvalue) => { OnValueMaNTChanged(newvalue); })" Id="Ty_gia" DisplayFormat="@M_IP_TY_GIA" Enabled="@AllowEditMode"></DxSpinEdit>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12">
+                                <Template>
+                                    <AutocompleteComponent CssClass="w-100"
+                                                           Ma_dm="dmpost"
+                                                           @bind-Value="@CurPh.Status"
+                                                           Filter="@filter_status"
+                                                           IsEnable="@AllowEditMode"
+                                                           IsLangEn="@IsLangEn">
+                                    </AutocompleteComponent>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                        </DxFormLayoutGroup>
+                    </DxFormLayoutGroup>
+
+                    <DxFormLayoutTabPages ColSpanMd="12" CssClass="css-detail" @bind-ActiveTabIndex="@activeTabIndex" TabClick="@OnTabChanged">
+                        <DxFormLayoutTabPage Caption="@Lap["Details"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill" CssClass="tab-grd">
+                            <DxFormLayoutItem ColSpanMd="12">
+                                <Template>
+                                    <DxGrid @ref="GridCT" SizeMode="@Itemsizemode" CssClass="@grd_Css" @onkeydown="GridCT_OnKeyDown"
+                                            AllowSelectRowByClick=true KeyboardNavigationEnabled="true"
+                                            Data="@LSCt"
+                                            @bind-SelectedDataItem="@SelectedDataItemCT"
+                                            ValidationEnabled="false"
+                                            EditMode="GridEditMode.EditRow"
+                                            SelectionMode="GridSelectionMode.Single"
+                                            RowClick="@StartEditDataItemByClickCT"
+                                            CustomizeEditModel="Grid_CustomizeEditModelCT"
+                                            EditModelSaving="Grid_EditModelSavingCT"
+                                            DataItemDeleting="Grid_DataItemDeletingCT"
+                                            CustomizeSummaryDisplayText="Grid_CustomizeSummaryDisplayText"
+                                            ColumnResizeMode="GridColumnResizeMode.NextColumn"
+                                            EditNewRowPosition="@NewItemRowPosition"
+                                            ShowAllRows="true"
+                                            TextWrapEnabled="false"
+                                            HighlightRowOnHover="true">
+                                        <Columns>
+                                            <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                <CellDisplayTemplate Context="cntedit">
+                                                    <div class="grid-cell-align-center">
+                                                        <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                  RenderStyle="ButtonRenderStyle.Link"
+                                                                  aria-label="Delete"
+                                                                  Click="@(() => GridCT.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                    </div>
+                                                </CellDisplayTemplate>
+                                                <CellEditTemplate Context="cntedit1">
+                                                    <div class="grid-cell-align-center">
+                                                        <DxButton Enabled="false"
+                                                                  CssClass="grid-disabled-button"
+                                                                  IconCssClass="grid-icon grid-icon-delete"
+                                                                  aria-label="Delete"
+                                                                  RenderStyle="ButtonRenderStyle.Link" />
+                                                    </div>
+                                                </CellEditTemplate>
+                                            </DxGridCommandColumn>
+
+                                            <DxGridDataColumn FieldName="Tk_vt" Caption="@Lap["Debit account"].ToString()" Width="120" CaptionAlignment="GridTextAlignment.Center">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <div id="@($"Tk_vt{_Ct32.Stt}")" class="autocomplete-cell-wrapper m-0 p-0">
+                                                        <AutocompleteComponent TblData="@TblDmtk" Ma_dm="dmtk1" @bind-Value="@_Ct32.Tk_vt" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Tk_vt"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </div>
+
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Ten_tk" ReadOnly="true" Caption="@Lap["Debit name"]" CaptionAlignment="GridTextAlignment.Center" Width="150" />
+
+
+                                            <DxGridDataColumn FieldName="Ma_kh_i" Caption="@Lap["Mã NCC"].ToString()" Width="120" CaptionAlignment="GridTextAlignment.Center">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <div id="@($"Ma_kh_i{_Ct32.Stt}")" class="autocomplete-cell-wrapper m-0 p-0">
+                                                        <AutocompleteComponent Ma_dm="dmkh" @bind-Value="@_Ct32.Ma_kh_i" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Ma_kh_i"); })" IsEnable="@IsVisibleGridColumn("Ma_kh_i")" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </div>
+
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Ten_kh_i" ReadOnly="true" Caption="@Lap["Tên NCC"]" CaptionAlignment="GridTextAlignment.Center" Width="150" />
+
+
+                                            <DxGridDataColumn FieldName="Tien_nt" Caption="@Lap["Tiền hàng/Ps nợ n.tệ"]" Width="120" DisplayFormat="@M_IP_TIEN_NT">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <div id="@($"Tien_nt_{_Ct32.Tien_nt}")" class="autocomplete-cell-wrapper m-0 p-0">
+                                                        <DxSpinEdit Value="@_Ct32.Tien_nt" ValueExpression="@(() => _Ct32.Tien_nt)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Tien_nt"); })" Id="Tien_nt"></DxSpinEdit>
+                                                    </div>
+
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Tien" Caption="@Lap["Tiền hàng/Ps nợ"]" Width="120" DisplayFormat="@M_IP_TIEN" Visible="@IsVisibleGridColumn("Tien")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxSpinEdit ReadOnly="@(CurPh.Sua_tien == 0)" Value="@_Ct32.Tien" ValueExpression="@(() => _Ct32.Tien)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Tien"); })" Id="Tien"></DxSpinEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Dien_giaii" Caption="@Lap["Note"].ToString()" Width="200">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxTextBox @bind-Text="@_Ct32.Dien_giaii" Enabled="@AllowEditMode" Id="Dien_giaii"></DxTextBox>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Loai_hd" Caption="@Lap["Type HD"].ToString()" Width="110" CaptionAlignment="GridTextAlignment.Center">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <AutocompleteComponent Ma_dm="dmlhd" @bind-Value="@_Ct32.Loai_hd" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Loai_hd"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+
+                                            <DxGridDataColumn FieldName="Ma_ms" Caption="@Lap["Group hd"].ToString()" Width="120" CaptionAlignment="GridTextAlignment.Center" Visible="@IsVisibleGridColumn("Ma_ms")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <AutocompleteComponent Ma_dm="dmms" @bind-Value="@_Ct32.Ma_ms" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Ma_ms"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="So_ct0" Caption="@Lap["Invoice no."].ToString()"
+                                                              CaptionAlignment="GridTextAlignment.Center"
+                                                              Width="150px"
+                                                              Visible="@IsVisibleGridColumn("So_ct0")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxTextBox Enabled="@AllowEditMode" Id="So_ct0" Text="@_Ct32.So_ct0" TextExpression="(() => _Ct32.So_ct0)" TextChanged="@LoadHD"></DxTextBox>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Ngay_ct0" Caption="@Lap["Invoice date"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="110" Visible="@IsVisibleGridColumn("Ngay_ct0")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxDateEdit @bind-Date="@_Ct32.Ngay_ct0" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="@AllowEditMode">
+                                                    </DxDateEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="So_seri0" Caption="@Lap["Symbol"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="120" Visible="@IsVisibleGridColumn("So_seri0")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxTextBox @bind-Text="@_Ct32.So_seri0" Enabled="@AllowEditMode" Id="So_seri0"></DxTextBox>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Kh_mau_hd" Caption="@Lap["Denominator"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="120" Visible="@IsVisibleGridColumn("Kh_mau_hd")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxTextBox @bind-Text="@_Ct32.Kh_mau_hd" Enabled="@AllowEditMode" Id="Kh_mau_hd"></DxTextBox>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+
+                                            <DxGridDataColumn FieldName="Ma_kh_t" Caption="@Lap["Tax Supplier code"].ToString()" Width="120" CaptionAlignment="GridTextAlignment.Center">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <AutocompleteComponent TblData="@TblDmkh" Ma_dm="dmkh" @bind-Value="@_Ct32.Ma_kh_t" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Ma_kh_t"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Ten_kh_t" ReadOnly="true" Caption="@Lap["Supplier name"]" CaptionAlignment="GridTextAlignment.Center" Width="150" Visible="@IsVisibleGridColumn("Ten_kh_t")" />
+                                            <DxGridDataColumn FieldName="Dia_chi_t" ReadOnly="true" Caption="@Lap["Address"]" CaptionAlignment="GridTextAlignment.Center" Width="200" Visible="@IsVisibleGridColumn("Dia_chi_t")" />
+                                            <DxGridDataColumn FieldName="Mst_t" ReadOnly="true" Caption="@Lap["Tax code"]" CaptionAlignment="GridTextAlignment.Center" Width="120" Visible="@IsVisibleGridColumn("Mst_t")" />
+
+                                            <DxGridDataColumn FieldName="Ten_vt_t" Caption="@Lap["H.hóa, d.vụ"]" CaptionAlignment="GridTextAlignment.Center" Width="150" Visible="@IsVisibleGridColumn("Ten_vt_t")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxTextBox @bind-Text="@_Ct32.Ten_vt_t" Enabled="@AllowEditMode" Id="Ten_vt_t"></DxTextBox>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Ma_thue_i" Caption="@Lap["Tax rate code"].ToString()" Width="110" CaptionAlignment="GridTextAlignment.Center" Visible="@IsVisibleGridColumn("Ma_thue_i")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <AutocompleteComponent TblData="@TblDmtk" Ma_dm="dmthue30" @bind-Value="@_Ct32.Ma_thue_i" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Ma_thue_i"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Thue_suat" ReadOnly="true" Caption="@Lap["Tax rate"]" CaptionAlignment="GridTextAlignment.Center" Width="110" Visible="@IsVisibleGridColumn("Thue_suat")" />
+
+                                            <DxGridDataColumn FieldName="Thue_nt" Caption="@String.Concat(Lap["Tax"], " ", CurPh.Ma_nt.Trim())" Width="120" DisplayFormat="@M_IP_TIEN_NT" Visible="@IsVisibleGridColumn("Thue_nt")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxSpinEdit ReadOnly="true" Value="@_Ct32.Thue_nt" ValueExpression="@(() => _Ct32.Thue_nt)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Thue_nt"); })" Id="Thue_nt"></DxSpinEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Thue" Caption="@String.Concat(Lap["Tax"], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_TIEN" Visible="@IsVisibleGridColumn("Thue")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxSpinEdit ReadOnly="true" Value="@_Ct32.Thue" ValueExpression="@(() => _Ct32.Thue)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Thue"); })" Id="Thue"></DxSpinEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Tk_thue_cn" ReadOnly="true" Width="0" Visible="@IsVisibleGridColumn("tk_thue_cn")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxSpinEdit ReadOnly="true" Value="@_Ct32.Tk_thue_cn" ValueExpression="@(() => _Ct32.Thue)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Tk_thue_cn"); })" Id="Tk_thue_cn"></DxSpinEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Tt_nt" Caption="@String.Concat(Lap["Total amount"])" Width="120" DisplayFormat="@M_IP_TIEN_NT">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxSpinEdit ReadOnly="true" Value="@_Ct32.Tt_nt" ValueExpression="@(() => _Ct32.Tt_nt)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Tt_nt"); })" Id="Tt_nt"></DxSpinEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Tt" Caption="@String.Concat(Lap["Total amount"])" Width="120" DisplayFormat="@M_IP_TIEN" Visible="@IsVisibleGridColumn("Tt")">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <DxSpinEdit ReadOnly="true" Value="@_Ct32.Tt" ValueExpression="@(() => _Ct32.Tt)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Tt"); })" Id="Tt"></DxSpinEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Tk_thue_i" Caption="@Lap["Account tax"].ToString()" Width="120" CaptionAlignment="GridTextAlignment.Center">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+                                                    <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@_Ct32.Tk_thue_i" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Tk_thue_i"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Ghi_chu_t" Caption="@Lap["Tax node"].ToString()" Width="200">
+                                                <CellEditTemplate Context="GrdContext">
+                                                    @{
+                                                        var _Ct32 = (Ct32)GrdContext.EditModel;
+                                                    }
+
+                                                    <DxTextBox Enabled="@AllowEditMode" @bind-Text="@_Ct32.Ghi_chu_t" Id="Ghi_chu_t"></DxTextBox>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                        </Columns>
+                                        <TotalSummary>
+                                            @* <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_SL" Name="So_luong" FieldName="So_luong" /> *@
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="Tien_nt" FieldName="Tien_nt" />
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="Thue_nt" FieldName="Thue_nt" />
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="Tt_nt" FieldName="Tt_nt" />
+                                        </TotalSummary>
+                                    </DxGrid>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutTabPage>
+                        <DxFormLayoutTabPage Caption="@Lap["Tax"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                            <DxFormLayoutItem ColSpanMd="12">
+                                <Template>
+                                    <DxGrid @ref="GridCTGT" Data="@LSCtgt" CssClass="grd-detail"
+                                            @bind-SelectedDataItem="@SelectedDataItemCTGT"
+                                            KeyboardNavigationEnabled="true"
+                                            AllowSelectRowByClick=true
+                                            ValidationEnabled="false"
+                                            RowClick="@StartEditDataItemByClickCTGT"
+                                            CustomizeEditModel="Grid_CustomizeEditModelCTGT"
+                                            EditModelSaving="Grid_EditModelSavingCTGT"
+                                            DataItemDeleting="Grid_DataItemDeletingCTGT"
+                                            CustomizeElement="Grid_CustomizeElement"
+                                            CustomizeSummaryDisplayText="Grid_CustomizeSummaryDisplayText"
+                                            ColumnResizeMode="GridColumnResizeMode.NextColumn"
+                                            EditMode="GridEditMode.EditRow"
+                                            EditNewRowPosition="@NewItemRowPosition"
+                                            ShowAllRows="true" SizeMode="@Itemsizemode"
+                                            TextWrapEnabled="true"
+                                            HighlightRowOnHover="true">
+                                        <Columns>
+                                            <DxGridCommandColumn MinWidth="30" Width="30px" Visible="@AllowEditMode" NewButtonVisible="false" VisibleIndex="0">
+                                                <CellDisplayTemplate Context="cntedit">
+                                                    <div class="grid-cell-align-center">
+                                                        <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                  RenderStyle="ButtonRenderStyle.Link"
+                                                                  CssClass="grid-delete-btn"
+                                                                  aria-label="Delete"
+                                                                  Click="@(() => GridCTGT.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                    </div>
+                                                </CellDisplayTemplate>
+                                                <CellEditTemplate Context="cntedit1">
+                                                    <div class="grid-cell-align-center">
+                                                        <DxButton Enabled="false"
+                                                                  CssClass="grid-disabled-button"
+                                                                  IconCssClass="grid-icon grid-icon-delete"
+                                                                  aria-label="Delete"
+                                                                  RenderStyle="ButtonRenderStyle.Link" />
+                                                    </div>
+                                                </CellEditTemplate>
+                                            </DxGridCommandColumn>
+
+                                            <DxGridDataColumn FieldName="Ma_ms" Caption="@Lap["Group invoice"].ToString()" Width="100px" VisibleIndex="@CtgtOrder.GetKey("1")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <AutocompleteComponent Ma_dm="dmms" @bind-Value="@_Ct32gt.Ma_ms" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Ma_ms"); })" IsEnable="@AllowCtgt" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                            <DxGridDataColumn FieldName="Ngay_ct0" Caption="@Lap["Invoice date"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="100px" VisibleIndex="@CtOrder.GetKey("2")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <DxDateEdit @bind-Date="@_Ct32gt.Ngay_ct0"
+                                                                DisplayFormat="dd-MM-yyyy"
+                                                                Format="dd-MM-yyyy"
+                                                                Enabled="@AllowCtgt">
+                                                    </DxDateEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="So_ct0" Caption="@Lap["Invoice no."].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="100px" VisibleIndex="@CtOrder.GetKey("3")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <DxTextBox @bind-Text="@_Ct32gt.So_ct0" Enabled="@AllowEditMode"></DxTextBox>
+                                                    @*<div id="@($"So_ct0_{_Ct32gt.Stt}")" class="autocomplete-cell-wrapper m-0 p-0">
+
+                                                        <DxTextBox Text="@_Ct32gt.So_ct0" Enabled="@AllowCtgt" TextExpression="@(() => _Ct32gt.So_ct0)" TextChanged="@((string value) => { OnSo_ct0_Changed(value); })"></DxTextBox>
+                                                    </div> *@
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Kh_mau_hd" Caption="@Lap["Denominator"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="100px" VisibleIndex="@CtOrder.GetKey("4")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <DxTextBox @bind-Text="@_Ct32gt.Kh_mau_hd" Enabled="@AllowEditMode"></DxTextBox>
+
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="So_seri0" Caption="@Lap["Symbol"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="100px" VisibleIndex="@CtOrder.GetKey("5")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <DxTextBox @bind-Text="@_Ct32gt.So_seri0" Enabled="@AllowEditMode"></DxTextBox>
+
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Ma_kh" Caption="@Lap["Supplier code"].ToString()" Width="200px" CaptionAlignment="GridTextAlignment.Center" VisibleIndex="@CtOrder.GetKey("6")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <AutocompleteComponent Ma_dm="dmkh_thue" @bind-Value="@_Ct32gt.Ma_kh" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Ma_kh"); })" IsEnable="@AllowCtgt" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Ten_kh" ReadOnly="true" Caption="@Lap["Supplier name"]" CaptionAlignment="GridTextAlignment.Center" Width="300px" VisibleIndex="@CtOrder.GetKey("7")" />
+
+                                            <DxGridDataColumn FieldName="Dia_chi" Caption="@Lap["Address"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="300px" VisibleIndex="@CtOrder.GetKey("8")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <DxTextBox @bind-Text="@_Ct32gt.Dia_chi" ReadOnly="true"></DxTextBox>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Ma_so_thue" Caption="@Lap["Number tax"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="100px" VisibleIndex="@CtOrder.GetKey("9")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <DxTextBox @bind-Text="@_Ct32gt.Ma_so_thue" ReadOnly="true"></DxTextBox>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="T_tien_nt" Caption="@String.Concat(Lap["Amount"], " ", CurPh.Ma_nt)" Width="100px" DisplayFormat="@M_IP_TIEN_NT" VisibleIndex="@CtOrder.GetKey("10")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <DxSpinEdit Enabled="@AllowCtgt" Value="@_Ct32gt.T_tien_nt" ValueExpression="@(() => _Ct32gt.T_tien_nt)" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_tien_nt"); })" Id="T_tien_nt"></DxSpinEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            @if (NotMaNt0Voucher)
+                                            {
+                                                <DxGridDataColumn FieldName="T_tien" Caption="@String.Concat(Lap["Amount"], " ", M_ma_nt0)" Width="100px" DisplayFormat="@M_IP_TIEN" VisibleIndex="@CtOrder.GetKey("11")">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@AllowCtgt" Value="@_Ct32gt.T_tien" ValueExpression="@(() => _Ct32gt.T_tien)" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_tien"); })" Id="T_tien"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                            }
+                                            <DxGridDataColumn FieldName="Ma_thue" Caption="@Lap["Tax rate code"].ToString()" Width="100px" CaptionAlignment="GridTextAlignment.Center" VisibleIndex="@CtOrder.GetKey("12")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <AutocompleteComponent Ma_dm="dmthue30" @bind-Value="@_Ct32gt.Ma_thue" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Ma_thue"); })" IsEnable="@AllowCtgt" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            <DxGridDataColumn FieldName="Thue_suat" ReadOnly="true" Caption="@Lap["Tax rate"]" CaptionAlignment="GridTextAlignment.Center" Width="100px" VisibleIndex="@CtOrder.GetKey("13")" />
+
+                                            <DxGridDataColumn FieldName="T_thue_nt" Caption="@String.Concat(Lap["Tax money"], " ", CurPh.Ma_nt)" Width="100px" DisplayFormat="@M_IP_TIEN_NT" VisibleIndex="@CtOrder.GetKey("14")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <DxSpinEdit Enabled="@(AllowCtgt && CurPh.Sua_tien == 1)"
+                                                                Value="@_Ct32gt.T_thue_nt" ValueExpression="@(() => _Ct32gt.T_thue_nt)" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_thue_nt"); })" Id="T_thue_nt"></DxSpinEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            @if (NotMaNt0Voucher)
+                                            {
+                                                <DxGridDataColumn FieldName="T_thue" Caption="@String.Concat(Lap["Tax money"], " ", M_ma_nt0)" Width="100px" DisplayFormat="@M_IP_TIEN" VisibleIndex="@CtOrder.GetKey("15")">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@(AllowCtgt && CurPh.Sua_tien == 1)"
+                                                                    Value="@_Ct32gt.T_thue" ValueExpression="@(() => _Ct32gt.T_thue)" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_thue"); })" Id="T_thue"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                            }
+                                            <DxGridDataColumn FieldName="T_tt_nt" Caption="@String.Concat(Lap["Total amount"], " ", CurPh.Ma_nt)" Width="100px" DisplayFormat="@M_IP_TIEN_NT" VisibleIndex="@CtOrder.GetKey("16")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <DxSpinEdit Enabled="@AllowCtgt" Value="@_Ct32gt.T_tt_nt" ValueExpression="@(() => _Ct32gt.T_tt_nt)" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_tt_nt"); })" Id="T_tt_nt"></DxSpinEdit>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+                                            @if (NotMaNt0Voucher)
+                                            {
+                                                <DxGridDataColumn FieldName="T_tt" Caption="@String.Concat(Lap["Total amount"], " ", M_ma_nt0)" Width="100px" DisplayFormat="@M_IP_TIEN" VisibleIndex="@CtOrder.GetKey("17")">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@AllowCtgt" Value="@_Ct32gt.T_tt" ValueExpression="@(() => _Ct32gt.T_tt)" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_tt"); })" Id="T_tt"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                            }
+                                            <DxGridDataColumn FieldName="Tk_thue_no" Caption="@Lap["Account tax"].ToString()" Width="100px" CaptionAlignment="GridTextAlignment.Center" VisibleIndex="@CtOrder.GetKey("18")">
+                                                <CellEditTemplate Context="GrdCTGTContext">
+                                                    @{
+                                                        var _Ct32gt = (Ct32gt)GrdCTGTContext.EditModel;
+                                                    }
+                                                    <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@_Ct32gt.Tk_thue_no" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Tk_thue_no"); })" IsEnable="@AllowCtgt" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                </CellEditTemplate>
+                                            </DxGridDataColumn>
+
+                                        </Columns>
+                                        <TotalSummary>
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN" Name="T_tien_nt" FieldName="T_tien_nt" />
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="T_thue_nt" FieldName="T_thue_nt" />
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN" Name="T_tt_nt" FieldName="T_tt_nt" />
+                                        </TotalSummary>
+                                    </DxGrid>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutTabPage>
+
+                    </DxFormLayoutTabPages>
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <Template>
+                            <div class="row d-flex mt-1 ms-1">
+                                <DxCheckBox CssClass="col-2 ms-1 chkclass" Enabled="@AllowEditMode" @bind-Checked="@CurPh.Sua_tggs">@Lap["Edit tggs"]</DxCheckBox>
+                                <DxCheckBox CssClass="col-2 ms-1 chkclass" Enabled="@AllowEditMode" @bind-Checked="@CurPh.Sua_tien">@Lap["Edit money"]</DxCheckBox>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        </FormTrans>
+    }
+    else
+    {
+        <SisLib.Ctrl.ReportOptionComponent LSItems="LSData" Menu_id="@Menu_id.Replace('_', '.')" Parent_url="@mPage" OnBack="@OnPrintBack"></SisLib.Ctrl.ReportOptionComponent>
+    }
+
+    <DxPopup Visible="@Visible"
+             HeaderText="Danh sách hợp đồng"
+             Width="80%"
+             Height="500px"
+             ShowCloseButton="true"
+             VisibleChanged="@OnPopupVisibleChanged"
+             CloseOnOutsideClick="true">
+        <BodyContentTemplate>
+            @if (dataExcel == null || dataExcel.Rows.Count == 0)
+            {
+                <p>Không có dữ liệu để hiển thị.</p>
+            }
+            else
+            {
+                <DxGrid Data="@dataExcel"
+                        ShowBorders="true"
+                        ShowRowLines="true"
+                        ColumnAutoWidth="true"
+                        CssClass="p-2"
+                        HorizontalScrollMode="HorizontalScrollMode.Auto"
+                        ShowPager="true"
+                        SelectionMode="GridSelectionMode.Multiple"
+                        AllowSelectRowByClick="true"
+                        @bind-SelectedDataItems="@SelectedDataItems"
+                        PageSize="12">
+                    <Columns>
+                        <DxGridDataColumn FieldName="Ngày Chứng Từ" Caption="Ngày Chứng Từ" DisplayFormat="dd/MM/yyyy" />
+                        <DxGridDataColumn FieldName="Số Chứng Từ" Caption="Số Chứng Từ" />
+                        <DxGridDataColumn FieldName="Mã Khách Hàng" Caption="Mã Khách Hàng" />
+                        <DxGridDataColumn FieldName="Tiền Phải Trả" Caption="Tiền Phải Trả" DisplayFormat="N0" />
+                        <DxGridDataColumn FieldName="Tiền Đã Trả" Caption="Tiền Đã Trả" DisplayFormat="N0" />
+                        <DxGridDataColumn FieldName="Tiền Còn Phải Trả" Caption="Tiền Còn Phải Trả" DisplayFormat="N0" />
+                        <DxGridDataColumn FieldName="Diễn Giải" Caption="Diễn Giải" />
+                        <DxGridDataColumn FieldName="Mã Chứng Từ" Caption="Mã Chứng Từ" />
+                        <DxGridDataColumn FieldName="Hạn Thanh Toán" Caption="Hạn Thanh Toán" DisplayFormat="N0" />
+                        <DxGridDataColumn FieldName="Ngày Đặt Hàng" Caption="Ngày Đặt Hàng" DisplayFormat="dd/MM/yyyy" />
+                        <DxGridDataColumn FieldName="Mã ĐVCS" Caption="Mã ĐVCS" />
+                    </Columns>
+                </DxGrid>
+
+            }
+        </BodyContentTemplate>
+    </DxPopup>
+
+</div>
+
+<style>
+    .disabled-grid {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .css-header {
+        height: auto;
+    }
+
+    .css-detail {
+        margin-top: 5px;
+        height: 200px;
+        width: auto !important;
+        overflow-x: auto;
+        white-space: nowrap;
+        overflow-y: auto;
+    }
+
+    .grd-detail {
+        height: 200px;
+        width: auto !important;
+        overflow-x: auto;
+        white-space: nowrap;
+        overflow-y: auto;
+    }
+
+        .grd-detail .dxbl-grid-table tr {
+            height: 20px;
+        }
+
+    .chkclass {
+        width: fit-content;
+    }
+
+    .grid-icon {
+        background-color: transparent;
+    }
+
+    .grid-icon-delete {
+        width: 8px;
+        height: 8px;
+        padding: 0px;
+        margin: 0px;
+        background-image: url('.\\Images\\delete.svg');
+    }
+
+    .css-header,
+    .css-detail {
+        padding: 0 !important;
+        margin: 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+    }
+</style>
+
+@code {
+    #region Parameter
+
+    DxWindow windowRef;
+    public DataTable TblDmkh { get; set; }
+    public DataTable TblDmtk { get; set; }
+    public DataTable TblDmnx { get; set; }
+    private DxGrid GridCTGT;
+    Ph32 LastPh = new Ph32();
+    Ph32 CurPh;
+    Ct32 CurCt;
+    Ct32gt CurCtgt;
+    List<Ct32> LSCt;
+    List<Ct32gt> LSCtgt;
+    string newstt_rec = "";
+    bool CheckedTggs { get; set; } = false;
+    bool CheckedTien { get; set; } = false;
+    bool CheckedChangeTien { get; set; } = false;
+    private DataRow selectedRow;
+    bool AllowCtgt = false;
+    string end_GridCt = "end_input_GridCt0";
+    string filter_status = "ma_ct like 'PN2%' and status = 1";
+    string printPage = "hdlprint";
+    public string mPage { get; set; }
+    public DotNetObjectReference<FrmAPCTPN2> Pageobj;
+    IReadOnlyList<object> SelectedDataItems { get; set; }
+    IReadOnlyList<object> SelectedDataPh { get; set; }
+    IReadOnlyList<object> SelectedDataCt { get; set; }
+    string xmlpath = "";
+
+    private List<PN2Model> LSData;
+
+    string _filter_qs = "";
+
+    Ct32 CurrentEditModel;
+    Ct32gt CurrentEditModelctgt;
+
+    public bool IsShowPhieuthu = false;
+    public bool IsShowPhieuxuat = false;
+    public bool IsShowHD = false;
+    public bool Allow = false;
+
+    public bool ParentReload = false;
+
+    [Parameter]
+    public bool Visible { get; set; } = false;
+    string M_DC_THUE_CK = "0";
+    string M_MAU_THUE_CK = "0";
+
+    private DataTable dataExcel;
+    private DataTable dataPh;
+    private DataTable dataCt;
+    private string ma_gd = "2";
+    private List<object> SelectedDataItemsPh = new();
+    private List<object> SelectedDataItemsCt = new();
+    string M_ma_ms = string.Empty;
+    private DataTable sourceTable;
+    DxTextBox tenBtComponent;
+    private List<Dictionary<string, object>> excelRows = new();
+    #endregion
+    bool isBlockingCT = false;
+    bool isBlockingCTGT = false;
+    string[] paramerter;
+
+
+    public override object SelectedDataItemCT
+    {
+        get => selectedDataItemCT;
+        set
+        {
+            if (isBlockingCT) return;
+            if (selectedDataItemCT != null && string.IsNullOrWhiteSpace(((Ct32)selectedDataItemCT).Tk_vt))
+            {
+                isBlockingCT = true;
+                myStateMN.SetNewThongbao(Lap["Code cannot be empty"] + "!");
+                _ = InvokeAsync(async () =>
+                {
+                    if (GridCT.IsEditing()) // nếu đang edit dòng hiện tại
+                    {
+                        await GridCT.SaveChangesAsync();
+                    }
+                    await Task.Yield();
+                    await GridCT.StartEditDataItemAsync(LSCt.IndexOf((Ct32)selectedDataItemCT), "Tk_vt");
+                    isBlockingCT = false;
+                });
+
+                return;
+            }
+            selectedDataItemCT = value;
+        }
+    }
+    public override object SelectedDataItemCTGT
+    {
+        get => selectedDataItemCTGT;
+        set
+        {
+            if (isBlockingCTGT) return;
+            if (selectedDataItemCTGT != null && string.IsNullOrWhiteSpace(((Ct32gt)selectedDataItemCTGT).So_ct0))
+            {
+                isBlockingCT = true;
+                myStateMN.SetNewThongbao(Lap["Code cannot be empty"] + "!");
+                _ = InvokeAsync(async () =>
+                {
+                    if (GridCTGT.IsEditing()) // nếu đang edit dòng hiện tại
+                    {
+                        await GridCTGT.SaveChangesAsync();
+                    }
+                    await Task.Yield();
+                    await GridCTGT.StartEditDataItemAsync(LSCtgt.IndexOf((Ct32gt)selectedDataItemCTGT), "So_ct0");
+                    isBlockingCTGT = false;
+                });
+
+                return;
+            }
+            selectedDataItemCTGT = value;
+        }
+    }
+
+    private async Task OnPopupVisibleChanged(bool newVisible)
+    {
+        Visible = newVisible;
+        if (!newVisible)
+        {
+            if (SelectedDataItems != null)
+            {
+                @foreach (DataRowView product in SelectedDataItems.Cast<Object>())
+                {
+                    if (CurrentEditModel != null)
+                    {
+                        CurrentEditModel.Stt_rec_tt = product.Row["stt_rec"].ToString();
+                    }
+                }
+
+                foreach (DataRow row in sourceTable.Rows)
+                {
+                    if (CurrentEditModel.Stt_rec_tt.Equals(row["stt_rec"].ToString()))
+                    {
+                        CurrentEditModel.Tien_hd = row["tien_hd"] == DBNull.Value ? 0 : Convert.ToDecimal(row["tien_hd"]);
+                        CurrentEditModel.Ngay_ct0 = Convert.ToDateTime(row["ngay_ct"]);
+                        CurrentEditModel.So_ct0 = row["so_ct"].ToString();
+                        CurrentEditModel.Tk_i = row["tk"].ToString();
+                        CurrentEditModel.Ma_nt_i = row["ma_nt"].ToString();
+                        CurrentEditModel.Tien_nt = CurrentEditModel.Tien_hd;
+                        CurrentEditModel.Stt_rec_tt = row["stt_rec"].ToString();
+                        CurrentEditModel.Ma_vv_i = row["ma_vv"].ToString();
+                        CurrentEditModel.Ma_td_i = row["ma_td"].ToString();
+                        CurrentEditModel.Ma_td2_i = row["ma_td2"].ToString();
+                        CurrentEditModel.Ma_td3_i = row["ma_td3"].ToString();
+                        CurrentEditModel.So_lsx_i = row["so_lsx"].ToString();
+                        CurrentEditModel.So_dh_i = row["so_dh"].ToString();
+                        CurrentEditModel.Ma_bpht_i = row["ma_bpht"].ToString();
+                        CurrentEditModel.Ma_hd_i = row["ma_hd"].ToString();
+                        CurrentEditModel.Ma_ku_i = row["ma_ku"].ToString();
+                        CurrentEditModel.Ma_phi_i = row["ma_phi"].ToString();
+                        CurrentEditModel.Ma_sp = row["ma_sp"].ToString();
+                        StateHasChanged();
+                        IsShowHD = true;
+
+                    }
+                }
+            }
+            else
+            {
+                if (CurrentEditModel != null)
+                {
+                    LSCt.RemoveAll(x => x.Stt_rec == CurPh.Stt_rec && x.Stt_rec0 == CurrentEditModel.Stt_rec0);
+                    await GridCT.SaveChangesAsync();
+                }
+
+            }
+        }
+    }
+
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        CurPh = new Ph32();
+        CurCt = new Ct32();
+        LSCt = new List<Ct32>();
+        LSCtgt = new List<Ct32gt>();
+
+        LoadQuyenso();
+        LoadOptions();
+        _filter_qs = String.Format("ma_cts = '' OR ma_cts like '{0}%'", Ma_ct);
+        M_DC_THUE_CK = myOption.GetOptionsValue("M_DC_THUE_CK");
+        M_MAU_THUE_CK = myOption.GetOptionsValue("M_MAU_THUE_CK");
+        M_ma_ms = myOption.GetOptionsValue("M_MA_MS");
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        LanguageID = "ca";
+        ParentReload = false;
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                {
+                    Pagetitle = Lap["View"] + ": " + (IsLangEn ? curDmct.Ten_ct2 : curDmct.Ten_ct);
+                    V_Xem();
+                    break;
+                }
+            case ActionTask.Edit:
+                {
+                    Pagetitle = Lap["Edit"] + ": " + (IsLangEn ? curDmct.Ten_ct2.ToString().Trim() : curDmct.Ten_ct.ToString().Trim());
+                    V_Sua();
+                    break;
+                }
+            case ActionTask.New:
+                {
+                    Pagetitle = Lap["New"] + ": " + (IsLangEn ? curDmct.Ten_ct2 : curDmct.Ten_ct);
+                    V_Moi();
+                    break;
+                }
+            default:
+                {
+                    Pagetitle = Lap["View"] + ": " + (IsLangEn ? curDmct.Ten_ct2 : curDmct.Ten_ct);
+                    V_Xem();
+                    break;
+                }
+        }
+    }
+    private int activeTabIndex = 0; // Tab đầu tiên mặc định
+
+    private void OnTabChanged(TabClickEventArgs e)
+    {
+        if (curActionTask == ActionTask.View) return;
+
+        if (activeTabIndex == 0)
+        {
+            if ((GridCTGT == null || LSCtgt.Count == 0) && LSCt.Count > LSCtgt.Count)
+            {
+                AddNewCTGT();
+            }
+            else
+            {
+                if (GridCTGT != null && LSCtgt.Count != 0)
+                {
+                    GridCTGT.SaveChangesAsync();
+                }
+            }
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await base.OnAfterRenderAsync(firstRender);
+            if (string.IsNullOrEmpty(M_IP_TIEN))
+                M_IP_TIEN = "#,0;-#,0";
+            if (string.IsNullOrEmpty(M_IP_TIEN_NT))
+                M_IP_TIEN_NT = "#,0.000;-#,0.000";
+            paramerter = curCommand.Parameter.Split(';');
+            //Lan.SaveDictionaryToXml(Lat, @"C:\language.xml");
+            //Lan.SaveDictionaryToXml(Lap, @"C:\language1.xml");
+            Pageobj = DotNetObjectReference.Create(this);
+            await JavacriptS.InvokeVoidAsync("SetPageObj", Pageobj);
+            await JavacriptS.InvokeVoidAsync("AttachEnterAsTab");
+
+        }
+        await JavacriptS.InvokeVoidAsync("changeTextNewRowButton", Lap["Click here to add a new row"].ToString().Trim());
+    }
+
+    private async Task GridCT_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode)
+            return;
+
+        switch (e.Key)
+        {
+            case "Enter":
+                await GridCT.SaveChangesAsync();
+                await SaveAndMoveNextRow();
+                break;
+
+            case "F4":
+                // Add new row
+                AddNewCT();
+                break;
+
+            case "F8":
+                // Delete selected row (confirm)
+                if (SelectedDataItemCT != null)
+                {
+                    GridCT.ShowDataItemDeleteConfirmation(SelectedDataItemCT);
+                }
+                else
+                {
+                    Message = Lap["No data selected"];
+                    StateHasChanged();
+                }
+                break;
+
+            case "Escape":
+                // Cancel current edit
+                try
+                {
+                    await GridCT.CancelEditAsync();
+                    // if user cancels a newly added empty row, remove it
+                    if (LSCt.Count > 0 && CurrentEditModel != null && string.IsNullOrEmpty(CurrentEditModel.Tk_i))
+                        LSCt.Remove(CurrentEditModel);
+                }
+                catch { }
+                break;
+
+
+        }
+    }
+    private async Task GridCTGT_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode)
+            return;
+
+        switch (e.Key)
+        {
+            case "Enter":
+                await GridCTGT.SaveChangesAsync();
+                // await SaveAndMoveNextRow();
+
+                break;
+
+            case "F4":
+                // Add new row
+                AddNewCTGT();
+                break;
+
+            case "F8":
+                // Delete selected row (confirm)
+                if (SelectedDataItemCTGT != null)
+                {
+                    GridCTGT.ShowDataItemDeleteConfirmation(SelectedDataItemCTGT);
+                }
+                else
+                {
+                    Message = Lap["No data selected"];
+                    StateHasChanged();
+                }
+                break;
+
+            case "Escape":
+                // Cancel current edit
+                try
+                {
+                    await GridCTGT.CancelEditAsync();
+                    // if user cancels a newly added empty row, remove it
+                    if (LSCtgt.Count > 0 && CurrentEditModelctgt != null && string.IsNullOrEmpty(CurrentEditModelctgt.So_ct0))
+                        LSCtgt.Remove(CurrentEditModelctgt);
+                }
+                catch { }
+                break;
+        }
+    }
+
+    [JSInvokable]
+    public async Task SaveAndMoveNextRow()
+    {
+        // Lưu dòng đang chỉnh sửa
+        await GridCT.SaveChangesAsync();
+        Ct32 current = (Ct32)SelectedDataItemCT;
+        var index = LSCt.IndexOf(current);
+        if (index >= 0 && index < LSCt.Count - 1)
+        {
+            await GridCT.StartEditDataItemAsync(LSCt[index + 1]);
+        }
+    }
+
+    [JSInvokable]
+    public async Task SaveAndMoveNextRowGT()
+    {
+        await GridCTGT.SaveChangesAsync();
+        Ct32gt current = (Ct32gt)SelectedDataItemCTGT;
+        var index = LSCtgt.IndexOf(current);
+        if (index >= 0 && index < LSCtgt.Count - 1)
+        {
+            await GridCTGT.StartEditDataItemAsync(LSCtgt[index + 1]);
+        }
+    }
+    public DataTable LoadProceData()
+    {
+        string _ma_dvcs = myStateMN.GetMa_Dvcs();
+
+        string empty1 = string.Empty;
+        string empty2 = string.Empty;
+        string empty3 = string.Empty;
+        string str1 = CurPh.Stt_rec.ToString();
+        string str2 = CurPh.Ma_kh.ToString();
+        string str3 = CurPh.Ma_nt.ToString();
+
+        string _poststore = "[APCTPN2-InitTt]";
+        string format = string.Format("exec [dbo].{0} '{1}','{2}','{3}','{4}'", _poststore, str1, str2, _ma_dvcs, str3);
+        DataTable dataTable = myDb.LoadDataSet(format).Tables[0].Copy();
+        dataTable.DefaultView.Sort = "ngay_ct, so_ct";
+        Visible = true;
+        return dataTable;
+    }
+
+
+    private void OnRowSelected(object row)
+    {
+        selectedRow = row as DataRow;
+    }
+
+    private async Task OnDiaChiKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            // Nhảy đến trường Người nộp tiền
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ong_ba_input').focus()");
+        }
+    }
+    private async Task OnNguoiNopKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            // Nhảy đến trường Người nộp tiền
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('dien_giai_input').focus()");
+        }
+    }
+
+
+    private async Task LoadHD(string newValue)
+    {
+        if (CurPh.Ma_gd == "1")
+        {
+            sourceTable = LoadProceData();
+            dataExcel = new DataTable();
+            dataExcel.Columns.Clear();
+            List<string> desiredColumns = new List<string> { "ngay_ct", "so_ct", "ma_kh", "tien_hd", "t_tien_dt", "tien_con_pt0", "dien_giai", "ma_ct", "han_tt", "ngay_dh", "ma_dvcs", "stt_rec" };
+            Dictionary<string, string> columnNameMapping = new Dictionary<string, string>
+                {
+                { "ngay_ct", "Ngày Chứng Từ" },
+                { "so_ct", "Số Chứng Từ" },
+                { "ma_kh", "Mã Khách Hàng" },
+                { "tien_hd", "Tiền Phải Trả" },
+                { "t_tien_dt", "Tiền Đã Trả" },
+                { "tien_con_pt0", "Tiền Còn Phải Trả" },
+                { "dien_giai", "Diễn Giải" },
+                { "ma_ct", "Mã Chứng Từ" },
+                { "han_tt", "Hạn Thanh Toán" },
+                { "ngay_dh", "Ngày Đặt Hàng" },
+                { "ma_dvcs", "Mã ĐVCS" },
+                { "stt_rec" , "stt_rec"  }
+                };
+            foreach (string colName in desiredColumns)
+            {
+                if (sourceTable.Columns.Contains(colName))
+                {
+                    string displayName = columnNameMapping.ContainsKey(colName) ? columnNameMapping[colName] : colName;
+                    dataExcel.Columns.Add(displayName, sourceTable.Columns[colName].DataType);
+                }
+            }
+            foreach (DataRow row in sourceTable.Rows)
+            {
+                DataRow newRow = dataExcel.NewRow();
+                foreach (string colName in desiredColumns)
+                {
+                    if (sourceTable.Columns.Contains(colName))
+                    {
+                        string displayName = columnNameMapping.ContainsKey(colName) ? columnNameMapping[colName] : colName;
+                        newRow[displayName] = row[colName];
+                    }
+                }
+                dataExcel.Rows.Add(newRow);
+            }
+
+
+            if (dataExcel == null || dataExcel.Rows.Count == 0)
+            {
+                myStateMN.SetNewThongbao(Lap["Không có dữ liệu HD"]);
+                return;
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+
+        CurrentEditModel.So_ct0 = newValue;
+    }
+
+    void Grid_CustomizeSummaryDisplayText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        string str = "{0:" + e.Item.ValueDisplayFormat + "}";
+        e.DisplayText = string.Format(str, e.Value);
+    }
+
+
+    [JSInvokable]
+    public void GridCTEditMode(string value)
+    {
+        if (!string.IsNullOrEmpty(value) && AllowEditMode)
+        {
+
+        }
+    }
+    [JSInvokable]
+    public void CallGridEditMode(string value)
+    {
+        if (!string.IsNullOrEmpty(value) && AllowEditMode)
+        {
+            int i = ActiveTabIndex;
+            int i1 = activeTabIndex;
+            if (value.Equals(end_GridCt))
+            {
+                if (activeTabIndex == 0)
+                {
+                    AddNewCT();
+                }
+                else
+                {
+                    if (GridCTGT != null)
+                        GridCTGT.SaveChangesAsync();
+                }
+            }
+
+        }
+    }
+    [JSInvokable]
+    public async void GridFMode(string value)
+    {
+        if (!string.IsNullOrEmpty(value) && AllowEditMode)
+        {
+            if (value.Equals("F4"))
+            {
+                if (ActiveTabIndex == 1)
+                {
+                    AddNewCT();
+                }
+            }
+            else if (value.Equals("F8"))
+            {
+                if (ActiveTabIndex == 1)
+                {
+                    if (SelectedDataItemCT != null)
+                        GridCT.ShowDataItemDeleteConfirmation(SelectedDataItemCT);
+                    else
+                    {
+                        Message = "Chưa chọn chi tiết muốn xóa";
+                        StateHasChanged();
+                        return;
+                    }
+                }
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+                if (ActiveTabIndex == 1)
+                {
+                    await GridCT.CancelEditAsync();
+                    if (LSCt.Count > 0 && CurPh.Ma_gd != "1")
+                        LSCt.Remove(LSCt[LSCt.Count - 1]);
+                }
+            }
+        }
+    }
+
+    void OnT_tt_ntChanged(decimal newvalue)
+    {
+        CurPh.T_tt_nt = newvalue;
+    }
+    void OnT_ttChanged(decimal newvalue)
+    {
+        CurPh.T_tt = newvalue;
+    }
+    private bool IsVisibleGridColumn(string columnName)
+    {
+        return columnName switch
+        {
+            "Ma_kh_i" => CurrentEditModel != null && CurrentEditModel.Tk_thue_cn.Equals(1),
+            "So_ct0" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "So_seri0" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Ngay_ct0" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Kh_mau_hd" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Ten_vt_t" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Ten_kh_t" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Ghi_chu_t" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Ma_thue_i" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Thue_suat" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Mst_t" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Thue_nt" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Tk_thue_i" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Tt_nt" => CurrentEditModel != null && !string.IsNullOrEmpty(CurrentEditModel.Loai_hd) && !CurrentEditModel.Loai_hd.Trim().Equals("0"),
+            "Ten_vt" => !M_DC_THUE_CK.Equals("2") && !M_DC_THUE_CK.Equals("3"),
+            "Dia_chi_t" => M_DC_THUE_CK.Equals("0") || M_DC_THUE_CK.Equals("2"),
+            "Dia_chi" => M_DC_THUE_CK.Equals("0") || M_DC_THUE_CK.Equals("2"),
+            "Tien" => NotMaNt0Voucher,
+            "Thue" => NotMaNt0Voucher,
+            "Tt" => NotMaNt0Voucher,
+            "T_tien" => NotMaNt0Voucher,
+            "T_thue" => NotMaNt0Voucher,
+            "T_tt" => NotMaNt0Voucher,
+            _ => false
+        };
+    }
+
+
+    void OnCheckedTggsChanged(bool value)
+    {
+        CheckedTggs = value;
+        if (value) CurPh.Sua_tggs = 1;
+        else CurPh.Sua_tggs = 0;
+    }
+    void OnCheckedTienChanged(bool value)
+    {
+        CheckedChangeTien = value;
+        CheckedTien = !CheckedChangeTien;
+        if (value) CurPh.Sua_tien = 1;
+        else CurPh.Sua_tien = 0;
+    }
+
+    void OnSuaTienChanged(bool value)
+    {
+        CurPh.Sua_tien = value ? 1 : 0;
+        CheckedChangeTien = value;
+        CheckedTien = !value;
+
+        IsVisibilityFieldsXamDataGridBySua_Tien();
+
+        if (CurPh.Ma_nt.Trim().ToUpper() == M_ma_nt0.Trim().ToUpper())
+            return;
+
+        if (!value)
+            return;
+
+        decimal nValue1 = CurPh.Ty_gia;
+        UpdateTotalHT();
+        if (LSCtgt != null && LSCtgt.Any())
+        {
+            foreach (var ct in LSCtgt)
+            {
+                decimal t_tien_nt = ct.T_tien_nt;
+                decimal t_thue_nt = ct.T_thue_nt;
+                decimal thue_suat = ct.Thue_suat;
+
+                decimal t_tien = Math.Round(nValue1 * t_tien_nt, M_ROUND);
+
+                ct.T_tien = t_tien;
+
+                if (thue_suat > 0)
+                {
+                    t_thue_nt = Math.Round(t_tien_nt * thue_suat / 100, M_ROUND_NT);
+                    decimal t_thue = Math.Round(t_thue_nt * nValue1, M_ROUND);
+                    ct.T_thue_nt = t_thue_nt;
+                    ct.T_thue = t_thue;
+                }
+
+                ct.T_tt_nt = t_tien_nt + t_thue_nt;
+                ct.T_tt = t_tien + ct.T_thue;
+            }
+        }
+        StateHasChanged();
+    }
+
+    private void CalculateHd2(Ct32 ct)
+    {
+        // Nếu có thuế suất
+        if (ct.Thue_suat > 0)
+        {
+            decimal tt_nt = ct.Tt_nt;
+            decimal ty_gia_ht = CurPh.Ty_gia_ht;
+            decimal thue_suat = ct.Thue_suat;
+
+            // Tính tiền và thuế bằng ngoại tệ
+            decimal tien_nt = Math.Round(tt_nt / (1 + thue_suat / 100));
+            decimal thue_nt = tt_nt - tien_nt;
+
+            ct.Tien_nt = tien_nt;
+            ct.Thue_nt = thue_nt;
+
+            // Nếu đơn vị tiền khác tiền chuẩn (VD: ngoại tệ)
+            if (!CurPh.Ma_nt.Trim().Equals(M_ma_nt0.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                decimal tien = Math.Round(tien_nt * ty_gia_ht);
+                decimal thue = Math.Round(thue_nt * ty_gia_ht);
+                decimal tt = Math.Round(tt_nt * ty_gia_ht);
+
+                ct.Tien = tien;
+                ct.Thue = thue;
+                ct.Tt = tt;
+            }
+            else
+            {
+                ct.Tien = tien_nt;
+                ct.Thue = thue_nt;
+                ct.Tt = tt_nt;
+            }
+        }
+        else
+        {
+            decimal tt_nt = ct.Tt_nt;
+            decimal thue_nt = ct.Thue_nt;
+            decimal tien_nt = tt_nt - thue_nt;
+
+            ct.Tien_nt = tien_nt;
+
+            if (!CurPh.Ma_nt.Trim().Equals(M_ma_nt0.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                decimal ty_gia_ht = CurPh.Ty_gia_ht;
+                decimal tien = Math.Round(tien_nt * ty_gia_ht);
+                decimal thue = Math.Round(thue_nt * ty_gia_ht);
+                decimal tt = Math.Round(tt_nt * ty_gia_ht);
+
+                ct.Tien = tien;
+                ct.Thue = thue;
+                ct.Tt = tt;
+            }
+            else
+            {
+                ct.Tien = tien_nt;
+                ct.Thue = thue_nt;
+                ct.Tt = tt_nt;
+            }
+        }
+    }
+
+
+    private void UpdateNt0()
+    {
+        if (!CurPh.Ma_nt.Equals(M_ma_nt0, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        CurPh.T_tien = CurPh.T_tien_tt = CurPh.T_tien_nt;
+        CurPh.T_tt = CurPh.T_tt_nt;
+        CurPh.T_tien_cltg = 0;
+        CurPh.T_thue = CurPh.T_thue_nt;
+
+        if (LSCt != null && LSCt.Any())
+        {
+            foreach (var ct in LSCt)
+            {
+                ct.Tien = ct.Tien_tt = ct.Tien_nt;
+                ct.Tt = ct.Tt_nt;
+                ct.Thue = ct.Thue_nt;
+            }
+        }
+
+        if (LSCtgt != null && LSCtgt.Any())
+        {
+            foreach (var ctgt in LSCtgt)
+            {
+                ctgt.T_thue = ctgt.T_thue_nt;
+                ctgt.T_tien = ctgt.T_tien_nt;
+            }
+        }
+        StateHasChanged();
+    }
+
+    void IsVisibilityFieldsXamDataGridBySua_Tien()
+    {
+        Console.WriteLine($"Sửa tiền: {CurPh.Sua_tien}");
+    }
+
+    void OnGridCTGT_Value_Changed(decimal newvalue, string name)
+    {
+        int sua_tien = 0;
+        int.TryParse(CurPh.Sua_tien.ToString(), out sua_tien);
+        if (!string.IsNullOrEmpty(name))
+        {
+            switch (name.ToLower())
+            {
+                case "thue_suat":
+                    {
+                        Decimal t_tien_nt = CurrentEditModelctgt.T_tien_nt;
+                        Decimal t_tien = CurrentEditModelctgt.T_tien;
+                        Decimal thue_suat = CurrentEditModelctgt.Thue_suat = newvalue;
+                        Decimal num0 = t_tien_nt * (thue_suat / 100) * CurPh.Ty_gia;
+                        Decimal num1 = t_tien * (thue_suat / 100) * CurPh.Ty_gia;
+
+                        if (num0 != 0)
+                        {
+                            CurrentEditModelctgt.T_thue_nt = num0;
+                            CurrentEditModelctgt.T_tt_nt = num0 + t_tien_nt;
+                        }
+                        if (num1 != 0)
+                        {
+                            CurrentEditModelctgt.T_thue = num1;
+                            CurrentEditModelctgt.T_tt = num1 + t_tien;
+                        }
+                        if (!NotMaNt0Voucher)
+                        {
+                            CurrentEditModelctgt.T_thue = CurrentEditModelctgt.T_thue_nt;
+                            CurrentEditModelctgt.T_tt = CurrentEditModelctgt.T_tt_nt;
+                        }
+                        break;
+                    }
+
+                case "t_thue_nt":
+                    {
+                        Decimal thue_suat = CurrentEditModelctgt.T_thue_nt = newvalue;
+                        Decimal t_tien_nt = CurrentEditModelctgt.T_tien_nt;
+                        Decimal t_thue_nt = CurrentEditModelctgt.T_thue_nt;
+
+                        if (t_thue_nt == 0)
+                        {
+                            Decimal thue_suat2 = CurrentEditModelctgt.Thue_suat;
+                            t_thue_nt = t_tien_nt * (thue_suat / 100) * CurPh.Ty_gia;
+                            CurrentEditModelctgt.T_thue_nt = t_thue_nt;
+                        }
+                        CurrentEditModelctgt.T_tt_nt = t_tien_nt + t_thue_nt;
+                        Decimal num0 = t_thue_nt * CurPh.Ty_gia;
+                        if (num0 != 0)
+                        {
+                            CurrentEditModelctgt.T_thue = num0;
+                            CurrentEditModelctgt.T_tt = CurrentEditModelctgt.T_tien + num0;
+                        }
+                        if (!NotMaNt0Voucher)
+                        {
+                            CurrentEditModelctgt.T_thue = CurrentEditModelctgt.T_thue_nt;
+                            CurrentEditModelctgt.T_tt = CurrentEditModelctgt.T_tt_nt;
+                        }
+                        break;
+                    }
+                case "t_thue":
+                    {
+                        CurrentEditModelctgt.T_thue = newvalue;
+                        Decimal t_tien = CurrentEditModelctgt.T_tien;
+                        Decimal t_thue = newvalue;
+                        if (t_thue == 0)
+                        {
+                            Decimal thue_suat = CurrentEditModelctgt.Thue_suat;
+                            t_thue = t_tien * thue_suat / 100;
+                            CurrentEditModelctgt.T_thue = t_thue;
+                        }
+                        CurrentEditModelctgt.T_tt = t_tien + t_thue;
+                        break;
+                    }
+                case "t_tien_nt":
+                    {
+                        CurrentEditModelctgt.T_tien_nt = newvalue;
+                        Decimal t_tien_nt = CurrentEditModelctgt.T_tien_nt;
+                        Decimal thue_suat = CurrentEditModelctgt.Thue_suat;
+                        Decimal num0 = t_tien_nt * thue_suat / 100 * CurPh.Ty_gia;
+
+                        if (num0 != 0)
+                        {
+                            CurrentEditModelctgt.T_thue_nt = num0;
+                            Decimal num1 = num0 * CurPh.Ty_gia;
+                            if (num1 != 0)
+                            {
+                                CurrentEditModelctgt.T_thue = num1;
+                                CurrentEditModelctgt.T_tt = CurrentEditModelctgt.T_tien + num1;
+                            }
+                        }
+                        CurrentEditModelctgt.T_tt_nt = t_tien_nt + CurrentEditModelctgt.T_thue_nt;
+                        if (CurrentEditModelctgt.T_tien == 0 && CurPh.Ty_gia != 0)
+                        {
+                            Decimal num1 = t_tien_nt * CurPh.Ty_gia;
+                            CurrentEditModelctgt.T_tien = num1;
+                            Decimal num2 = num1 * thue_suat / 100;
+                            if (num2 != 0)
+                            {
+                                CurrentEditModelctgt.T_thue = num2;
+                            }
+                            CurrentEditModelctgt.T_tt = num1 + CurrentEditModelctgt.T_thue;
+                        }
+                        if (!NotMaNt0Voucher)
+                        {
+                            CurrentEditModelctgt.T_thue = CurrentEditModelctgt.T_thue_nt;
+                            CurrentEditModelctgt.T_tt = CurrentEditModelctgt.T_tt_nt;
+                        }
+                        break;
+                    }
+                case "t_tien":
+                    {
+                        if (newvalue == 0)
+                        {
+                            Decimal num3 = CurrentEditModelctgt.T_tien_nt * CurPh.Ty_gia;
+                            CurrentEditModelctgt.T_tien = num3;
+                        }
+                        Decimal thue_suat = CurrentEditModelctgt.Thue_suat;
+                        Decimal t_tien = CurrentEditModelctgt.T_tien;
+                        Decimal num0 = t_tien * thue_suat / 100;
+                        if (num0 != 0)
+                        {
+                            CurrentEditModelctgt.T_thue = num0;
+                        }
+                        CurrentEditModelctgt.T_tt = t_tien + CurrentEditModelctgt.T_thue;
+                        break;
+                    }
+            }
+        }
+    }
+    void OnGridCT_Value_Changed(decimal newvalue, string name)
+    {
+        if (!string.IsNullOrEmpty(name))
+        {
+            switch (name.ToLower())
+            {
+                case "tien":
+                    {
+                        if (CurPh.Ma_gd == "8")
+                        {
+                            if (CurPh.Ty_gia != null && newvalue != 0)
+                            {
+                                Decimal result7 = 0;
+                                Decimal result2 = 0;
+
+                                result7 = newvalue;
+                                result2 = CurrentEditModel.Thue_suat;
+
+                                // Tính thuế và tổng cộng
+                                Decimal thue = Math.Round(result7 * result2 / 100, M_ROUND);
+                                Decimal tongCong = result7 + thue;
+
+                                // Gán lại giá trị vào grid hoặc model
+                                CurrentEditModel.Thue = thue;
+                                CurrentEditModel.Tt = tongCong;
+                            }
+                        }
+                        else
+                        {
+                            CurrentEditModel.Tien = newvalue;
+                            CurrentEditModel.Tt = CurrentEditModel.Tien;
+                        }
+                        break;
+                    }
+                case "tien_nt":
+                    {
+                        CurrentEditModel.Tien_nt = newvalue;
+                        Decimal num4;
+                        Decimal num1;
+                        if (CurPh.Ty_gia != 0)
+                        {
+                            if (CurrentEditModel.Loai_hd.Equals("2"))
+                            {
+                                CurrentEditModel.Tt_nt = CurrentEditModel.Tien_nt;
+                                CalculateHd2();
+                            }
+                            else if (!CurrentEditModel.Loai_hd.Equals("5"))
+                            {
+                                num4 = new Decimal(0);
+                                Decimal nValue11 = newvalue;
+                                if (CurrentEditModel.Thue_suat != 0)
+                                {
+                                    Decimal num5 = nValue11 * CurrentEditModel.Thue_suat / new Decimal(100);
+                                    Decimal num6 = CurPh.Ma_nt.Equals(M_ma_nt0) ? num5 : num5;
+                                    CurrentEditModel.Thue_nt = num6;
+                                    CurrentEditModel.Tt_nt = (num6 + nValue11);
+                                    if (!CurPh.Ma_nt.Equals(M_ma_nt0))
+                                    {
+                                        Decimal num7 = (nValue11 * CurPh.Ty_gia);
+                                        if (num7 > new Decimal(0))
+                                        {
+                                            CurrentEditModel.Tien = num7;
+                                            Decimal num8 = (num7 * CurrentEditModel.Thue_suat / new Decimal(100));
+                                            CurrentEditModel.Thue = num8;
+                                            CurrentEditModel.Tt = (num7 + num8);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        CurrentEditModel.Tien = nValue11;
+                                        CurrentEditModel.Thue = num6;
+                                        CurrentEditModel.Tt = (num6 + nValue11);
+                                    }
+                                }
+                                else
+                                {
+                                    CurrentEditModel.Tt_nt = (CurrentEditModel.Tien_nt + CurrentEditModel.Thue_nt);
+                                    if (!CurPh.Ma_nt.Equals(M_ma_nt0))
+                                    {
+                                        Decimal num5 = new Decimal(0);
+                                        Decimal num6 = (CurPh.Ty_gia * CurrentEditModel.Tien_nt);
+                                        if (num6 > new Decimal(0))
+                                        {
+                                            Decimal result2 = CurrentEditModel.Thue;
+                                            CurrentEditModel.Tien = num6;
+                                            CurrentEditModel.Tt = (num6 + result2);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Decimal result2 = CurrentEditModel.Thue;
+                                        CurrentEditModel.Tien = CurrentEditModel.Tien_nt;
+                                        CurrentEditModel.Tt = (CurrentEditModel.Tien_nt + result2);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                num4 = new Decimal(0);
+                                CurrentEditModel.Tt = (CurrentEditModel.Tien_nt + CurrentEditModel.Thue_nt);
+                                if (!CurPh.Ma_nt.Equals(M_ma_nt0))
+                                {
+                                    Decimal num5 = (CurrentEditModel.Tien_nt * CurPh.Ty_gia);
+                                    if (num5 != new Decimal(0))
+                                    {
+                                        CurrentEditModel.Tien = num5;
+                                        CurrentEditModel.Tt = (num5 + CurrentEditModel.Thue);
+                                    }
+                                }
+                                else
+                                {
+                                    Decimal result2 = new Decimal(0);
+                                    CurrentEditModel.Tien = CurrentEditModel.Tien_nt;
+                                    CurrentEditModel.Tt = (CurrentEditModel.Tien_nt + CurrentEditModel.Thue);
+                                }
+                            }
+                        }
+                        UpdateTotalHT();
+                        break;
+                    }
+                case "tien_tt":
+                    {
+                        CurrentEditModel.Tien_tt = newvalue;
+                        break;
+                    }
+                case "sl_td1_i":
+                    {
+                        CurrentEditModel.Sl_td1_i = newvalue;
+                        break;
+                    }
+                case "t_tt_nt0":
+                    {
+                        CurrentEditModel.T_tt_nt0 = newvalue;
+                        break;
+                    }
+                case "t_tt_qd":
+                    {
+                        CurrentEditModel.T_tt_qd = newvalue;
+                        break;
+                    }
+                case "so_hd":
+                    {
+                        LoadHD("");
+                        break;
+                    }
+                case "thue_nt":
+                    CurrentEditModel.Thue_nt = newvalue;
+                    Decimal result1 = new Decimal(0);
+                    if (CurrentEditModel.Thue_suat != 0)
+                        result1 = CurrentEditModel.Thue_suat;
+                    if (CurrentEditModel.Loai_hd.ToString().Trim().Equals("2"))
+                    {
+                        Decimal num2 = new Decimal(0);
+                        Decimal result2 = new Decimal(0);
+                        Decimal result3 = new Decimal(0);
+                        result2 = CurrentEditModel.Tt_nt;
+                        result3 = CurrentEditModel.Thue_nt;
+
+                        Decimal num5 = result2 - result3;
+                        CurrentEditModel.Tien_nt = num5;
+                        if (!CurPh.Ma_nt.Trim().Equals(this.M_ma_nt0))
+                        {
+                            Decimal num6 = new Decimal(0);
+                            Decimal result4 = new Decimal(0);
+                            result4 = CurPh.Ty_gia;
+                            Decimal num7 = Math.Round(num5 * result4, this.M_ROUND);
+                            if (num7 > new Decimal(0))
+                            {
+                                if (CurrentEditModel.Thue_suat != 0)
+                                {
+                                    Decimal num4 = new Decimal(0);
+                                    Decimal num8 = new Decimal(0);
+                                    Decimal num9 = new Decimal(0);
+                                    Decimal num10 = new Decimal(0);
+                                    Decimal num11 = new Decimal(0);
+                                    Decimal num12 = Math.Round(num7 * result1 / new Decimal(100), this.M_ROUND);
+                                    Decimal num13 = Math.Round(result2 * result4, this.M_ROUND);
+                                    Decimal num14 = num13 - (num7 + num12);
+                                    Decimal num15 = Math.Round(num14 / Decimal.Add(result1 / new Decimal(100), 1), this.M_ROUND);
+                                    Decimal num16 = num14 - num15;
+
+                                    CurrentEditModel.Tien = num7 + num15;
+                                    CurrentEditModel.Thue = num12 + num16;
+                                    CurrentEditModel.Tt = num13;
+
+                                }
+                                else
+                                {
+                                    Decimal result5 = new Decimal(0);
+                                    CurrentEditModel.Tien = num7;
+                                    if (CurrentEditModel.Thue != 0)
+                                        Decimal.TryParse(CurrentEditModel.Thue.ToString(), out result5);
+                                    CurrentEditModel.Tt = num7 + result5;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            CurrentEditModel.Tien = num5;
+                            CurrentEditModel.Thue = result3;
+                            CurrentEditModel.Tt = result2;
+                        }
+                    }
+                    else
+                    {
+                        Decimal result2 = new Decimal(0);
+                        Decimal result3 = new Decimal(0);
+
+                        result2 = CurrentEditModel.Thue_nt;
+                        result3 = CurrentEditModel.Tien_nt;
+                        CurrentEditModel.Tt_nt = result2 + result3;
+
+                        if (CurPh.Ma_nt.Trim().Equals(this.M_ma_nt0))
+                        {
+                            result2 = CurrentEditModel.Thue;
+                            result3 = CurrentEditModel.Tien;
+                            CurrentEditModel.Tt = result2 + result3;
+                        }
+                        else
+                        {
+                            Decimal nValue = CurPh.Ty_gia_ht;
+                            Decimal num5 = result2 * nValue;
+                            if (num5 > new Decimal(0))
+                            {
+                                CurrentEditModel.Thue = Math.Round(num5, this.M_ROUND);
+                                Decimal num6 = CurrentEditModel.Tien == 0 ? 0 : CurrentEditModel.Tien;
+                                CurrentEditModel.Tt = num6 + Math.Round(num5, this.M_ROUND);
+                            }
+                        }
+                    }
+
+                    Decimal num3 = new Decimal(0);
+                    Decimal result = new Decimal(0);
+                    Decimal nValue1 = CurPh.Ty_gia;
+                    Decimal nValue2 = CurPh.Ty_gia_ht;
+                    result = CurrentEditModel.Tt_nt;
+                    Decimal num17 = !(CurPh.Loai_cl_no.ToString() == "0") ? Math.Round(result * nValue2, this.M_ROUND) : Math.Round(result * nValue1, this.M_ROUND);
+                    CurrentEditModel.Tien_tt = num17;
+                    break;
+                case "thue":
+                    if (newvalue != 0)
+                    {
+                        if (CurrentEditModel.Loai_hd == "2")
+                        {
+                            CurrentEditModel.Thue = newvalue;
+                        }
+
+                        Decimal result5 = new Decimal(0);
+                        Decimal result2 = new Decimal(0);
+                        result5 = newvalue;
+                        result2 = CurrentEditModel.Tien;
+                        CurrentEditModel.Tt = (result5 + result2);
+                    }
+                    break;
+            }
+        }
+        UpdateTotalHT();
+    }
+
+    private void CalculateHd2()
+    {
+        Decimal num1;
+        if (CurrentEditModel.Thue_suat != 0)
+        {
+            num1 = new Decimal(0);
+            Decimal result1 = CurrentEditModel.Tt_nt;
+            Decimal num2 = new Decimal(0);
+            Decimal num3 = new Decimal(0);
+            Decimal result2 = CurrentEditModel.Thue_suat;
+
+            Decimal nValue = CurPh.Ty_gia;
+            Decimal num4 = result1 / Decimal.Add(result2 / new Decimal(100), 1);
+            Decimal num5 = CurPh.Ma_nt.Equals(M_ma_nt0) ? num4 : num4;
+            CurrentEditModel.Tien_nt = num5;
+            CurrentEditModel.Thue_nt = (result1 - num5);
+            if (!CurPh.Ma_nt.Equals(M_ma_nt0))
+            {
+                Decimal num6 = (num5 * nValue);
+                if (num6 > new Decimal(0))
+                {
+                    Decimal num7 = new Decimal(0);
+                    Decimal num8 = new Decimal(0);
+                    Decimal num9 = new Decimal(0);
+                    Decimal num10 = new Decimal(0);
+                    Decimal num11 = new Decimal(0);
+                    Decimal num12 = (num6 * result2 / new Decimal(100));
+                    Decimal num13 = (result1 * nValue);
+                    Decimal num14 = num13 - (num6 + num12);
+                    Decimal num15 = (num14 / Decimal.Add(result2 / new Decimal(100), 1));
+                    Decimal num16 = num14 - num15;
+                    CurrentEditModel.Tien = (num6 + num15);
+                    CurrentEditModel.Thue = (num12 + num16);
+                    CurrentEditModel.Tt = num13;
+                }
+            }
+            else
+            {
+                CurrentEditModel.Tien = num5;
+                CurrentEditModel.Thue = (result1 - num5);
+                CurrentEditModel.Tt = result1;
+            }
+        }
+        else
+        {
+            Decimal result1 = CurrentEditModel.Tt_nt;
+            Decimal result2 = CurrentEditModel.Thue_suat;
+            num1 = new Decimal(0);
+            Decimal num2 = result1 - result2;
+            CurrentEditModel.Tien_nt = num2;
+            if (!CurPh.Ma_nt.Equals(M_ma_nt0))
+            {
+                Decimal num3 = new Decimal(0);
+                Decimal num4 = (CurPh.Ty_gia * num2);
+                if (num4 > new Decimal(0))
+                {
+                    Decimal result3 = new Decimal(0);
+                    CurrentEditModel.Tien = num4;
+                    if (CurrentEditModel.Thue != 0)
+                        result3 = CurrentEditModel.Thue;
+                    CurrentEditModel.Tt = (num4 + result3);
+                }
+            }
+            else
+            {
+                CurrentEditModel.Tien = num2;
+                CurrentEditModel.Thue = result2;
+                CurrentEditModel.Tt = result1;
+            }
+        }
+    }
+
+    string GetTk_cn(string tk)
+    {
+        string tk_cn = "0";
+        string _qsl = $"select top(1) isnull(tk_cn,'0') as tk_cn from dmtk where tk = '{tk}';";
+        DataSet dataSet = myDb.LoadDataSet(_qsl);
+        if (dataSet != null && dataSet.Tables[0].Rows.Count != 0)
+            tk_cn = dataSet.Tables[0].Rows[0]["tk_cn"].ToString();
+        return tk_cn;
+
+    }
+    async void OnGridCT_DMDM_Changed(ExpandoObject value, string ma_dm)
+    {
+        if (value == null)
+            return;
+        switch (ma_dm.ToLower())
+        {
+            case "tk_vt":
+                CurrentEditModel.Ten_tk = value.Where(a => a.Key.Equals("ten_tk")).FirstOrDefault().Value.ToString();
+                CurrentEditModel.Ten_tk2 = value.Where(a => a.Key.Equals("ten_tk2")).FirstOrDefault().Value.ToString();
+                CurrentEditModel.Tk_thue_cn = Decimal.Parse(value.Where(a => a.Key.Equals("tk_cn")).FirstOrDefault().Value.ToString());
+                if (CurrentEditModel.Tk_thue_cn == 0)
+                {
+                    CurrentEditModel.Ma_kh_i = "";
+                    CurrentEditModel.Ten_kh_i = "";
+                }
+                break;
+            case "ma_kh_i":
+                CurrentEditModel.Ten_kh_i = value.Where(a => a.Key.Equals("ten_kh")).FirstOrDefault().Value.ToString();
+                break;
+            case "ma_kh_t":
+                CurrentEditModel.Ten_kh_t = value.Where(a => a.Key.Equals("ten_kh")).FirstOrDefault().Value.ToString();
+                CurrentEditModel.Mst_t = value.Where(a => a.Key.Equals("ma_so_thue")).FirstOrDefault().Value.ToString();
+                CurrentEditModel.Dia_chi_t = value.Where(a => a.Key.Equals("dia_chi")).FirstOrDefault().Value.ToString();
+                break;
+            case "tk_thue_i":
+                CurrentEditModel.Tk_thue_cn = Decimal.Parse(value.Where(a => a.Key.Equals("tk_cn")).FirstOrDefault().Value.ToString());
+                break;
+            case "ma_thue_i":
+                CurPh.Tk_thue_no = value.Where(a => a.Key.Equals("tk_thue_no")).FirstOrDefault().Value.ToString();
+                CurrentEditModel.Thue_suat = Convert.ToDecimal(value.Where(a => a.Key.Equals("thue_suat")).FirstOrDefault().Value);
+                CurrentEditModel.Tk_thue_i = value.Where(a => a.Key.Equals("tk_thue_no")).FirstOrDefault().Value.ToString();
+                CurrentEditModel.Tk_thue_cn = Decimal.Parse(GetTk_cn(CurrentEditModel.Tk_thue_i));
+                if (CurrentEditModel.Thue_suat != 0)
+                {
+                    Decimal result1N = new Decimal(0);
+                    result1N = CurrentEditModel.Thue_suat;
+                    if (CurrentEditModel.Loai_hd.ToString().Trim().Equals("2"))
+                    {
+                        this.CalculateHd2(CurrentEditModel);
+                    }
+                    else
+                    {
+                        Decimal result2 = new Decimal(0);
+                        result2 = CurrentEditModel.Tien_nt;
+                        Decimal num1 = new Decimal(0);
+                        Decimal num5 = result2 * result1N / new Decimal(100);
+                        Decimal num6 = CurPh.Ma_nt.Trim().Equals(this.M_ma_nt0) ? Math.Round(num5, this.M_ROUND) : Math.Round(num5, this.M_ROUND_NT);
+                        CurrentEditModel.Thue_nt = num6;
+                        CurrentEditModel.Tt_nt = num6 + result2;
+
+                        if (!CurPh.Ma_nt.Trim().Equals(this.M_ma_nt0))
+                        {
+                            Decimal result3 = new Decimal(0);
+                            result3 = CurrentEditModel.Tien;
+                            Decimal num4 = new Decimal(0);
+                            Decimal num7 = Math.Round(result3 * result1N / new Decimal(100), this.M_ROUND);
+                            CurrentEditModel.Thue = num7;
+                            CurrentEditModel.Tt = result3 + num7;
+                        }
+                        else
+                        {
+                            CurrentEditModel.Tien = result2;
+                            CurrentEditModel.Thue = num6;
+                            CurrentEditModel.Tt = num6 + result2;
+                        }
+                    }
+                }
+                break;
+            case "loai_hd":
+                {
+                    if (!string.IsNullOrEmpty(CurrentEditModel.Loai_hd))
+                    {
+                        switch (CurrentEditModel.Loai_hd.ToString().Trim())
+                        {
+                            case "0":
+                                CurrentEditModel.Ma_kh_t = "";
+                                CurrentEditModel.Ma_ms = "";
+                                CurrentEditModel.Mst_t = "";
+                                CurrentEditModel.So_ct0 = "";
+                                CurrentEditModel.Ma_thue_i = "";
+                                CurrentEditModel.Tk_thue_i = "";
+                                CurrentEditModel.Ghi_chu_t = "";
+                                CurrentEditModel.Thue_suat = 0;
+                                CurrentEditModel.Thue_nt = 0;
+                                CurrentEditModel.Thue = 0;
+                                CurrentEditModel.Tt_nt = CurrentEditModel.Tien_nt;
+                                CurrentEditModel.Tt = CurrentEditModel.Tien;
+
+                                break;
+                            case "2":
+                                this.CalculateHd2(CurrentEditModel);
+                                break;
+                        }
+                    }
+                    if (CurrentEditModel.Loai_hd.Trim() != "0")
+                    {
+                        if (string.IsNullOrEmpty(CurrentEditModel.Ma_kh_t) && string.IsNullOrEmpty(CurrentEditModel.Ten_kh_t))
+                        {
+                            if (CurrentEditModel.Stt > 1)
+                            {
+                                CurrentEditModel.Ma_kh_t = LSCt[LSCt.Count - 1].Ma_kh_t;
+                                CurrentEditModel.Ten_kh_t = LSCt[LSCt.Count - 1].Ten_kh_t;
+                                CurrentEditModel.Mst_t = LSCt[LSCt.Count - 1].Mst_t;
+                            }
+                            else
+                            {
+                                CurrentEditModel.Ma_kh_t = CurPh.Ma_kh;
+                                CurrentEditModel.Ten_kh_t = CurPh.Ten_kh;
+                                CurrentEditModel.Mst_t = CurPh.Ma_so_thue;
+                            }
+
+                        }
+                        if (CurrentEditModel.Ma_ms.ToString().Trim() == "")
+                            CurrentEditModel.Ma_ms = "1";
+                        break;
+                    }
+                    break;
+
+                }
+            case "ma_ms":
+                CurrentEditModel.Ma_ms = value.Where(a => a.Key.Equals("ma_ms")).FirstOrDefault().Value.ToString();
+                break;
+
+        }
+        UpdateTotalHT();
+    }
+    void OnSo_ct0_Changed(string value)
+    {
+        CurrentEditModelctgt.So_ct0 = value;
+        if (LSCtgt.Count == 1)
+        {
+            decimal result1 = 0;
+            decimal result2 = 0;
+
+            var enumerable = LSCt.Where(b => b.Stt_rec == CurPh.Stt_rec)
+                .Select(x => new
+                {
+                    Tien_nt = x.Tien_nt,
+                    Tien = x.Tien
+                });
+
+            if (enumerable != null)
+            {
+                result1 = enumerable.Sum(p => p.Tien_nt);
+                result2 = enumerable.Sum(p => p.Tien);
+
+                CurrentEditModelctgt.T_tien_nt = result1;
+                CurrentEditModelctgt.T_tien = result2;
+            }
+        }
+    }
+    void OnGridCTGT_DMDM_Changed(ExpandoObject value, string ma_dm)
+    {
+        switch (ma_dm.ToLower())
+        {
+            case "ma_kh":
+                {
+                    CurrentEditModelctgt.Ten_kh = value.Where(a => a.Key.Equals("ten_kh")).FirstOrDefault().Value.ToString();
+                    CurrentEditModelctgt.Dia_chi = value.Where(a => a.Key.Equals("dia_chi")).FirstOrDefault().Value.ToString();
+                    CurrentEditModelctgt.Ma_so_thue = value.Where(a => a.Key.Equals("ma_so_thue")).FirstOrDefault().Value.ToString();
+                    break;
+                }
+            case "so_ct0":
+                {
+                    if (LSCtgt.Count == 1)
+                    {
+                        decimal result1 = 0;
+                        decimal result2 = 0;
+
+                        var enumerable = LSCt.Where(b => b.Stt_rec == CurPh.Stt_rec)
+                            .Select(x => new
+                            {
+                                Tien_nt = x.Tien_nt,
+                                Tien = x.Tien
+                            });
+
+                        if (enumerable != null)
+                        {
+                            result1 = enumerable.Sum(p => p.Tien_nt);
+                            result2 = enumerable.Sum(p => p.Tien);
+
+                            CurrentEditModelctgt.T_tien_nt = result1;
+                            CurrentEditModelctgt.T_tien = result2;
+                        }
+                    }
+                    break;
+                }
+            case "t_tien_nt":
+                {
+                    if (decimal.TryParse(CurrentEditModelctgt.T_tien_nt.ToString(), out var tienNt))
+                    {
+                        decimal thueSuat = CurrentEditModelctgt.Thue_suat;
+                        decimal numThueNt = tienNt * thueSuat / 100;
+                        decimal numThueNtRounded = NotMaNt0Voucher ? Math.Round(numThueNt, M_ROUND_NT) : Math.Round(numThueNt, M_ROUND);
+                        CurrentEditModelctgt.T_thue_nt = numThueNtRounded;
+                        CurrentEditModelctgt.T_tt_nt = tienNt + numThueNtRounded;
+
+                        if (!NotMaNt0Voucher)
+                        {
+                            decimal numTien = Math.Round(CurPh.Ty_gia * tienNt, M_ROUND);
+                            CurrentEditModelctgt.T_tien = numTien;
+                            decimal numThue = Math.Round(numTien * thueSuat / 100, M_ROUND);
+                            CurrentEditModelctgt.T_thue = numThue;
+                            CurrentEditModelctgt.T_tt = numTien + numThue;
+                        }
+                        else
+                        {
+                            CurrentEditModelctgt.T_tien = tienNt;
+                            CurrentEditModelctgt.T_thue = numThueNtRounded;
+                            CurrentEditModelctgt.T_tt = tienNt + numThueNtRounded;
+                        }
+                    }
+                    UpdateTotalThue();
+                    break;
+                }
+
+            case "t_tien":
+                {
+                    if (CurrentEditModelctgt.T_tien == 0)
+                    {
+                        decimal tyGia = CurPh.Ty_gia;
+                        CurrentEditModelctgt.T_tien = Math.Round(tyGia * CurrentEditModelctgt.T_tien_nt, M_ROUND);
+                    }
+
+                    decimal thueSuat = CurrentEditModelctgt.Thue_suat;
+                    decimal thue = Math.Round(CurrentEditModelctgt.T_tien * thueSuat / 100, M_ROUND);
+                    CurrentEditModelctgt.T_thue = thue;
+                    CurrentEditModelctgt.T_tt = CurrentEditModelctgt.T_tien + thue;
+                    UpdateTotalThue();
+                    break;
+                }
+
+            case "ma_thue":
+                {
+                    CurrentEditModelctgt.Thue_suat = decimal.Parse(value.First(a => a.Key == "thue_suat").Value.ToString());
+                    CurrentEditModelctgt.Tk_thue_no = value.First(a => a.Key == "tk_thue_no").Value.ToString();
+
+                    decimal num7 = CurrentEditModelctgt.T_tien_nt;
+                    decimal num8 = CurrentEditModelctgt.T_tien;
+                    decimal num9 = CurrentEditModelctgt.Thue_suat;
+
+                    decimal num10 = num7 * (num9 / 100) * CurPh.Ty_gia;
+                    if (num10 != 0)
+                    {
+                        CurrentEditModelctgt.T_thue_nt = num10;
+                        CurrentEditModelctgt.T_tt_nt = num7 + num10;
+                    }
+
+                    decimal num11 = num8 * num9 / 100;
+                    if (num11 != 0)
+                    {
+                        CurrentEditModelctgt.T_thue = num11;
+                        CurrentEditModelctgt.T_tt = num8 + num11;
+                    }
+
+                    if (!NotMaNt0Voucher)
+                    {
+                        CurrentEditModelctgt.T_thue_nt = CurrentEditModelctgt.T_thue;
+                    }
+
+                    UpdateTotalThue();
+                    break;
+                }
+
+            case "t_thue_nt":
+                {
+                    if (CurrentEditModelctgt.T_thue_nt == 0)
+                    {
+                        decimal thue_nt = CurrentEditModelctgt.T_tien_nt * CurrentEditModelctgt.Thue_suat / 100;
+                        CurrentEditModelctgt.T_thue_nt = NotMaNt0Voucher ? Math.Round(thue_nt, M_ROUND_NT) : Math.Round(thue_nt, M_ROUND);
+                    }
+
+                    CurrentEditModelctgt.T_tt_nt = CurrentEditModelctgt.T_tien_nt + CurrentEditModelctgt.T_thue_nt;
+
+                    if (NotMaNt0Voucher)
+                    {
+                        decimal nValue = CurPh.Ty_gia;
+                        CurrentEditModelctgt.T_thue = Math.Round(CurrentEditModelctgt.T_thue_nt * nValue, M_ROUND);
+                        CurrentEditModelctgt.T_tt = CurrentEditModelctgt.T_tien + CurrentEditModelctgt.T_thue;
+                    }
+                    else
+                    {
+                        CurrentEditModelctgt.T_tien = CurrentEditModelctgt.T_tien_nt;
+                        CurrentEditModelctgt.T_thue = CurrentEditModelctgt.T_thue_nt;
+                        CurrentEditModelctgt.T_tt = CurrentEditModelctgt.T_tt_nt;
+                    }
+
+                    UpdateTotalThue();
+                    break;
+                }
+            case "t_thue":
+                {
+                    if (CurrentEditModelctgt.T_thue == 0)
+                    {
+                        CurrentEditModelctgt.T_thue = Math.Round(CurrentEditModelctgt.T_tien * CurrentEditModelctgt.Thue_suat / 100, M_ROUND);
+                    }
+                    CurrentEditModelctgt.T_tt = CurrentEditModelctgt.T_tien + CurrentEditModelctgt.T_thue;
+                    UpdateTotalThue();
+                    break;
+                }
+        }
+
+    }
+    async void UpdateCTGT()
+    {
+        if (GridCTGT != null)
+        {
+            var validRecords = LSCt.Where(x => x.Ngay_ct0 != null && !string.IsNullOrEmpty(x.Ngay_ct0.ToString()) && x.Loai_hd?.Trim() != "0").ToList();
+            foreach (var record in validRecords)
+            {
+                Ct32gt edit = LSCtgt.FirstOrDefault(x => x.Stt_rec == CurPh.Stt_rec && x.Stt_rec0 == record.Stt_rec0);
+                if (edit == null) return;
+
+                edit.Ma_ms = record.Ma_ms;
+                edit.So_ct0 = record.So_ct0;
+                edit.Ngay_ct0 = record.Ngay_ct0;
+                edit.Kh_mau_hd = record.Kh_mau_hd;
+                edit.So_seri0 = record.So_seri0;
+                edit.Ma_kh = record.Ma_kh_t;
+                edit.Ten_kh = record.Ten_kh_t;
+                edit.Dia_chi = record.Dia_chi_t;
+                edit.Ma_so_thue = record.Mst_t;
+                edit.Ten_vt = record.Ten_vt_t;
+                edit.T_tien_nt = record.Tien_nt;
+                edit.T_tien = record.Tien;
+                edit.Ma_thue = record.Ma_thue_i;
+                edit.Thue_suat = record.Thue_suat;
+                edit.T_thue_nt = record.Thue_nt;
+                edit.T_thue = record.Thue;
+                edit.T_tt_nt = record.Tt_nt;
+                edit.T_tt = record.Tt;
+                edit.Tk_thue_no = record.Tk_thue_i;
+                edit.Ghi_chu = record.Ghi_chu_t;
+                edit.Ma_vv = record.Ma_vv_i;
+                edit.Ma_phi = record.Ma_phi_i;
+                // CurrentEditModelctgt = edit;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    async void AddNewCTGT()
+    {
+        if (GridCTGT != null && LSCtgt.Count != 0)
+            await GridCTGT.SaveChangesAsync();
+
+        if (activeTabIndex == 0 && AllowEditMode)
+        {
+            LSCtgt.Where(x => x.Stt_rec == CurPh.Stt_rec && x.Thue_ct == "1").ToList()
+            .ForEach(row => LSCtgt.Remove(row));
+            // Lọc các record hợp lệ
+            var validRecords = LSCt
+                .Where(x =>
+                    x.Ngay_ct0 != null &&
+                    x.Ngay_ct0 != null &&
+                    x.Ngay_ct0 != new DateTime() &&
+                    x.Loai_hd?.Trim() != "0")
+                .ToList();
+
+            // Nếu có record, xóa dữ liệu thuế tương ứng
+            if (validRecords.Any())
+            {
+                var toRemove = LSCtgt.Where(x => x.Stt_rec == CurPh.Stt_rec).ToList();
+                foreach (var item in toRemove)
+                    LSCtgt.Remove(item);
+            }
+
+            // Tạo mới dữ liệu thuế từ chi tiết chứng từ
+            foreach (var record in validRecords)
+            {
+                Ct32gt _Ct32gt = new Ct32gt
+                {
+                    Stt = record.Stt,
+                    Stt_rec = CurPh.Stt_rec,
+                    Thue_ct = "1",
+                    Stt_rec0 = record.Stt_rec0,
+                    Ngay_ct = CurPh.Ngay_ct,
+                    Ma_ct = CurPh.Ma_ct,
+                    Ma_ms = record.Ma_ms,
+                    So_ct0 = record.So_ct0,
+                    So_seri0 = record.So_seri0,
+                    Ngay_ct0 = record.Ngay_ct0,
+                    Kh_mau_hd = record.Kh_mau_hd,
+                    Ma_kh = record.Ma_kh_t,
+                    Ten_kh = record.Ten_kh_t,
+                    Dia_chi = record.Dia_chi_t,
+                    Ma_so_thue = record.Mst_t,
+                    Ten_vt = record.Ten_vt_t,
+                    T_tien_nt = record.Tien_nt,
+                    T_tien = record.Tien,
+                    Ma_thue = record.Ma_thue_i,
+                    Thue_suat = record.Thue_suat,
+                    T_thue_nt = record.Thue_nt,
+                    T_thue = record.Thue,
+                    T_tt_nt = record.Tt_nt,
+                    T_tt = record.Tt,
+                    Tk_thue_no = record.Tk_thue_i,
+                    Ghi_chu = record.Ghi_chu_t,
+                    Ma_vv = record.Ma_vv_i,
+                    Ma_phi = record.Ma_phi_i
+                };
+                LSCtgt.Add(_Ct32gt);
+                CurrentEditModelctgt = _Ct32gt;
+            }
+            UpdateTotalThue();
+            AllowCtgt = true;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    void Grid_CustomizeEditModelCTGT(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.EditModel is Ct32gt model)
+        {
+            CurrentEditModelctgt = model;
+            if (e.IsNew)
+            {
+                CurrentEditModelctgt.Stt = LSCtgt.Count > 0 ? LSCtgt.Max(a => int.Parse(a.Stt_rec0)) + 1 : 1;
+                CurrentEditModelctgt.Stt_rec0 = string.Format("{0:0000}", CurrentEditModelctgt.Stt);
+                CurrentEditModelctgt.Stt_rec = CurPh.Stt_rec;
+                CurrentEditModelctgt.So_ct = CurPh.So_ct;
+                CurrentEditModelctgt.Ngay_ct = CurPh.Ngay_ct;
+                CurrentEditModelctgt.Ma_ct = CurPh.Ma_ct;
+            }
+        }
+    }
+
+    async Task Grid_EditModelSavingCTGT(GridEditModelSavingEventArgs e)
+    {
+        if (e.EditModel is Ct32gt model)
+        {
+            CurrentEditModelctgt = model;
+
+            if (string.IsNullOrWhiteSpace(CurrentEditModelctgt.So_ct0))
+            {
+                e.Cancel = true;
+                await Task.Yield();
+                await GridCTGT.StartEditDataItemAsync(e.DataItem, "So_ct0");
+                return;
+            }
+            if (e.IsNew)
+            {
+                LSCtgt.Add(CurrentEditModelctgt);
+            }
+            else
+            {
+                Ct32gt cts = LSCtgt.Where(a => a.Stt_rec.Equals(CurrentEditModelctgt.Stt_rec) && a.Stt_rec0 == CurrentEditModelctgt.Stt_rec0).FirstOrDefault();
+                if (cts != null)
+                {
+                    cts.Dvt = CurrentEditModelctgt.Dvt;
+                    cts.So_luong = CurrentEditModelctgt.So_luong;
+                    cts.Dvt = CurrentEditModelctgt.Dvt;
+                    cts.Ma_ms = CurrentEditModelctgt.Ma_ms;
+                    cts.Ngay_ct0 = CurrentEditModelctgt.Ngay_ct0;
+                    cts.So_ct0 = CurrentEditModelctgt.So_ct0;
+                    cts.Kh_mau_hd = CurrentEditModelctgt.Kh_mau_hd;
+                    cts.So_seri0 = CurrentEditModelctgt.So_seri0;
+                    cts.Ma_kh = CurrentEditModelctgt.Ma_kh;
+                    cts.Dia_chi = CurrentEditModelctgt.Dia_chi;
+                    cts.Ma_so_thue = CurrentEditModelctgt.Ma_so_thue;
+                    cts.Ten_kh = CurrentEditModelctgt.Ten_kh;
+                    cts.T_tien_nt = CurrentEditModelctgt.T_tien_nt;
+                    cts.T_tien = CurrentEditModelctgt.T_tien;
+                    cts.Ma_thue = CurrentEditModelctgt.Ma_thue;
+                    cts.Thue_suat = CurrentEditModelctgt.Thue_suat;
+                    cts.T_thue = CurrentEditModelctgt.T_thue;
+                    cts.T_thue_nt = CurrentEditModelctgt.T_thue_nt;
+                    cts.T_tt_nt = CurrentEditModelctgt.T_tt_nt;
+                    cts.T_tt = CurrentEditModelctgt.T_tt;
+                    cts.Tk_thue_no = CurrentEditModelctgt.Tk_thue_no;
+                }
+            }
+        }
+    }
+
+    async Task Grid_DataItemDeletingCTGT(GridDataItemDeletingEventArgs e)
+    {
+        var editCt82 = (Ct32gt)e.DataItem;
+        LSCtgt.Remove(editCt82);
+        int _stt = 1;
+        LSCtgt.ForEach((Ct32gt _Ct32) =>
+        {
+            _Ct32.Stt = _stt;
+            _Ct32.Stt_rec0 = string.Format("{0:0000}", _Ct32.Stt);
+            _stt++;
+        });
+    }
+
+    void OnAutoCompleteDMNXChanged(ExpandoObject value)
+    {
+        CurPh.Ma_nx = value.Where(a => a.Key.Equals("ma_nx")).FirstOrDefault().Value.ToString();
+        CurPh.Ten_nx = IsLangEn ? value.Where(a => a.Key.Equals("ten_nx2")).FirstOrDefault().Value.ToString() : value.Where(a => a.Key.Equals("ten_nx")).FirstOrDefault().Value.ToString();
+        LoadDataDu13();
+        StateHasChanged();
+    }
+
+    private void LoadDataDu13()
+    {
+
+    }
+
+    private Decimal GetTggd(string ma_nt, DateTime ngay_ct)
+    {
+        Decimal num = new Decimal(0);
+        string format = string.Format("SELECT ty_gia FROM dmtgnt WHERE ma_nt = '{0}' AND ngay_ct <= '{1}' ORDER by ngay_ct DESC", ma_nt, ngay_ct.ToString("yyyyMMdd"));
+        DataTable dataTable = myDb.LoadDataSet(format).Tables[0].Copy();
+        if (dataTable.Rows.Count != 0)
+            num = (Decimal)dataTable.Rows[0][0];
+        return num;
+    }
+
+    async void OnAutoCompleteKhachhangChanged(ExpandoObject value)
+    {
+        CurPh.Ten_kh = value.Where(a => a.Key.Equals("ten_kh")).FirstOrDefault().Value.ToString();
+        CurPh.Dia_chi = value.Where(a => a.Key.Equals("dia_chi")).FirstOrDefault().Value.ToString();
+        CurPh.Ong_ba = value.Where(a => a.Key.Equals("doi_tac")).FirstOrDefault().Value.ToString();
+        // CurPh.Nh_kh3 = value.Where(a => a.Key.Equals("nh_kh3")).FirstOrDefault().Value.ToString();
+        // CurPh.Tk_nh = value.Where(a => a.Key.Equals("tk_nh")).FirstOrDefault().Value.ToString();
+        CurPh.Ma_so_thue = value.Where(a => a.Key.Equals("ma_so_thue")).FirstOrDefault().Value.ToString();
+        StateHasChanged();
+    }
+    async void OnAutoCompleteGiaodichChanged(ExpandoObject value)
+    {
+        CurPh.Ma_gd = value.Where(a => a.Key.Equals("ma_gd")).FirstOrDefault().Value.ToString();
+        if (CurPh.Ma_gd == "3")
+        {
+            AllowCtgt = true;
+        }
+        StateHasChanged();
+    }
+    void OnAutoCompleteMaNTChanged(ExpandoObject value)
+    {
+        string sql = string.Format("select ty_gia from dmtgnt where ma_nt = '{0}' ORDER by ngay_ct DESC", CurPh.Ma_nt.Trim());
+        DataSet ds = myDb.LoadDataSet(sql);
+        if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count != 0)
+        {
+            CurPh.Ty_gia = decimal.Parse(ds.Tables[0].Rows[0][0].ToString());
+            CurPh.Ty_giaf = CurPh.Ty_gia;
+        }
+        NotMaNt0Voucher = !(CurPh?.Ma_nt?.Equals(M_ma_nt0) ?? true);
+        CalculateTyGia();
+    }
+    void OnValueMaNTChanged(decimal newvalue)
+    {
+        if (newvalue != 0)
+        {
+            CurPh.Ty_gia = newvalue;
+            CurPh.Ty_giaf = CurPh.Ty_gia;
+            CalculateTyGia();
+            // ChangeTyGia();
+        }
+        StateHasChanged();
+
+    }
+
+    void OnAutoCompleteMaNTHTChanged(decimal newvalue)
+    {
+        if (newvalue != 0)
+        {
+            CurPh.Ty_gia_ht = newvalue;
+        }
+        ChangeTyGia();
+        StateHasChanged();
+    }
+
+    private async Task ChangeTyGia()
+    {
+        Decimal nValue1 = CurPh.Ty_gia;
+        Decimal nValue2 = CurPh.Ty_gia_ht;
+        foreach (var record in LSCt)
+        {
+            decimal tien_nt = record.Tien_nt;
+            decimal tien = Math.Round(nValue2 * tien_nt, M_ROUND);
+            decimal tien_tt = (CurPh.Loai_cl_no == "0")
+                ? Math.Round(tien_nt * nValue1, M_ROUND)
+                : Math.Round(tien_nt * nValue2, M_ROUND);
+
+            record.Tien = tien;
+            record.Tien_tt = tien_tt;
+            record.Tt = tien;
+
+            if (CurrentEditModel != null && record.Stt_rec0 == CurrentEditModel.Stt_rec0)
+            {
+                CurrentEditModel.Tien = record.Tien;
+                CurrentEditModel.Tien_tt = record.Tien_tt;
+                CurrentEditModel.Tt = record.Tt;
+            }
+            // Tinh_tien_cltg(record);
+        }
+        CalculateTyGia();
+        await GridCT.SaveChangesAsync();
+    }
+
+    void OnAutoCompleteQuyensoChanged(ExpandoObject value)
+    {
+        string ma_qs = value.Where(a => a.Key.Equals("ma_qs")).FirstOrDefault().Value.ToString();
+        curQuyenso = GetNewSo_ct(ma_qs);
+        CurPh.So_ct = string.Format(curQuyenso.Ma_qs, curQuyenso.So_ct);
+        StateHasChanged();
+    }
+
+
+    private void UpdateTotalHT()
+    {
+        var current = LSCt.Where(x => x.Stt_rec == CurPh.Stt_rec);
+
+        CurPh.T_tien_nt = current.Sum(x => x.Tien_nt);
+        CurPh.T_tien = current.Sum(x => x.Tien);
+        CurPh.T_thue_nt = current.Sum(x => x.Thue_nt);
+        CurPh.T_thue = current.Sum(x => x.Thue);
+        CurPh.T_tt_nt = CurPh.T_tien_nt + CurPh.T_thue_nt;
+        CurPh.T_tt = CurPh.T_tien + CurPh.T_thue;
+
+        if (CurPh.T_thue_nt == 0)
+            UpdateTotalThue();
+    }
+
+    void PreSum_All()
+    {
+        CurPh.T_tien_nt = LSCt.Sum(a => a.Tien_nt) + CurrentEditModel.Tien_nt;
+        CurPh.T_tien = LSCt.Sum(a => a.Tien) + CurrentEditModel.Tien;
+        CurPh.T_tien_tt = LSCt.Sum(a => a.Tien_tt) + CurrentEditModel.Tien_tt;
+        CurPh.T_thue_nt = LSCt.Sum(a => a.Thue_nt) + CurrentEditModel.Thue_nt;
+        CurPh.T_thue = LSCt.Sum(a => a.Thue) + CurrentEditModel.Thue;
+        CurPh.T_tt_nt = LSCt.Sum(a => a.Tt_nt) + CurrentEditModel.Tt_nt;
+        CurPh.T_tt = LSCt.Sum(a => a.Tt) + CurrentEditModel.Tt;
+
+        if ((LSCt.Sum(a => a.Thue_nt) + CurrentEditModel.Thue_nt) == 0)
+            UpdateTotalThue();
+
+    }
+    void Sum_All()
+    {
+        CurPh.T_tien_nt = LSCt.Sum(a => a.Tien_nt) + CurrentEditModel.Tien_nt;
+        CurPh.T_tien = LSCt.Sum(a => a.Tien) + CurrentEditModel.Tien;
+        CurPh.T_tien_tt = LSCt.Sum(a => a.Tien_tt) + CurrentEditModel.Tien_tt;
+        CurPh.T_thue_nt = LSCt.Sum(a => a.Thue_nt) + CurrentEditModel.Thue_nt;
+        CurPh.T_thue = LSCt.Sum(a => a.Thue) + CurrentEditModel.Thue;
+        CurPh.T_tt_nt = LSCt.Sum(a => a.Tt_nt) + CurrentEditModel.Tt_nt;
+        CurPh.T_tt = LSCt.Sum(a => a.Tt) + CurrentEditModel.Tt;
+
+        // if ((LSCt.Sum(a => a.Thue_nt) + CurrentEditModel.Thue_nt) == 0)
+        //     UpdateTotalThue();
+
+    }
+    async void StartEditDataItemByClickCT()
+    {
+        if (GridCT.IsEditing())
+            await GridCT.SaveChangesAsync();
+        if (SelectedDataItemCT != null)
+            await GridCT.StartEditDataItemAsync(SelectedDataItemCT);
+    }
+
+    async void StartEditDataItemByClickCTGT()
+    {
+        if (GridCTGT.IsEditing())
+            await GridCTGT.SaveChangesAsync();
+        if (SelectedDataItemCTGT != null)
+            await GridCTGT.StartEditDataItemAsync(SelectedDataItemCTGT);
+    }
+    void HireAttachform(string value)
+    {
+        StateHasChanged();
+    }
+
+    async void AddNewCT()
+    {
+        int number = 0;
+        await GridCT.SaveChangesAsync();
+        Ct32 _Ct32 = new Ct32();
+        if (LSCt.Count > 0)
+        {
+            number = LSCt.Count - 1;
+            _Ct32.Ma_kh_i = LSCt[number].Ma_kh_i;
+            _Ct32.Dien_giaii = LSCt[number].Dien_giaii;
+            _Ct32.Ten_kh_i = LSCt[number].Ten_kh_i;
+            _Ct32.Stt = LSCt.Max(a => a.Stt) + 1;
+        }
+        else
+        {
+            _Ct32.Stt = 1;
+        }
+        _Ct32.Stt_rec0 = string.Format("{0:0000}", _Ct32.Stt);
+        _Ct32.So_ct = CurPh.So_ct;
+        _Ct32.Stt_rec = CurPh.Stt_rec;
+        _Ct32.Ngay_ct = CurPh.Ngay_ct;
+        _Ct32.Ma_ct = CurPh.Ma_ct;
+        _Ct32.Dien_giaii = CurPh.Dien_giai;
+        _Ct32.Tien_nt = 0;
+        _Ct32.Tien = 0;
+        _Ct32.Thue = 0;
+        _Ct32.Thue_nt = 0;
+        _Ct32.Loai_hd = "0";
+        await GridCT.StartEditNewRowAsync("Tk_vt");
+    }
+
+    void Grid_CustomizeEditModelCT(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.EditModel is Ct32 model)
+        {
+            CurrentEditModel = model;
+            if (e.IsNew)
+            {
+                CurrentEditModel.Stt = LSCt.Count > 0 ? LSCt.Max(a => int.Parse(a.Stt_rec0)) + 1 : 1;
+                CurrentEditModel.Stt_rec0 = string.Format("{0:0000}", CurrentEditModel.Stt);
+                CurrentEditModel.So_ct = CurPh.So_ct;
+                CurrentEditModel.Stt_rec = CurPh.Stt_rec;
+                CurrentEditModel.Ngay_ct = CurPh.Ngay_ct;
+                CurrentEditModel.Ma_ct = CurPh.Ma_ct;
+                CurrentEditModel.Dien_giaii = CurPh.Dien_giai;
+                CurrentEditModel.Ty_gia_ht2 = CurPh.Ty_gia;
+            }
+        }
+    }
+
+    async Task Grid_EditModelSavingCT(GridEditModelSavingEventArgs e)
+    {
+        CurrentEditModel = (Ct32)e.EditModel;
+        if (string.IsNullOrWhiteSpace(CurrentEditModel.Tk_vt))
+        {
+            e.Cancel = true;
+            await Task.Yield();
+            await GridCT.StartEditDataItemAsync(e.DataItem, "Tk_vt");
+            return;
+        }
+        if (e.IsNew)
+        {
+            LSCt.Add(CurrentEditModel);
+        }
+        else
+        {
+            Ct32 cts = LSCt.Where(a => a.Stt_rec.Equals(CurrentEditModel.Stt_rec) && a.Stt_rec0 == CurrentEditModel.Stt_rec0).FirstOrDefault();
+            if (cts != null)
+            {
+                cts.Loai_hd = CurrentEditModel.Loai_hd;
+                cts.Dien_giaii = CurrentEditModel.Dien_giaii;
+                cts.Tien = CurrentEditModel.Tien;
+                cts.Tien_nt = CurrentEditModel.Tien_nt;
+                cts.Thue = CurrentEditModel.Thue;
+                cts.Thue_nt = CurrentEditModel.Thue_nt;
+                cts.Tk_vt = CurrentEditModel.Tk_vt;
+                cts.Ten_tk_i = CurrentEditModel.Ten_tk_i;
+                cts.Ten_kh_i = CurrentEditModel.Ten_kh_i;
+                cts.Ma_kh_i = CurrentEditModel.Ma_kh_i;
+                cts.Ma_kh_t = CurrentEditModel.Ma_kh_t;
+                cts.Ten_kh_t = CurrentEditModel.Ten_kh_t;
+                cts.Mst_t = CurrentEditModel.Mst_t;
+                cts.Ghi_chu_t = CurrentEditModel.Ghi_chu_t;
+                cts.Tien_tt = CurrentEditModel.Tien_tt;
+                cts.Ma_px_i = CurrentEditModel.Ma_px_i;
+                cts.Ma_phi_i = CurrentEditModel.Ma_phi_i;
+                cts.Tk_thue_i = CurrentEditModel.Tk_thue_i;
+                cts.Ma_tb_i = CurrentEditModel.Ma_tb_i;
+                cts.Ma_bpht_i = CurrentEditModel.Ma_bpht_i;
+                cts.Ma_ns_i = CurrentEditModel.Ma_ns_i;
+                cts.Ma_vv_i = CurrentEditModel.Ma_vv_i;
+                cts.Sl_td1_i = CurrentEditModel.Sl_td1_i;
+                cts.Sl_td2_i = CurrentEditModel.Sl_td2_i;
+                cts.Sl_td3_i = CurrentEditModel.Sl_td3_i;
+                cts.Gc_td1_i = CurrentEditModel.Gc_td1_i;
+                cts.Gc_td2_i = CurrentEditModel.Gc_td2_i;
+                cts.Gc_td3_i = CurrentEditModel.Gc_td3_i;
+                cts.T_tt_nt0 = CurrentEditModel.T_tt_nt0;
+                cts.T_tt_qd = CurrentEditModel.T_tt_qd;
+                cts.Ngay_ct0 = CurrentEditModel.Ngay_ct0;
+                cts.So_ct0 = CurrentEditModel.So_ct0;
+                cts.Ten_kh_i = CurrentEditModel.Ten_kh_i;
+                cts.Kh_mau_hd = CurrentEditModel.Kh_mau_hd;
+                cts.So_seri0 = CurrentEditModel.So_seri0;
+                cts.Tt_qd = CurrentEditModel.Tt_qd;
+                cts.Stt_rec_tt = CurrentEditModel.Stt_rec_tt;
+                cts.Ma_kh_t = CurrentEditModel.Ma_kh_t;
+                cts.Ma_thue_i = CurrentEditModel.Ma_thue_i;
+                cts.Thue_suat = CurrentEditModel.Thue_suat;
+                cts.Thue = CurrentEditModel.Thue;
+                cts.Tt_nt = CurrentEditModel.Tt_nt;
+                cts.Tt = CurrentEditModel.Tt;
+                cts.Tk_thue_i = CurrentEditModel.Tk_thue_i;
+                cts.Ghi_chu_t = CurrentEditModel.Ghi_chu_t;
+                cts.Tien_hd = CurrentEditModel.Tien_hd;
+                cts.Ma_ms = CurrentEditModel.Ma_ms;
+            }
+            UpdateCTGT();
+        }
+        UpdateTotalHT();
+    }
+
+    async Task Grid_DataItemDeletingCT(GridDataItemDeletingEventArgs e)
+    {
+        var editCt32 = (Ct32)e.DataItem;
+        LSCt.Remove(editCt32);
+        Ct32gt _ct32gt = LSCtgt.FirstOrDefault(a => a.Stt_rec == CurPh.Stt_rec && a.Stt_rec0 == editCt32.Stt_rec0 && a.So_ct0 == editCt32.So_ct0);
+        if (_ct32gt != null)
+            LSCtgt.Remove(_ct32gt);
+
+        int _stt = 1;
+        LSCt.ForEach((Ct32 _Ct32) =>
+        {
+            _Ct32.Stt = _stt;
+            _Ct32.Stt_rec0 = string.Format("{0:0000}", _Ct32.Stt);
+            _stt++;
+        });
+
+        UpdateTotalHT();
+    }
+
+    private async Task OnSave()
+    {
+        if (curActionTask == ActionTask.New || curActionTask == ActionTask.Edit)
+        {
+            if (CheckValid())
+            {
+                await Save();
+                curActionTask = ActionTask.View;
+                AllowEditMode = false;
+            }
+        }
+    }
+    private async Task OnCopy()
+    {
+        if (curActionTask != ActionTask.New || curActionTask != ActionTask.Edit)
+        {
+            V_Copy();
+            curActionTask = ActionTask.New;
+        }
+    }
+    private async Task OnNew()
+    {
+        if (curActionTask != ActionTask.New || curActionTask != ActionTask.Edit)
+        {
+            V_Moi();
+            curActionTask = ActionTask.New;
+        }
+    }
+    private async Task OnEdit()
+    {
+        if (!SisData.Lib.CheckValidNgayKs(mySysvar, myDb, CurPh.Ngay_ct, Ma_ct))
+        {
+            myStateMN.SetNewThongbao(Lap["Data is locked, cannot be edited!"]);
+            return;
+        }
+
+        V_Sua();
+        curActionTask = ActionTask.Edit;
+        await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_khach_input')?.focus()");
+    }
+    void SaveDoneHideForm()
+    {
+        Closeform.InvokeAsync(true);
+    }
+    private async void OnCancel()
+    {
+        if (Closeform.HasDelegate)
+            Closeform.InvokeAsync(ParentReload);
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+    }
+
+    async void V_Moi()
+    {
+        Stt_rec = GetStt_rec();
+        CurPh.Stt_rec = Stt_rec;
+        LoadVoucher();
+
+        CurPh.Ws_id = M_WS_ID;
+        CurPh.Ma_nt = M_ma_nt0;
+        CurPh.Ty_gia = 1;
+        CurPh.Ty_gia_ht = 0;
+        CurPh.Ngay_ct = CurPh.Ngay_lct = DateTime.Now.Date;
+        CurPh.Ma_dvcs = myStateMN.GetMa_Dvcs();
+        CurPh.Ma_ct = Ma_ct;
+        CurPh.Ma_qs = Ma_qs;
+        CurPh.T_tien = 0;
+        CurPh.T_tien_nt = 0;
+        CurPh.T_tt = 0;
+        CurPh.T_tt_nt = 0;
+        CurPh.T_thue = 0;
+        CurPh.T_thue_nt = 0;
+        CurPh.Status = "2";
+        CurPh.Ma_nx = "3311";
+        CurPh.Dien_giai = "";
+        CurPh.Ong_ba = "";
+        CurPh.Ma_kh = "";
+        AllowEditMode = true;
+        NotMaNt0Voucher = !(CurPh?.Ma_nt?.Equals(M_ma_nt0) ?? true);
+
+        if (LastPh != null)
+        {
+            CurPh.Ma_gd = String.IsNullOrEmpty(LastPh.Ma_gd) ? CurPh.Ma_gd : LastPh.Ma_gd;
+            CurPh.Ma_nt = String.IsNullOrEmpty(LastPh.Ma_nt) ? CurPh.Ma_nt : LastPh.Ma_nt;
+            CurPh.Ma_so_thue = String.IsNullOrEmpty(LastPh.Ma_so_thue) ? CurPh.Ma_so_thue : LastPh.Ma_so_thue;
+            CurPh.Ma_qs = String.IsNullOrEmpty(LastPh.Ma_qs) ? CurPh.Ma_qs : LastPh.Ma_qs;
+            CurPh.Ma_nx = String.IsNullOrEmpty(LastPh.Ma_nx) ? CurPh.Ma_nx : LastPh.Ma_nx;
+        }
+
+        newstt_rec = CurPh.Stt_rec;
+        curQuyenso = GetNewSo_ct(CurPh.Ma_qs);
+        CurPh.So_ct = string.Format(curQuyenso.Ma_qs, curQuyenso.So_ct);
+        await InsertCTHHD(CurPh.Stt_rec, CurPh.Ma_qs, CurPh.Ma_ct, curQuyenso.So_ct);
+        CurPh.Ma_nt = GetMant(Ma_ct);
+        if (CurPh.Ma_nt.Equals(M_ma_nt0))
+            CurPh.Ty_giaf = 1;
+        else
+            CurPh.Ty_giaf = GetRates(CurPh.Ma_nt, CurPh.Ngay_ct);
+
+        LSCt = new List<Ct32>();
+        LSCtgt = new List<Ct32gt>();
+    }
+
+    async void V_Copy()
+    {
+        AllowEditMode = true;
+        NotMaNt0Voucher = !(CurPh?.Ma_nt?.Equals(M_ma_nt0) ?? true);
+
+        CurPh.Ngay_ct = CurPh.Ngay_lct = DateTime.Now.Date;
+        Stt_rec = GetStt_rec();
+        CurPh.Stt_rec = Stt_rec;
+        CurPh.Ma_gd = ma_gd;
+
+        string format = string.Format("update Ph32 set ma_gd = {0} where stt_rec = '{1}' ", ma_gd, CurPh.Stt_rec);
+        myDb.ExecuteSqlQueryAsync(format);
+        LoadVoucher();
+
+        newstt_rec = CurPh.Stt_rec;
+        curQuyenso = GetNewSo_ct(CurPh.Ma_qs);
+        CurPh.So_ct = string.Format(curQuyenso.Ma_qs, curQuyenso.So_ct);
+        await InsertCTHHD(CurPh.Stt_rec, CurPh.Ma_qs, CurPh.Ma_ct, curQuyenso.So_ct);
+
+        foreach (Ct32 ct in LSCt)
+        {
+            ct.Stt_rec = CurPh.Stt_rec;
+            ct.So_ct = CurPh.So_ct;
+            ct.Ngay_ct = CurPh.Ngay_ct;
+        }
+        foreach (Ct32gt ctgt in LSCtgt)
+        {
+            ctgt.Stt_rec = CurPh.Stt_rec;
+            ctgt.So_ct = CurPh.So_ct;
+            ctgt.Ngay_ct = CurPh.Ngay_ct;
+        }
+        SelectedDataItems = null;
+        StateHasChanged();
+    }
+
+    async void V_Xem()
+    {
+        AllowEditMode = false;
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await Loaddata();
+            SaveLastPh(CurPh);
+            StateHasChanged();
+        }
+    }
+
+    async void V_Sua()
+    {
+        AllowEditMode = true;
+        AllowCtgt = true;
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await Loaddata();
+            StateHasChanged();
+        }
+    }
+
+    public override async Task Loaddata()
+    {
+        LoadVoucher();
+        // string sql = string.Format("select ma_kh,ten_kh,ma_so_thue,dia_chi from dmkh");
+        // DataSet ds = myDb.LoadDataSet(sql);
+        // string sqltk = string.Format("select ma_tk,ten_tk,loai_cl_no from dmtk");
+        // DataSet dstk = myDb.LoadDataSet(sqltk);
+        // string sqlthue = string.Format("select ma_thue,thue_suat,loai_cl_no from dmthue30");
+        // DataSet dsthue = myDb.LoadDataSet(sqlthue);
+
+        if (DsTrans != null && DsTrans.Tables.Count > 0 && curActionTask != ActionTask.New)
+        {
+            List<Ph32> ls81 = myDb.ConvertDataTable<Ph32>(DsTrans.Tables[0]);
+            if (ls81 != null && ls81.Count > 0)
+            {
+                CurPh = ls81[0];
+                NotMaNt0Voucher = !(CurPh?.Ma_nt?.Equals(M_ma_nt0) ?? true);
+                CheckedChangeTien = CurPh.Sua_tien == 1 ? true : false;
+                CheckedTggs = CurPh.Sua_tggs == 1 ? true : false;
+                if (NotMaNt0Voucher && !CheckedChangeTien)
+                {
+                    CheckedTien = true;
+                }
+            }
+
+            if (DsTrans != null && DsTrans.Tables.Count > 1)
+                LSCt = myDb.ConvertDataTable<Ct32>(DsTrans.Tables[1]);
+            if (DsTrans != null && DsTrans.Tables.Count > 2)
+                LSCtgt = myDb.ConvertDataTable<Ct32gt>(DsTrans.Tables[2]);
+            if (LSCt != null && LSCt.Count > 0)
+            {
+                for (int x = 0; x < LSCt.Count; x++)
+                {
+                    if (!string.IsNullOrEmpty(LSCt[x].Ma_kh_t))
+                    {
+                        LSCt[x].Ten_kh_t = GetNameKh(LSCt[x].Ma_kh_t);
+                    }
+                    if (!string.IsNullOrEmpty(LSCt[x].Ma_kh_i))
+                    {
+                        LSCt[x].Ten_kh_i = GetNameKh(LSCt[x].Ma_kh_i);
+                    }
+                    if (!string.IsNullOrEmpty(LSCt[x].Tk_i))
+                    {
+                        LSCt[x].Ten_tk_i = GetNameTk(LSCt[x].Tk_i);
+                    }
+                }
+            }
+        }
+    }
+
+    public string GetNameKh(string ma_kh)
+    {
+        if (string.IsNullOrEmpty(ma_kh))
+            return "";
+        string sql = string.Format("select ten_kh from dmkh where ma_kh='{0}'", ma_kh);
+        DataSet ds = myDb.LoadDataSet(sql);
+        if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+        {
+            return ds.Tables[0].Rows[0]["ten_kh"].ToString();
+        }
+        return "";
+    }
+    public string GetNameTk(string ma_tk)
+    {
+        if (string.IsNullOrEmpty(ma_tk))
+            return "";
+        string sql = string.Format("select ten_tk from dmtk where tk='{0}'", ma_tk);
+        DataSet ds = myDb.LoadDataSet(sql);
+        if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+        {
+            return ds.Tables[0].Rows[0]["ten_tk"].ToString();
+        }
+        return "";
+    }
+
+    private async Task Save()
+    {
+        await GridCT.SaveChangesAsync();
+        if (GridCTGT != null)
+            await GridCTGT.SaveChangesAsync();
+
+        if (LSCt.Count <= 0)
+        {
+            Message = Lap["No details entered"] + " !";
+            myStateMN.SetNewThongbao(Message);
+            return;
+        }
+        decimal tggs = GetTggs(CurPh.Tk, CurPh.Ty_gia, "CO");
+        if (CurPh.Ty_gia != tggs)
+        {
+            CurPh.Ty_giaf = tggs;
+            CurPh.Ty_gia = tggs;
+        }
+        if (CurPh.Ap_tggd == 1)
+        {
+            CurPh.Ty_gia_htf = CurPh.Ty_giaf;
+            CurPh.Ty_gia_ht = CurPh.Ty_gia;
+        }
+        CalculateTyGia();
+        Update_nt0();
+        ParentReload = true;
+        CurPh.Date = DateTime.Now.Date;
+        CurPh.Time = DateTime.Now.ToString("HH:mm:ss");
+        CurPh.Ma_hd = CurPh.So_ct;
+        if (curUser != null)
+            CurPh.User_id = curUser.User_id.ToString();
+        CurPh.Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (curActionTask == ActionTask.New)
+        {
+            CurPh.Date0 = DateTime.Now.Date;
+            CurPh.Time0 = DateTime.Now.ToString("HH:mm:ss");
+
+            if (curUser != null)
+            {
+                CurPh.User_id0 = curUser.User_id.ToString();
+            }
+            myDb.UpdateDataRowFromModel<Ph32>(DsTrans.Tables[0].Rows[0], CurPh);
+            await myDb.UpdateRow(M_Phdbf, DsTrans.Tables[0].Rows[0], "stt_rec='" + CurPh.Stt_rec + "'", "stt_rec,row_id");
+
+            if (LSCt.Count > 0)
+                await myDb.SaveDataTable<Ct32>(LSCt, M_Ctdbf, "stt_rec", CurPh.Stt_rec);
+            if (LSCtgt.Count > 0)
+                await myDb.SaveDataTable<Ct32gt>(LSCtgt, M_Ctgtdbf, "stt_rec", CurPh.Stt_rec);
+
+            curActionTask = ActionTask.View;
+            Message = String.Format(Lap["Successfully added new : {0}"], CurPh.So_ct);
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            myDb.UpdateDataRowFromModel<Ph32>(DsTrans.Tables[0].Rows[0], CurPh);
+            await myDb.UpdateRow(M_Phdbf, DsTrans.Tables[0].Rows[0], "stt_rec='" + CurPh.Stt_rec + "'", "stt_rec,row_id");
+
+            string _saveXml = myOption.GetOptionsValue("M_SAVE_XML");
+            if (LSCt.Count > 0)
+            {
+                xmlpath = Path.Combine(myWebhost.WebRootPath, "upload_tmp", CurPh.Stt_rec);
+                await myDb.SaveDataTable<Ct32>(LSCt, M_Ctdbf, "stt_rec", CurPh.Stt_rec, "", xmlpath, _saveXml);
+            }
+
+            if (LSCtgt.Count > 0)
+            {
+                xmlpath = Path.Combine(myWebhost.WebRootPath, "upload_tmp", CurPh.Stt_rec + "CT");
+                await myDb.SaveDataTable<Ct32gt>(LSCtgt, M_Ctgtdbf, "stt_rec", CurPh.Stt_rec, "", xmlpath, _saveXml);
+            }
+
+            curActionTask = ActionTask.View;
+            Message = ("Sửa đơn: " + CurPh.So_ct + " thành công.");
+        }
+        SaveLastPh(CurPh);
+
+        if (CurPh.Status.Equals("2"))
+            Post();
+
+        myStateMN.SetNewThongbao(Message);
+    }
+    private void Post()
+    {
+        string _poststore = (Post_store == null || Post_store.Length <= 2) ? "[APCTPN2-Post]" : Post_store[2];
+        string format = string.Format("exec [dbo].{0} '{1}'", _poststore, CurPh.Stt_rec);
+        myDb.ExecuteSqlQueryAsync(format);
+    }
+
+    bool CheckValid()
+    {
+        bool flag = true;
+
+        // Kiểm tra ngày hạch toán
+        if (string.IsNullOrEmpty(CurPh.Ngay_ct.ToString()) && flag)
+        {
+            Message = Lap["Chưa vào ngày hạch toán!"];
+            myStateMN.SetNewThongbao(Message);
+            StateHasChanged();
+            flag = false;
+            return flag;
+        }
+
+        // Kiểm tra quyển số
+        if (string.IsNullOrEmpty(CurPh.Ma_qs) && flag)
+        {
+            Message = Lap["Chưa vào quyển số!"];
+            myStateMN.SetNewThongbao(Message);
+            StateHasChanged();
+            flag = false;
+            return flag;
+        }
+
+        // Kiểm tra số chứng từ
+        if (string.IsNullOrEmpty(CurPh.So_ct) && flag)
+        {
+            Message = Lap["Chưa vào Số c.từ!"];
+            myStateMN.SetNewThongbao(Message);
+            StateHasChanged();
+            flag = false;
+            return flag;
+        }
+
+        // Kiểm tra tài khoản nợ
+        if (string.IsNullOrEmpty(CurPh.Ma_nx) && flag)
+        {
+            Message = Lap["Chưa vào tài khoản có!"];
+            myStateMN.SetNewThongbao(Message);
+            StateHasChanged();
+            flag = false;
+            return flag;
+        }
+        // Kiểm tra tài khoản nợ
+        if (CurPh.Ma_dvcs.ToUpper() == "ALL" && flag)
+        {
+            Message = Lap["Chưa chọn dvcs!"];
+            myStateMN.SetNewThongbao(Message);
+            StateHasChanged();
+            flag = false;
+            return flag;
+        }
+
+        // Kiểm tra chi tiết
+        if (LSCt.Count > 0 && flag)
+        {
+            foreach (Ct32 ct in LSCt)
+            {
+                if (string.IsNullOrEmpty(ct.Tk_vt?.Trim()))
+                {
+                    Message = Lap["Chưa vào tài khoản nợ!"];
+                    myStateMN.SetNewThongbao(Message);
+                    StateHasChanged();
+                    flag = false;
+                    return flag;
+                }
+
+                if (!string.IsNullOrEmpty(ct.Ma_thue_i?.Trim()) && string.IsNullOrEmpty(ct.Tk_thue_i?.Trim()))
+                {
+                    Message = Lap["Chưa vào tk thuế, không lưu được!"];
+                    myStateMN.SetNewThongbao(Message);
+                    StateHasChanged();
+                    flag = false;
+                    return flag;
+                }
+            }
+        }
+
+        Decimal result1 = new Decimal(0);
+        Decimal num1 = new Decimal(0);
+        Decimal.TryParse(CurPh.T_tien_nt.ToString(), out result1);
+
+        // Kiểm tra tổng tiền ngoại tệ
+        if (result1 != CurPh.T_tien_nt)
+        {
+            Message = Lap["Tổng tiền/ tiền ngoại tệ khác với tổng tiền/ tiền ngoại tệ trong các hóa đơn giá trị gia tăng!"];
+            myStateMN.SetNewThongbao(Message);
+            StateHasChanged();
+            flag = true;
+        }
+        else if (!CurPh.Ma_nt.Trim().Equals(M_ma_nt0.Trim()) && num1 != CurPh.T_tien_nt)
+        {
+            Message = Lap["Tổng tiền/ tiền ngoại tệ khác với tổng tiền/ tiền ngoại tệ trong các hóa đơn giá trị gia tăng!"];
+            myStateMN.SetNewThongbao(Message);
+            StateHasChanged();
+            flag = true;
+        }
+        if (LSCtgt.Count > 0 && flag && (M_CHK_HD_VAO != 0))
+        {
+            foreach (Ct32gt ctgt in LSCtgt)
+            {
+                string so_ct0 = ctgt.So_ct0;
+                string so_seri0 = (ctgt.So_seri0 ?? "").Trim();
+                string str;
+                if (!string.IsNullOrEmpty(ctgt.Ngay_ct0.ToString()))
+                {
+                    DateTime dateTime = ctgt.Ngay_ct0 ?? DateTime.Now;
+                    dateTime = dateTime.Date;
+                    str = dateTime.ToShortDateString().Substring(0, 10);
+                }
+                else
+                    str = "";
+                string ngay_ct0 = str;
+                string ma_so_thue = ctgt.Ma_so_thue.ToString();
+                if (CheckExistHDVao(CurPh.Stt_rec, so_ct0, so_seri0, ngay_ct0, ma_so_thue))
+                {
+                    string mes = string.Format("Hoá đơn số [{0}], ký hiệu [{1}], ngày [{2}], MST [{3}] đã tồn tại!", (object)so_ct0, (object)so_seri0, (object)ngay_ct0, (object)ma_so_thue);
+                    Message = Lap[mes];
+                    myStateMN.SetNewThongbao(Message);
+                    StateHasChanged();
+                    flag = true;
+                }
+                if (string.IsNullOrEmpty(ctgt.So_ct0) || string.IsNullOrWhiteSpace(ctgt.So_ct0))
+                {
+                    Message = Lap["Chưa vào số hóa đơn. Không lưu được!"];
+                    myStateMN.SetNewThongbao(Message);
+                    StateHasChanged();
+                    flag = true;
+                }
+                if (string.IsNullOrEmpty(ctgt.Ngay_ct0.ToString()) || ctgt.Ngay_ct0 == new DateTime())
+                {
+                    Message = Lap["Chưa vào ngày hóa đơn. Không lưu được!"];
+                    myStateMN.SetNewThongbao(Message);
+                    StateHasChanged();
+                    flag = true;
+                }
+                if (string.IsNullOrEmpty(ctgt.Tk_thue_no.ToString()) || string.IsNullOrWhiteSpace(ctgt.Tk_thue_no))
+                {
+                    Decimal result = new Decimal(0);
+                    result = ctgt.T_thue_nt;
+                    if (!string.IsNullOrEmpty(ctgt.So_ct0.ToString()) && result > new Decimal(0))
+                    {
+                        Message = Lap["Chưa vào tk thuế, không lưu được!"];
+                        myStateMN.SetNewThongbao(Message);
+                        StateHasChanged();
+                        flag = true;
+                    }
+                }
+            }
+        }
+
+        if (!flag)
+        {
+
+            decimal sumTienNt = 0m;
+            decimal sumTien = 0m;
+            decimal sumTienTt = 0m;
+            decimal sumTtNt = 0m;
+            decimal ty_gia = CurPh.Ty_gia;
+            decimal ty_gia_ht = CurPh.Ty_gia_ht;
+
+            if (!CurPh.Ma_nt.Trim().Equals(M_ma_nt0) && (LSCt?.Count ?? 0) > 0 && ty_gia != 0m && !(CurPh.Sua_tien == 1))
+            {
+
+                if (CurPh.Ma_gd == "1" || CurPh.Ma_gd == "2")
+                {
+                    // Tổng tiền_nt của chi tiết cùng stt_rec
+                    decimal totalTienNt = LSCt.Sum(x => x.Tien_nt);
+                    // Tính d6 theo loai_cl_no
+                    decimal d6 = CurPh.Loai_cl_no == "0"
+                        ? Math.Round(ty_gia * totalTienNt, M_ROUND)
+                    : Math.Round(ty_gia_ht * totalTienNt, M_ROUND);
+
+                    // Tổng tien_tt từ CtData (nếu có)
+                    decimal totalTienTt = LSCt.Sum(x => x.Tien_tt);
+                    decimal num5 = LSCt[0].Tien_tt;
+                    // CtView[0]["tien_tt"] += d6 - totalTienTt
+                    num5 += (d6 - totalTienTt);
+                    LSCt[0].Tien_tt = num5;
+                    // Nếu tất cả ty_gia_ht2 giống Ty_gia => cập nhật tien = CtView[0]["tien_tt"]
+                    bool allSameTyGia = LSCt.All(x => IsEquals(x.Ty_gia_ht2, CurPh.Ty_gia, x.Stt_rec));
+                    if (allSameTyGia)
+                    {
+                        LSCt[0].Tien = num5;
+                    }
+                    // PreSum_All();
+                    UpdateTotalHT();
+                }
+                else
+                {
+                    // Trường hợp Ma_GD khác 1,2
+                    int countLoai2 = LSCt.Count(x => x.Loai_hd == "2");
+                    int countSpecial = LSCt.Count(x => (x.Tien_nt == 0m || ty_gia == 0m) && x.Tien != 0m && x.Loai_hd != "2");
+
+                    if (countSpecial + countLoai2 < LSCt.Count)
+                    {
+                        // Tổng các giá trị cần thiết
+                        sumTienNt = LSCt.Sum(x => x.Tien_nt);
+                        sumTtNt = LSCt.Sum(x => x.Tt_nt);
+                        sumTien = LSCt.Sum(x => x.Tien);
+                        sumTienTt = LSCt.Sum(x => x.Tien_tt);
+
+                        decimal d8 = Math.Round(ty_gia_ht * sumTienNt, M_ROUND);
+                        decimal d9 = Math.Round(ty_gia * sumTienNt, M_ROUND);
+                        if (CurPh.Ma_gd == "8")
+                            d9 = Math.Round(ty_gia * sumTtNt, M_ROUND);
+
+                        // Duyệt từng record trong GrdCt (ở đây dùng LSCt để cập nhật)
+                        foreach (var ct in LSCt)
+                        {
+                            decimal tienNt = ct.Tien_nt;
+                            decimal tien = ct.Tien;
+                            decimal tienTt = ct.Tien_tt;
+                            decimal thue = ct.Thue;
+
+                            // nếu có giá trị và loại hd == "1" và có ngay_ct0 -> cập nhật
+                            if (tienNt != 0m || tien == 0m)
+                            {
+                                if (!string.IsNullOrEmpty(ct.Ngay_ct0.ToString()) && ct.Loai_hd == "1")
+                                {
+                                    tienTt = tienTt + d9 - sumTienTt;
+                                    tien = tien + d8 - sumTien;
+                                    ct.Tien = tien;
+                                    ct.Tien_tt = tienTt;
+                                    ct.Tt = tien + thue;
+
+                                    // update tương ứng trong CtGt nếu khớp so_ct0
+                                    var gt = LSCtgt?.FirstOrDefault(g => g.So_ct0 == ct.So_ct0);
+                                    if (gt != null)
+                                    {
+                                        gt.T_tien = tien;
+                                        gt.T_tt = tien + thue;
+                                    }
+
+                                    // theo logic gốc: break after first match
+                                    break;
+                                }
+                            }
+                        }
+
+                        decimal tThueNt0 = CurPh.T_thue_nt;
+                        CurPh.T_thue_nt = tThueNt0 + d8;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(CurPh.Ma_dvcs))
+                CurPh.Ma_dvcs = Ma_dvcs;
+
+            // Reset các tổng tạm
+            sumTienNt = sumTien = sumTienTt = sumTtNt = 0m;
+
+            // Tổng lại từ LSCt (lặp logic gốc)
+            if (LSCt != null && LSCt.Any())
+            {
+                sumTienNt = LSCt.Sum(x => x.Tien_nt);
+                sumTtNt = LSCt.Sum(x => x.Tt_nt);
+                sumTien = LSCt.Sum(x => x.Tien);
+                sumTienTt = LSCt.Sum(x => x.Tien_tt);
+            }
+
+            // Kiểm tra hạch toán = 0
+            if (sumTienNt == 0m && sumTien == 0m)
+            {
+                Message = Lap["Hạch toán tiền bằng 0!"];
+                myStateMN.SetNewThongbao(Message);
+                StateHasChanged();
+                flag = false;
+                return flag;
+            }
+        }
+
+        return flag;
+    }
+    public bool CheckExistHDVao(
+         string stt_rec,
+         string so_ct0,
+         string so_seri0,
+         string ngay_ct0,
+         string ma_so_thue)
+    {
+
+        string _poststore = "[CheckExistsHDVao]";
+        string format = string.Format("exec [dbo].{0} '{1}','{2}','{3}','{4}','{5}'", _poststore, stt_rec, so_ct0, so_seri0, ngay_ct0, ma_so_thue);
+
+        DataTable dataTable = myDb.LoadDataSet(format).Tables[0].Copy();
+        if (dataTable != null && dataTable.Rows.Count > 0)
+        {
+            return dataTable.Rows[0][0].ToString() == "1";
+        }
+        return false;
+    }
+
+    // Method hỗ trợ để so sánh tỷ giá
+    bool IsEquals(decimal ty_gia_ht2, decimal ty_gia, string stt_rec)
+    {
+        return Math.Abs(ty_gia_ht2 - ty_gia) < 0.0001m;
+    }
+
+    private void UpdateTotalThue()
+    {
+        try
+        {
+            if (curActionTask == ActionTask.View)
+                return;
+
+            decimal result1 = 0; // t_thue_nt
+            decimal result2 = 0; // t_thue
+
+            if (LSCtgt != null && LSCtgt.Any())
+            {
+                result1 = LSCtgt.Sum(th => th.T_thue_nt);
+                result2 = LSCtgt.Sum(th => th.T_thue);
+            }
+
+            decimal num3 = CurPh.T_tien_nt + result1;
+            decimal num4 = CurPh.T_tien + result2;
+
+            CurPh.T_thue_nt = result1;
+            CurPh.T_thue = result2;
+            CurPh.T_tt_nt = num3;
+            CurPh.T_tt = num4;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Lỗi trong UpdateTotalThue: {ex.Message}");
+        }
+    }
+
+    private void CalculateTyGia()
+    {
+        if (CurPh.Ty_gia != new Decimal(0))
+        {
+            Decimal num1 = new Decimal(0);
+            Decimal nValue = CurPh.Ty_gia;
+            Decimal num2;
+            Decimal num3;
+            Decimal num4;
+            if (CurPh.Sua_tien == 0)
+            {
+                for (int index = 0; index < LSCt.Count; ++index)
+                {
+                    if (LSCt[index].Loai_hd.Trim().Equals("2"))
+                    {
+                        this.CalculateHd2(LSCt[index]);
+                    }
+                    else
+                    {
+                        num2 = new Decimal(0);
+                        num3 = new Decimal(0);
+                        Decimal num5 = new Decimal(0);
+                        Decimal num6 = new Decimal(0);
+                        Decimal num7 = LSCt[index].Tien_nt;
+                        if (nValue * num7 > new Decimal(0))
+                        {
+                            Decimal num8 = Math.Round(nValue * num7, (int)Convert.ToInt16(M_ROUND));
+                            LSCt[index].Tien = num8;
+                            Decimal num9;
+                            Decimal num10;
+                            if (LSCt[index].Thue_suat != 0)
+                            {
+                                num4 = new Decimal(0);
+                                Decimal num11 = LSCt[index].Thue_suat;
+                                num9 = Math.Round(num7 * num11 / new Decimal(100), M_ROUND_NT);
+                                num10 = Math.Round(num8 * num11 / new Decimal(100), (int)Convert.ToInt16(M_ROUND));
+                                LSCt[index].Thue_nt = num9;
+                                LSCt[index].Thue = num10;
+                            }
+                            else
+                            {
+                                num9 = LSCt[index].Thue_nt;
+                                num10 = LSCt[index].Thue;
+                            }
+                            LSCt[index].Tt_nt = (num7 + num9);
+                            LSCt[index].Tt = (num8 + num10);
+                        }
+                    }
+                }
+            }
+            if (LSCtgt.Count > 0 && CurPh.Sua_tien == 0)
+            {
+                for (int index = 0; index < LSCtgt.Count; ++index)
+                {
+                    if (LSCtgt[index].T_tien_nt != 0)
+                    {
+                        num2 = new Decimal(0);
+                        Decimal num5 = new Decimal(0);
+                        num3 = new Decimal(0);
+                        Decimal num6 = new Decimal(0);
+                        Decimal num7 = LSCtgt[index].T_tien_nt;
+                        if (nValue * num7 > new Decimal(0))
+                        {
+                            Decimal num8 = Math.Round(nValue * num7, (int)Convert.ToInt16(M_ROUND));
+                            LSCtgt[index].T_tien = num8;
+                            if (LSCtgt[index].Thue_suat != 0)
+                            {
+                                num4 = new Decimal(0);
+                                Decimal num9 = LSCtgt[index].Thue_suat;
+                                num5 = Math.Round(num7 * num9 / new Decimal(100), (int)Convert.ToInt16(M_ROUND_NT));
+                                LSCtgt[index].T_thue_nt = num5;
+                                num6 = Math.Round(num5 * nValue, (int)Convert.ToInt16(M_ROUND));
+                                LSCtgt[index].T_thue = num6;
+                            }
+                            LSCtgt[index].T_tt_nt = (num7 + num5);
+                            LSCtgt[index].T_tt = (num8 + num6);
+                        }
+                    }
+                }
+            }
+        }
+        this.UpdateTotalHT();
+    }
+
+
+    private void Update_nt0()
+    {
+        if (CurPh.Ma_nt != M_ma_nt0)
+            return;
+
+        CurPh.T_tien = CurPh.T_tien_tt = CurPh.T_tien_nt;
+        CurPh.T_tt = CurPh.T_tt_nt;
+        CurPh.T_tien_cltg = 0;
+        CurPh.T_thue = CurPh.T_thue_nt;
+
+        foreach (var row in LSCt)
+        {
+            row.Tien = row.Tien_tt = row.Tien_nt;
+            row.Tt = row.Tt_nt;
+            row.Thue = row.Thue_nt;
+        }
+
+        foreach (var tax in LSCtgt)
+        {
+            tax.T_thue = tax.T_thue_nt;
+            tax.T_tien = tax.T_tien_nt;
+        }
+    }
+
+    private async void OnPrint()
+    {
+        LoadVoucher();
+        DataSet DataSource = CopyVoucherToDataSet(Stt_rec);
+        ShowData(false, "VIET", false, DataSource);
+        if (DataSource != null && DataSource.Tables.Count > 0)
+        {
+            string tk_no = "";
+            foreach (DataRow row in DataSource.Tables[1].Rows)
+            {
+                if (!string.IsNullOrEmpty(row["tk_vt"].ToString()))
+                {
+                    tk_no += row["tk_vt"].ToString() + "\n";
+                }
+            }
+
+            TkPs tkPs = new TkPs
+            {
+                Tk_no = tk_no,
+            };
+            LSData = new List<PN2Model>();
+            PN2Model _curModel = new PN2Model();
+            _curModel.LSPh = myDb.ConvertDataTable<Ph32>(DataSource.Tables[0]);
+            _curModel.LSCt = myDb.ConvertDataTable<Ct32>(DataSource.Tables[1]);
+            _curModel.LSCtDetails = myDb.ConvertDataTable<Ct32_Detail>(DataSource.Tables[3]);
+            _curModel.LSTkPs = tkPs;
+            _curModel.TotalString = DocSo.Doc_so(_curModel.LSPh[0].T_tt, myOption, myDb, false);
+            _curModel.DateString = ToDateString(_curModel.LSPh[0].Ngay_ct);
+            _curModel.TotalStringVi = DocSo.Doc_so(_curModel.LSPh[0].T_tt, myOption, myDb, false, M_ma_nt0);
+            _curModel.TotalStringEn = DocSo.Doc_so(_curModel.LSPh[0].T_tt, myOption, myDb, true, M_ma_nt0);
+            _curModel.TotalStringVi_nt = DocSo.Doc_so(_curModel.LSPh[0].T_tt_nt, myOption, myDb, false, _curModel.LSPh[0].Ma_nt);
+            _curModel.TotalStringEn_nt = DocSo.Doc_so(_curModel.LSPh[0].T_tt_nt, myOption, myDb, true, _curModel.LSPh[0].Ma_nt);
+            _curModel.Ma_nt0 = M_ma_nt0;
+            LSData.Add(_curModel);
+        }
+        IsShowVoucher = false;
+        StateHasChanged();
+    }
+
+    void ShowData(bool _isNt0, string lan, bool isShowed, DataSet _ds)
+    {
+        try
+        {
+            string format = string.Format("Exec {0} '{1}', '{2}', '{3}';", "[APCTPN2-In]", _ds.Tables[0].Rows[0]["stt_rec"].ToString().Trim(), IsLangEn ? "EN" : "VN", _ds.Tables[0].Rows[0]["ma_dvcs"].ToString().Trim());
+            if (_ds.Tables.Contains("tbDetail"))
+                _ds.Tables.Remove("tbDetail");
+            DataSet _source = myDb.LoadDataSet(format);
+            DataTable table = _source.Tables[0].Copy();
+            table.TableName = "tbDetail";
+            _ds.Tables.Add(table);
+            if (!isShowed)
+                return;
+            string strBrowse = !_isNt0 ? (!(lan == "ANH") ? "dien_giai:700:h=Diễn giải:E;tien_nt:n1:140:h=Số tiền:E" : "dien_giai_eng:700:h=Description:E;tien_nt:n1:140:h=Amount:E") : (!(lan == "ANH") ? "dien_giai:700:h=Diễn giải:E;tien:N0:140:h=Số tiền:E" : "dien_giai_eng:700:h=Description:E;tien:N0:140:h=Amount:E");
+        }
+        catch (Exception ex)
+        {
+
+        }
+    }
+
+    public string ToDateString(DateTime date)
+    {
+        return $"ngày {date.Day} tháng {date.Month} năm {date.Year}";
+    }
+
+    private async void OnPrintBack()
+    {
+        IsShowVoucher = true;
+        StateHasChanged();
+    }
+
+    public void SaveLastPh(Ph32 _ph)
+    {
+        LastPh.Stt_rec = _ph.Stt_rec;
+        LastPh.Ma_nt = _ph.Ma_nt;
+        LastPh.Ma_qs = _ph.Ma_qs;
+        LastPh.Ma_gd = _ph.Ma_gd;
+        LastPh.Ngay_ct = _ph.Ngay_ct;
+        LastPh.Status = _ph.Status;
+        LastPh.Tk = _ph.Tk;
+        LastPh.Ngay_lct = _ph.Ngay_lct;
+        ma_gd = _ph.Ma_gd;
+    }
+
+    private decimal GetTggs(string tk, decimal ty_gia, string loai_cl)
+    {
+        DataSet dataSet = myDb.LoadDataSet(GetCommandTggs(tk));
+        if (dataSet == null || dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+        {
+            return ty_gia;
+        }
+
+        if (dataSet != null && dataSet.Tables.Count > 1 && dataSet.Tables[dataSet.Tables.Count - 1].Rows.Count > 0)
+        {
+            int num = Convert.ToInt32(dataSet.Tables[1].Rows[0]["loai_cl_no"]);
+            int num2 = Convert.ToInt32(dataSet.Tables[1].Rows[0]["loai_cl_co"]);
+            if (dataSet.Tables[1].Rows[0]["ma_nt"].ToString() == M_ma_nt0)
+            {
+                return ty_gia;
+            }
+
+            int num3 = loai_cl == "NO" ? num : num2;
+            switch (num3)
+            {
+                case 0:
+                case 2:
+                    return ty_gia;
+                case 5:
+                    return CurPh.Ty_gia;
+            }
+
+            if (num3 != 1 && num3 != 4)
+            {
+                return ty_gia;
+            }
+        }
+
+        return (decimal)dataSet.Tables[0].Rows[0]["ty_gia"];
+    }
+
+    private string GetCommandTggs(string tk)
+    {
+
+        // if (CmdTggs != null)
+        // {
+        //     CmdTggs.Parameters["@Tk"].Value = tk;
+        //     return CmdTggs;
+        // }
+        string sql = string.Format("exec Catinhtg '{0}','{1}','{2}','{3}','{4}','{5}','{6}'", CurPh.Ngay_ct.ToString("yyyyMMdd"), tk, CurPh.Ma_kh, myStateMN.GetMa_Dvcs(), CurPh.Stt_rec, null, 1);
+        return sql;
+    }
+
+    public static int ToInt(object value)
+    {
+        if (value == null || value is DBNull)
+        {
+            return 0;
+        }
+
+        int result = 0;
+        int.TryParse(value.ToString(), out result);
+        return result;
+    }
+
+    public int GetLoaicl_no_co(string tk, string sloai_cl)
+    {
+        int num = -1;
+        string sqlCommand;
+        if (sloai_cl.Equals("NO"))
+        {
+            sqlCommand = string.Format("Select loai_cl_no From dmtk Where tk like '{0}'", tk.Trim());
+        }
+        else
+        {
+            sqlCommand = string.Format("Select loai_cl_co From dmtk Where tk like '{0}'", tk.Trim());
+        }
+        DataSet ds = myDb.LoadDataSet(sqlCommand);
+
+        return (ds == null) ? num : Convert.ToInt32(ds.Tables[0].Rows[0][0].ToString());
+    }
+
+
+    async Task CreatePT1(DataTable dt)
+    {
+        try
+        {
+            string _sql = string.Format("exec [dbo].[SOCTHDL-CREATEPT1] '{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}'", dt.Rows[0]["stt_rec"].ToString(), dt.Rows[0]["stt_recPT"].ToString(), dt.Rows[0]["ma_qs"].ToString().Trim(), dt.Rows[0]["so_ct"].ToString().Trim(), dt.Rows[0]["ma_nt"].ToString().Trim(), decimal.Parse(dt.Rows[0]["ty_gia"].ToString()).ToString(M_IP_TY_GIA).Replace(",", "."), decimal.Parse(dt.Rows[0]["ty_giaf"].ToString()).ToString(M_IP_TY_GIA).Replace(",", "."), dt.Rows[0]["nguoinop"].ToString(), dt.Rows[0]["lydonop"].ToString(), dt.Rows[0]["ma_gd"].ToString(), dt.Rows[0]["ma_ct"].ToString());
+            await myDb.ExecuteSqlQueryAsync(_sql);
+        }
+        catch (Exception ex)
+        {
+
+        }
+    }
+
+}

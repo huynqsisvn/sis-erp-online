@@ -1,0 +1,173 @@
+@using SisFx.Pages.Input.FXbtpbcc_Tao
+@using DevExpress.Blazor
+@using System.Data
+@using System.Dynamic
+
+@* ================================================================
+   POPUP T?O BÚT TOÁN (F4)
+   Gi?ng WinForm FrmTaobt: Mã quy?n s?, S? CT, Di?n gi?i
+   ================================================================ *@
+<DxPopup CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         Visible="@ShowDlgTaoBt"
+         VisibleChanged="@ShowDlgTaoBtChanged"
+         Width="520px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="@Lap["Create allocation voucher"]">
+    <BodyTemplate>
+        @if (DlgLoading)
+        {
+            <div class="row m-0 p-0 justify-content-center py-4">
+                <div class="spinner-border text-primary" role="status" style="width:5rem;height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Voucher book code (*):"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <AutocompleteComponent Ma_dm="dmqs"
+                                                       Filter="(ma_cts like '%PK6%' and status = 1)"
+                                                       @bind-Value="@DlgTaoBt.Ma_qs"
+                                                       SelectChanged="@OnMaQsChangedInternal"
+                                                       IsLangEn="@IsLangEn"
+                                                       CssClass="flex-grow-1">
+                                </AutocompleteComponent>
+                                @if (!string.IsNullOrEmpty(DlgTaoBt.Ten_qs))
+                                {
+                                    <span class="text-muted small">@DlgTaoBt.Ten_qs</span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Voucher no. from (*):"]" CaptionCssClass="fw-bold">
+                        <DxTextBox @bind-Text="@DlgTaoBt.So_ct"
+                                   MaxLength="@DlgTaoBt.So_ct_length"
+                                   NullText="@Lap["Enter voucher number..."]" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Voucher no. to:"]">
+                        <DxTextBox Text="@DlgSoCt2" ReadOnly="true" Enabled="false" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Description:"]">
+                        <DxTextBox @bind-Text="@DlgTaoBt.Dien_giai"
+                                   NullText="@Lap["Enter description..."]" />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+                <div class="mt-2 text-muted small">
+                    @Lap["Will create"] <strong>@PendingTaggedRows.Count</strong> @Lap["vouchers for period"]
+                    @FilterKy1/@FilterNam – @FilterKy2/@FilterNam.
+                </div>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!DlgLoading)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success"
+                          Text="@Lap["Confirm create"]"
+                          Click="@(() => OnDlgTaoBtOK.InvokeAsync())" />
+                <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Danger"
+                          Text="@Lap["Close"]"
+                          Click="@(() => OnDlgTaoBtCancel.InvokeAsync())" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@* ================================================================
+   POPUP XÁC NH?N XÓA (F8)
+   ================================================================ *@
+<DxPopup CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         Visible="@ShowConfirmDelete"
+         VisibleChanged="@ShowConfirmDeleteChanged"
+         Width="460px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="@Lap["Confirm delete voucher"]">
+    <BodyTemplate>
+        <div class="container pt-1">
+            <p>@Lap["Are you sure you want to delete"] <strong>@PendingTaggedRows.Count</strong> @Lap["marked vouchers?"]</p>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="row justify-content-end align-content-end m-2">
+            <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Danger"
+                      Text="@Lap["Yes, delete"]"
+                      Click="@(() => OnConfirmDelete.InvokeAsync())" />
+            <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Secondary"
+                      Text="@Lap["No"]"
+                      Click="@(() => OnCancelDelete.InvokeAsync())" />
+        </div>
+    </FooterTemplate>
+</DxPopup>
+
+@* ================================================================
+   POPUP GHI ?È
+   ================================================================ *@
+<DxPopup CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         Visible="@ShowConfirmOverwrite"
+         VisibleChanged="@ShowConfirmOverwriteChanged"
+         Width="480px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="@Lap["Overwrite data warning"]">
+    <BodyTemplate>
+        <div class="container pt-1">
+            <p>@Lap["Allocation vouchers like this already exist."]</p>
+            <p class="text-danger">@Lap["Do you want to reallocate?"]</p>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="row justify-content-end align-content-end m-2">
+            <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Warning"
+                      Text="@Lap["Yes, reallocate"]"
+                      Click="@(() => OnConfirmOverwrite.InvokeAsync())" />
+            <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Secondary"
+                      Text="@Lap["No, skip"]"
+                      Click="@(() => OnCancelOverwrite.InvokeAsync())" />
+        </div>
+    </FooterTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public bool ShowDlgTaoBt { get; set; }
+    [Parameter] public EventCallback<bool> ShowDlgTaoBtChanged { get; set; }
+    [Parameter] public TaoBtModel DlgTaoBt { get; set; } = new();
+    [Parameter] public bool DlgLoading { get; set; }
+    [Parameter] public string DlgSoCt2 { get; set; } = "";
+    [Parameter] public List<DataRowView> PendingTaggedRows { get; set; } = new();
+    [Parameter] public int FilterNam { get; set; }
+    [Parameter] public int FilterKy1 { get; set; }
+    [Parameter] public int FilterKy2 { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+
+    [Parameter] public EventCallback<ExpandoObject> OnDlgMaQsChanged { get; set; }
+    [Parameter] public EventCallback OnDlgTaoBtOK { get; set; }
+    [Parameter] public EventCallback OnDlgTaoBtCancel { get; set; }
+
+    [Parameter] public bool ShowConfirmDelete { get; set; }
+    [Parameter] public EventCallback<bool> ShowConfirmDeleteChanged { get; set; }
+    [Parameter] public EventCallback OnConfirmDelete { get; set; }
+    [Parameter] public EventCallback OnCancelDelete { get; set; }
+
+    [Parameter] public bool ShowConfirmOverwrite { get; set; }
+    [Parameter] public EventCallback<bool> ShowConfirmOverwriteChanged { get; set; }
+    [Parameter] public EventCallback OnConfirmOverwrite { get; set; }
+    [Parameter] public EventCallback OnCancelOverwrite { get; set; }
+
+    [Inject] private XmlStringLocalizer Lap { get; set; }
+
+    private void OnMaQsChangedInternal(ExpandoObject value)
+    {
+        if (OnDlgMaQsChanged.HasDelegate)
+            OnDlgMaQsChanged.InvokeAsync(value);
+    }
+}

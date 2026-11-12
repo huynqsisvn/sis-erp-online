@@ -1,0 +1,378 @@
+﻿@page "/ingiantxt"
+@page "/ingiantxt/{Menu_id}"
+@using DevExpress.Blazor
+@using Microsoft.JSInterop
+@using SisData.Service
+@using SisData.Data
+@using SisData.Model
+@using Blazored.LocalStorage;
+@using Microsoft.AspNetCore.Authorization
+@using System.Data
+
+@attribute [Authorize(Roles = "admin,ingiantxt")]
+@inject IJSRuntime JS
+@inject Statemanagerment myStateMN
+@inject ISysVarManager mySysvar
+@inject IOptionsManager myOptions
+@inject IDbManager myDb
+@inject ICommandManager myCommand
+@inject ILocalStorageService myLcStore
+@inject XmlStringLocalizer Lap
+
+<div class="container-fluid p-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">@Title</h5>
+            <div>
+                <button class="btn btn-outline-light me-2" @onclick="() => PopupVisible = true" disabled="@isProcessing">
+                    <i class="fas fa-filter"></i> @Lap["Filter"]
+                </button>
+                <button class="btn btn-success" @onclick="StartCalculate" disabled="@isProcessing">
+                    <i class="fas fa-play"></i> @Lap["Excute"]
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h6>@Title :</h6>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar progress-bar-animated"
+                             role="progressbar"
+                             style="width: @(maxProgress > 0 ? (progressValue / maxProgress) * 100 : 0)%;">
+                            @resultTinhgia
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning" role="alert">@Lap["The calculation process may take time, please wait ..."]</div>
+        </div>
+    </div>
+</div>
+
+<DxPopup @bind-Visible="PopupVisible" CloseOnOutsideClick="false" CssClass="dxPopup"
+         Width="60%" Height="auto" ShowFooter="true" HeaderText="@Lap["Filter"]">
+    <BodyTemplate Context="popupContext">
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 4rem; height:4rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="p-3">
+                <DxFormLayout SizeMode="SizeMode.Medium" CssClass="frm-header" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                    <DxFormLayoutGroup ColSpanMd="12" Caption="@Lap["Filter"]" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box my-2">
+
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Year"]">
+                            <Template>
+                                <DxSpinEdit Value="@Nam" Min="1900" Max="2100" ShowSpinButtons="true"
+                                            ValueChanged="@((int v) => { Nam = v; UpdateNgayRange(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption=" ">
+                            <Template>
+                                <span></span>
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["From month"]" BeginRow="true">
+                            <Template>
+                                <DxSpinEdit Value="@Ky1" Min="1" Max="12" ShowSpinButtons="true"
+                                            ValueChanged="@((int v) => { Ky1 = v; UpdateNgayRange(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["To month"]" BeginRow="true">
+                            <Template>
+                                <DxSpinEdit Value="@Ky2" Min="1" Max="12" ShowSpinButtons="true"
+                                            ValueChanged="@((int v) => { Ky2 = v; UpdateNgayRange(); })" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption=" ">
+                            <Template>
+                                <span class="text-secondary">@NgayRange</span>
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Item code"]">
+                            <Template>
+                                <DxTextBox @bind-Text="@Ma_vt" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption=" ">
+                            <Template>
+                                <span></span>
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Inventory account"]">
+                            <Template>
+                                <DxTextBox @bind-Text="@Tk_vt" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption=" ">
+                            <Template>
+                                <span></span>
+                            </Template>
+                        </DxFormLayoutItem>
+                        
+
+                        <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Update average cost"]">
+                            <Template>
+                                <div class="d-flex align-items-start gap-3">
+                                    <DxSpinEdit @bind-Value="Tinh_giatb" Min="1" Max="2" ShowSpinButtons="true" CssClass="flex-shrink-0" />
+                                    <span class="text-secondary">
+                                        1 - @Lap["Only update the inventory ledger"]<br />
+                                        2 - @Lap["Update both the inventory ledger and the general ledger"]
+                                    </span>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="12" Caption="Cảnh báo chênh lệch ntxt và tồn kho">
+                            <Template>
+                                <div class="d-flex align-items-start gap-3">
+                                    <DxSpinEdit @bind-Value="CanhBao_CL" Min="0" Max="1" ShowSpinButtons="true" CssClass="flex-shrink-0" />
+                                    <span class="text-secondary">
+                                        0 - @Lap["No"]<br />
+                                        1 - @Lap["Yes"]
+                                    </span>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+
+                    </DxFormLayoutGroup>
+                </DxFormLayout>
+
+                @if (Errors.Any())
+                {
+                    <div class="mt-2 alert alert-danger p-2">
+                        <ul class="mb-0">
+                            @foreach (var err in Errors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row m-0 justify-content-end align-content-end">
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@ConfirmFilter_OnOk" />
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+<style>
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string Menu_id { get; set; }
+
+    public Command curCommand = new Command();
+    public bool IsLangEn = false;
+    public string UserLang = "";
+    string Title = "";
+
+    private int Nam { get; set; }
+    private int Ky1 { get; set; }
+    private int Ky2 { get; set; }
+    private string Ma_dvcs { get; set; } = "";
+    private string Tk_vt { get; set; } = "";
+    private string Ma_vt { get; set; } = "";
+    private int Tinh_giatb { get; set; } = 2;
+    private int CanhBao_CL { get; set; } = 1;
+
+    private string NgayRange { get; set; } = "";
+    private string TenDvcs { get; set; } = "";
+
+    private bool PopupVisible { get; set; } = false;
+    private bool ShowLoadding { get; set; } = false;
+    private List<string> Errors { get; set; } = new();
+
+    private bool isProcessing = false;
+    private double progressValue = 0;
+    private double maxProgress = 100;
+    private string resultTinhgia = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await Language();
+                curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+                if (curCommand != null)
+                {
+                    Title = !IsLangEn ? curCommand.Bar : curCommand.Bar2;
+                }
+                await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+
+                int p1 = myStateMN.GetCurrentMonth();
+                int y1 = myStateMN.GetCurrentYear().Year;
+                if (p1 > 0) Ky1 = p1;
+                if (y1 > 0) Nam = y1;
+                Ky2 = Ky1;
+
+                UpdateNgayRange();
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
+
+    private void UpdateNgayRange()
+    {
+        try
+        {
+            if (Ky1 >= 1 && Ky1 <= 12 && Nam >= 1900)
+            {
+                DateTime ngayDau = SisLib.Ctrl.NgayTC.StartOfPeriod(mySysvar, Nam, Ky1);
+                DateTime ngayCuoi = SisLib.Ctrl.NgayTC.EndOfPeriod(mySysvar, Nam, Ky2);
+                NgayRange = $"{ngayDau:dd-MM-yyyy} -> {ngayCuoi:dd-MM-yyyy}";
+            }
+        }
+        catch { }
+    }
+
+    private void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool ok = true;
+        if (Ky1 < 1 || Ky1 > 12) { Errors.Add("Kỳ không hợp lệ (từ 1 đến 12)."); ok = false; }
+        if (Nam < 1900 || Nam > 2100) { Errors.Add("Năm không hợp lệ."); ok = false; }
+        if (!ok && Errors.Count > 0)
+            myStateMN.SetNewThongbao(Errors[0]);
+        return ok;
+    }
+
+    private async void ConfirmFilter_OnOk()
+    {
+        if (!CheckValid()) return;
+        PopupVisible = false;
+        StateHasChanged();
+        await StartCalculate();
+        StateHasChanged();
+    }
+
+    public async Task StartCalculate()
+    {
+        try
+        {
+            isProcessing = true;
+            resultTinhgia = "";
+            progressValue = 0;
+
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+
+            await ExecuteWithStoredProcedure();
+
+            isProcessing = false;
+            myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Operation error"] + $": {ex.Message}");
+            isProcessing = false;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExecuteWithStoredProcedure()
+    {
+        try
+        {
+            maxProgress = 60000;
+            resultTinhgia = "Đang xử lý...";
+            await InvokeAsync(StateHasChanged);
+
+            string maVt = string.IsNullOrWhiteSpace(Ma_vt) ? "%" : Ma_vt.Trim() + "%";
+            string tkVt = string.IsNullOrWhiteSpace(Tk_vt) ? "%" : Tk_vt.Trim() + "%";
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+            string maDvcs = string.IsNullOrWhiteSpace(Ma_dvcs) ? "" : Ma_dvcs.Trim();
+
+            var parameters = new Dictionary<string, object>
+            { 
+                { "@Year", Nam },
+                { "@Period1", Ky1 },
+                { "@Period2", Ky2 },                
+                { "@Ma_vt", maVt },
+                { "@Nh_vt1", "%" },
+                { "@Nh_vt2", "%" },
+                { "@Nh_vt3", "%" },
+                { "@Tk_vt", tkVt },
+                { "@Ma_dvcs", maDvcs },
+                { "@Warning", CanhBao_CL },
+                { "@Tinh_giatb", Tinh_giatb }
+            };
+
+            string storeProc = curCommand?.Store_proc ?? "Ingia_ntxt";
+            await myDb.LoadDataset(storeProc, parameters);
+
+            resultTinhgia = Lap["Complete"];
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Lỗi: {ex.Message}");
+        }
+    }
+
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                    IsLangEn = true;
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}

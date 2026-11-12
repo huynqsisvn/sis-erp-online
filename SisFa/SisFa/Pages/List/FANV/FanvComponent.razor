@@ -1,0 +1,128 @@
+@page "/fanv"
+@page "/fanv/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,fanv")]
+
+<div class="row mt-1">
+    <FrmBrowseComponent @ref="oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@fbrowse"
+                        Page_size="@Page_size"
+                        SelectItem="CurItem"
+                        OnRowDbClick="@OnRDBClick"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="50vw"
+              MinWidth="500px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible"
+                                 List_ID="@sqlTableName"
+                                 Ma_ma="@SqlTableKeyValue"
+                                 Title="@Lap["Change capital source code"]"
+                                 Ten_item="@Ten_item"
+                                 OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible"
+                             CurDmimex="@CurDmimex"
+                             OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        mPage = "fanv";
+        IsShowCopy = true;
+        IsShowImport = true;
+        sqlTableName = "dmnv";
+        sqlTableView = "v_dmnv";
+        SqlTableKey = "ma_nv";
+        FrmType = typeof(SisFa.Pages.List.FANV.EditFanv);
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wf.dm.03";
+
+        base.OnInitialized();
+    }
+
+    public override async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            SqlTableKeyValue = rview["ma_nv"].ToString().Trim();
+            MessageDl = String.Format(Lap["Do you want to delete :{0} ?"], SqlTableKeyValue);
+            ResultDl = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+            {
+                Text = MessageDl,
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["OK"],
+                CancelButtonText = Lap["Cancel"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger,
+            });
+            if (ResultDl == true)
+            {
+                string sql = "Delete " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+                await myDb.ExecuteSqlQueryAsync(sql);
+                await Loaddata();
+                string ToastMessage = String.Format(Lap["Delete successfully : {0}"], SqlTableKeyValue);
+                myStateMN.SetNewThongbao(ToastMessage);
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+}

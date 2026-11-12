@@ -1,0 +1,329 @@
+﻿ @page "/zcfats"
+@page "/zcfats/{Menu_id}"
+@inherits ListBaseComponent
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+@using System.Data.OleDb
+@using System.Diagnostics;
+@using System.Data.SqlClient;
+@using SisLib.List
+@using Microsoft.Extensions.Localization
+@using DevExpress.Blazor
+@attribute [Authorize(Roles = "admin,zcfats")]
+
+<div class="row mt-1">
+    @* bảng danh sách dữ liệu *@
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="60vw"
+              MinWidth="600px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible" List_ID="@sqlTableName" Ma_ma="@SqlTableKeyValue" Title="@Lap["Change Item code"]" Ten_item="@Ten_item" OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+@* --- POPUP XÁC NHẬN XÓA TÀI SẢN --- *@
+@if (PopupConfirmDeleteVisible)
+{
+    <DxPopup @bind-Visible="@PopupConfirmDeleteVisible"
+             HeaderText="Xác nhận xóa tài sản"
+             Width="400px"
+             ShowFooter="true"
+             CloseOnOutsideClick="false">
+        <BodyContentTemplate>
+            <div class="d-flex align-items-center p-2">
+                <i class="fa fa-exclamation-triangle text-danger fa-2x me-3"></i>
+                <span class="fs-6">Bạn có chắc chắn muốn xóa toàn bộ dữ liệu của tài sản này không? <br /><small class="text-muted">(Dữ liệu ở các tab chi tiết cũng sẽ bị xóa vĩnh viễn)</small></span>
+            </div>
+        </BodyContentTemplate>
+        <FooterContentTemplate>
+            <div class="w-100 d-flex justify-content-end">
+                <DxButton Text="Xóa dữ liệu" RenderStyle="ButtonRenderStyle.Danger" Click="ExecuteDeleteVoucher" CssClass="me-2 fw-bold" />
+                <DxButton Text="Hủy bỏ" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => PopupConfirmDeleteVisible = false)" />
+            </div>
+        </FooterContentTemplate>
+    </DxPopup>
+}
+@code {
+    string Ma_dvcs = "";
+
+    protected override void OnInitialized()
+    {
+        mPage = "zcfats";
+        sqlTableName = "dmts";
+        sqlTableView = "v_dmts"; // Bạn có thể để v_dmts hoặc dmts tùy ý, miễn là logic Loaddata dùng dmts
+        SqlTableKey = "so_the_ts";
+        SqlItemName = "so_the_ts";
+        IsShowCopy = true;
+        FrmType = typeof(Input.Zcfats.FrmZcfats);
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wf.ct.01";
+
+        myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true));
+                myStateMN.SetToolBar(new MyToolbar("Copy", true));
+                myStateMN.SetToolBar(new MyToolbar("Import", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true));
+                myStateMN.SetToolBar(new MyToolbar("Change", true));
+                myStateMN.SetToolBar(new MyToolbar("View", true));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged; // <--- Đăng ký sự kiện
+
+            // Load lần đầu
+            await Loaddata();
+            StateHasChanged();
+        }
+    }
+
+    public async void CloseForm()
+    {
+        IsShowFrm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+            // Đảm bảo lấy Page_size an toàn
+            string pSize = myOption.GetOptionsValue("M_GRID_NROW");
+            Page_size = string.IsNullOrEmpty(pSize) ? 50 : int.Parse(pSize.Trim());
+        }
+        StateHasChanged();
+    }
+
+    // --- HÀM LOAD DATA ĐÃ CHUẨN ---
+    public override async Task Loaddata()
+    {
+        // 1. Lấy mã đơn vị từ hệ thống
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+
+        // 2. Xử lý bộ lọc
+        string preFilter = "1=1"; // Mặc định lấy hết
+
+        // Chỉ lọc khi có mã và KHÁC "ALL"
+        if (!string.IsNullOrEmpty(Ma_dvcs) && !Ma_dvcs.Equals("ALL"))
+        {
+            preFilter = $" ma_dvcs LIKE '{Ma_dvcs.Trim()}%'";
+        }
+
+        // 3. Câu lệnh SQL: Lấy từ bảng dmts, sắp xếp mới nhất lên đầu
+        string sql = $"SELECT * FROM {sqlTableName} WHERE {preFilter} ORDER BY so_the_ts DESC";
+
+        try
+        {
+            DataSet dsList = await myDb.LoadDataset(sql);
+            if (dsList != null && dsList.Tables.Count > 0)
+            {
+                TblData = dsList.Tables[0];
+                if (TblData.DefaultView.Count > 0)
+                    SelectedItem = TblData.DefaultView[0];
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi LoadData: " + ex.Message);
+        }
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+
+        StateHasChanged();
+    }
+
+    // --- HÀM SỬA LẠI: ON DVCS CHANGED ---
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        // SỬA: Luôn gọi Loaddata bất kể là mã gì hay là ALL
+        // Vì trong Loaddata đã có logic xử lý "ALL" -> "1=1" rồi.
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+        base.Dispose();
+    }
+    // 1. Biến điều khiển Popup
+    bool PopupConfirmDeleteVisible = false;
+
+    // 2. Sửa lại hàm chặn bắt sự kiện Xóa
+    private async void OnActionTaskchanged(ActionTask task)
+    {
+        if (task == ActionTask.Delete)
+        {
+            // BƯỚC 1: KIỂM TRA VALIDATE
+            bool isValid = await ValidateBeforeDelete();
+
+            // BƯỚC 2: QUYẾT ĐỊNH
+            if (isValid)
+            {
+                // KHÔNG GỌI base.OnActionTaskchanged NỮA
+                // Thay vào đó, bật Popup xác nhận xóa của riêng mình lên
+                PopupConfirmDeleteVisible = true;
+                StateHasChanged();
+            }
+            else
+            {
+                return;
+            }
+        }
+        else
+        {
+            // Các nút khác (New, Edit, View...) vẫn để Base xử lý bình thường
+            try { base.OnActionTaskchanged(task); } catch { }
+        }
+    }
+
+    // 3. Hàm thực thi SQL gọi Store Procedure dọn rác
+    async Task ExecuteDeleteVoucher()
+    {
+        if (SelectedItem == null) return;
+        System.Data.DataRowView row = SelectedItem as System.Data.DataRowView;
+        if (row == null) return;
+
+        string maTs = row["so_the_ts"].ToString().Trim().Replace("'", "''");
+
+        try
+        {
+            // Gọi thủ tục xóa sạch sành sanh mọi dấu vết của tài sản này
+            string sqlDelete = $"EXEC [FATS-Delete] @so_the_ts = N'{maTs}'";
+            await myDb.ExecuteSqlQueryAsync(sqlDelete);
+
+            // Tắt popup
+            PopupConfirmDeleteVisible = false;
+
+            // Báo thành công và Load lại lưới dữ liệu
+            myStateMN.SetNewThongbao("Đã xóa toàn bộ dữ liệu tài sản thành công!");
+            await Loaddata();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Lỗi khi xóa: " + ex.Message);
+        }
+    }
+
+    // --- HÀM VALIDATE (KIỂM TRA ĐIỀU KIỆN XÓA) ---
+    async Task<bool> ValidateBeforeDelete()
+    {
+        if (SelectedItem == null) return false;
+
+        System.Data.DataRowView row = SelectedItem as System.Data.DataRowView;
+        if (row == null) return false;
+
+        string maTs = row["so_the_ts"].ToString().Trim();
+        string maDvcsRow = row["ma_dvcs"].ToString().Trim();
+        string userMaDvcs = myStateMN.GetMa_Dvcs().Trim();
+
+        // 1. Check ĐVCS (Không được xóa của đơn vị khác)
+        if (!userMaDvcs.Equals("ALL") && !maDvcsRow.Equals(userMaDvcs, StringComparison.OrdinalIgnoreCase))
+        {
+            myStateMN.SetNewThongbao("Không thể xóa tài sản của đơn vị khác!");
+            return false;
+        }
+
+        // 2. Check Phát sinh (Gọi Store Procedure)
+        int checkResult = await CheckDeleteListDmts(maTs);
+
+        // Logic: Kết quả trả về 0 nghĩa là CÓ PHÁT SINH -> CHẶN
+        if (checkResult == 0)
+        {
+            myStateMN.SetNewThongbao($"Tài sản đã có phát sinh, KHÔNG được xóa!");
+            return false;
+        }
+
+        return true; // Cho phép xóa
+    }
+
+    // --- HÀM GỌI SQL (ĐÃ FIX LOGIC LẤY TABLE[0]) ---
+    public async Task<int> CheckDeleteListDmts(string so_the_ts)
+    {
+        int num = 0;
+        try
+        {
+            string sqlCheck = $@"
+                DECLARE @return_value int;
+                EXEC @return_value = [CheckXoaTs] @so_the_ts = N'{so_the_ts}';
+                SELECT @return_value as KetQua;";
+
+            DataSet ds = await myDb.LoadDataset(sqlCheck);
+
+            // Lấy ô đầu tiên của bảng đầu tiên (Giống ExecuteScalar)
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var val = ds.Tables[0].Rows[0][0];
+                if (val != DBNull.Value) num = Convert.ToInt32(val);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi Check: " + ex.Message);
+        }
+        return num;
+    }
+}
+

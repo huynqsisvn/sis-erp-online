@@ -1,0 +1,641 @@
+﻿
+@page "/Poctpna"
+@page "/Poctpna/{Menu_id}"
+@inherits TransBaseComponent
+@attribute [Authorize(Roles = "admin,poctpna")]
+
+@if (ShowLoaddingVoucher)
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    CssClass="w-100"
+                    IndicatorVisible="true"
+                    IndicatorAreaVisible="true"
+                    Visible="true"
+                    Text="Processing..."
+                    TextAlignment="LoadingPanelTextAlignment.Right">
+        <div style="min-height: 250px;"></div>
+    </DxLoadingPanel>
+}
+else if (TblPH != null)
+{
+    <div class="row mt-1">
+        <FrmBrowseComponent @ref="@oBrowsePH" TblData="@TblPH" Page_size="@pageSize" IsPageSize="@IsPageSize" CssClass="grid-frm-height" Fbrowse="@FbrowsePH" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+    <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+    <div class="row mt-1">
+        <h8 class="fw-bold bg-light text-warning rounded-pill mx-3"> @Lap["Detail"] </h8>
+        <FrmBrowseComponent @ref="@oBrowseCT" TblData="@TblCT" CssClass="grid-frmct-height" Fbrowse="@FbrowseCT" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+}
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@popFilterVisible"
+         Width="500px"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From number"]">
+                        <DxTextBox CssClass="col" @bind-Text="@So_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idTu_so" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To number"]">
+                        <DxTextBox CssClass="col" @bind-Text="@So_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idDen_so" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Book code"]">
+                        <Template>
+                            <AutocompleteComponent CssClass="col p-0" Ma_dm="dmqs" @bind-Value="@Ma_qs" Filter="@_filter_qs" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idTu_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idDen_ngay" />
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Customer code"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmkh_thue" @bind-Value="@Ma_kh" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Account"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmtk1" @bind-Value="@Tk_i" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Status"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmpost" Filter="@filter_status" @bind-Value="@Status" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Dvcs code"]">
+                        <DxTextBox CssClass="col" @bind-Text="@Ma_dvcs" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idMa_dvcs"></DxTextBox>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Filter by user"]">
+                        <DxTextBox CssClass="col" @bind-Text="@NSD" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idNSD" />
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@BtnFilterOK" />
+                <DxButton CssClass="col " RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnFilterCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+@if (IsShowFrm && FrmType != null)
+{
+    <DxPopup @bind-Visible="@IsShowFrm" CloseOnEscape="true" Width="68vw" Height="700px" CloseOnOutsideClick="false" CssClass="small-header-popup"
+             MinWidth="700px" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center"
+             MinHeight="500px" Scrollable="true"
+             MaxHeight="99vh"
+             AllowResize="true"
+             AllowDrag="true" ShowCloseButton="false"
+             AllowDragByHeaderOnly="true"
+             ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxPopup>
+}
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportCT CurDmimex="@CurDmimex" Menu_id="@Menu_id" @bind-IsImportPopupVisible="@IsImportPopupVisible" OnImportCompleted="@ImportOK" ShowError="@ShowError_PNA" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+<style>
+    .grid-frm-height {
+        height: 55vh;
+    }
+
+    .grid-frmct-height {
+        height: 30vh;
+    }
+</style>
+
+@code {
+    public string Ma_kh = "";
+    public string Ma_qs = "";
+    public string Ghi_no_co = "";
+    public string Tk_i = "";
+    public string Status = "";
+    public string Ps_no = "";
+    public string Ps_co = "";
+    public string So_ct1 = "";
+    public string So_ct2 = "";
+    public string Ma_dvcs = "";
+    public string NSD = "";
+
+    string _filter_gd = "";
+
+    string _filter_qs = "";
+    string filter_status = "ma_ct like '%PNA%' and status = 1 ";
+    protected override void OnInitialized()
+    {
+        Menu_id = (String.IsNullOrEmpty(Menu_id) ? "wp.ct.05" : Menu_id);
+        FrmType = typeof(Input.Poctpna.FrmPoctpna);
+        IsShowImport = true;
+        LanguageID = "";
+        _filter_qs = String.Format("ma_cts like '%{0}%'", "PNA");
+        _filter_gd = String.Format("ma_ct like '%{0}%' and [status] = 1", "PNA");
+
+        base.OnInitialized();
+    }
+    private async void BtnFilterOK()
+    {
+        ShowLoadding = true;
+
+        myStateMN.SetStartDate((DateTime)Ngay_ct1);
+        myStateMN.SetEndDate((DateTime)Ngay_ct2);
+        string dvcs = myStateMN.GetMa_Dvcs();
+        phFilter = "1=1";
+        ctFilter = "1=1";
+
+        if (!string.IsNullOrEmpty(Ma_dvcs))
+        {
+            phFilter = phFilter + " AND ma_dvcs LIKE ''" + Ma_dvcs.Trim() + "%''";
+        }
+        if (string.IsNullOrEmpty(Ma_dvcs))
+        {
+            if (dvcs != "ALL")
+            {
+                phFilter = phFilter + " AND ma_dvcs LIKE ''" + dvcs.Trim() + "%''";
+            }
+        }
+        if (Ngay_ct1 != null)
+        {
+            phFilter = phFilter + " AND ngay_ct >= ''" + Ngay_ct1.ToString("yyyyMMdd") + "''";
+        }
+        if (Ngay_ct2 != null)
+        {
+            phFilter = phFilter + " AND ngay_ct <= ''" + Ngay_ct2.ToString("yyyyMMdd") + "''";
+        }
+        if (!String.IsNullOrEmpty(So_ct1))
+        {
+            phFilter = phFilter + " AND so_ct >= ''" + So_ct1.ToString() + "''";
+        }
+        if (!String.IsNullOrEmpty(So_ct2))
+        {
+            phFilter = phFilter + " AND so_ct <= ''" + So_ct2.ToString() + "''";
+        }
+
+        if (!String.IsNullOrEmpty(Ma_qs))
+        {
+            phFilter = phFilter + " AND ma_qs LIKE ''" + Ma_qs.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(Status))
+        {
+            phFilter = phFilter + " AND status  LIKE ''" + Status.Trim() + "%''";
+        }
+
+        if (!String.IsNullOrEmpty(Tk_i))
+        {
+            ctFilter = ctFilter + " AND ma_nx  LIKE ''" + Tk_i.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(NSD) && NSD.Trim().Equals("1"))
+        {
+            phFilter = phFilter + " AND user_id  = " + curUser.User_id + " ";
+        }
+        if (!String.IsNullOrEmpty(Ma_kh))
+        {
+            phFilter = phFilter + " AND ma_kh LIKE ''" + Ma_kh.Trim() + "%''";
+        }
+
+        await Loaddata(false);
+
+        ShowLoadding = false;
+        popFilterVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public override async void V_In()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null)
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }
+
+
+        DataSet DataSource = CopyVoucherToDataSet(SqlTableKeyValue);
+
+
+        string tk_no = "";
+        string tk_co = "";
+        var uniqueTk = new HashSet<string>();
+
+        if (DataSource != null && DataSource.Tables.Count > 0)
+        {
+            LSData = new List<PNGModel>();
+            PNGModel _curModel = new PNGModel();
+            _curModel.Ten_cty = myOption.GetOptionsValue("M_TEN_CTY").Trim();
+            _curModel.Dia_chi_cty = myOption.GetOptionsValue("M_DIA_CHI").Trim();
+            _curModel.Ma_so_thue_cty = myOption.GetOptionsValue("M_MA_THUE").Trim();
+            _curModel.Dien_thoai_cty = myOption.GetOptionsValue("M_PHONE").Trim();
+            _curModel.LSPh = myDb.ConvertDataTable<Ph71>(DataSource.Tables[0]);
+            string strnh = myDb.GetValue("SELECT tk_nh + '#' + ten_nh FROM dmkh WHERE ma_kh = '" + _curModel.LSPh[0].Ma_kh.Trim() + "'").ToString();            
+
+            _curModel.LSCt = myDb.ConvertDataTable<Ct71>(DataSource.Tables[1]).OrderBy(x => x.Stt_rec0).ToList();
+            _curModel.LSCtgt = myDb.ConvertDataTable<Ct71gt>(DataSource.Tables[2]).OrderBy(x => x.Stt_rec0).ToList();
+
+            for (int i = 0; i < _curModel.LSCt.Count; i++)
+            {
+                string ma = _curModel.LSCt[i].Tk_vt?.Trim();
+                if (string.IsNullOrEmpty(ma)) continue;
+
+                if (uniqueTk.Add(ma)) // chỉ thêm nếu chưa có
+                {
+                    tk_no += ma + "\n";
+                }
+                _curModel.LSCt[i].Ma_nx = _curModel.LSPh[0].Ma_nx;
+                _curModel.LSCt[i].Stt = i + 1;
+            }
+            
+            _curModel.TotalString = SisFunc.DocSo.Doc_so(_curModel.LSPh[0].T_tien0, myOption, myDb, IsLangEn);
+            _curModel.TotalTTString = SisFunc.DocSo.Doc_so(_curModel.LSPh[0].T_tt, myOption, myDb, IsLangEn);
+            _curModel.TotalStringNT = SisFunc.DocSo.Doc_so(_curModel.LSPh[0].T_tien_nt0, myOption, myDb, IsLangEn);
+            _curModel.TotalTTStringNT = SisFunc.DocSo.Doc_so(_curModel.LSPh[0].T_tt_nt, myOption, myDb, IsLangEn);
+            _curModel.Ten_lien = "Liên 1 : giao khách hàng";
+            _curModel.So_lien = curDmct.So_lien;
+            _curModel.Ma_kho = _curModel.LSCt.Max(x => x.Ma_kho_i);
+            _curModel.Ma_kho = _curModel.Ma_kho.Trim() + " - " + myDb.GetValue("dmkho", IsLangEn?"ten_kho2": "ten_kho", "ma_kho='" +_curModel.Ma_kho.Trim()+"'").ToString().Trim();
+            _curModel.NgayString = ToDateString(_curModel.LSPh[0].Ngay_ct);
+            _curModel.TknoString = tk_no;
+            LSData.Add(_curModel);
+        }
+        ShowReport(LSData, typeof(PNGModel));
+    }
+    public string ToDateString(DateTime date)
+    {
+        return $"ngày {date.Day} tháng {date.Month} năm {date.Year}";
+    }
+   
+    private bool ShowError_PNA(DataErrArgs Args)
+    {
+        DataSet dsError = Args.DataErr;
+        bool result = true;
+        foreach (DataTable table in dsError.Tables)
+        {
+            if (table.Rows.Count != 0)
+            {
+                switch (table.Columns[0].ColumnName)
+                {
+                    case "ma_kh":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_kh:H=Mã ncc", "Danh sách mã ncc không có trong danh mục ncc");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_kh:H=Supplier ID", "List the client code is not in the list of Suppliers");
+                        }
+                        result = false;
+                        break;
+                    case "ma_kh1":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_kh1:H=Mã ncc;ma_dvcs:H=Mã ĐVCS", "Danh sách mã ncc không thuộc ĐVCS");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_kh1:H=Supplier ID;ma_dvcs:H=Unit code", "List the client code is invalid");
+                        }
+                        result = false;
+                        break;
+                    case "ma_kh_thue":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_kh_thue:H=Mã ncc(Hđ thuế);ma_dvcs:H=Mã ĐVCS", "Danh sách mã ncc không có trong danh mục ncc hoặc không thuộc ĐVCS");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_kh_thue:H=Supplier ID (tax);ma_dvcs:H=Unit code", "List the client code is not in the list of Suppliers or not in Unit");
+                        }
+                        result = false;
+                        break;
+                    case "ma_nx":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_nx:H= Mã nx(Tk có);ten_tk:H=Tên mã nx (tk có)", "Danh sách mã nx(tk có) không có trong danh mục tài khoản hoặc là tài khoản tổng hợp");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_nx:H=Dr./Cr. account (Account credit);ten_tk:H=Dr./Cr. Name", "List of import export code (account debt) is not in the list of accounts or the consolidated accounts");
+                        }
+                        result = false;
+                        break;
+                    case "ma_ms":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_ms:H=Nhóm hđ", "Danh sách mã nhóm hóa đơn không có trong danh mục nhóm hđ");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_ms:H=Invoice group code", "List of invoice group code is not valid");
+                        }
+                        result = false;
+                        break;
+                    case "ma_kho":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_kho:H=Mã kho;ma_dvcs:H=Mã ĐVCS", "Danh sách mã kho không có trong danh mục kho hoặc không thuộc mã ĐVCS của chứng từ");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_kho:H=Site code;ma_dvcs:H=Unit code", "List of code repositories is not in the list or not on the unit code repository of documents");
+                        }
+                        result = false;
+                        break;
+                    case "ma_vt":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_vt:H=Mã vật tư", "Danh sách mã vật tư không có trong danh mục vật tư");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_vt:H=Item code", "List of supplies code is not in the list of materials");
+                        }
+                        result = false;
+                        break;
+                    case "ma_nt":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_nt:H=Mã n.tệ", "Danh sách mã n.tệ không có trong danh mục tiền tệ");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_nt:H=Currency code", "List of currency code is not in the list of currency");
+                        }
+                        result = false;
+                        break;
+                    case "ma_thue":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_thue:H=Mã t.suất", "Danh sách mã t.suất không có trong danh mục thuế suất ");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_thue:H=Tax rate code", "List of tax rate code is not in the list of tax");
+                        }
+                        result = false;
+                        break;
+                    case "loai_pb":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "loai_pb:H=Kiểu phân bổ", "Danh sách kiểu phân bổ không hợp lệ");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "loai_pb:H=Allocate type", "List of allocate type is not valid");
+                        }
+                        result = false;
+                        break;
+                    case "ma_thck":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_thck:H=Mã đ/k tt", "Danh sách mã điều khoản thanh toán không có trong danh mục điểu khoản thanh toán");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_thck:H=Payment terms code", "List of payment terms code not in payment terms list");
+                        }
+                        result = false;
+                        break;
+                    case "tk_vt":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "tk_vt:H=Tk nợ;ten_tk:H=Tên tk nợ ", "Danh sách tk nợ không có trong danh mục tài khoản hoặc là tài khoản tổng hợp");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "tk_vt:H=Dr./Cr. account (Account debit);ten_tk:H=Dr./Cr. Name", "List of import export code (account debt) is not in the list of accounts or the consolidated accounts");
+                        }
+                        result = false;
+                        break;
+                    case "ma_qs":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_qs:H=Quyển c.từ", "Danh sách quyển c.từ không có trong danh mục quyển c.từ hoặc chứng từ không thuộc quyển c.từ này");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_qs:H=Book no.", "Book list is not in the list or book vouchers of this book");
+                        }
+                        result = false;
+                        break;
+                    case "so_ct":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_qs:H=Quyển c.từ  ;so_ct:H= Số c.từ", "Danh sách số chứng từ trùng số");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_qs:H=Book no.;so_ct:H=Voucher no.", "List of vouchers with some");
+                        }
+                        result = false;
+                        break;
+                    case "so_ct0":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "so_ct0:H=Số hđ", "Danh sách số hóa đơn trùng số");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "so_ct0:H=Voucher no.", "List of vouchers with some");
+                        }
+                        result = false;
+                        break;
+                    case "stt_hd_thue":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "so_ct0:H=Số hđ", "Danh sách số hóa đơn trùng số");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "so_ct0:H=Voucher no.", "List of vouchers with some");
+                        }
+                        result = false;
+                        break;
+                    case "ma_dvcs":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_dvcs:H=Mã ĐVCS", "Danh sách mã ĐVCS không có trong danh mục ĐVCS");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_dvcs:H=Unit code", "Unit code list is not in the list of unit code");
+                        }
+                        result = false;
+                        break;
+                    case "ngay_ct":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ngay_ct:H=Ngày chứng từ:D", "Danh sách ngày chứng từ nhỏ hơn ngày mở sổ");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ngay_ct:H=Voucher date:D", "List of documents smaller day open day window");
+                        }
+                        result = false;
+                        break;
+                    case "ma_vv_i":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_vv_i:H=Mã dự án", "Danh sách mã dự án không có trong danh mục dự án");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_vv_i:H=Project code", "List of project code is not in the list of projects");
+                        }
+                        result = false;
+                        break;
+                    case "so_ct_khac_ngay":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "so_ct_khac_ngay:H=Số c.từ;ma_qs:H=Mã quyển c.từ  ", "Danh sách c.từ có ngày c.từ khác nhau");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "so_ct_khac_ngay:H=Voucher no.;ma_qs:H=Book no.", "List of documents with different dates vouchers");
+                        }
+                        result = false;
+                        break;
+                    case "ma_phi_i":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_phi_i:H=Mã phí", "Danh sách mã phí không có trong danh mục phí");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_phi_i:H=Fee code", "List of fee code is not in the list of fee");
+                        }
+                        result = false;
+                        break;
+                    case "ngay_ct_ks":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ngay_ct_ks:H=Ngày chứng từ:D", "Danh sách ngày chứng từ nhỏ hơn ngày khóa sổ");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ngay_ct_ks:H=Voucher date:D", "List of documents smaller day close day window");
+                        }
+                        result = false;
+                        break;
+                    case "ma_px_i":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_px_i:H=Mã phân xưởng", "Danh sách mã phân xưởng không có trong danh mục phân xưởng");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_px_i:H=Workshop code", "List of workshops code is not in the list of workshops");
+                        }
+                        result = false;
+                        break;
+                    case "ma_bpht_i":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_bpht_i:H=Mã bộ phận hạch toán", "Danh sách mã bộ phận hạch toán không có trong danh mục bộ phận hạch toán");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_bpht_i:H=DEPT. ID", "List the accounting department code is not in the list of the accounting department");
+                        }
+                        result = false;
+                        break;
+                    case "dvt1":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_vt:H=Mã vật tư; dvt1:H=Đơn vị tính", "Danh sách đơn vị tính không có trong danh mục đơn vị tính quy đổi");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_vt:H=Item code; dvt1:H=Manufacturing order", "List of units not included in the list of units of conversion");
+                        }
+                        result = false;
+                        break;
+                    case "ma_td_i":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_td_i:H=Mã tự do 1", "Danh sách mã tự do 1 không có trong danh mục tự do 1");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_td_i:H=Free code 1", "List of free codes 1 are not included in the list of free codes 1");
+                        }
+                        result = false;
+                        break;
+                    case "ma_td2_i":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_td2_i:H=Mã tự do 2", "Danh sách mã tự do 2 không có trong danh mục tự do 2");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_td2_i:H=Free code 2", "List of free codes 2 are not included in the list of free codes 2");
+                        }
+                        result = false;
+                        break;
+                    case "ma_td3_i":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "ma_td3_i:H=Mã tự do 3", "Danh sách mã tự do 3 không có trong danh mục tự do 3");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "ma_td3_i:H=Free code 3", "List of free codes 3 are not included in the list of free codes 3");
+                        }
+                        result = false;
+                        break;
+                    case "tk_thue_no":
+                        if (!IsLangEn)
+                        {
+                            DisplayErrorData(table, "tk_thue_no:H=Tài khoản", "Danh sách tài khoản thuế sai");
+                        }
+                        else
+                        {
+                            DisplayErrorData(table, "tk_thue_no:H=Tax account", "List of incorrect tax accounts");
+                        }
+                        result = false;
+                        break;
+                }
+            }
+        }
+        return !result;
+    }
+}

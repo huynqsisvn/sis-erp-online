@@ -1,0 +1,379 @@
+﻿@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRDMNVCT
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveHrdmnvct" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+                
+                @* --- QUYẾT ĐỊNH SỐ --- *@
+                <DxFormLayoutItem Caption="@Lap["Decision number"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="ma_quyet_dinh_input" @bind-Text="@CurRecord.Ma_quyet_dinh"
+                                   maxlength="@(tblLength.ContainsKey("ma_quyet_dinh") ? tblLength["ma_quyet_dinh"] : 50)"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- MÃ NHÂN VIÊN --- *@
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" Filter="status = 1"
+                            @bind-Value="@CurRecord.Ma_ns" IsEnable="@AllowEditMa"
+                            SelectChanged="Ma_ns_Changed" IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NGÀY ĐI CÔNG TÁC --- *@
+                <DxFormLayoutItem Caption="@Lap["Departure date"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_di_input" Enabled="@AllowEditMode"
+                            @bind-Date="@CurRecord.Ngay_di" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NGÀY VỀ --- *@
+                <DxFormLayoutItem Caption="@Lap["Return date"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_ve_input" Enabled="@AllowEditMode"
+                            @bind-Date="@CurRecord.Ngay_ve" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NƠI ĐI --- *@
+                <DxFormLayoutItem Caption="@Lap["Trip destination code"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_nct_input" Ma_dm="dmnct"
+                            @bind-Value="@CurRecord.Ma_nct" IsEnable="@AllowEditMode"
+                            SelectChanged="Ma_nct_Changed" IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- CHI PHÍ --- *@
+                <DxFormLayoutItem Caption="@Lap["Trip cost"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                            <DxSpinEdit Enabled="@AllowEditMode"
+                                @bind-Value="@CurRecord.Chi_phi"
+                                MinValue="0" DisplayFormat="N0" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NỘI DUNG --- *@
+                <DxFormLayoutItem Caption="@Lap["Trip content"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRecord.Noi_dung"
+                            maxlength="@(tblLength.ContainsKey("noi_dung") ? tblLength["noi_dung"] : 500)"
+                            Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- KẾT QUẢ --- *@
+                <DxFormLayoutItem Caption="@Lap["Trip result"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRecord.Ket_qua"
+                            maxlength="@(tblLength.ContainsKey("ket_qua") ? tblLength["ket_qua"] : 500)"
+                            Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- GHI CHÚ --- *@
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRecord.Ghi_chu"
+                            maxlength="@(tblLength.ContainsKey("ghi_chu") ? tblLength["ghi_chu"] : 500)"
+                            Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- TRẠNG THÁI --- *@
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <div class="d-flex align-items-center gap-2">
+                            <DxSpinEdit Id="status_input" Enabled="@AllowEditMode"
+                                        Value="@(CurRecord.Status ?? 1)"
+                                        ValueChanged="@((int v) => { CurRecord.Status = v; StateHasChanged(); })"
+                                        MinValue="0" MaxValue="1" Increment="1" DisplayFormat="N0" />
+                            <span class="text-muted small">@Lap["1 - In use, 0 - Not in use"]</span>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+public Hrdmnvct CurRecord;
+private string menu_id = "wr.ct.21";
+private const string DefaultMenuId = "wr.ct.21";
+
+protected override void OnInitialized()
+{
+    sqlTableName     = "dmnvct";
+    sqlTableView     = "v_dmnvct";
+    SqlTableKey      = "nvctid";
+    CheckSqlTableKey = "nvctid";
+    ParentPage       = string.IsNullOrEmpty(ParentPage) ? "hrdmnvct" : ParentPage;
+    CurRecord        = new Hrdmnvct();
+
+    if (string.IsNullOrEmpty(Menu_id))
+        Menu_id = DefaultMenuId;
+
+    base.OnInitialized();
+}
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord();
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task ViewRecord(string key)
+    {
+        CurRecord        = new Hrdmnvct();
+        AllowEditMode    = false;
+        AllowEditMa      = false;
+        await LoadData(key);
+    }
+
+    async Task EditRecord(string key)
+    {
+        CurRecord        = new Hrdmnvct();
+        AllowEditMode    = true;
+        AllowEditMa      = false;
+        await LoadData(key);
+    }
+
+    async Task NewRecord()
+    {
+        CurRecord              = new Hrdmnvct();
+        CurRecord.Nvctid       = null;  // DO NOT SET - IDENTITY column
+        CurRecord.Status       = 1;
+        CurRecord.Chi_phi      = 0;
+        CurRecord.Ngay_di      = DateTime.Now.Date;
+        CurRecord.Ngay_ve      = DateTime.Now.Date;
+        AllowEditMode          = true;
+        AllowEditMa            = true;
+        StateHasChanged();
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {SqlTableKey} = @{SqlTableKey}";
+            DataSet ds = await myDb.LoadDataset(sql, SqlTableKey, key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                List<Hrdmnvct> list = myDb.ConvertDataTable<Hrdmnvct>(ds.Tables[0]);
+                if (list != null && list.Count > 0)
+                    CurRecord = list[0];
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data load error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Ma_ns_Changed(ExpandoObject value)
+    {
+        CurRecord.Ten_ns = string.Empty;
+        if (!string.IsNullOrWhiteSpace(CurRecord.Ma_ns))
+        {
+            string safe = CurRecord.Ma_ns.Trim().Replace("'", "''");
+            string sql  = $"SELECT ten_ns FROM dmns WHERE ma_ns = '{safe}'";
+            DataTable tbl = myDb.GetTable(sql);
+            if (tbl != null && tbl.Rows.Count > 0)
+                CurRecord.Ten_ns = IsLangEn 
+                    ? (tbl.Rows[0]["ten_ns2"]?.ToString() ?? tbl.Rows[0]["ten_ns"]?.ToString() ?? "")
+                    : (tbl.Rows[0]["ten_ns"]?.ToString() ?? "");
+        }
+        StateHasChanged();
+    }
+
+    void Ma_nct_Changed(ExpandoObject value)
+    {
+        CurRecord.Ten_nct = string.Empty;
+        if (!string.IsNullOrWhiteSpace(CurRecord.Ma_nct))
+        {
+            string safe = CurRecord.Ma_nct.Trim().Replace("'", "''");
+            string sql  = $"SELECT ten_nct FROM dmnct WHERE ma_nct = '{safe}'";
+            DataTable tbl = myDb.GetTable(sql);
+            if (tbl != null && tbl.Rows.Count > 0)
+                CurRecord.Ten_nct = tbl.Rows[0]["ten_nct"]?.ToString() ?? "";
+        }
+        StateHasChanged();
+    }
+
+    async Task SaveHrdmnvct()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            CurRecord.Ma_quyet_dinh = CurRecord.Ma_quyet_dinh ?? "";
+            CurRecord.Noi_dung      = CurRecord.Noi_dung ?? "";
+            CurRecord.Ket_qua       = CurRecord.Ket_qua ?? "";
+            CurRecord.Ghi_chu       = CurRecord.Ghi_chu ?? "";
+            CurRecord.Chi_phi       = CurRecord.Chi_phi ?? 0;
+
+            DateTime now    = DateTime.Now;
+            int userId      = curUser != null ? curUser.User_id : 0;
+            string userName = curUser != null ? curUser.User_name : "";
+
+            if (curActionTask == ActionTask.New)
+            {
+                // DO NOT set Nvctid - it's an IDENTITY column, let SQL Server generate it
+                CurRecord.Date0      = now.Date;
+                CurRecord.Time0      = now.ToString("HH:mm:ss");
+                CurRecord.Date       = now.Date;
+                CurRecord.Time       = now.ToString("HH:mm:ss");
+                CurRecord.User_id0   = userId;
+                CurRecord.User_name0 = userName;
+                CurRecord.User_id    = userId;
+                CurRecord.User_name  = userName;
+
+                await myDb.InsertOneRow<Hrdmnvct>(CurRecord, sqlTableName);
+                myStateMN.SetNewThongbao($"{Lap["Successfully added new"]}: {CurRecord.Ma_ns}");
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                CurRecord.Date      = now.Date;
+                CurRecord.Time      = now.ToString("HH:mm:ss");
+                CurRecord.User_id   = userId;
+                CurRecord.User_name = userName;
+
+                // IMPORTANT: Do NOT update Nvctid - it's an IDENTITY column!
+                // Build parameterized UPDATE without the identity column
+                string sQuyet      = CurRecord.Ma_quyet_dinh?.Replace("'", "''") ?? "";
+                string sNs         = CurRecord.Ma_ns?.Replace("'", "''") ?? "";
+                string sNct        = CurRecord.Ma_nct?.Replace("'", "''") ?? "";
+                string sNhoidung   = CurRecord.Noi_dung?.Replace("'", "''") ?? "";
+                string sKetqua     = CurRecord.Ket_qua?.Replace("'", "''") ?? "";
+                string sGhichu     = CurRecord.Ghi_chu?.Replace("'", "''") ?? "";
+                string sUsername   = CurRecord.User_name?.Replace("'", "''") ?? "";
+                
+                string ngayDi   = CurRecord.Ngay_di.HasValue ? $"'{CurRecord.Ngay_di.Value:yyyy-MM-dd}'" : "NULL";
+                string ngayVe   = CurRecord.Ngay_ve.HasValue ? $"'{CurRecord.Ngay_ve.Value:yyyy-MM-dd}'" : "NULL";
+                string ngayUpd  = $"'{CurRecord.Date:yyyy-MM-dd}'";
+                
+                string updateSql = $@"UPDATE dmnvct SET 
+                    ma_quyet_dinh = N'{sQuyet}',
+                    ma_ns = N'{sNs}',
+                    ngay_di = {ngayDi},
+                    ngay_ve = {ngayVe},
+                    ma_nct = N'{sNct}',
+                    chi_phi = {CurRecord.Chi_phi ?? 0},
+                    noi_dung = N'{sNhoidung}',
+                    ket_qua = N'{sKetqua}',
+                    ghi_chu = N'{sGhichu}',
+                    status = {CurRecord.Status ?? 1},
+                    [date] = {ngayUpd},
+                    [time] = N'{CurRecord.Time}',
+                    user_id = {userId},
+                    user_name = N'{sUsername}'
+                WHERE nvctid = {Ma_ma}";
+
+                await myDb.ExecuteSqlQueryAsync(updateSql);
+                myStateMN.SetNewThongbao($"{Lap["Edit successfully"]}: {CurRecord.Ma_ns}");
+            }
+
+            if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo(ParentPage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed"]}: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrWhiteSpace(CurRecord.Ma_ns))
+        {
+            myStateMN.SetNewThongbao(Lap["Employee code is required"] + "!");
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(CurRecord.Ma_quyet_dinh))
+        {
+            string invalid = CheckInvalidCode(CurRecord.Ma_quyet_dinh);
+            if (!string.IsNullOrEmpty(invalid))
+            {
+                myStateMN.SetNewThongbao($"{Lap["Decision number contains invalid characters"]} [{invalid}]!");
+                return false;
+            }
+        }
+
+        if (CurRecord.Ngay_di.HasValue && CurRecord.Ngay_ve.HasValue
+            && CurRecord.Ngay_di.Value > CurRecord.Ngay_ve.Value)
+        {
+            myStateMN.SetNewThongbao(Lap["Departure date must be less than or equal to return date"] + "!");
+            return false;
+        }
+
+        return true;
+    }
+
+    private string CheckInvalidCode(string code)
+    {
+        var invalidChars = new[] { "'", "\"", ";", "--", "/*", "*/" };
+        foreach (var c in invalidChars)
+            if (code.Contains(c)) return c;
+        return string.Empty;
+    }
+}

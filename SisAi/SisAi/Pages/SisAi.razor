@@ -1,0 +1,3445 @@
+﻿@page "/sisai"
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using SisCa.Model
+@using SisData
+@using SisData.Data
+@using System.Data
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using SisAiModule.Services
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+@inject IDbManager myDb
+@inject IOptionsManager myOption
+@inject Statemanagerment myStateMN
+@inject ProtectedSessionStorage SessionStorage
+@inject AiChatService AiChat
+
+<div class="ai-chat-container @(isMinimized ? "ai-chat-hidden" : "")">
+<div class="ai-chat-header">
+    <div class="ai-chat-title">
+        @if (_aiMode)
+        {
+            <span class="ai-mode-badge">🤖 AI</span>
+        }
+        Trợ lý ERP - Phiếu thu
+    </div>
+    <div class="ai-chat-actions">
+        <button class="ai-btn-icon ai-btn-toggle @(_aiMode ? "ai-btn-toggle-on" : "")" @onclick="ToggleAiMode"
+                title="@(_aiMode ? "Đang dùng AI (nhấn để tắt)" : "Bật chế độ AI")">🤖</button>
+        <button class="ai-btn-icon" @onclick="ToggleMinimize" title="Đóng">✕</button>
+    </div>
+</div>
+
+    <div class="ai-chat-body" id="ai-chat-body">
+        @foreach (var msg in messages)
+        {
+            <div class="ai-chat-message @(msg.Role == "user" ? "ai-chat-user" : "ai-chat-bot")">
+                <div class="ai-chat-meta">
+                    <span class="ai-chat-name">@msg.Name</span>
+                    <span class="ai-chat-time">@msg.Time.ToLocalTime().ToString("HH:mm")</span>
+                </div>
+                <div class="ai-chat-text">@RenderText(msg.Text)</div>
+                @if (msg.VoucherData != null && !msg.IsEditing)
+                {
+                    <div class="voucher-confirm-actions">
+                        <button class="btn-edit-voucher" @onclick="@(() => EnableEditMode(msg))">✏️ Sửa thông tin</button>
+                        <button class="btn-confirm-voucher" @onclick="@(async () => await CreateVoucher(msg.VoucherData))">✓ Xác nhận tạo</button>
+                        <button class="btn-cancel-voucher" @onclick="@(async () => await CancelVoucher(msg.VoucherData))">✗ Hủy</button>
+                    </div>
+                }
+                @if (msg.IsEditing && msg.VoucherData != null)
+                {
+                    <div class="voucher-edit-form">
+                        <div class="form-group">
+                            <label>Mã đơn vị:</label>
+                            <input type="text" @bind="msg.VoucherData.MaDvcs" class="form-input" placeholder="VD: 001" />
+                        </div>
+                        <div class="form-group">
+                            <label>Mã khách hàng:</label>
+                            <input type="text" @bind="msg.VoucherData.MaKh" class="form-input" placeholder="VD: KH001" />
+                        </div>
+                        <div class="form-group">
+                            <label>Người nộp tiền:</label>
+                            <input type="text" @bind="msg.VoucherData.OngBa" class="form-input" placeholder="VD: Nguyễn Văn A" />
+                        </div>
+                        <div class="form-group">
+                            <label>Số tiền:</label>
+                            <input type="number" @bind="msg.VoucherData.SoTien" class="form-input" placeholder="VD: 1000000" />
+                        </div>
+                        <div class="form-group">
+                            <label>TK nợ:</label>
+                            <input type="text" @bind="msg.VoucherData.TkNo" class="form-input" placeholder="VD: 111" />
+                        </div>
+                        <div class="form-group">
+                            <label>TK có:</label>
+                            <input type="text" @bind="msg.VoucherData.TkCo" class="form-input" placeholder="VD: 131" />
+                        </div>
+                        <div class="form-group">
+                            <label>Diễn giải:</label>
+                            <input type="text" @bind="msg.VoucherData.DienGiai" class="form-input" placeholder="Nhập diễn giải" />
+                        </div>
+                        <div class="form-group">
+                            <label>Quyển sổ:</label>
+                            <input type="text" @bind="msg.VoucherData.MaQs" class="form-input" placeholder="VD: PT" />
+                        </div>
+                        <div class="voucher-confirm-actions">
+                            <button class="btn-save-edit" @onclick="@(async () => await SaveEditedVoucher(msg))">💾 Lưu chỉnh sửa</button>
+                            <button class="btn-cancel-voucher" @onclick="@(() => CancelEdit(msg))">✗ Hủy sửa</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        @if (_isAiThinking)
+        {
+            <div class="ai-chat-message ai-chat-bot ai-thinking">
+                <div class="ai-chat-meta">
+                    <span class="ai-chat-name">Trợ lý ERP</span>
+                </div>
+                <div class="ai-thinking-dots"><span></span><span></span><span></span></div>
+            </div>
+        }
+        <div id="ai-chat-bottom"></div>
+    </div>
+
+    @if (_wizard != null)
+    {
+        <div class="wizard-step-bar">
+            <span class="wizard-step-label">🎙️ @_wizard.StepLabel</span>
+            <button class="wizard-cancel-btn" @onclick="CancelWizard" title="Hủy">✕ Hủy</button>
+        </div>
+    }
+    @if (_voiceMode)
+    {
+        <div class="voice-mode-bar">
+            <span class="voice-mode-label">@(isListening ? "🔴 Đang nghe..." : "⏳ Đang xử lý...")</span>
+            <button class="voice-mode-stop" @onclick="StopVoiceMode">⏹ Dừng</button>
+        </div>
+    }
+    <div class="ai-pdf-dropzone @(_isDragging ? "pdf-drop-active" : "")" id="ai-pdf-dropzone"
+         title="Kéo thả file PDF phiếu thu vào đây"
+         @ondragenter="@(() => { _isDragging = true; StateHasChanged(); })"
+         @ondragover:preventDefault
+         @ondragleave="@(() => { _isDragging = false; StateHasChanged(); })">
+        @if (_isPdfProcessing)
+        {
+            <span class="pdf-drop-label">⏳ Đang đọc PDF...</span>
+        }
+        else if (_isDragging)
+        {
+            <span class="pdf-drop-label">📥 Thả file PDF tại đây...</span>
+        }
+        else
+        {
+            <span class="pdf-drop-label">📄 Kéo thả file PDF hoặc <button class="pdf-pick-btn" @onclick="PickPdfFile">chọn file</button></span>
+        }
+    </div>
+    <input type="file" id="ai-pdf-input" accept=".pdf" style="display:none" />
+    <div class="ai-chat-input">
+        <input class="ai-input" placeholder="@GetInputPlaceholder()" value="@userInput" @oninput="@(e => userInput = e.Value?.ToString())" @onkeydown="OnKeyDown" />
+        <button class="ai-btn-mic @(isListening ? "ai-btn-mic-active" : (_voiceMode ? "ai-btn-mic-voice" : ""))" @onclick="ToggleVoiceInput"
+                title="@_micTitle">
+            @if (isListening)
+            {
+                <span class="mic-pulse">🔴</span>
+            }            
+            else
+            {
+                <span>🎤</span>
+            }
+        </button>
+        <button class="ai-btn-send" @onclick="Send">Gửi</button>
+    </div>
+</div>
+
+<style>
+    .ai-chat-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 380px;
+        max-width: 90vw;
+        height: 650px;
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+        display: flex;
+        flex-direction: column;
+        z-index: 9999;
+        overflow: hidden;
+    }
+    .ai-chat-hidden { display: none; }
+
+    .ai-chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .ai-chat-title { font-size: 0.95rem; }
+
+    .ai-chat-actions { display: flex; gap: 6px; }
+
+    .ai-btn-icon {
+        border: none;
+        background: rgba(255,255,255,0.2);
+        color: #fff;
+        width: 28px;
+        height: 24px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .ai-chat-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+        background: #f5f6fb;
+    }
+
+    .ai-chat-message { margin-bottom: 10px; padding: 8px 10px; border-radius: 10px; }
+    .ai-chat-user { background: #e8f0ff; margin-left: 30px; }
+    .ai-chat-bot { background: #fff; margin-right: 30px; border: 1px solid #ececec; }
+    .ai-chat-meta { font-size: 0.75rem; color: #666; display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .ai-chat-text { font-size: 0.9rem; color: #2b2b2b; }
+
+    .ai-chat-input { display: flex; padding: 10px; gap: 8px; border-top: 1px solid #eee; align-items: center; }
+    .ai-input { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid #dcdcdc; }
+    .ai-btn-send { background: #667eea; color: #fff; border: none; border-radius: 8px; padding: 0 14px; cursor: pointer; height: 36px; }
+    .ai-btn-send:hover { background: #5a6ed6; }
+
+    .ai-btn-mic {
+        background: #f0f0f0;
+        border: 1px solid #dcdcdc;
+        border-radius: 8px;
+        width: 36px;
+        height: 36px;
+        cursor: pointer;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: background 0.2s;
+    }
+    .ai-btn-mic:hover { background: #e0e0e0; }
+    .ai-btn-mic-active {
+        background: #ffe5e5;
+        border-color: #ff4444;
+    }
+    .ai-btn-mic-active:hover { background: #ffd0d0; }
+
+    @@keyframes micPulse {
+        0%   { opacity: 1; }
+        50%  { opacity: 0.3; }
+        100% { opacity: 1; }
+    }
+    .mic-pulse { animation: micPulse 1s infinite; }
+
+    .ai-chat-quick { display: flex; gap: 8px; padding: 8px 10px; flex-wrap: wrap; background: #f8f9fc; border-top: 1px solid #eee; }
+    .ai-btn { background: #edf0ff; border: 1px solid #dbe0ff; border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 0.85rem; }
+    .ai-btn:hover { background: #dbe0ff; }
+
+    .ai-chat-fab {
+        position: fixed;
+        bottom: 18px;
+        right: 18px;
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        font-size: 22px;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.2);
+        cursor: pointer;
+        z-index: 9999;
+    }
+
+    .voucher-confirm-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+    }
+
+    .btn-confirm-voucher, .btn-cancel-voucher {
+        flex: 1;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-confirm-voucher {
+        background: #28a745;
+        color: white;
+    }
+
+    .btn-confirm-voucher:hover {
+        background: #218838;
+    }
+
+    .btn-cancel-voucher {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-cancel-voucher:hover {
+        background: #c82333;
+    }
+
+    .btn-edit-voucher {
+        flex: 1;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #007bff;
+        color: white;
+    }
+
+    .btn-edit-voucher:hover {
+        background: #0056b3;
+    }
+
+    .btn-save-edit {
+        flex: 1;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #17a2b8;
+        color: white;
+    }
+
+    .btn-save-edit:hover {
+        background: #138496;
+    }
+
+    .voucher-edit-form {
+        margin-top: 12px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+    }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 4px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 6px 10px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+
+    .wizard-step-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 12px;
+        background: linear-gradient(90deg, #667eea22, #764ba222);
+        border-top: 1px solid #667eea44;
+        font-size: 0.82rem;
+        gap: 8px;
+    }
+    .wizard-step-label {
+        color: #4a3f8f;
+        font-weight: 600;
+        flex: 1;
+    }
+    .wizard-cancel-btn {
+        border: none;
+        background: #dc354522;
+        color: #dc3545;
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-size: 0.78rem;
+        cursor: pointer;
+    }
+    .wizard-cancel-btn:hover { background: #dc354544; }
+
+    .voice-mode-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 5px 12px;
+        background: linear-gradient(90deg, #ff444411, #ff444422);
+        border-top: 1px solid #ff444444;
+        font-size: 0.82rem;
+        gap: 8px;
+        animation: voiceModePulse 1.5s infinite;
+    }
+    @@keyframes voiceModePulse {
+        0%   { background: linear-gradient(90deg, #ff444411, #ff444422); }
+        50%  { background: linear-gradient(90deg, #ff444422, #ff444433); }
+        100% { background: linear-gradient(90deg, #ff444411, #ff444422); }
+    }
+    .voice-mode-label {
+        color: #c0392b;
+        font-weight: 600;
+        flex: 1;
+        font-size: 0.8rem;
+    }
+    .voice-mode-stop {
+        border: none;
+        background: #c0392b22;
+        color: #c0392b;
+        border-radius: 6px;
+        padding: 2px 10px;
+        font-size: 0.78rem;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .voice-mode-stop:hover { background: #c0392b44; }
+    .ai-btn-mic-voice {
+        background: #ffe5e5;
+        border-color: #ff9999;
+        animation: micVoiceIdle 2s infinite;
+    }
+    @@keyframes micVoiceIdle {
+        0%   { box-shadow: 0 0 0 0 #ff444433; }
+        50%  { box-shadow: 0 0 0 5px #ff444400; }
+        100% { box-shadow: 0 0 0 0 #ff444400; }
+    }
+
+    @@media (max-width: 768px) {
+        .ai-chat-container { width: 100vw; height: 80vh; right: 0; left: 0; bottom: 0; border-radius: 0; }
+    }
+
+    /* ── PDF Drop Zone ─────────────────────────────────────────────── */
+    .ai-pdf-dropzone {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 36px;
+        padding: 6px 12px;
+        margin: 0 10px 4px;
+        border: 1.5px dashed #b0b8e0;
+        border-radius: 8px;
+        background: #f8f9ff;
+        color: #667eea;
+        font-size: 0.82rem;
+        cursor: default;
+        transition: all 0.2s;
+        gap: 6px;
+    }
+    .ai-pdf-dropzone.pdf-drop-active {
+        border-color: #667eea;
+        background: #eef0ff;
+        box-shadow: 0 0 0 3px rgba(102,126,234,0.18);
+    }
+    .pdf-drop-label { display: flex; align-items: center; gap: 6px; }
+    .pdf-pick-btn {
+        background: none;
+        border: none;
+        color: #667eea;
+        font-size: 0.82rem;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+    }
+    .pdf-pick-btn:hover { color: #764ba2; }
+
+    /* ── AI Mode ───────────────────────────────────────────────────── */
+    .ai-mode-badge {
+        display: inline-block;
+        background: rgba(255,255,255,0.25);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 0.72rem;
+        margin-right: 4px;
+        vertical-align: middle;
+    }
+    .ai-btn-toggle { font-size: 14px; }
+    .ai-btn-toggle-on {
+        background: rgba(255,220,0,0.35) !important;
+        box-shadow: 0 0 0 2px rgba(255,220,0,0.6);
+    }
+    .ai-api-settings {
+        padding: 8px 12px;
+        background: #f0f4ff;
+        border-bottom: 1px solid #dde3ff;
+        font-size: 0.8rem;
+    }
+    .ai-api-label { font-weight: 600; color: #4a3f8f; margin-bottom: 4px; }
+    .ai-api-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: center; }
+    .ai-api-input {
+        flex: 1;
+        padding: 4px 8px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+    .ai-api-select {
+        flex: 1;
+        padding: 4px 8px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        background: #fff;
+    }
+    .ai-api-save {
+        padding: 4px 10px;
+        background: #667eea;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .ai-api-save:hover { background: #5a6ed6; }
+    .ai-api-msg { color: #28a745; font-size: 0.75rem; }
+
+    /* ── AI Thinking dots ──────────────────────────────────────────── */
+    .ai-thinking { opacity: 0.85; }
+    .ai-thinking-dots { display: flex; gap: 4px; padding: 4px 2px; }
+    .ai-thinking-dots span {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: #667eea;
+        display: inline-block;
+        animation: thinkingBounce 1.2s infinite;
+    }
+    .ai-thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .ai-thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @@keyframes thinkingBounce {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40%            { transform: scale(1.0); opacity: 1.0; }
+    }
+</style>
+
+@code
+{
+    [Parameter]
+    public EventCallback<bool> CloseWindow { get; set; }
+
+    private string userInput = string.Empty;
+    private bool isMinimized;
+    private bool isListening;
+    private bool _voiceMode;
+    private bool _isProcessingVoice;
+    private bool _isDragging;
+    private bool _isPdfProcessing;
+    private string _micTitle => isListening ? "Dừng ghi âm" : (_voiceMode ? "Voice Mode (đang bật)" : "Nhập bằng giọng nói");
+    private List<ChatMessage> messages = new();
+    private VoiceWizardState _wizard = null;
+
+    // ── AI Chat mode ─────────────────────────────────────────────────────────
+    private bool _aiMode = false;
+    private bool _isAiThinking = false;
+    private List<AiMessage> _aiHistory = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var dotNetRef = DotNetObjectReference.Create(this);
+                await Js.InvokeVoidAsync("SisAiPdf.registerDropZone", "ai-pdf-dropzone", dotNetRef);
+                await Js.InvokeVoidAsync("SisAiPdf.handleFileInputChange", "ai-pdf-input", dotNetRef);
+            }
+            catch { }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var savedMessages = await SessionStorage.GetAsync<List<ChatMessage>>("sisai_chat_history");
+            if (savedMessages.Success && savedMessages.Value != null && savedMessages.Value.Count > 0)
+                messages = savedMessages.Value;
+            else
+                AddWelcomeMessage();
+        }
+        catch
+        {
+            AddWelcomeMessage();
+        }
+    }
+
+    private async Task PickPdfFile()
+    {
+        try { await Js.InvokeVoidAsync("SisAiPdf.triggerFilePicker", "ai-pdf-input"); } catch { }
+    }
+
+    [JSInvokable]
+    public void OnPdfDropStart(string fileName)
+    {
+        _isPdfProcessing = true;
+        _isDragging = false;
+        AddBot($"📄 Đang đọc file **{fileName}**...");
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnPdfDropError(string errorMsg)
+    {
+        _isPdfProcessing = false;
+        _isDragging = false;
+        AddBot($"❌ {errorMsg}");
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async void OnPdfTextExtracted(string fileName, string pdfText)
+    {
+        _isPdfProcessing = false;
+        _isDragging = false;
+        StateHasChanged();
+
+        try
+        {
+            var extracted = ParsePdfVoucherFields(pdfText);
+
+            if (extracted == null)
+            {
+                AddBot($"⚠️ Không nhận diện được thông tin phiếu thu từ **{fileName}**.\n\n" +
+                       "Vui lòng nhập tay theo cú pháp:\n" +
+                       "'Tạo phiếu thu: Khách KH001, Tiền 1000000, TK có 131'");
+                return;
+            }
+
+            // Fill in defaults
+            if (string.IsNullOrEmpty(extracted.TkNo)) extracted.TkNo = "111";
+            if (extracted.NgayCt == default) extracted.NgayCt = DateTime.Now.Date;
+            if (string.IsNullOrEmpty(extracted.MaDvcs))
+                extracted.MaDvcs = await GetCurrentMaDvcs();
+
+            if (string.IsNullOrEmpty(extracted.MaKh) && !string.IsNullOrEmpty(extracted.TenKh))
+            {
+                var customers = await SearchCustomerByName(RemoveDiacritics(extracted.TenKh).ToLowerInvariant());
+                if (customers.Count == 1)
+                {
+                    extracted.MaKh  = customers[0].MaKh;
+                    extracted.TenKh = customers[0].TenKh;
+                    if (string.IsNullOrEmpty(extracted.DiaChi)) extracted.DiaChi = customers[0].DiaChi;
+                }
+                else if (customers.Count > 1)
+                {
+                    var exactMatch = customers.FirstOrDefault(c =>
+                        RemoveDiacritics(c.TenKh).Equals(RemoveDiacritics(extracted.TenKh), StringComparison.OrdinalIgnoreCase));
+                    if (exactMatch != default)
+                    {
+                        extracted.MaKh  = exactMatch.MaKh;
+                        extracted.TenKh = exactMatch.TenKh;
+                        if (string.IsNullOrEmpty(extracted.DiaChi)) extracted.DiaChi = exactMatch.DiaChi;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(extracted.MaKh) && !string.IsNullOrEmpty(extracted.MaSoThue))
+            {
+                try
+                {
+                    var safeMst = extracted.MaSoThue.Replace("'", "''");
+                    var mstSql = $"SELECT TOP 1 ma_kh, ten_kh, dia_chi, doi_tac FROM dmkh WHERE ma_so_thue = N'{safeMst}'";
+                    var dsMst = await myDb.LoadDataset(mstSql);
+                    if (dsMst != null && dsMst.Tables[0].Rows.Count > 0)
+                    {
+                        extracted.MaKh  = dsMst.Tables[0].Rows[0]["ma_kh"]?.ToString()?.Trim();
+                        extracted.TenKh = dsMst.Tables[0].Rows[0]["ten_kh"]?.ToString()?.Trim();
+                        if (string.IsNullOrEmpty(extracted.DiaChi))
+                            extracted.DiaChi = dsMst.Tables[0].Rows[0]["dia_chi"]?.ToString()?.Trim();
+                    }
+                }
+                catch { }
+            }
+
+            if (string.IsNullOrEmpty(extracted.DienGiai))
+            {
+                if (!string.IsNullOrEmpty(extracted.MaKh))
+                    extracted.DienGiai = $"Thu tiền khách hàng {extracted.MaKh}";
+                else if (!string.IsNullOrEmpty(extracted.TenKh))
+                    extracted.DienGiai = $"Thu tiền khách hàng {extracted.TenKh}";
+            }
+
+            // Build preview summary
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"📄 **Nhận diện từ file: {fileName}**\n");
+            sb.AppendLine("📋 **Thông tin nhận diện được:**");
+            if (!string.IsNullOrEmpty(extracted.SoCt))    sb.AppendLine($"• Số chứng từ: **{extracted.SoCt}**");
+            if (!string.IsNullOrEmpty(extracted.MaKh))    sb.AppendLine($"• Khách hàng: **{extracted.MaKh}**{(!string.IsNullOrEmpty(extracted.TenKh) ? " - " + extracted.TenKh : "")}");
+            else if (!string.IsNullOrEmpty(extracted.TenKh)) sb.AppendLine($"• Đơn vị (KH): **{extracted.TenKh}** (chưa xác định mã KH)");
+            if (!string.IsNullOrEmpty(extracted.MaSoThue)) sb.AppendLine($"• Mã số thuế: {extracted.MaSoThue}");
+            if (!string.IsNullOrEmpty(extracted.OngBa))   sb.AppendLine($"• Người nộp tiền: {extracted.OngBa}");
+            if (!string.IsNullOrEmpty(extracted.DiaChi))  sb.AppendLine($"• Địa chỉ: {extracted.DiaChi}");
+            if (extracted.SoTien > 0)                     sb.AppendLine($"• Số tiền: **{extracted.SoTien:N0} VND**");
+            if (!string.IsNullOrEmpty(extracted.TkNo))    sb.AppendLine($"• TK nợ: **{extracted.TkNo}**");
+            if (!string.IsNullOrEmpty(extracted.TkCo))    sb.AppendLine($"• TK có: **{extracted.TkCo}**");
+            if (!string.IsNullOrEmpty(extracted.DienGiai))sb.AppendLine($"• Diễn giải: {extracted.DienGiai}");
+            if (extracted.NgayCt != default)              sb.AppendLine($"• Ngày: {extracted.NgayCt:dd/MM/yyyy}");
+            if (!string.IsNullOrEmpty(extracted.MaDvcs))  sb.AppendLine($"• Đơn vị CS: {extracted.MaDvcs}");
+
+            bool hasEnoughData = !string.IsNullOrEmpty(extracted.MaKh) && extracted.SoTien > 0;
+
+            if (!hasEnoughData)
+            {
+                sb.AppendLine();
+                if (string.IsNullOrEmpty(extracted.MaKh) && !string.IsNullOrEmpty(extracted.TenKh))
+                    sb.AppendLine("⚠️ Nhận diện được đơn vị (khách hàng) nhưng chưa xác định được mã KH. Vui lòng **Sửa thông tin** để nhập mã KH.");
+                else
+                    sb.AppendLine("⚠️ Thiếu thông tin. Vui lòng **Sửa thông tin** để bổ sung.");
+            }
+            else
+            {
+                sb.AppendLine();
+                sb.AppendLine("✅ Nhấn **Xác nhận tạo** để tạo phiếu thu, **Sửa thông tin** để chỉnh sửa.");
+            }
+
+            var confirmMsg = new ChatMessage
+            {
+                Name = "Trợ lý ERP",
+                Role = "bot",
+                Time = DateTime.Now,
+                Text = sb.ToString().TrimEnd(),
+                VoucherData = extracted,
+                IsEditing = !hasEnoughData
+            };
+            messages.Add(confirmMsg);
+            StateHasChanged();
+            await SaveChatHistory();
+            await ScrollBottom();
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi khi phân tích PDF: {ex.Message}");
+        }
+    }
+
+    private static Dictionary<string, string> ParsePdfLabelValuePairs(string text)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(text)) return result;
+
+        // Normalise: collapse runs of whitespace/newlines to single space
+        var flat = Regex.Replace(text, @"\s+", " ").Trim();
+
+        var ms = Regex.Matches(flat,
+            @"([A-ZÀ-Ỹa-zà-ỹ][A-ZÀ-Ỹa-zà-ỹ0-9 /\-]{0,60}?)\s*:",
+            RegexOptions.None);
+
+        for (int i = 0; i < ms.Count; i++)
+        {
+            string lbl = ms[i].Groups[1].Value.Trim();
+            if (string.IsNullOrWhiteSpace(lbl)) continue;
+
+            int vStart = ms[i].Index + ms[i].Length;
+            int vEnd   = (i + 1 < ms.Count) ? ms[i + 1].Index : flat.Length;
+            if (vEnd <= vStart) continue;
+
+            string val = flat.Substring(vStart, vEnd - vStart).Trim();
+            // Remove trailing parenthetical remarks
+            val = Regex.Replace(val, @"\s*\([^)]{0,80}\)\s*$", "").Trim();
+            var gapM = Regex.Match(val, @"\s{2,}");
+            if (gapM.Success)
+                val = val.Substring(0, gapM.Index).Trim();
+
+            if (!string.IsNullOrWhiteSpace(lbl) && !string.IsNullOrWhiteSpace(val))
+                result[lbl] = val;
+        }
+        return result;
+    }
+
+    private VoucherCreateData ParsePdfVoucherFields(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+
+        var data = new VoucherCreateData();
+
+        // ── Chuẩn hoá: collapse tất cả whitespace thành 1 dấu cách ─────────
+        var norm = Regex.Replace(text, @"\s+", " ").Trim();
+
+        static string After(string src, string labelPattern)
+        {
+            var m = Regex.Match(src,
+                labelPattern + @"\s*:\s*(.+?)(?=\s{2,}|[A-ZÀ-Ỹa-zà-ỹ][A-ZÀ-Ỹa-zà-ỹ0-9 /\-]{1,50}\s*:|$)",
+                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            return m.Success ? m.Groups[1].Value.Trim() : null;
+        }
+
+        static string AfterShort(string src, string labelPattern)
+        {
+            var val = After(src, labelPattern);
+            if (val == null) return null;
+            var gap = Regex.Match(val, @"\s{2,}");
+            return gap.Success ? val.Substring(0, gap.Index).Trim() : val;
+        }
+
+        data.SoCt = AfterShort(norm,
+            @"(?:Số\s*phiếu|Số\s*CT|So\s*phieu|So\s*CT|Số\s*chứng\s*từ|Number)");
+
+        var ngayFormal = Regex.Match(norm,
+            @"[Nn]g[àa][ỳy]?\s+(\d{1,2})\s+[Tt]h[áa]ng\s+(\d{1,2})\s+[Nn][ăa]m\s+(\d{4})",
+            RegexOptions.IgnoreCase);
+        if (!ngayFormal.Success)
+            ngayFormal = Regex.Match(norm,
+                @"NGA[Y]?\s+(\d{1,2})\s+THANG\s+(\d{1,2})\s+NAM\s+(\d{4})",
+                RegexOptions.IgnoreCase);
+        if (ngayFormal.Success)
+        {
+            int dd = int.Parse(ngayFormal.Groups[1].Value);
+            int mm = int.Parse(ngayFormal.Groups[2].Value);
+            int yy = int.Parse(ngayFormal.Groups[3].Value);
+            if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12 && yy >= 2000)
+                data.NgayCt = new DateTime(yy, mm, dd);
+        }
+        if (data.NgayCt == default)
+        {
+            var dm = Regex.Match(norm, @"\b(\d{1,2}[/\-]\d{1,2}[/\-]\d{4})\b");
+            if (dm.Success)
+            {
+                var ds2 = dm.Groups[1].Value.Replace('-', '/');
+                if (DateTime.TryParseExact(ds2, new[] { "d/M/yyyy", "dd/MM/yyyy" },
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None, out DateTime dt))
+                    data.NgayCt = dt;
+            }
+        }
+        if (data.NgayCt == default) data.NgayCt = DateTime.Now.Date;
+
+        var mstVal = AfterShort(norm,
+            @"(?:Mã\s*số\s*thuế|Ma\s*so\s*thue|MST)");
+        if (!string.IsNullOrEmpty(mstVal) && Regex.IsMatch(mstVal, @"^\d[\d\-]{8,}"))
+            data.MaSoThue = mstVal;
+        if (string.IsNullOrEmpty(data.MaSoThue))
+        {
+            var mstM = Regex.Match(norm,
+                @"(?:MST|Mã\s*số\s*thuế|Ma\s*so\s*thue)\s*:?\s*(\d[\d\-]{8,})",
+                RegexOptions.IgnoreCase);
+            if (mstM.Success) data.MaSoThue = mstM.Groups[1].Value.Trim();
+        }
+
+        var donViM = Regex.Match(norm,
+            @"(?<!\S)(?:Đơn\s*vị|Don\s*vi)\s*:\s*(.+?)(?=\s{2,}|(?:Địa\s*chỉ|Dia\s*chi|Mã\s*số|Ma\s*so|Người\s*nộp|Nguoi\s*nop|Số\s*tiền|So\s*tien|TK|Lý\s*do|Ly\s*do|Diễn|Dien|$))",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        if (donViM.Success)
+        {
+            var donViVal = donViM.Groups[1].Value.Trim();
+            var dashM = Regex.Match(donViVal, @"^([A-Za-z0-9]{2,20})\s*[\-–]\s*(.+)$");
+            if (dashM.Success && Regex.IsMatch(dashM.Groups[1].Value, @"[A-Za-z]"))
+            {
+                data.MaKh  = dashM.Groups[1].Value.Trim();
+                data.TenKh = dashM.Groups[2].Value.Trim();
+            }
+            else
+            {
+                var afterDash = Regex.Match(donViVal, @"^[0-9\s\-–]*[\-–]\s*(.+)$");
+                data.TenKh = afterDash.Success ? afterDash.Groups[1].Value.Trim() : donViVal;
+            }
+        }
+
+        var diaChiVal = After(norm,
+            @"(?:Địa\s*chỉ|Dia\s*chi|Address)");
+        if (!string.IsNullOrEmpty(diaChiVal) && diaChiVal.Length < 300)
+            data.DiaChi = diaChiVal;
+
+        var ongBaVal = AfterShort(norm,
+            @"(?:Người\s*nộp\s*tiền|Nguoi\s*nop\s*tien|Họ\s*tên\s*người\s*nộp|Ho\s*ten\s*nguoi\s*nop|Full\s*[Nn]ame)");
+        if (!string.IsNullOrEmpty(ongBaVal) && ongBaVal.Length >= 2
+            && !Regex.IsMatch(ongBaVal, @"^\d{5,}"))
+            data.OngBa = ongBaVal;
+
+        data.DienGiai = After(norm,
+            @"(?:Lý\s*do\s*nộp\s*tiền|Ly\s*do\s*nop\s*tien|Lý\s*do\s*nộp|Ly\s*do\s*nop|Lý\s*do|Ly\s*do|Diễn\s*giải|Dien\s*giai|Nội\s*dung|Noi\s*dung)");
+
+        var soTienRaw = AfterShort(norm,
+            @"(?:Số\s*tiền|So\s*tien|Tổng\s*cộng|Tong\s*cong|Total)");
+        if (!string.IsNullOrEmpty(soTienRaw))
+        {
+            var stM = Regex.Match(soTienRaw, @"([\d.,]+)");
+            if (stM.Success)
+            {
+                var numStr = NormalizeAmountString(stM.Groups[1].Value);
+                decimal.TryParse(numStr, out decimal amt);
+                data.SoTien = amt;
+            }
+        }
+        if (data.SoTien == 0)
+        {
+            decimal best = 0;
+            foreach (System.Text.RegularExpressions.Match fm in
+                Regex.Matches(norm, @"(\d{1,3}(?:[.,]\d{3})+)"))
+            {
+                var numStr = NormalizeAmountString(fm.Groups[1].Value);
+                if (decimal.TryParse(numStr, out decimal amt) && amt > best) best = amt;
+            }
+            data.SoTien = best;
+        }
+
+        var noRaw = AfterShort(norm,
+            @"(?:TK\s*nợ|TK\s*Nợ|TK\s*no|Tài\s*khoản\s*nợ|Tai\s*khoan\s*no|Nợ|No)");
+        if (!string.IsNullOrEmpty(noRaw))
+        {
+            var nm = Regex.Match(noRaw, @"(\d{3,4})");
+            if (nm.Success) data.TkNo = nm.Groups[1].Value;
+        }
+
+        var coRaw = AfterShort(norm,
+            @"(?:TK\s*có|TK\s*Có|TK\s*co|Tài\s*khoản\s*có|Tai\s*khoan\s*co|Có|Co)");
+        if (!string.IsNullOrEmpty(coRaw))
+        {
+            var cm = Regex.Match(coRaw, @"(\d{3,4})");
+            if (cm.Success) data.TkCo = cm.Groups[1].Value;
+        }
+
+        data.MaQs = AfterShort(norm,
+            @"(?:Quyển\s*sổ|Quyen\s*so|Quy[eê]n\s*s[oố])") ?? "PT";
+
+        var dvcsRaw = AfterShort(norm,
+            @"(?:Đơn\s*vị\s*cơ\s*sở|Don\s*vi\s*co\s*so|DVCS|Chi\s*nhánh|Chi\s*nhanh)");
+        if (!string.IsNullOrEmpty(dvcsRaw))
+        {
+            var dm2 = Regex.Match(dvcsRaw, @"^([A-Za-z0-9]{1,10})");
+            if (dm2.Success) data.MaDvcs = dm2.Groups[1].Value.Trim().ToUpper();
+        }
+
+        // ── Trả về ────────────────────────────────────────────────────────────
+        bool hasMinData = !string.IsNullOrEmpty(data.MaKh)     ||
+                          !string.IsNullOrEmpty(data.TenKh)    ||
+                          !string.IsNullOrEmpty(data.MaSoThue) ||
+                          data.SoTien > 0                      ||
+                          !string.IsNullOrEmpty(data.TkCo)     ||
+                          !string.IsNullOrEmpty(data.SoCt);
+        return hasMinData ? data : null;
+    }
+
+    private static string NormalizeAmountString(string numStr)
+    {
+        if (string.IsNullOrEmpty(numStr)) return numStr;
+        numStr = numStr.Trim();
+        if (numStr.Contains(".") && numStr.Contains(","))
+            numStr = numStr.Replace(".", "").Replace(",", "");
+        else if (numStr.Count(c => c == '.') > 1)
+            numStr = numStr.Replace(".", "");
+        else if (numStr.Count(c => c == ',') > 1)
+            numStr = numStr.Replace(",", "");
+        else
+            numStr = numStr.Replace(",", "").Replace(".", "");
+        return numStr;
+    }
+
+    private void ToggleAiMode()
+    {
+        _aiMode = !_aiMode;
+        if (_aiMode)
+        {
+            if (string.IsNullOrWhiteSpace(AiChatConfig.OpenAI_ApiKey))
+            {
+                AddBot("🤖 **Chế độ AI đã bật!**\n\nAPI Key chưa được cấu hình.\n" +
+                       "Vui lòng khai báo trong file **AiChatConfig.cs** → thuộc tính **OpenAI_ApiKey**.\n\n" +
+                       "Lấy API Key tại: https://platform.openai.com/api-keys");
+            }
+            else
+            {
+                _aiHistory.Clear();
+                AddBot("🤖 **Chế độ AI đã bật!**\n\nBạn có thể hỏi bất kỳ câu hỏi nào về kế toán, ERP hoặc nghiệp vụ phiếu thu.\n\n" +
+                       "Nhấn 🤖 lần nữa để quay về chế độ lệnh nhanh.");
+            }
+        }
+        else
+        {
+            _aiHistory.Clear();
+            AddBot("⚡ **Chế độ lệnh nhanh** đã bật lại.\n\nGõ *'help'* để xem danh sách lệnh.");
+        }
+        StateHasChanged();
+    }
+
+    private void AddWelcomeMessage()
+    {
+        messages.Add(new ChatMessage
+        {
+            Name = "Trợ lý ERP",
+            Role = "bot",
+            Time = DateTime.Now,
+            Text = "Xin chào! Tôi là **Trợ lý SIS ERP**.\n\nGõ *'bạn làm được gì'* hoặc *'help'* để xem toàn bộ tính năng.\n\n**🔍 Tìm kiếm phiếu thu:**\n• 'Tìm phiếu PT001'\n• 'Xem số 00001'\n• 'Tra cứu PT-2024-001'\n\n**📋 Tìm phiếu theo khách hàng:**\n• 'Phiếu của KH001' (tìm theo mã KH)\n• 'Phiếu của Nguyễn Văn A' (tìm theo tên KH)\n• 'Phiếu KH001 tháng 6' (lọc theo tháng)\n• 'Phiếu KH001 từ 01/06 đến 30/06' (lọc khoảng ngày)\n\n**👤 Tìm kiếm khách hàng:**\n• 'Tìm khách KH001' (theo mã)\n• 'Tìm khách Nguyễn Văn A' (theo tên)\n• 'Tìm khách mst 0123456789' (theo mã số thuế)\n• 'Tìm khách sdt 0909123456' (theo điện thoại)\n• 'Tìm khách địa chỉ Hà Nội' (theo địa chỉ)\n\n**➕ Tạo nhanh phiếu thu:**\n• 'Tạo phiếu thu: Khách KH001, Tiền 1000000, TK có 131'\n• 'Tạo phiếu thu: Khách ABC, Tiền 500000, TK có 1111, TK nợ 111'\n• Không nhập TK nợ → Mặc định Tiền mặt\n\n**✨ Tìm khách hàng theo tên:**\n• 'Tạo phiếu thu: Khách Nguyễn Văn A, Tiền 1000000, TK có 131'\n• 'Tạo phiếu thu: Khách Công ty ABC, Tiền 2000000, TK có 131'\n\n**✏️ Sửa phiếu thu:**\n• 'Sửa phiếu PT001'\n• 'Sửa số 00001'\n\n**🗑️ Xóa phiếu thu:**\n• 'Xóa phiếu PT001'\n• 'Xóa số 00001'\n\n**📋 Các lệnh khác:**\n• Gõ 'mở phiếu thu' để vào màn hình phiếu thu\n• Gõ 'tạo phiếu thu' để xem hướng dẫn tạo mới\n• Gõ 'lọc phiếu' để xem cách lọc dữ liệu\n• Gõ 'in phiếu' để xem hướng dẫn in"
+        });
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await Send();
+        }
+    }
+
+    private async Task Send()
+    {
+        if (string.IsNullOrWhiteSpace(userInput)) return;
+
+        var text = userInput.Trim();
+        var userMsg = new ChatMessage
+        {
+            Name = "Bạn",
+            Role = "user",
+            Time = DateTime.Now,
+            Text = text
+        };
+        messages.Add(userMsg);
+        userInput = string.Empty;
+
+        if (_aiMode)
+            await ProcessAi(text);
+        else
+            Process(text);
+
+        await SaveChatHistory();
+        await ScrollBottom();
+    }
+
+    private async Task ProcessAi(string userText)
+    {
+        if (string.IsNullOrWhiteSpace(AiChatConfig.OpenAI_ApiKey))
+        {
+            AddBot("⚠️ Chưa cấu hình API Key. Vui lòng khai báo trong file **AiChatConfig.cs** → thuộc tính **OpenAI_ApiKey**.");
+            return;
+        }
+
+        _isAiThinking = true;
+        StateHasChanged();
+        await ScrollBottom();
+
+        try
+        {
+            var result = await AiChat.SendAsync(_aiHistory, userText);
+
+            if (result.Success)
+            {
+                // Add to rolling history
+                _aiHistory.Add(new AiMessage { Role = "user", Content = userText });
+                _aiHistory.Add(new AiMessage { Role = "assistant", Content = result.Text });
+                // Keep last 40 messages (20 turns) to avoid token overflow
+                if (_aiHistory.Count > 40)
+                    _aiHistory.RemoveRange(0, _aiHistory.Count - 40);
+
+                messages.Add(new ChatMessage
+                {
+                    Name = "Trợ lý ERP (AI)",
+                    Role = "bot",
+                    Time = DateTime.Now,
+                    Text = result.Text
+                });
+            }
+            else
+            {
+                messages.Add(new ChatMessage
+                {
+                    Name = "Trợ lý ERP (AI)",
+                    Role = "bot",
+                    Time = DateTime.Now,
+                    Text = $"❌ {result.ErrorMessage}"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new ChatMessage
+            {
+                Name = "Trợ lý ERP (AI)",
+                Role = "bot",
+                Time = DateTime.Now,
+                Text = $"❌ Lỗi không xác định: {ex.Message}"
+            });
+        }
+        finally
+        {
+            _isAiThinking = false;
+            StateHasChanged();
+            await ScrollBottom();
+        }
+    }
+
+    private void Process(string originalInput)
+    {
+        var input = RemoveDiacritics(originalInput).ToLowerInvariant();
+
+        // Wizard mode: intercept all input for step-by-step voice entry
+        if (_wizard != null)
+        {
+            ProcessWizardInput(originalInput);
+            return;
+        }
+
+        if (input.Contains("ban lam duoc gi") || input.Contains("lam duoc gi") ||
+            input.Contains("tinh nang") || input.Contains("chuc nang") ||
+            input.Contains("ho tro gi") || input.Contains("gioi thieu") ||
+            input.Contains("ban la gi") || input.Contains("ban la ai") ||
+            input.Contains("tro ly") && (input.Contains("gi") || input.Contains("nao") || input.Contains("co")) ||
+            input.Contains("huong dan") && !input.Contains("phieu") ||
+            input.Contains("help") || input.Contains("menu"))
+        {
+            AddBot("🤖 **Trợ lý SIS ERP** — Tôi có thể giúp bạn những việc sau:\n\n" +
+                   "━━━━━━━━━━━━━━━━━━━━\n" +
+                   "📄 **PHIẾU THU**\n" +
+                   "• 🔍 **Tìm kiếm** phiếu thu theo số chứng từ\n" +
+                   "  → *'Tìm phiếu PT001'*, *'Xem số 00001'*\n" +
+                   "• 📋 **Tìm phiếu theo khách hàng**, lọc theo tháng/khoảng ngày\n" +
+                   "  → *'Phiếu của KH001'*, *'Phiếu KH001 tháng 6'*\n" +
+                   "• ➕ **Tạo nhanh** phiếu thu bằng lệnh văn bản\n" +
+                   "  → *'Tạo phiếu thu: Khách KH001, Tiền 1000000, TK có 131'*\n" +
+                   "• 🎙️ **Tạo phiếu thu từng bước** bằng giọng nói hoặc gõ\n" +
+                   "  → Gõ *'Tạo phiếu thu'* để bắt đầu wizard\n" +
+                   "• 📄 **Đọc & nhận diện PDF** phiếu thu (kéo thả file PDF vào ô bên dưới)\n" +
+                   "• ✏️ **Hướng dẫn sửa** phiếu thu → *'Sửa phiếu PT001'*\n" +
+                   "• 🗑️ **Hướng dẫn xóa** phiếu thu → *'Xóa phiếu PT001'*\n" +
+                   "• 🖥️ **Mở màn hình** phiếu thu → *'Mở phiếu thu'*\n\n" +
+                   "━━━━━━━━━━━━━━━━━━━━\n" +
+                   "👤 **KHÁCH HÀNG**\n" +
+                   "• Tìm theo **mã**: *'Tìm khách KH001'*\n" +
+                   "• Tìm theo **tên**: *'Tìm khách Nguyễn Văn A'*\n" +
+                   "• Tìm theo **mã số thuế**: *'Tìm khách mst 0123456789'*\n" +
+                   "• Tìm theo **số điện thoại**: *'Tìm khách sdt 0909123456'*\n" +
+                   "• Tìm theo **địa chỉ**: *'Tìm khách địa chỉ Hà Nội'*\n\n" +
+                   "━━━━━━━━━━━━━━━━━━━━\n" +
+                   "🎤 **GIỌNG NÓI**\n" +
+                   "• Nhấn 🎤 để nhập lệnh bằng giọng nói (Chrome/Edge)\n" +
+                   "• Hỗ trợ nhận dạng số tiếng Việt: *hai triệu*, *500 nghìn*\n" +
+                   "• Chế độ voice liên tục: giữ 🎤 hoạt động sau mỗi lệnh\n\n" +
+                   "━━━━━━━━━━━━━━━━━━━━\n" +
+                   "💡 **MẸO SỬ DỤNG**\n" +
+                   "• Gõ *'hướng dẫn'* hoặc *'help'* để xem lại menu này\n" +
+                   "• Gõ *'lọc phiếu'* để xem cách lọc danh sách\n" +
+                   "• Gõ *'in phiếu'* để xem hướng dẫn in");
+            return;
+        }
+
+        if (input.Contains("mo") && input.Contains("phieu thu"))
+        {
+            NavigateToVoucher();
+            AddBot("Đang mở màn hình Phiếu thu. Nếu không tự mở, hãy bấm nút **Mở phiếu thu**.");
+            return;
+        }
+
+        if ((input.Contains("tim") || input.Contains("xem") || input.Contains("tra cuu")) &&
+            (input.Contains("khach") || input.Contains("kh")))
+        {
+            ProcessSearchCustomer(originalInput);
+            return;
+        }
+
+        if ((input.Contains("phieu")) &&
+            (input.Contains("cua") || input.Contains("khach")) &&
+            !input.Contains("tao") && !input.Contains("them"))
+        {
+            ProcessSearchVoucherByCustomer(originalInput);
+            return;
+        }
+
+        if ((input.Contains("tim") || input.Contains("xem") || input.Contains("tra cuu")) && 
+            (input.Contains("phieu") || input.Contains("so")))
+        {
+            ProcessSearchVoucher(originalInput);
+            return;
+        }
+
+        if (input.Contains("tao") || input.Contains("them"))
+        {
+            if (input.Contains("import") || input.Contains("nhieu") || input.Contains("hang loat"))
+            {
+                AddBot("🔄 **Tạo hàng loạt phiếu thu:**\n\n**Cách 1: Import từ Excel/CSV**\n• Chuẩn bị file Excel với các cột:\n  - Mã khách hàng, Số chứng từ, Ngày chứng từ\n  - Tài khoản nợ, Tài khoản có\n  - Số tiền, Diễn giải, Quyển sổ\n• Import dữ liệu vào hệ thống\n• Hệ thống sẽ tự động xử lý và tạo phiếu thu\n\n**Cách 2: Tạo nhanh qua AI (đang phát triển)**\n• Nhập nhiều dòng theo format:\n  'KH001|1000000|131|Thu tiền'\n  'KH002|2000000|131|Thu tiền'");
+                return;
+            }
+            
+            // Match both comma-delimited typed input AND free-form voice input
+            if (input.Contains("khach") || input.Contains("tien") || input.Contains("tk")
+                || input.Contains("tai khoan") || input.Contains("so tien"))
+            {
+                ProcessCreateVoucher(originalInput);
+                return;
+            }
+
+            // Plain "tạo phiếu thu" with no parameters → start step-by-step wizard
+            StartVoiceWizard();
+            return;
+        }
+
+        if (input.Contains("sua") || input.Contains("edit"))
+        {
+            if (System.Text.RegularExpressions.Regex.IsMatch(input, @"\d+"))
+            {
+                ProcessEditVoucher(originalInput);
+                return;
+            }
+            
+            AddBot("**Sửa phiếu thu:**\n\n**Cách 1: Sửa theo số chứng từ**\n• Gõ: 'Sửa phiếu PT001'\n• Gõ: 'Sửa số 00001'\n\n**Cách 2: Sửa thủ công**\n1) Mở danh sách Phiếu thu\n2) Chọn phiếu cần sửa → nhấn **Sửa**\n3) Chỉnh thông tin cần thiết\n4) Nhấn **Ghi sổ**\n\n⚠️ **Lưu ý:** Phiếu đã khóa sổ sẽ không sửa được.");
+            return;
+        }
+
+        if (input.Contains("xoa") || input.Contains("delete") || input.Contains("huy"))
+        {
+            if (System.Text.RegularExpressions.Regex.IsMatch(input, @"\d+"))
+            {
+                ProcessDeleteVoucher(originalInput);
+                return;
+            }
+            
+            AddBot("**Xóa phiếu thu:**\n\n**Cách 1: Xóa theo số chứng từ**\n• Gõ: 'Xóa phiếu PT001'\n• Gõ: 'Xóa số 00001'\n\n**Cách 2: Xóa thủ công**\n1) Mở danh sách Phiếu thu\n2) Chọn phiếu cần xóa\n3) Nhấn **Xóa** và xác nhận\n\n⚠️ **Lưu ý:**\n• Phiếu đã ghi sổ (status = 2) không thể xóa\n• Phải hủy ghi sổ trước khi xóa\n• Hãy cẩn thận khi xóa dữ liệu!");
+            return;
+        }
+
+        if (input.Contains("loc") || input.Contains("filter"))
+        {
+            AddBot("Lọc danh sách phiếu thu:\n- Bộ lọc: Quyển số, Số chứng từ, Ngày chứng từ từ/đến, Tài khoản, Khách hàng, Trạng thái.\n- Vào popup **Filter** trong danh sách phiếu thu để áp dụng.");
+            return;
+        }
+
+        if (input.Contains("in") || input.Contains("print"))
+        {
+            AddBot("In phiếu thu:\n1) Mở phiếu thu cần in.\n2) Nhấn **In** trên thanh chức năng.\n3) Chọn mẫu in (nếu có) và xuất PDF/Excel.\n4) Đảm bảo phiếu đã ghi sổ để số chứng từ ổn định.");
+            return;
+        }
+
+        if (input.Contains("store") || input.Contains("procedure") || input.Contains("sp"))
+        {
+            AddBot("📚 **Quy trình tạo hàng loạt phiếu thu:**\n\n**Các bước thực hiện:**\n1. Chuẩn bị dữ liệu import\n2. Hệ thống kiểm tra và điều chỉnh dữ liệu\n3. Validate thông tin (khách hàng, tài khoản, số tiền)\n4. Tạo và ghi sổ các phiếu thu\n\n**Lưu ý:**\n• Dữ liệu phải đầy đủ và hợp lệ\n• Hệ thống sẽ báo lỗi nếu có vấn đề\n• Có thể chọn ghi đè hoặc bỏ qua phiếu trùng");
+            return;
+        }
+
+        AddBot("Tôi chưa hiểu yêu cầu. Bạn có thể thử:\n\n**Tìm kiếm:**\n• 'Tìm phiếu PT001'\n• 'Xem số 00001'\n\n**Tìm phiếu theo khách hàng:**\n• 'Phiếu của KH001'\n• 'Phiếu của Nguyễn Văn A'\n• 'Phiếu KH001 tháng 6'\n• 'Phiếu KH001 từ 01/06 đến 30/06'\n\n**Tìm khách hàng:**\n• 'Tìm khách KH001'\n• 'Tìm khách Nguyễn Văn A'\n• 'Tìm khách mst 0123456789'\n• 'Tìm khách sdt 0909123456'\n\n**Thao tác:**\n• 'Tạo phiếu thu: Khách KH001, Tiền 1000000, TK có 131'\n• 'Sửa phiếu PT001'\n• 'Xóa phiếu PT001'\n\n**Khác:**\n• 'Mở phiếu thu'\n• 'Lọc phiếu'\n• 'In phiếu'");
+    }
+
+    private async void AddBot(string text, VoucherCreateData voucherData = null)
+    {
+        messages.Add(new ChatMessage
+        {
+            Name = "Trợ lý ERP",
+            Role = "bot",
+            Time = DateTime.Now,
+            Text = text,
+            VoucherData = voucherData,
+            IsEditing = false
+        });
+        StateHasChanged();
+        await SaveChatHistory();
+        await ScrollBottom();
+    }
+
+    private async void EnableEditMode(ChatMessage msg)
+    {
+        msg.IsEditing = true;
+        StateHasChanged();
+        await Task.Delay(100);
+        await ScrollBottom();
+    }
+
+    private void CancelEdit(ChatMessage msg)
+    {
+        msg.IsEditing = false;
+        StateHasChanged();
+    }
+
+    private async Task CancelVoucher(VoucherCreateData data)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(data?.SttRec))
+            {
+                var deleteSql = $"DELETE FROM ph41 WHERE stt_rec = '{data.SttRec}'";
+                await myDb.ExecuteSqlQueryAsync(deleteSql);
+                AddBot($"❌ **Đã hủy tạo phiếu thu.**\n\n• Đã xóa bản ghi tạm\n• Bạn có thể tạo phiếu thu mới bất cứ lúc nào.");
+            }
+            else
+            {
+                AddBot("Đã hủy tạo phiếu thu. Bạn có thể thử lại bất cứ lúc nào.");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddBot($"⚠️ Lỗi khi hủy phiếu thu: {ex.Message}");
+        }
+    }
+
+    private async Task SaveEditedVoucher(ChatMessage msg)
+    {
+        try
+        {
+            var data = msg.VoucherData;
+            if (string.IsNullOrWhiteSpace(data.MaDvcs) || data.MaDvcs.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+            {
+                AddBot("⚠️ Vui lòng nhập **Mã đơn vị** hợp lệ (không được để trống hoặc 'ALL')");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(data.MaKh))
+            {
+                AddBot("⚠️ Vui lòng nhập **Mã khách hàng**");
+                return;
+            }
+
+            if (data.SoTien <= 0)
+            {
+                AddBot("⚠️ **Số tiền** phải lớn hơn 0");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(data.TkCo))
+            {
+                AddBot("⚠️ Vui lòng nhập **TK có**");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(data.TkNo))
+            {
+                data.TkNo = "111";
+            }
+
+            var checkDvcs = await ValidateDvcs(data.MaDvcs);
+            if (!checkDvcs.IsValid)
+            {
+                AddBot($"❌ {checkDvcs.Message}");
+                return;
+            }
+
+            var checkKh = await ValidateCustomer(data.MaKh);
+            if (!checkKh.IsValid)
+            {
+                AddBot($"❌ {checkKh.Message}");
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(data.DiaChi)) data.DiaChi = checkKh.DiaChi;
+            if (string.IsNullOrEmpty(data.OngBa)) data.OngBa = checkKh.OngBa;
+
+            var checkTkCo = await ValidateAccount(data.TkCo);
+            if (!checkTkCo.IsValid)
+            {
+                AddBot($"❌ {checkTkCo.Message}");
+                return;
+            }
+
+            var checkTkNo = await ValidateDebitAccount(data.TkNo);
+            if (!checkTkNo.IsValid)
+            {
+                AddBot($"❌ {checkTkNo.Message}");
+                return;
+            }
+
+            data.TenDvcs = checkDvcs.TenDvcs;
+            data.TenKh = checkKh.TenKh;
+            data.TenTkCo = checkTkCo.TenTk;
+            data.TenTkNo = checkTkNo.TenTk;
+
+            if (string.IsNullOrEmpty(data.SttRec))
+            {
+                string wsId = myOption.GetOptionsValue("M_WS_ID") ?? "A";
+                var sttRecSql = $"EXEC dbo.GetSttRec 'PT1', '{wsId}'";
+                var dsSttRec = await myDb.LoadDataset(sttRecSql);
+                
+                if (dsSttRec != null && dsSttRec.Tables[0].Rows.Count > 0)
+                {
+                    string sttRec = dsSttRec.Tables[0].Rows[0][0].ToString();
+                    data.SttRec = sttRec;
+                }
+            }
+
+            msg.IsEditing = false;
+            msg.Text = $"✅ **Xác nhận thông tin phiếu thu (đã chỉnh sửa):**\n\n" +
+                       $"📋 **Thông tin chung:**\n" +
+                       $"• Đơn vị: **{data.MaDvcs}** - {data.TenDvcs}\n" +
+                       $"• Khách hàng: **{data.TenKh}** ({data.MaKh})\n" +
+                       (!string.IsNullOrEmpty(data.OngBa) ? $"• Ông/Bà: {data.OngBa}\n" : "") +
+                       (!string.IsNullOrEmpty(data.DiaChi) ? $"• Địa chỉ: {data.DiaChi}\n" : "") +
+                       $"• Số tiền: **{data.SoTien:N0} VND**\n\n" +
+                       $"💰 **Hạch toán:**\n" +
+                       $"• TK nợ: **{data.TkNo}** - {data.TenTkNo}\n" +
+                       $"• TK có: **{data.TkCo}** - {data.TenTkCo}\n" +
+                       $"• Diễn giải: {data.DienGiai}\n\n" +
+                       $"📝 **Lưu ý:**\n" +
+                       $"• Đã lưu thông tin tạm thời\n" +
+                       $"• Nhấn **Xác nhận tạo** để hoàn tất phiếu thu\n" +
+                       $"• Nhấn **Hủy** để hủy bỏ";
+            
+            StateHasChanged();
+            await ScrollBottom();
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi khi lưu chỉnh sửa: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleMinimize()
+    {
+        if (CloseWindow.HasDelegate)
+        {
+            await CloseWindow.InvokeAsync(true);
+        }
+    }
+
+    private async Task ToggleVoiceInput()
+    {
+        // If already listening → stop current session and exit voice mode
+        if (isListening)
+        {
+            try { await Js.InvokeVoidAsync("SisAiVoice.stop"); } catch { }
+            isListening = false;
+            _voiceMode = false;
+            StateHasChanged();
+            return;
+        }
+
+        // If voice mode active but not currently listening → restart
+        // If not in voice mode → enter voice mode
+        bool isDefined = await Js.InvokeAsync<bool>("eval", "typeof window.SisAiVoice !== 'undefined'");
+        if (!isDefined)
+        {
+            AddBot("⚠️ Không thể khởi tạo tính năng giọng nói. Vui lòng tải lại trang và thử lại.");
+            return;
+        }
+
+        bool supported = await Js.InvokeAsync<bool>("SisAiVoice.isSupported");
+        if (!supported)
+        {
+            AddBot("⚠️ Trình duyệt của bạn không hỗ trợ nhập liệu bằng giọng nói.\n\nVui lòng dùng **Chrome** hoặc **Edge** để sử dụng tính năng này.");
+            return;
+        }
+        _voiceMode = true;
+        isListening = true;
+        StateHasChanged();
+        await Js.InvokeVoidAsync("SisAiVoice.start", DotNetObjectReference.Create(this));
+    }
+
+    private async Task StopVoiceMode()
+    {
+        if (isListening)
+        {
+            try { await Js.InvokeVoidAsync("SisAiVoice.stop"); } catch { }
+            isListening = false;
+        }
+        _voiceMode = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async void OnVoiceResult(string transcript)
+    {
+        if (_isProcessingVoice) return;
+        _isProcessingVoice = true;
+        isListening = false;
+        StateHasChanged();
+        try
+        {            
+            if (_wizard != null)
+            {
+                var fixed1w = FixPhoneticMisrecognition(transcript);
+                var fixed2w = CollapseSpacedDigits(fixed1w);
+                userInput   = ConvertVietnameseWordsToDigits(fixed2w);
+                StateHasChanged();
+                await Task.Delay(300);
+                await Send();
+                return;
+            }            
+            var fixed1 = FixPhoneticMisrecognition(transcript);
+            var fixed2 = CollapseSpacedDigits(fixed1);
+            var converted = ConvertVietnameseWordsToDigits(fixed2);
+            userInput = NormalizeVoiceInput(converted);
+            StateHasChanged();
+            await Task.Delay(300);
+            await Send();
+        }
+        finally
+        {
+            isListening = false;
+            _voiceMode = false;
+            _isProcessingVoice = false;
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnVoiceError(string error)
+    {
+        // Ignore if we are processing a voice result
+        if (_isProcessingVoice) return;
+
+        isListening = false;
+        StateHasChanged();
+
+        if (!_voiceMode) return;
+
+        // Retryable: browser timeout while waiting for speech
+        // Hard errors: stop voice mode entirely
+        bool retryable = error == "no-speech" || error == "ended" || error == "network";
+        if (!retryable)
+        {
+            _voiceMode = false;
+            StateHasChanged();
+            return;
+        }
+
+        // Restart mic to keep waiting
+        await Task.Delay(200);
+        if (!_voiceMode || _isProcessingVoice) return;
+        try
+        {
+            isListening = true;
+            StateHasChanged();
+            await Js.InvokeVoidAsync("SisAiVoice.start", DotNetObjectReference.Create(this));
+        }
+        catch
+        {
+            isListening = false;
+            _voiceMode = false;
+            StateHasChanged();
+        }
+    }
+
+    private async void NavigateToVoucher()
+    {
+        Navigation.NavigateTo("/Cactpt1", forceLoad: false);
+    }
+
+    private async Task SaveChatHistory()
+    {
+        try
+        {
+            await SessionStorage.SetAsync("sisai_chat_history", messages);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to save chat history: {ex.Message}");
+        }
+    }
+
+    private async Task ScrollBottom()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("eval", "document.getElementById('ai-chat-bottom')?.scrollIntoView({behavior:'smooth'});");
+        }
+        catch { }
+    }
+
+    private MarkupString RenderText(string text)
+    {
+        return (MarkupString)(text?.Replace("\n", "<br/>") ?? string.Empty);
+    }
+
+    private async Task<string> GetCurrentMaDvcs()
+    {
+        try
+        {
+            var dvcs = myStateMN?.GetDvcs()?.Ma_dvcs?.Trim();
+            if (!string.IsNullOrEmpty(dvcs) && !dvcs.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+            {
+                return dvcs;
+            }
+
+            var sql = "SELECT TOP 1 ma_dvcs FROM dmdvcs WHERE ma_dvcs <> 'ALL' ORDER BY ma_dvcs";
+            var ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                return ds.Tables[0].Rows[0]["ma_dvcs"].ToString().Trim();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetCurrentMaDvcs error: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    private async void ProcessCreateVoucher(string input)
+    {
+        try
+        {
+            var voucherData = await ParseVoucherInputAsync(input);
+            if (voucherData.MaKh == "MULTIPLE_FOUND")
+            {
+                AddBot($"🔍 **Tìm thấy nhiều khách hàng:**\n\n{voucherData.TenKh}\n\n💡 **Vui lòng:**\n• Nhập lại với mã khách hàng cụ thể\n• Ví dụ: 'Tạo phiếu thu: Khách KH001, Tiền 1000000, TK có 131'");
+                return;
+            }
+            
+            if (voucherData.MaKh == "NOT_FOUND")
+            {
+                AddBot($"❌ {voucherData.TenKh}\n\n💡 **Gợi ý:**\n• Kiểm tra lại tên hoặc mã khách hàng\n• Thử tìm với từ khóa ngắn gọn hơn\n• Hoặc sử dụng mã khách hàng trực tiếp");
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(voucherData.MaKh))
+            {
+                AddBot("⚠️ Thiếu **Mã khách hàng**. Vui lòng nhập theo cú pháp:\n'Tạo phiếu thu: Khách KH001, Tiền 1000000, TK có 131'\n\nHoặc nhập tên khách hàng:\n'Tạo phiếu thu: Khách Nguyễn Văn A, Tiền 1000000, TK có 131'");
+                return;
+            }
+            
+            if (voucherData.SoTien <= 0)
+            {
+                AddBot("⚠️ Thiếu **Số tiền** hoặc số tiền không hợp lệ. Vui lòng nhập lại.");
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(voucherData.TkCo))
+            {
+                AddBot("⚠️ Thiếu **Tài khoản có**. Vui lòng nhập TK có (VD: 131, 1111).");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(voucherData.MaDvcs) || voucherData.MaDvcs.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+            {
+                var promptMsg = new ChatMessage
+                {
+                    Name = "Trợ lý ERP",
+                    Role = "bot",
+                    Time = DateTime.Now,
+                    Text = $"⚠️ **Chưa có Mã đơn vị hoặc Mã đơn vị không hợp lệ.**\n\n" +
+                           $"📋 **Thông tin hiện tại:**\n" +
+                           $"• Khách hàng: {voucherData.MaKh}\n" +
+                           $"• Số tiền: {voucherData.SoTien:N0} VND\n" +
+                           $"• TK nợ: {voucherData.TkNo}\n" +
+                           $"• TK có: {voucherData.TkCo}\n" +
+                           $"• Diễn giải: {voucherData.DienGiai}\n\n" +
+                           $"✏️ Vui lòng nhấn **Sửa thông tin** để nhập mã đơn vị và kiểm tra lại thông tin.",
+                    VoucherData = voucherData,
+                    IsEditing = false
+                };
+                messages.Add(promptMsg);
+                StateHasChanged();
+                await ScrollBottom();
+                return;
+            }
+
+            var checkDvcs = await ValidateDvcs(voucherData.MaDvcs);
+            if (!checkDvcs.IsValid)
+            {
+                AddBot($"❌ {checkDvcs.Message}");
+                return;
+            }
+
+            var checkKh = await ValidateCustomer(voucherData.MaKh);
+            if (!checkKh.IsValid)
+            {
+                AddBot($"❌ {checkKh.Message}\n\n💡 **Bạn có thể:**\n• Nhập lại mã khách hàng khác\n• Kiểm tra danh sách khách hàng trong hệ thống");
+                return;
+            }
+            
+            voucherData.DiaChi = checkKh.DiaChi;
+            voucherData.OngBa = checkKh.OngBa;
+
+            var checkTk = await ValidateAccount(voucherData.TkCo);
+            if (!checkTk.IsValid)
+            {
+                AddBot($"❌ {checkTk.Message}\n\n💡 **Bạn có thể:**\n• Nhập lại TK có khác (VD: 131, 511, 711)\n• Kiểm tra danh mục tài khoản");
+                return;
+            }
+
+            var checkTkNo = await ValidateDebitAccount(voucherData.TkNo);
+            if (!checkTkNo.IsValid)
+            {
+                AddBot($"❌ {checkTkNo.Message}\n\n💡 **Bạn có thể:**\n• Nhập lại TK nợ (VD: 111, 1111, 1121)\n• Bỏ trống để dùng mặc định 111");
+                return;
+            }
+
+            string wsId = myOption.GetOptionsValue("M_WS_ID") ?? "A";
+            var sttRecSql = $"EXEC dbo.GetSttRec 'PT1', '{wsId}'";
+            var dsSttRec = await myDb.LoadDataset(sttRecSql);
+            
+            if (dsSttRec != null && dsSttRec.Tables[0].Rows.Count > 0)
+            {
+                string sttRec = dsSttRec.Tables[0].Rows[0][0].ToString();
+                voucherData.SttRec = sttRec;
+            }
+
+            var confirmMsg = new ChatMessage
+            {
+                Name = "Trợ lý ERP",
+                Role = "bot",
+                Time = DateTime.Now,
+                Text = $"✅ **Xác nhận thông tin phiếu thu:**\n\n" +
+                       $"📋 **Thông tin chung:**\n" +
+                       $"• Đơn vị: **{voucherData.MaDvcs}** - {checkDvcs.TenDvcs}\n" +
+                       $"• Khách hàng: **{checkKh.TenKh}** ({voucherData.MaKh})\n" +
+                       (!string.IsNullOrEmpty(checkKh.OngBa) ? $"• Ông/Bà: {checkKh.OngBa}\n" : "") +
+                       (!string.IsNullOrEmpty(checkKh.DiaChi) ? $"• Địa chỉ: {checkKh.DiaChi}\n" : "") +
+                       $"• Số tiền: **{voucherData.SoTien:N0} VND**\n\n" +
+                       $"💰 **Hạch toán:**\n" +
+                       $"• TK nợ: **{voucherData.TkNo}** - {checkTkNo.TenTk}\n" +
+                       $"• TK có: **{voucherData.TkCo}** - {checkTk.TenTk}\n" +
+                       $"• Diễn giải: {voucherData.DienGiai}\n\n" +
+                       $"📝 **Lưu ý:**\n" +
+                       $"• Đã lưu thông tin tạm thời\n" +
+                       $"• Nhấn **Xác nhận tạo** để hoàn tất phiếu thu\n" +
+                       $"• Nhấn **Hủy** để hủy bỏ"
+            };
+            confirmMsg.VoucherData = voucherData;
+            confirmMsg.VoucherData.TenKh = checkKh.TenKh;
+            confirmMsg.VoucherData.TenDvcs = checkDvcs.TenDvcs;
+            confirmMsg.VoucherData.TenTkNo = checkTkNo.TenTk;
+            confirmMsg.VoucherData.TenTkCo = checkTk.TenTk;
+            messages.Add(confirmMsg);
+            StateHasChanged();
+            await ScrollBottom();
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi: {ex.Message}");
+        }
+    }
+
+    private async void ProcessSearchCustomer(string input)
+    {
+        try
+        {
+            var keyword = System.Text.RegularExpressions.Regex.Replace(
+                input,
+                @"(tìm|tim|xem|tra cứu|tra cuu|khách|khach|\bkh\b)",
+                " ",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+            keyword = System.Text.RegularExpressions.Regex.Replace(keyword, @"\s+", " ").Trim();
+
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                AddBot("⚠️ **Vui lòng nhập từ khóa tìm kiếm khách hàng.**\n\n💡 **Ví dụ:**\n• 'Tìm khách KH001'\n• 'Tìm khách Nguyễn Văn A'\n• 'Tìm khách mst 0123456789'\n• 'Tìm khách sdt 0909123456'\n• 'Tìm khách địa chỉ Hà Nội'");
+                return;
+            }
+
+            string searchField = "all";
+            string searchValue = keyword;
+
+            var mstMatch = System.Text.RegularExpressions.Regex.Match(keyword, @"(?:mst|ma so thue|mã số thuế)\s+([\w\-]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var sdtMatch = System.Text.RegularExpressions.Regex.Match(keyword, @"(?:sdt|điện thoại|dien thoai|phone|tel)\s+([\d\s\-\.]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var diaChiMatch = System.Text.RegularExpressions.Regex.Match(keyword, @"(?:địa chỉ|dia chi|address)\s+(.+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (mstMatch.Success)
+            {
+                searchField = "ma_so_thue";
+                searchValue = mstMatch.Groups[1].Value.Trim();
+            }
+            else if (sdtMatch.Success)
+            {
+                searchField = "dien_thoai";
+                searchValue = sdtMatch.Groups[1].Value.Trim().Replace(" ", "");
+            }
+            else if (diaChiMatch.Success)
+            {
+                searchField = "dia_chi";
+                searchValue = diaChiMatch.Groups[1].Value.Trim();
+            }
+
+            string whereClause;
+            string safeValue = searchValue.Replace("'", "''");
+
+            if (searchField == "ma_so_thue")
+            {
+                whereClause = $"ma_so_thue LIKE N'%{safeValue}%'";
+            }
+            else if (searchField == "dien_thoai")
+            {
+                whereClause = $"dien_thoai LIKE N'%{safeValue}%'";
+            }
+            else if (searchField == "dia_chi")
+            {
+                whereClause = $"dia_chi LIKE N'%{safeValue}%'";
+            }
+            else
+            {
+                whereClause = $@"(
+                    ma_kh LIKE N'%{safeValue}%'
+                    OR ten_kh LIKE N'%{safeValue}%'
+                    OR ten_kh2 LIKE N'%{safeValue}%'
+                    OR ten_kh3 LIKE N'%{safeValue}%'
+                    OR dia_chi LIKE N'%{safeValue}%'
+                    OR ma_so_thue LIKE N'%{safeValue}%'
+                    OR dien_thoai LIKE N'%{safeValue}%'
+                    OR ong_ba LIKE N'%{safeValue}%'
+                    OR doi_tac LIKE N'%{safeValue}%'
+                )";
+            }
+
+            var sql = $@"
+                SELECT TOP 10
+                    ma_kh, ten_kh, ten_kh2, ten_kh3, dia_chi, ma_so_thue,
+                    dien_thoai, fax, e_mail, ong_ba, doi_tac,
+                    ten_nh, ghi_chu, tinh_thanh
+                FROM dmkh
+                WHERE {whereClause}
+                ORDER BY ma_kh";
+
+            var ds = await myDb.LoadDataset(sql);
+
+            if (ds == null || ds.Tables[0].Rows.Count == 0)
+            {
+                AddBot($"❌ **Không tìm thấy khách hàng với từ khóa: '{searchValue}'**\n\n💡 **Gợi ý:**\n• Thử tìm với từ khóa ngắn hơn\n• Kiểm tra chính tả\n• Tìm theo mã: 'Tìm khách KH001'\n• Tìm theo MST: 'Tìm khách mst 0123456789'");
+                return;
+            }
+
+            int total = ds.Tables[0].Rows.Count;
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"🔍 **Tìm thấy {total} khách hàng{(total == 10 ? " (hiển thị tối đa 10)" : "")}:**");
+
+            foreach (DataRow row in ds.Tables[0].Rows)
+            {
+                string maKh      = row["ma_kh"]?.ToString()?.Trim() ?? "";
+                string tenKh     = row["ten_kh"]?.ToString()?.Trim() ?? "";
+                string tenKh2    = row["ten_kh2"]?.ToString()?.Trim() ?? "";
+                string tenKh3    = row["ten_kh3"]?.ToString()?.Trim() ?? "";
+                string diaChi    = row["dia_chi"]?.ToString()?.Trim() ?? "";
+                string maSoThue  = row["ma_so_thue"]?.ToString()?.Trim() ?? "";
+                string dienThoai = row["dien_thoai"]?.ToString()?.Trim() ?? "";
+                string fax       = row["fax"]?.ToString()?.Trim() ?? "";
+                string eMail     = row["e_mail"]?.ToString()?.Trim() ?? "";
+                string ongBa     = row["ong_ba"]?.ToString()?.Trim() ?? "";
+                string doiTac    = row["doi_tac"]?.ToString()?.Trim() ?? "";
+                string tenNh     = row["ten_nh"]?.ToString()?.Trim() ?? "";
+                string tinhThanh = row["tinh_thanh"]?.ToString()?.Trim() ?? "";
+                string ghiChu    = row["ghi_chu"]?.ToString()?.Trim() ?? "";
+
+                sb.AppendLine();
+                sb.AppendLine($"👤 **{maKh}** - {tenKh}");
+                if (!string.IsNullOrEmpty(tenKh2))
+                    sb.AppendLine($"  • Tên KH2: {tenKh2}");
+                if (!string.IsNullOrEmpty(tenKh3))
+                    sb.AppendLine($"  • Tên KH3: {tenKh3}");
+                if (!string.IsNullOrEmpty(ongBa))
+                    sb.AppendLine($"  • Ông/Bà: {ongBa}");
+                if (!string.IsNullOrEmpty(doiTac))
+                    sb.AppendLine($"  • Đối tác: {doiTac}");
+                if (!string.IsNullOrEmpty(diaChi))
+                    sb.AppendLine($"  • Địa chỉ: {diaChi}{(!string.IsNullOrEmpty(tinhThanh) ? " - " + tinhThanh : "")}");
+                if (!string.IsNullOrEmpty(maSoThue))
+                    sb.AppendLine($"  • Mã số thuế: {maSoThue}");
+                if (!string.IsNullOrEmpty(dienThoai))
+                    sb.AppendLine($"  • Điện thoại: {dienThoai}");
+                if (!string.IsNullOrEmpty(fax))
+                    sb.AppendLine($"  • Fax: {fax}");
+                if (!string.IsNullOrEmpty(eMail))
+                    sb.AppendLine($"  • Email: {eMail}");
+                if (!string.IsNullOrEmpty(tenNh))
+                    sb.AppendLine($"  • Ngân hàng: {tenNh}");
+                if (!string.IsNullOrEmpty(ghiChu))
+                    sb.AppendLine($"  • Ghi chú: {ghiChu}");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine($"💡 **Tạo phiếu thu nhanh:**");
+            sb.AppendLine($"• 'Tạo phiếu thu: Khách [mã KH], Tiền [số tiền], TK có 131'");
+
+            AddBot(sb.ToString().TrimEnd());
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi khi tìm kiếm khách hàng: {ex.Message}");
+        }
+    }
+
+    private async void ProcessSearchVoucherByCustomer(string input)
+    {
+        try
+        {
+            var khMatch = System.Text.RegularExpressions.Regex.Match(
+                input,
+                @"(?:phiếu|phieu)\s*(?:của|cua|khách|khach)?\s*:?\s*(.+?)(?=\s+tháng|\s+thang|\s+từ\s|\s+tu\s|$)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            string khKeyword = khMatch.Success ? khMatch.Groups[1].Value.Trim() : string.Empty;
+            khKeyword = System.Text.RegularExpressions.Regex.Replace(
+                khKeyword, @"\b(của|cua|khách|khach)\b", "",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+
+            if (string.IsNullOrWhiteSpace(khKeyword))
+            {
+                AddBot("⚠️ **Vui lòng nhập mã hoặc tên khách hàng.**\n\n💡 **Ví dụ:**\n• 'Phiếu của KH001'\n• 'Phiếu của Nguyễn Văn A'\n• 'Phiếu KH001 tháng 6'\n• 'Phiếu KH001 từ 01/06 đến 30/06'");
+                return;
+            }
+
+            string maKhFilter;
+            string tenKhDisplay;
+            string safeKh = khKeyword.Replace("'", "''");
+
+            if (khKeyword.Length <= 15 && !khKeyword.Contains(" "))
+            {
+                maKhFilter = $"ph.ma_kh = N'{safeKh}'";
+                tenKhDisplay = khKeyword.ToUpper();
+            }
+            else
+            {
+                var sqlKh = $@"SELECT TOP 10 ma_kh, ten_kh FROM dmkh
+                               WHERE ten_kh LIKE N'%{safeKh}%' OR ten_kh2 LIKE N'%{safeKh}%'
+                               ORDER BY ma_kh";
+                var dsKh = await myDb.LoadDataset(sqlKh);
+
+                if (dsKh == null || dsKh.Tables[0].Rows.Count == 0)
+                {
+                    AddBot($"❌ **Không tìm thấy khách hàng: '{khKeyword}'**\n\n💡 Thử dùng mã KH trực tiếp hoặc kiểm tra lại tên.");
+                    return;
+                }
+
+                var maKhList = dsKh.Tables[0].Rows
+                    .Cast<DataRow>()
+                    .Select(r => "'" + (r["ma_kh"]?.ToString()?.Replace("'", "''") ?? "") + "'")
+                    .ToList();
+                maKhFilter = $"ph.ma_kh IN ({string.Join(",", maKhList)})";
+                tenKhDisplay = dsKh.Tables[0].Rows.Count == 1
+                    ? $"{dsKh.Tables[0].Rows[0]["ma_kh"]} - {dsKh.Tables[0].Rows[0]["ten_kh"]}"
+                    : $"{dsKh.Tables[0].Rows.Count} khách hàng khớp '{khKeyword}'";
+            }
+
+            DateTime? fromDate = null;
+            DateTime? toDate   = null;
+
+            var thangMatch = System.Text.RegularExpressions.Regex.Match(
+                input, @"tháng\s+(\d{1,2})(?:\s+năm\s+(\d{4}))?",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (thangMatch.Success)
+            {
+                int month = int.Parse(thangMatch.Groups[1].Value);
+                int year  = thangMatch.Groups[2].Success
+                    ? int.Parse(thangMatch.Groups[2].Value)
+                    : DateTime.Now.Year;
+                if (month >= 1 && month <= 12)
+                {
+                    fromDate = new DateTime(year, month, 1);
+                    toDate   = fromDate.Value.AddMonths(1).AddDays(-1);
+                }
+            }
+            else
+            {
+                var rangeMatch = System.Text.RegularExpressions.Regex.Match(
+                    input,
+                    @"từ\s+(\d{1,2}[/\-]\d{1,2}(?:[/\-]\d{2,4})?)\s+đến\s+(\d{1,2}[/\-]\d{1,2}(?:[/\-]\d{2,4})?)",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (rangeMatch.Success)
+                {
+                    var formats = new[] { "d/M/yyyy", "d/M/yy", "d/M", "d-M-yyyy", "d-M" };
+                    string fromStr = rangeMatch.Groups[1].Value;
+                    string toStr   = rangeMatch.Groups[2].Value;
+
+                    if (System.Text.RegularExpressions.Regex.IsMatch(fromStr, @"^\d{1,2}[/\-]\d{1,2}$"))
+                        fromStr += "/" + DateTime.Now.Year;
+                    if (System.Text.RegularExpressions.Regex.IsMatch(toStr, @"^\d{1,2}[/\-]\d{1,2}$"))
+                        toStr += "/" + DateTime.Now.Year;
+
+                    if (DateTime.TryParseExact(fromStr, formats,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.None, out DateTime fd))
+                        fromDate = fd;
+                    if (DateTime.TryParseExact(toStr, formats,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.None, out DateTime td))
+                        toDate = td;
+                }
+            }
+
+            string dateClause = string.Empty;
+            if (fromDate.HasValue)
+                dateClause += $" AND ph.ngay_ct >= '{fromDate.Value:yyyyMMdd}'";
+            if (toDate.HasValue)
+                dateClause += $" AND ph.ngay_ct <= '{toDate.Value:yyyyMMdd}'";
+
+            var sql = $@"
+                SELECT TOP 20
+                    ph.so_ct, ph.ngay_ct, ph.ma_kh, kh.ten_kh,
+                    ph.t_tien, ph.ma_nt, ph.dien_giai, ph.status,
+                    ph.tk, ph.ma_dvcs
+                FROM ph41 ph
+                LEFT JOIN dmkh kh ON ph.ma_kh = kh.ma_kh
+                WHERE ph.ma_ct = 'PT1'
+                  AND {maKhFilter}
+                  {dateClause}
+                ORDER BY ph.ngay_ct DESC, ph.so_ct DESC";
+
+            var ds = await myDb.LoadDataset(sql);
+
+            if (ds == null || ds.Tables[0].Rows.Count == 0)
+            {
+                string dateInfo = fromDate.HasValue
+                    ? $" trong khoảng {fromDate.Value:dd/MM/yyyy} – {(toDate.HasValue ? toDate.Value.ToString("dd/MM/yyyy") : "nay")}"
+                    : string.Empty;
+                AddBot($"❌ **Không tìm thấy phiếu thu nào của {tenKhDisplay}{dateInfo}.**\n\n💡 Thử bỏ bộ lọc ngày hoặc kiểm tra lại mã khách hàng.");
+                return;
+            }
+
+            int total = ds.Tables[0].Rows.Count;
+            decimal tongTien = 0;
+            int soGhiSo = 0;
+            var sb = new System.Text.StringBuilder();
+
+            string dateRangeLabel = string.Empty;
+            if (fromDate.HasValue || toDate.HasValue)
+                dateRangeLabel = $" ({(fromDate.HasValue ? fromDate.Value.ToString("dd/MM/yyyy") : "...")}" +
+                                 $" – {(toDate.HasValue ? toDate.Value.ToString("dd/MM/yyyy") : "nay")})";
+
+            sb.AppendLine($"📋 **Phiếu thu của {tenKhDisplay}{dateRangeLabel}** – {total} phiếu{(total == 20 ? " (tối đa 20)" : "")}:");
+
+            foreach (DataRow row in ds.Tables[0].Rows)
+            {
+                string soCt     = row["so_ct"]?.ToString()?.Trim() ?? "";
+                DateTime ngayCt = row["ngay_ct"] != DBNull.Value ? Convert.ToDateTime(row["ngay_ct"]) : DateTime.MinValue;
+                string maKhRow  = row["ma_kh"]?.ToString()?.Trim() ?? "";
+                string tenKhRow = row["ten_kh"]?.ToString()?.Trim() ?? "";
+                decimal tTien   = row["t_tien"] != DBNull.Value ? Convert.ToDecimal(row["t_tien"]) : 0;
+                string maNt     = row["ma_nt"]?.ToString()?.Trim() ?? "VND";
+                string dienGiai = row["dien_giai"]?.ToString()?.Trim() ?? "";
+                string status   = row["status"]?.ToString()?.Trim() ?? "";
+                string tk       = row["tk"]?.ToString()?.Trim() ?? "";
+                string maDvcs   = row["ma_dvcs"]?.ToString()?.Trim() ?? "";
+
+                string statusIcon = status == "2" ? "✅" : "⏳";
+                tongTien += tTien;
+                if (status == "2") soGhiSo++;
+
+                sb.AppendLine();
+                sb.AppendLine($"{statusIcon} **{soCt}** | {ngayCt:dd/MM/yyyy} | {tTien:N0} {maNt}");
+                if (!string.IsNullOrEmpty(tenKhRow) && maKhList_IsMultiple(maKhFilter))
+                    sb.AppendLine($"  👤 {maKhRow} - {tenKhRow}");
+                if (!string.IsNullOrEmpty(tk))
+                    sb.AppendLine($"  TK nợ: {tk} | Đơn vị: {maDvcs}");
+                if (!string.IsNullOrEmpty(dienGiai))
+                    sb.AppendLine($"  📝 {dienGiai}");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine($"━━━━━━━━━━━━━━━━━━━━");
+            sb.AppendLine($"💰 **Tổng tiền: {tongTien:N0} VND**");
+            sb.AppendLine($"✅ Đã ghi sổ: {soGhiSo}/{total} phiếu");
+            sb.AppendLine();
+            sb.AppendLine($"💡 Gõ 'Tìm phiếu [số CT]' để xem chi tiết từng phiếu.");
+
+            AddBot(sb.ToString().TrimEnd());
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi khi tìm phiếu theo khách hàng: {ex.Message}");
+        }
+
+        static bool maKhList_IsMultiple(string filter) => filter.StartsWith("ph.ma_kh IN");
+    }
+
+    private async void ProcessSearchVoucher(string input)
+    {
+        try
+        {
+            var soctMatch = System.Text.RegularExpressions.Regex.Match(input, @"([A-Z0-9]+\d+|\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (!soctMatch.Success)
+            {
+                AddBot("⚠️ **Không tìm thấy số chứng từ.**\n\n💡 **Cú pháp:**\n• 'Tìm phiếu PT001'\n• 'Xem số 00001'\n• 'Tra cứu PT-001'");
+                return;
+            }
+
+            string soCt = soctMatch.Groups[1].Value.Trim();
+            var sql = $@"
+                SELECT TOP 1 
+                    ph.stt_rec, ph.so_ct, ph.ngay_ct, ph.ma_kh, ph.ma_dvcs, ph.dien_giai,
+                    ph.t_tien, ph.t_tien_nt, ph.ma_nt, ph.status, ph.tk,
+                    kh.ten_kh, kh.dia_chi, kh.doi_tac as ong_ba,
+                    dv.ten_dvcs
+                FROM ph41 ph
+                LEFT JOIN dmkh kh ON ph.ma_kh = kh.ma_kh
+                LEFT JOIN dmdvcs dv ON ph.ma_dvcs = dv.ma_dvcs
+                WHERE ph.ma_ct = 'PT1' AND ph.so_ct LIKE '%{soCt}%'
+                ORDER BY ph.ngay_ct DESC, ph.so_ct DESC";
+
+            var ds = await myDb.LoadDataset(sql);
+            
+            if (ds == null || ds.Tables[0].Rows.Count == 0)
+            {
+                AddBot($"❌ **Không tìm thấy phiếu thu có số: {soCt}**\n\n💡 **Gợi ý:**\n• Kiểm tra lại số chứng từ\n• Thử tìm với số khác\n• Vào màn hình Phiếu thu để xem danh sách");
+                return;
+            }
+
+            var row = ds.Tables[0].Rows[0];
+            string sttRec = row["stt_rec"].ToString();
+            string foundSoCt = row["so_ct"].ToString();
+            DateTime ngayCt = Convert.ToDateTime(row["ngay_ct"]);
+            string maKh = row["ma_kh"]?.ToString() ?? "";
+            string tenKh = row["ten_kh"]?.ToString() ?? "";
+            string maDvcs = row["ma_dvcs"]?.ToString() ?? "";
+            string tenDvcs = row["ten_dvcs"]?.ToString() ?? "";
+            string dienGiai = row["dien_giai"]?.ToString() ?? "";
+            decimal tTien = row["t_tien"] != DBNull.Value ? Convert.ToDecimal(row["t_tien"]) : 0;
+            string maNt = row["ma_nt"]?.ToString() ?? "VND";
+            string status = row["status"]?.ToString() ?? "";
+            string tk = row["tk"]?.ToString() ?? "";
+
+            var sqlCt = $@"
+                SELECT ct.tk_i, ct.ma_kh_i, ct.tien, ct.tien_nt, ct.dien_giaii,
+                       dmtk.ten_tk
+                FROM ct41 ct
+                LEFT JOIN dmtk ON ct.tk_i = dmtk.tk
+                WHERE ct.stt_rec = '{sttRec}'
+                ORDER BY ct.stt_rec0";
+            
+            var dsCt = await myDb.LoadDataset(sqlCt);
+            
+            string ctInfo = "";
+            if (dsCt != null && dsCt.Tables[0].Rows.Count > 0)
+            {
+                ctInfo = "\n\n💰 **Chi tiết hạch toán:**\n";
+                foreach (DataRow ctRow in dsCt.Tables[0].Rows)
+                {
+                    string tkI = ctRow["tk_i"]?.ToString() ?? "";
+                    string tenTk = ctRow["ten_tk"]?.ToString() ?? "";
+                    decimal tien = ctRow["tien"] != DBNull.Value ? Convert.ToDecimal(ctRow["tien"]) : 0;
+                    string dgCt = ctRow["dien_giaii"]?.ToString() ?? "";
+                    
+                    ctInfo += $"• TK có: **{tkI}** - {tenTk}\n";
+                    ctInfo += $"  Số tiền: {tien:N0} {maNt}\n";
+                    if (!string.IsNullOrEmpty(dgCt))
+                        ctInfo += $"  Diễn giải: {dgCt}\n";
+                }
+            }
+
+            string statusText = status == "2" ? "✅ Đã ghi sổ" : "⏳ Chưa ghi sổ";
+
+            var searchResult = $"🔍 **Tìm thấy phiếu thu:**\n\n" +
+                              $"📋 **Thông tin chứng từ:**\n" +
+                              $"• Số chứng từ: **{foundSoCt}**\n" +
+                              $"• Ngày chứng từ: {ngayCt:dd/MM/yyyy}\n" +
+                              $"• Trạng thái: {statusText}\n\n" +
+                              $"👤 **Khách hàng:**\n" +
+                              $"• Mã KH: {maKh}\n" +
+                              $"• Tên KH: {tenKh}\n\n" +
+                              $"🏢 **Đơn vị:**\n" +
+                              $"• Mã đơn vị: {maDvcs}\n" +
+                              $"• Tên đơn vị: {tenDvcs}\n\n" +
+                              $"💵 **Tài chính:**\n" +
+                              $"• TK nợ: **{tk}**\n" +
+                              $"• Tổng tiền: **{tTien:N0} {maNt}**\n" +
+                              $"• Diễn giải: {dienGiai}" +
+                              ctInfo +
+                              $"\n\n✏️ **Thao tác:**\n" +
+                              $"• Gõ 'Sửa {foundSoCt}' để chỉnh sửa\n" +
+                              $"• Gõ 'Xóa {foundSoCt}' để xóa phiếu\n" +
+                              $"• Gõ 'Mở phiếu thu' để vào màn hình chi tiết";
+
+            AddBot(searchResult);
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi khi tìm kiếm: {ex.Message}");
+        }
+    }
+
+    private async void ProcessEditVoucher(string input)
+    {
+        try
+        {
+            var soctMatch = System.Text.RegularExpressions.Regex.Match(input, @"([A-Z0-9]+\d+|\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (!soctMatch.Success)
+            {
+                AddBot("⚠️ **Không tìm thấy số chứng từ.**\n\n💡 **Cú pháp:**\n• 'Sửa phiếu PT001'\n• 'Sửa số 00001'");
+                return;
+            }
+
+            string soCt = soctMatch.Groups[1].Value.Trim();
+            var sql = $@"
+                SELECT TOP 1 stt_rec, so_ct, status, ngay_ct 
+                FROM ph41 
+                WHERE ma_ct = 'PT1' AND so_ct LIKE '%{soCt}%'
+                ORDER BY ngay_ct DESC";
+            
+            var ds = await myDb.LoadDataset(sql);
+            
+            if (ds == null || ds.Tables[0].Rows.Count == 0)
+            {
+                AddBot($"❌ **Không tìm thấy phiếu thu có số: {soCt}**\n\n💡 Vui lòng kiểm tra lại số chứng từ.");
+                return;
+            }
+
+            var row = ds.Tables[0].Rows[0];
+            string foundSoCt = row["so_ct"].ToString();
+            string status = row["status"]?.ToString() ?? "";
+            DateTime ngayCt = Convert.ToDateTime(row["ngay_ct"]);
+
+            var checkLockSql = $"SELECT dbo.CheckValidNgayKs('{ngayCt:yyyyMMdd}', 'PT1')";
+            var dsLock = await myDb.LoadDataset(checkLockSql);
+            bool isLocked = false;
+            
+            if (dsLock != null && dsLock.Tables[0].Rows.Count > 0)
+            {
+                isLocked = Convert.ToInt32(dsLock.Tables[0].Rows[0][0]) == 0;
+            }
+
+            if (isLocked)
+            {
+                AddBot($"⛔ **Không thể sửa phiếu {foundSoCt}**\n\n" +
+                       $"• Phiếu đã bị khóa sổ\n" +
+                       $"• Ngày chứng từ: {ngayCt:dd/MM/yyyy}\n\n" +
+                       $"💡 **Liên hệ quản trị viên để mở khóa sổ nếu cần thiết.**");
+                return;
+            }
+
+            if (status == "2")
+            {
+                AddBot($"⚠️ **Cảnh báo: Phiếu {foundSoCt} đã ghi sổ**\n\n" +
+                       $"• Cần hủy ghi sổ trước khi sửa\n" +
+                       $"• Hoặc sửa trực tiếp trong màn hình Phiếu thu\n\n" +
+                       $"💡 **Hướng dẫn:**\n" +
+                       $"1. Vào màn hình Phiếu thu\n" +
+                       $"2. Tìm phiếu số {foundSoCt}\n" +
+                       $"3. Nhấn **Sửa** và chỉnh thông tin\n" +
+                       $"4. Nhấn **Ghi sổ** để lưu");
+            }
+            else
+            {
+                AddBot($"📝 **Sửa phiếu thu {foundSoCt}**\n\n" +
+                       $"• Trạng thái: Chưa ghi sổ\n" +
+                       $"• Có thể sửa trực tiếp\n\n" +
+                       $"💡 **Cách sửa:**\n" +
+                       $"1. Vào màn hình Phiếu thu\n" +
+                       $"2. Tìm phiếu số {foundSoCt}\n" +
+                       $"3. Nhấn **Sửa**\n" +
+                       $"4. Chỉnh sửa thông tin cần thiết\n" +
+                       $"5. Nhấn **Ghi sổ** để lưu\n\n" +
+                       $"⚠️ **Lưu ý:** Không sửa được qua chatbot, cần vào màn hình chính.");
+            }
+
+            Navigation.NavigateTo("/Cactpt1", forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi khi xử lý sửa phiếu: {ex.Message}");
+        }
+    }
+
+    private async void ProcessDeleteVoucher(string input)
+    {
+        try
+        {
+            var soctMatch = System.Text.RegularExpressions.Regex.Match(input, @"([A-Z0-9]+\d+|\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (!soctMatch.Success)
+            {
+                AddBot("⚠️ **Không tìm thấy số chứng từ.**\n\n💡 **Cú pháp:**\n• 'Xóa phiếu PT001'\n• 'Xóa số 00001'");
+                return;
+            }
+
+            string soCt = soctMatch.Groups[1].Value.Trim();
+            var sql = $@"
+                SELECT TOP 1 stt_rec, so_ct, status, ngay_ct, t_tien, ma_kh
+                FROM ph41 
+                WHERE ma_ct = 'PT1' AND so_ct LIKE '%{soCt}%'
+                ORDER BY ngay_ct DESC";
+            
+            var ds = await myDb.LoadDataset(sql);
+            
+            if (ds == null || ds.Tables[0].Rows.Count == 0)
+            {
+                AddBot($"❌ **Không tìm thấy phiếu thu có số: {soCt}**\n\n💡 Vui lòng kiểm tra lại số chứng từ.");
+                return;
+            }
+
+            var row = ds.Tables[0].Rows[0];
+            string sttRec = row["stt_rec"].ToString();
+            string foundSoCt = row["so_ct"].ToString();
+            string status = row["status"]?.ToString() ?? "";
+            DateTime ngayCt = Convert.ToDateTime(row["ngay_ct"]);
+            decimal tTien = row["t_tien"] != DBNull.Value ? Convert.ToDecimal(row["t_tien"]) : 0;
+            string maKh = row["ma_kh"]?.ToString() ?? "";
+
+            var checkLockSql = $"SELECT dbo.CheckValidNgayKs('{ngayCt:yyyyMMdd}', 'PT1')";
+            var dsLock = await myDb.LoadDataset(checkLockSql);
+            bool isLocked = false;
+            
+            if (dsLock != null && dsLock.Tables[0].Rows.Count > 0)
+            {
+                isLocked = Convert.ToInt32(dsLock.Tables[0].Rows[0][0]) == 0;
+            }
+
+            if (isLocked)
+            {
+                AddBot($"⛔ **Không thể xóa phiếu {foundSoCt}**\n\n" +
+                       $"• Phiếu đã bị khóa sổ\n" +
+                       $"• Ngày chứng từ: {ngayCt:dd/MM/yyyy}\n\n" +
+                       $"💡 **Liên hệ quản trị viên để mở khóa sổ nếu cần thiết.**");
+                return;
+            }
+
+            if (status == "2")
+            {
+                AddBot($"⛔ **Không thể xóa phiếu {foundSoCt}**\n\n" +
+                       $"• Phiếu đã ghi sổ (status = 2)\n" +
+                       $"• Ngày chứng từ: {ngayCt:dd/MM/yyyy}\n" +
+                       $"• Số tiền: {tTien:N0} VND\n" +
+                       $"• Khách hàng: {maKh}\n\n" +
+                       $"💡 **Cách xóa:**\n" +
+                       $"1. Vào màn hình Phiếu thu\n" +
+                       $"2. Tìm phiếu số {foundSoCt}\n" +
+                       $"3. Nhấn **Hủy ghi sổ** trước\n" +
+                       $"4. Sau đó mới được phép xóa\n\n" +
+                       $"⚠️ **Cảnh báo:** Xóa phiếu sẽ không thể khôi phục!");
+                return;
+            }
+
+            var deleteMsg = new ChatMessage
+            {
+                Name = "Trợ lý ERP",
+                Role = "bot",
+                Time = DateTime.Now,
+                Text = $"⚠️ **XÁC NHẬN XÓA PHIẾU THU**\n\n" +
+                       $"📋 **Thông tin phiếu:**\n" +
+                       $"• Số chứng từ: **{foundSoCt}**\n" +
+                       $"• Ngày chứng từ: {ngayCt:dd/MM/yyyy}\n" +
+                       $"• Số tiền: {tTien:N0} VND\n" +
+                       $"• Khách hàng: {maKh}\n" +
+                       $"• Trạng thái: Chưa ghi sổ\n\n" +
+                       $"⚠️ **LƯU Ý QUAN TRỌNG:**\n" +
+                       $"• Xóa phiếu sẽ không thể khôi phục\n" +
+                       $"• Dữ liệu sẽ bị mất vĩnh viễn\n" +
+                       $"• Vui lòng kiểm tra kỹ trước khi xác nhận\n\n" +
+                       $"💡 **Để xóa phiếu này:**\n" +
+                       $"1. Vào màn hình Phiếu thu\n" +
+                       $"2. Tìm phiếu số {foundSoCt}\n" +
+                       $"3. Nhấn **Xóa** và xác nhận\n\n" +
+                       $"❌ **Chatbot không hỗ trợ xóa trực tiếp để đảm bảo an toàn dữ liệu.**"
+            };
+            
+            messages.Add(deleteMsg);
+            StateHasChanged();
+            await ScrollBottom();
+
+            Navigation.NavigateTo("/Cactpt1", forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi khi xử lý xóa phiếu: {ex.Message}");
+        }
+    }
+
+    private string GetInputPlaceholder()
+    {
+        if (isListening) return "🔴 Đang nghe...";
+        if (_voiceMode) return "⏳ Đã xử lý — chuẩn bị nghe lệnh tiếp theo...";
+        if (_wizard != null) return _wizard.InputHint;
+        if (_aiMode) return "🤖 Hỏi AI bất kỳ điều gì về kế toán, ERP...";
+        return "Nhập câu hỏi về Phiếu thu...";
+    }
+
+    private void StartVoiceWizard()
+    {
+        _wizard = new VoiceWizardState();
+        _wizard.Step = VoiceWizardStep.Customer;
+        AddBot("🎙️ **Chế độ tạo phiếu thu từng bước**\n\n" +
+               "Tôi sẽ hỏi từng thông tin. Bạn có thể nói hoặc gõ câu trả lời.\n" +
+               "Gõ **hủy** hoặc nhấn ✕ để thoát bất cứ lúc nào.\n\n" +
+               "👤 **Bước 1/5 — Khách hàng**\n" +
+               "Nói mã hoặc tên khách hàng. Ví dụ: *KH001* hoặc *Nguyễn Văn A*");
+    }
+
+    private void CancelWizard()
+    {
+        _wizard = null;
+        AddBot("❌ Đã hủy tạo phiếu thu. Bạn có thể bắt đầu lại bất cứ lúc nào.");
+        StateHasChanged();
+    }
+
+    private static string CollapseSpacedDigits(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+
+        // Collapse sequences of single-char alphanumeric tokens separated by spaces
+        // e.g. "K H 0 0 1" → "KH001",  "0 1 0 1" → "0101"
+        return System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"(?<![\w])([A-Za-z0-9])(?:\s+([A-Za-z0-9]))+(?![\w])",
+            m => System.Text.RegularExpressions.Regex.Replace(m.Value, @"\s+", ""));
+    }
+
+    private static string FixPhoneticMisrecognition(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+
+        var s = RemoveDiacritics(text).ToLowerInvariant();
+
+        s = System.Text.RegularExpressions.Regex.Replace(
+            s,
+            @"\b(ca\s*hat|ke\s*a|ke\s*hat|kha(?=\s*\d)|\bka(?=\s*\d))\b",
+            "KH",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        s = System.Text.RegularExpressions.Regex.Replace(
+            s,
+            @"\b(pe\s*te|p\s*t(?=\s*\d))\b",
+            "PT",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        s = System.Text.RegularExpressions.Regex.Replace(
+            s,
+            @"\b(pe\s*xe|p\s*c(?=\s*\d))\b",
+            "PC",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        s = System.Text.RegularExpressions.Regex.Replace(
+            s,
+            @"\b(khong)\s+(khong)\s+(mot)\b",
+            "001",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        s = System.Text.RegularExpressions.Regex.Replace(
+            s,
+            @"\b(khong)\s+(mot)\b",
+            "01",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        s = System.Text.RegularExpressions.Regex.Replace(
+            s,
+            @"\b(kh|pt|pc|pn|xk|nk)(\d+)\b",
+            m => m.Groups[1].Value.ToUpper() + m.Groups[2].Value,
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        return s;
+    }
+
+    private static string ConvertVietnameseWordsToDigits(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+
+        // Normalize diacritics for matching, keep original for non-number parts
+        var norm = RemoveDiacritics(text).ToLowerInvariant();
+
+        var units = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["khong"]   = 0,  ["zero"]  = 0,
+            ["mot"]     = 1,  ["one"]   = 1,  ["nhat"] = 1,
+            ["hai"]     = 2,  ["two"]   = 2,
+            ["ba"]      = 3,  ["three"] = 3,
+            ["bon"]     = 4,  ["four"]  = 4,  ["tu"]   = 4,
+            ["nam"]     = 5,  ["five"]  = 5,
+            ["sau"]     = 6,  ["six"]   = 6,
+            ["bay"]     = 7,  ["seven"] = 7,  ["bay"]  = 7,
+            ["tam"]     = 8,  ["eight"] = 8,
+            ["chin"]    = 9,  ["nine"]  = 9,
+            ["muoi"]    = 10, ["ten"]   = 10, ["chuc"] = 10,
+            ["muoi mot"] = 11, ["eleven"]   = 11,
+            ["muoi hai"] = 12, ["twelve"]   = 12,
+            ["muoi ba"]  = 13, ["thirteen"] = 13,
+            ["muoi bon"] = 14, ["fourteen"] = 14,
+            ["muoi nam"] = 15, ["fifteen"]  = 15,
+            ["muoi sau"] = 16, ["sixteen"]  = 16,
+            ["muoi bay"] = 17, ["seventeen"]= 17,
+            ["muoi tam"] = 18, ["eighteen"] = 18,
+            ["muoi chin"]= 19, ["nineteen"] = 19,
+            ["muoi mot"] = 11, ["muoi tu"]  = 14,
+            ["mot muoi"] = 10, // alt form
+            ["linh mot"] = 1, ["le mot"] = 1,  // e.g. "hai muoi linh mot" = 21
+            ["linh hai"] = 2, ["le hai"] = 2,
+            ["linh ba"]  = 3, ["le ba"]  = 3,
+            ["linh bon"] = 4, ["le bon"] = 4,
+            ["linh nam"] = 5, ["le nam"] = 5,
+            ["linh sau"] = 6, ["le sau"] = 6,
+            ["linh bay"] = 7, ["le bay"] = 7,
+            ["linh tam"] = 8, ["le tam"] = 8,
+            ["linh chin"]= 9, ["le chin"]= 9,
+        };
+        var tens = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["muoi"]      = 10, ["hai muoi"]  = 20, ["ba muoi"]   = 30,
+            ["bon muoi"]  = 40, ["nam muoi"]  = 50, ["sau muoi"]  = 60,
+            ["bay muoi"]  = 70, ["tam muoi"]  = 80, ["chin muoi"] = 90,
+            ["hai chuc"]  = 20, ["ba chuc"]   = 30, ["bon chuc"]  = 40,
+            ["nam chuc"]  = 50, ["sau chuc"]  = 60, ["bay chuc"]  = 70,
+            ["tam chuc"]  = 80, ["chin chuc"] = 90,
+        };
+        var scaleWords = new (string Word, long Value)[]
+        {
+            ("ty",     1_000_000_000L),
+            ("trieu",  1_000_000L),
+            ("nghin",  1_000L),
+            ("ngan",   1_000L),
+            ("ngàn",   1_000L),
+            ("tram",   100L),
+            ("muoi",   10L),
+        };
+        var words = System.Text.RegularExpressions.Regex
+            .Split(norm, @"(\s+)")
+            .ToList();
+
+        // We'll process left-to-right, consuming number-word runs
+        var result = new System.Text.StringBuilder();
+        int wi = 0;
+        var origWords = System.Text.RegularExpressions.Regex
+            .Split(text, @"(\s+)")
+            .ToList();
+
+        while (wi < words.Count)
+        {
+            if (System.Text.RegularExpressions.Regex.IsMatch(words[wi], @"^\s+$"))
+            {
+                result.Append(origWords[wi]);
+                wi++;
+                continue;
+            }
+
+            // Try to parse a number starting at wi
+            var (numValue, consumed) = TryParseVietnameseNumber(words, wi, units, tens, scaleWords);
+            if (consumed > 0)
+            {
+                result.Append(numValue.ToString());
+                wi += consumed;
+            }
+            else
+            {
+                result.Append(origWords[wi]);
+                wi++;
+            }
+        }
+
+        return result.ToString();
+    }
+
+    private static (long Value, int Consumed) TryParseVietnameseNumber(
+        List<string> words, int start,
+        Dictionary<string, long> units,
+        Dictionary<string, long> tens,
+        (string Word, long Value)[] scaleWords)
+    {
+        var tokens = new List<(string Norm, int OrigIdx)>();
+        tokens.Clear();
+        int idx = start;
+        while (idx < words.Count)
+        {
+            var w = words[idx];
+            if (System.Text.RegularExpressions.Regex.IsMatch(w, @"^\s+$"))
+            {
+                idx++;
+                continue; // skip whitespace for matching, but count it in consumed
+            }
+            tokens.Add((w, idx));
+            idx++;
+            if (tokens.Count >= 10) break; // max look-ahead
+        }
+
+        if (tokens.Count == 0) return (0, 0);
+
+        for (int len = Math.Min(tokens.Count, 8); len >= 1; len--)
+        {
+            var span = string.Join(" ", tokens.Take(len).Select(t => t.Norm));
+
+            // Check multi-word units/tens directly
+            if (units.TryGetValue(span, out long uVal))
+            {
+                int consumed = tokens[len - 1].OrigIdx - start + 1;
+                return (uVal, consumed);
+            }
+            if (tens.TryGetValue(span, out long tVal))
+            {
+                int consumed = tokens[len - 1].OrigIdx - start + 1;
+                if (len < tokens.Count)
+                {
+                    var nextToken = tokens[len].Norm;
+                    if (units.TryGetValue(nextToken, out long uUnit) && uUnit < 10)
+                    {
+                        int c2 = tokens[len].OrigIdx - start + 1;
+                        return (tVal + uUnit, c2);
+                    }
+                    if ((nextToken == "linh" || nextToken == "le") && len + 1 < tokens.Count)
+                    {
+                        var afterLinh = tokens[len + 1].Norm;
+                        if (units.TryGetValue(afterLinh, out long uLinh) && uLinh < 10)
+                        {
+                            int c3 = tokens[len + 1].OrigIdx - start + 1;
+                            return (tVal + uLinh, c3);
+                        }
+                    }
+                }
+                return (tVal, consumed);
+            }
+        }
+
+        if (tokens.Count >= 1 && units.TryGetValue(tokens[0].Norm, out long leadUnit))
+        {
+            if (tokens.Count >= 2)
+            {
+                foreach (var scale in scaleWords)
+                {
+                    if (tokens[1].Norm == scale.Word)
+                    {
+                        long baseVal = leadUnit * scale.Value;
+                        int consumedBase = tokens[1].OrigIdx - start + 1;
+                        int nextStart = tokens[1].OrigIdx + 1;
+                        while (nextStart < words.Count && System.Text.RegularExpressions.Regex.IsMatch(words[nextStart], @"^\s+$"))
+                            nextStart++;
+                        if (nextStart < words.Count)
+                        {
+                            var (remVal, remConsumed) = TryParseVietnameseNumber(
+                                words, nextStart, units, tens, scaleWords);
+                            if (remConsumed > 0 && remVal < scale.Value)
+                            {
+                                return (baseVal + remVal, nextStart + remConsumed - start);
+                            }
+                        }
+                        return (baseVal, consumedBase);
+                    }
+                }
+            }
+        }
+
+        return (0, 0);
+    }
+
+    private async void ProcessWizardInput(string input)
+    {
+        // Apply phonetic correction pipeline for all input (typed or voice)
+        var fixed1 = FixPhoneticMisrecognition(input);
+        var fixed2 = CollapseSpacedDigits(fixed1);
+        input = ConvertVietnameseWordsToDigits(fixed2);
+
+        var norm = RemoveDiacritics(input).ToLowerInvariant().Trim();
+
+        if (norm == "huy" || norm == "cancel" || norm == "thoat" || norm == "exit")
+        {
+            _wizard = null;
+            AddBot("❌ Đã hủy tạo phiếu thu.");
+            StateHasChanged();
+            return;
+        }
+
+        switch (_wizard.Step)
+        {
+            case VoiceWizardStep.Customer:
+            {
+                string rawKh = input.Trim();
+                rawKh = System.Text.RegularExpressions.Regex.Replace(
+                    rawKh, @"^(khách hàng|khach hang|khách|khach|mã|ma)\s+",
+                    "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+
+                string normKh = RemoveDiacritics(rawKh).ToLowerInvariant();
+                bool looksLikeCode = normKh.Length <= 15 && !normKh.Contains(" ");
+
+                if (looksLikeCode)
+                {
+                    _wizard.Data.MaKh = normKh.ToUpper();
+                    _wizard.Step = VoiceWizardStep.Amount;
+                    AddBot($"✅ Khách hàng: **{_wizard.Data.MaKh}**\n\n" +
+                           "💰 **Bước 2/5 — Số tiền**\n" +
+                           "Nói số tiền. Ví dụ: *2 triệu*, *500 nghìn*, *1500000*");
+                }
+                else
+                {
+                    var found = await SearchCustomerByName(normKh);
+                    if (found.Count == 1)
+                    {
+                        _wizard.Data.MaKh  = found[0].MaKh;
+                        _wizard.Data.TenKh = found[0].TenKh;
+                        _wizard.Step = VoiceWizardStep.Amount;
+                        AddBot($"✅ Khách hàng: **{found[0].TenKh}** ({found[0].MaKh})\n\n" +
+                               "💰 **Bước 2/5 — Số tiền**\n" +
+                               "Nói số tiền. Ví dụ: *2 triệu*, *500 nghìn*, *1500000*");
+                    }
+                    else if (found.Count > 1)
+                    {
+                        var list = string.Join("\n", found.Select((c, i) => $"  {i + 1}. **{c.MaKh}** - {c.TenKh}"));
+                        AddBot($"🔍 Tìm thấy {found.Count} khách hàng:\n{list}\n\n" +
+                               "💡 Vui lòng nói **mã khách hàng** cụ thể (VD: KH001)");
+                    }
+                    else
+                    {
+                        AddBot($"❌ Không tìm thấy khách hàng: *{rawKh}*\n\n" +
+                               "💡 Thử nói **mã khách hàng** (VD: KH001) hoặc kiểm tra lại tên.");
+                    }
+                }
+                break;
+            }
+
+            case VoiceWizardStep.Amount:
+            {
+                string rawTien = input.Trim();
+                rawTien = System.Text.RegularExpressions.Regex.Replace(
+                    rawTien, @"^(số tiền|so tien|tiền|tien|là|la)\s+",
+                    "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+
+                decimal soTien = ParseSpokenAmount(RemoveDiacritics(rawTien).ToLowerInvariant());
+                if (soTien <= 0)
+                {
+                    var numOnly = System.Text.RegularExpressions.Regex.Replace(rawTien, @"[^\d]", "");
+                    decimal.TryParse(numOnly, out soTien);
+                }
+
+                if (soTien <= 0)
+                {
+                    AddBot($"⚠️ Không nhận được số tiền hợp lệ từ: *{rawTien}*\n\n" +
+                           "💡 Thử lại: *2 triệu*, *500 nghìn*, *1500000*");
+                }
+                else
+                {
+                    _wizard.Data.SoTien = soTien;
+                    _wizard.Step = VoiceWizardStep.TkCo;
+                    AddBot($"✅ Số tiền: **{soTien:N0} VND**\n\n" +
+                           "🏦 **Bước 3/5 — Tài khoản có (TK có)**\n" +
+                           "Nói mã tài khoản có. Ví dụ: *131*, *511*, *1111*");
+                }
+                break;
+            }
+
+            case VoiceWizardStep.TkCo:
+            {
+                var tkCoRaw = System.Text.RegularExpressions.Regex.Match(
+                    RemoveDiacritics(input), @"(\d+)");
+                if (!tkCoRaw.Success)
+                {
+                    AddBot("⚠️ Vui lòng nói **số tài khoản có**. Ví dụ: *131*, *511*");
+                    break;
+                }
+                string tkCo = tkCoRaw.Groups[1].Value.Trim();
+                var checkTk = await ValidateAccount(tkCo);
+                if (!checkTk.IsValid)
+                {
+                    AddBot($"❌ {checkTk.Message}\n\n💡 Thử lại với mã TK khác (VD: 131, 511, 711)");
+                    break;
+                }
+                _wizard.Data.TkCo = tkCo;
+                _wizard.Step = VoiceWizardStep.TkNo;
+                AddBot($"✅ TK có: **{tkCo}** - {checkTk.TenTk}\n\n" +
+                       "🏦 **Bước 4/5 — Tài khoản nợ (TK nợ)**\n" +
+                       "Nói mã tài khoản nợ. Ví dụ: *111*, *1121*\n" +
+                       "Hoặc nói **bỏ qua** để dùng mặc định (111 - Tiền mặt)");
+                break;
+            }
+
+            case VoiceWizardStep.TkNo:
+            {
+                bool skip = norm.Contains("bo qua") || norm.Contains("mac dinh") ||
+                            norm.Contains("skip") || norm == "khong";
+                string tkNo = "111";
+
+                if (!skip)
+                {
+                    var tkNoRaw = System.Text.RegularExpressions.Regex.Match(
+                        RemoveDiacritics(input), @"(\d+)");
+                    if (tkNoRaw.Success)
+                        tkNo = tkNoRaw.Groups[1].Value.Trim();
+                }
+
+                var checkTkNo = await ValidateDebitAccount(tkNo);
+                if (!checkTkNo.IsValid)
+                {
+                    AddBot($"❌ {checkTkNo.Message}\n\n💡 Thử lại (VD: 111, 1121) hoặc nói **bỏ qua** để dùng 111");
+                    break;
+                }
+                _wizard.Data.TkNo = tkNo;
+                _wizard.Step = VoiceWizardStep.DienGiai;
+                AddBot($"✅ TK nợ: **{tkNo}** - {checkTkNo.TenTk}\n\n" +
+                       "📝 **Bước 5/5 — Diễn giải**\n" +
+                       "Nói nội dung diễn giải. Ví dụ: *Thu tiền hàng tháng 6*\n" +
+                       "Hoặc nói **bỏ qua** để dùng diễn giải mặc định.");
+                break;
+            }
+
+            case VoiceWizardStep.DienGiai:
+            {
+                bool skip = norm.Contains("bo qua") || norm.Contains("mac dinh") ||
+                            norm.Contains("skip") || norm == "khong";
+
+                _wizard.Data.DienGiai = skip
+                    ? $"Thu tiền khách hàng {_wizard.Data.MaKh}"
+                    : input.Trim();
+
+                // Get ma_dvcs
+                _wizard.Data.MaDvcs = await GetCurrentMaDvcs();
+                _wizard.Data.NgayCt = DateTime.Now.Date;
+
+                var d = _wizard.Data;
+                _wizard.Step = VoiceWizardStep.Confirm;
+                var confirmMsg = new ChatMessage
+                {
+                    Name = "Trợ lý ERP",
+                    Role = "bot",
+                    Time = DateTime.Now,
+                    Text = $"✅ **Xác nhận thông tin phiếu thu:**\n\n" +
+                           $"👤 Khách hàng: **{(string.IsNullOrEmpty(d.TenKh) ? d.MaKh : d.TenKh + " (" + d.MaKh + ")")}**\n" +
+                           $"💰 Số tiền: **{d.SoTien:N0} VND**\n" +
+                           $"🏦 TK nợ: **{d.TkNo}** | TK có: **{d.TkCo}**\n" +
+                           $"📝 Diễn giải: {d.DienGiai}\n" +
+                           $"📅 Ngày: {d.NgayCt:dd/MM/yyyy}\n\n" +
+                           "Nhấn **Xác nhận tạo** để lưu phiếu, **Sửa thông tin** để chỉnh sửa, hoặc **Hủy** để bỏ.",
+                    VoucherData = d,
+                    IsEditing = false
+                };
+                messages.Add(confirmMsg);
+                _wizard = null;
+                StateHasChanged();
+                await SaveChatHistory();
+                await ScrollBottom();
+                break;
+            }
+        }
+        StateHasChanged();
+    }
+
+    private static string NormalizeVoiceInput(string transcript)
+    {
+        if (string.IsNullOrWhiteSpace(transcript)) return transcript;
+
+        var norm = RemoveDiacritics(transcript).ToLowerInvariant().Trim();
+
+        bool isCreate = norm.Contains("tao") && (norm.Contains("phieu") || norm.Contains("thu"));
+        if (!isCreate) return transcript;
+
+        string khValue = null;
+        var khMatch = System.Text.RegularExpressions.Regex.Match(
+            norm,
+            @"(?:khach hang|khach|cho khach)\s+(.+?)\s+(?:so tien|tien|tk|tai khoan|$)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (khMatch.Success)
+            khValue = khMatch.Groups[1].Value.Trim();
+
+        decimal soTien = 0;
+        var tienMatch = System.Text.RegularExpressions.Regex.Match(
+            norm,
+            @"(?:so tien|tien)\s+(.+?)(?=\s+(?:tk|tai khoan|dien giai|don vi|quyen|$))|([\d,\.]+(?:\s*(?:trieu|nghin|ngàn|ngan|ty|ti))(?:\s*(?:ruoi|hon))?(?:\s*[\d,\.]+(?:\s*(?:nghin|ngan))?)?)(?=\s|$)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (tienMatch.Success)
+        {
+            string rawAmount = tienMatch.Groups[1].Success && !string.IsNullOrWhiteSpace(tienMatch.Groups[1].Value)
+                ? tienMatch.Groups[1].Value.Trim()
+                : tienMatch.Groups[2].Value.Trim();
+            soTien = ParseSpokenAmount(rawAmount);
+        }
+
+        string tkCo = null;
+        var tkCoMatch = System.Text.RegularExpressions.Regex.Match(
+            norm,
+            @"(?:tk co|tai khoan co|tk c[o0])\s+([\d]+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (tkCoMatch.Success)
+            tkCo = tkCoMatch.Groups[1].Value.Trim();
+
+        string tkNo = null;
+        var tkNoMatch = System.Text.RegularExpressions.Regex.Match(
+            norm,
+            @"(?:tk no|tai khoan no)\s+([\d]+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (tkNoMatch.Success)
+            tkNo = tkNoMatch.Groups[1].Value.Trim();
+
+        string dienGiai = null;
+        var dgMatch = System.Text.RegularExpressions.Regex.Match(
+            norm,
+            @"(?:dien giai|noi dung)\s+(.+?)(?=\s+(?:tk|tai khoan|don vi|quyen|$))",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (dgMatch.Success)
+            dienGiai = dgMatch.Groups[1].Value.Trim();
+
+        string dvcs = null;
+        var dvcsMatch = System.Text.RegularExpressions.Regex.Match(
+            norm,
+            @"(?:don vi|dvcs)\s+([A-Za-z0-9]+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (dvcsMatch.Success)
+            dvcs = dvcsMatch.Groups[1].Value.Trim().ToUpper();
+
+        string maQs = null;
+        var qsMatch = System.Text.RegularExpressions.Regex.Match(
+            norm,
+            @"(?:quyen so|quyen|qs)\s+([A-Za-z0-9]+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (qsMatch.Success)
+            maQs = qsMatch.Groups[1].Value.Trim().ToUpper();
+
+        if (khValue == null && soTien == 0 && tkCo == null)
+            return transcript;
+
+        var sb = new System.Text.StringBuilder("Tạo phiếu thu: ");
+        if (khValue != null)
+            sb.Append($"Khách {khValue}, ");
+        if (soTien > 0)
+            sb.Append($"Tiền {soTien:0}, ");
+        if (tkCo != null)
+            sb.Append($"TK có {tkCo}, ");
+        if (tkNo != null)
+            sb.Append($"TK nợ {tkNo}, ");
+        if (dienGiai != null)
+            sb.Append($"Diễn giải {dienGiai}, ");
+        if (dvcs != null)
+            sb.Append($"Đơn vị {dvcs}, ");
+        if (maQs != null)
+            sb.Append($"Quyển {maQs}, ");
+
+        return sb.ToString().TrimEnd().TrimEnd(',');
+    }
+
+    private static decimal ParseSpokenAmount(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return 0;
+        var s = RemoveDiacritics(raw).ToLowerInvariant().Trim();
+
+        decimal result = 0;
+        decimal multiplier = 1;
+
+        if (s.Contains("ty") || s.Contains("ti"))          multiplier = 1_000_000_000m;
+        else if (s.Contains("trieu"))                        multiplier = 1_000_000m;
+        else if (s.Contains("nghin") || s.Contains("ngan") || s.EndsWith("k")) multiplier = 1_000m;
+
+        s = System.Text.RegularExpressions.Regex.Replace(s, @"(ty|ti|trieu|nghin|ngan|dong|k\b)", " ").Trim();
+
+        bool hasRuoi = s.Contains("ruoi");
+        s = s.Replace("ruoi", "").Trim();
+
+        var numMatch = System.Text.RegularExpressions.Regex.Match(s, @"([\d][\d\s,\.]*)");
+        if (numMatch.Success)
+        {
+            var numStr = numMatch.Value.Replace(" ", "").Replace(",", ".");
+            numStr = numStr.TrimEnd('.');
+            if (decimal.TryParse(numStr, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out decimal num))
+                result = num;
+        }
+
+        if (hasRuoi) result += 0.5m;
+        if (multiplier > 1) result *= multiplier;
+
+        if (multiplier == 1 && result > 0) return result;
+
+        return result;
+    }
+
+    private static string RemoveDiacritics(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(normalized.Length);
+        foreach (var c in normalized)
+        {
+            var cat = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (cat != System.Globalization.UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        return sb.ToString()
+                 .Normalize(System.Text.NormalizationForm.FormC)
+                 .Replace('đ', 'd').Replace('Đ', 'D');
+    }
+
+    private static string ExtractAfterKeyword(string original, string normalizedKeyword)
+    {
+        if (string.IsNullOrEmpty(original)) return string.Empty;
+
+        var normOrig = RemoveDiacritics(original).ToLowerInvariant();
+        int kwIdx = normOrig.IndexOf(normalizedKeyword, StringComparison.Ordinal);
+        if (kwIdx < 0) return string.Empty;
+
+        int afterIdx = kwIdx + normalizedKeyword.Length;
+        if (afterIdx >= normOrig.Length) return string.Empty;
+
+        return normOrig.Substring(afterIdx).TrimStart().TrimStart(':').Trim();
+    }
+
+    private async Task<VoucherCreateData> ParseVoucherInputAsync(string input)
+    {
+        var data = new VoucherCreateData();
+
+        var normInput = RemoveDiacritics(input).ToLowerInvariant();
+
+        var segments    = input.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+        var normSegs    = normInput.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+        string khSegment   = null;
+        string tienSegment = null;
+        string tkCoSegment = null;
+        string tkNoSegment = null;
+        string dgSegment   = null;
+        string dvcsSegment = null;
+        string qsSegment   = null;
+
+        for (int i = 0; i < segments.Length; i++)
+        {
+            var ns = i < normSegs.Length ? normSegs[i].Trim() : RemoveDiacritics(segments[i]).ToLowerInvariant().Trim();
+
+            if (ns.Contains("khach") || System.Text.RegularExpressions.Regex.IsMatch(ns, @"\bkh\b"))
+                khSegment = segments[i];
+            else if (ns.Contains("tien"))
+                tienSegment = segments[i];
+            else if (ns.Contains("tk") && ns.Contains("co"))
+                tkCoSegment = segments[i];
+            else if (ns.Contains("tk") && ns.Contains("no"))
+                tkNoSegment = segments[i];
+            else if (ns.Contains("dien giai") || ns.Contains("note"))
+                dgSegment = segments[i];
+            else if (ns.Contains("dvcs") || ns.Contains("don vi"))
+                dvcsSegment = segments[i];
+            else if (ns.Contains("quyen") || ns.Contains("qs"))
+                qsSegment = segments[i];
+        }
+
+        if (khSegment != null)
+        {
+            // ExtractAfterKeyword returns normalized (no-diacritic, lowercase) value
+            string normKhValue = ExtractAfterKeyword(khSegment, "khach hang");
+            if (string.IsNullOrWhiteSpace(normKhValue))
+                normKhValue = ExtractAfterKeyword(khSegment, "khach");
+            if (string.IsNullOrWhiteSpace(normKhValue))
+                normKhValue = ExtractAfterKeyword(khSegment, "kh");
+
+            if (!string.IsNullOrWhiteSpace(normKhValue))
+            {
+                normKhValue = normKhValue.Trim();
+                bool looksLikeCode = normKhValue.Length <= 15 && !normKhValue.Contains(" ");
+                if (looksLikeCode)
+                {
+                    data.MaKh = normKhValue.ToUpper();
+                }
+                else
+                {
+                    // For name search use the normalized value (no diacritics) - DB LIKE search handles it
+                    var customers = await SearchCustomerByName(normKhValue);
+                    if (customers.Count == 1)
+                    {
+                        data.MaKh   = customers[0].MaKh;
+                        data.TenKh  = customers[0].TenKh;
+                        data.DiaChi = customers[0].DiaChi;
+                        data.OngBa  = customers[0].OngBa;
+                    }
+                    else if (customers.Count > 1)
+                    {
+                        data.MaKh  = "MULTIPLE_FOUND";
+                        data.TenKh = $"Tìm thấy {customers.Count} khách hàng:\n" +
+                                     string.Join("\n", customers.Select((c, i2) => $"{i2 + 1}. {c.MaKh} - {c.TenKh}"));
+                    }
+                    else
+                    {
+                        data.MaKh  = "NOT_FOUND";
+                        data.TenKh = $"Không tìm thấy khách hàng: '{normKhValue}'";
+                    }
+                }
+            }
+        }
+
+        if (tienSegment != null)
+        {
+            var numMatch = System.Text.RegularExpressions.Regex.Match(tienSegment, @"([0-9][0-9\.,]*)");
+            if (numMatch.Success)
+            {
+                var tienStr = numMatch.Groups[1].Value.Replace(",", "").Replace(".", "");
+                if (decimal.TryParse(tienStr, out decimal tempTien))
+                    data.SoTien = tempTien;
+            }
+        }
+
+        if (tkCoSegment != null)
+        {
+            var numMatch = System.Text.RegularExpressions.Regex.Match(tkCoSegment, @"([0-9]+)");
+            if (numMatch.Success)
+                data.TkCo = numMatch.Groups[1].Value.Trim();
+        }
+
+        if (tkNoSegment != null)
+        {
+            var numMatch = System.Text.RegularExpressions.Regex.Match(tkNoSegment, @"([0-9]+)");
+            if (numMatch.Success)
+                data.TkNo = numMatch.Groups[1].Value.Trim();
+        }
+        if (string.IsNullOrEmpty(data.TkNo))
+            data.TkNo = "111";
+
+        if (dgSegment != null)
+        {
+            string dgValue = ExtractAfterKeyword(dgSegment, "dien giai");
+            if (string.IsNullOrEmpty(dgValue))
+                dgValue = ExtractAfterKeyword(dgSegment, "note");
+            data.DienGiai = string.IsNullOrEmpty(dgValue) ? dgSegment.Trim() : dgValue;
+        }
+        if (string.IsNullOrEmpty(data.DienGiai))
+            data.DienGiai = $"Thu tiền khách hàng {data.MaKh}";
+
+        if (qsSegment != null)
+        {
+            var alphaMatch = System.Text.RegularExpressions.Regex.Match(qsSegment, @"([A-Za-z0-9]+)\s*$");
+            if (alphaMatch.Success)
+                data.MaQs = alphaMatch.Groups[1].Value.Trim().ToUpper();
+        }
+
+        if (dvcsSegment != null)
+        {
+            var alphaMatch = System.Text.RegularExpressions.Regex.Match(dvcsSegment, @"([A-Za-z0-9]+)\s*$");
+            if (alphaMatch.Success)
+                data.MaDvcs = alphaMatch.Groups[1].Value.Trim().ToUpper();
+        }
+        if (string.IsNullOrEmpty(data.MaDvcs))
+            data.MaDvcs = await GetCurrentMaDvcs();
+
+        data.NgayCt = DateTime.Now.Date;
+        return data;
+    }
+
+    private async Task<(bool IsValid, string Message, string TenKh, string DiaChi, string OngBa)> ValidateCustomer(string maKh)
+    {
+        try
+        {
+            var sql = $"SELECT ma_kh, ten_kh, dia_chi, doi_tac FROM dmkh WHERE ma_kh = '{maKh}'";
+            var ds = await myDb.LoadDataset(sql);
+            
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                var row = ds.Tables[0].Rows[0];
+                var tenKh  = row["ten_kh"]?.ToString() ?? "";
+                var diaChi = row["dia_chi"]?.ToString() ?? "";
+                var ongBa  = row["doi_tac"]?.ToString() ?? "";
+                return (true, "", tenKh, diaChi, ongBa);
+            }
+            
+            return (false, $"Không tìm thấy khách hàng có mã '{maKh}'", "", "", "");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Lỗi kiểm tra khách hàng: {ex.Message}", "", "", "");
+        }
+    }
+
+    private async Task<List<(string MaKh, string TenKh, string DiaChi, string OngBa)>> SearchCustomerByName(string tenKh)
+    {
+        try
+        {
+            var result = new List<(string, string, string, string)>();
+            var safeVal = tenKh.Replace("'", "''");
+            var sql = $@"SELECT TOP 5 ma_kh, ten_kh, dia_chi, doi_tac
+                        FROM dmkh
+                        WHERE ten_kh  LIKE N'%{safeVal}%'
+                           OR ten_kh2 LIKE N'%{safeVal}%'
+                           OR ma_kh   LIKE N'%{safeVal}%'
+                        ORDER BY ma_kh";
+            var ds = await myDb.LoadDataset(sql);
+            
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                foreach (DataRow row in ds.Tables[0].Rows)
+                {
+                    result.Add((
+                        row["ma_kh"]?.ToString() ?? "",
+                        row["ten_kh"]?.ToString() ?? "",
+                        row["dia_chi"]?.ToString() ?? "",
+                        row["doi_tac"]?.ToString() ?? ""
+                    ));
+                }
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SearchCustomerByName error: {ex.Message}");
+            return new List<(string, string, string, string)>();
+        }
+    }
+
+    private async Task<(bool IsValid, string Message, string TenTk)> ValidateAccount(string tk)
+    {
+        try
+        {
+            var sql = $"SELECT tk, ten_tk FROM dmtk WHERE tk = '{tk}'";
+            var ds = await myDb.LoadDataset(sql);
+            
+            if (ds == null || ds.Tables[0].Rows.Count == 0)
+                return (false, $"Không tìm thấy tài khoản '{tk}'", "");
+            
+            var tenTk = ds.Tables[0].Rows[0]["ten_tk"].ToString();
+            return (true, "", tenTk);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Lỗi kiểm tra tài khoản: {ex.Message}", "");
+        }
+    }
+
+    private async Task<(bool IsValid, string Message, string TenDvcs)> ValidateDvcs(string maDvcs)
+    {
+        try
+        {
+            var sql = $"SELECT ma_dvcs, ten_dvcs FROM dmdvcs WHERE ma_dvcs = '{maDvcs}'";
+            var ds = await myDb.LoadDataset(sql);
+            
+            if (ds == null || ds.Tables[0].Rows.Count == 0)
+                return (false, $"Không tìm thấy đơn vị có mã '{maDvcs}'. Vui lòng kiểm tra lại mã đơn vị.", "");
+            
+            var tenDvcs = ds.Tables[0].Rows[0]["ten_dvcs"].ToString();
+            return (true, "", tenDvcs);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Lỗi kiểm tra đơn vị: {ex.Message}", "");
+        }
+    }
+
+    private async Task<(bool IsValid, string Message, string TenTk)> ValidateDebitAccount(string tk)
+    {
+        try
+        {
+            var sqlExact = $"SELECT ma_nx, ten_nx FROM dmnx WHERE tk = '{tk}' AND loai_tk = 1";
+            var dsExact = await myDb.LoadDataset(sqlExact);
+            
+            if (dsExact != null && dsExact.Tables[0].Rows.Count > 0)
+            {
+                var tenTk = dsExact.Tables[0].Rows[0]["ten_nx"].ToString();
+                return (true, "", tenTk);
+            }
+
+            var sqlClosest = $@"
+                SELECT TOP 1 ma_nx, ten_nx as ten_tk, tk
+                FROM dmnx 
+                WHERE '{tk}' LIKE tk + '%' 
+                  AND loai_tk = 1 
+                ORDER BY LEN(tk) DESC";
+            
+            var dsClosest = await myDb.LoadDataset(sqlClosest);
+            
+            if (dsClosest != null && dsClosest.Tables[0].Rows.Count > 0)
+            {
+                var tenTk = dsClosest.Tables[0].Rows[0]["ten_tk"].ToString();
+                return (true, "", tenTk);
+            }
+
+            return (false, $"Tài khoản nợ '{tk}' không tồn tại trong danh mục tiền mặt/ngân hàng (dmnx). Vui lòng chọn tài khoản hợp lệ (VD: 1111, 1121).", "");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Lỗi kiểm tra tài khoản nợ: {ex.Message}", "");
+        }
+    }
+
+    private async Task CreateVoucher(VoucherCreateData data)
+    {
+        try
+        {
+            var checkTkNo = await ValidateDebitAccount(data.TkNo);
+            if (!checkTkNo.IsValid)
+            {
+                AddBot($"❌ {checkTkNo.Message}");
+                return;
+            }
+
+            string sttRec = data.SttRec;
+            if (string.IsNullOrEmpty(sttRec))
+            {
+                string wsId = myOption.GetOptionsValue("M_WS_ID") ?? "A";
+                var sql = $"EXEC dbo.GetSttRec 'PT1', '{wsId}'";
+                var ds = await myDb.LoadDataset(sql);
+                
+                if (ds == null || ds.Tables[0].Rows.Count == 0)
+                {
+                    AddBot("❌ Không thể tạo stt_rec. Vui lòng thử lại.");
+                    return;
+                }
+                
+                sttRec = ds.Tables[0].Rows[0][0].ToString();
+            }
+            
+            string soCt = await GenerateSoCt(data.MaQs ?? "PT");
+            string maDvcs = data.MaDvcs ?? "001";
+            string maQs = data.MaQs ?? "PT";
+            string dienGiai = data.DienGiai.Replace("'", "''");
+            var updatePh = $"UPDATE ph41 SET ma_ct = 'PT1', ma_dvcs = '{maDvcs}', so_ct = '{soCt}', ma_qs = '{maQs}', " +
+                          $"ma_gd = '2', ngay_ct = '{data.NgayCt:yyyyMMdd}', ngay_lct = '{data.NgayCt:yyyyMMdd}', " +
+                          $"ma_kh = '{data.MaKh}', dien_giai = N'{dienGiai}', ma_nt = 'VND', ty_gia = 1, ty_giaf = 1, " +
+                          $"t_tien = {data.SoTien}, t_tien_nt = {data.SoTien}, status = '2', " +
+                          $"date = '{DateTime.Now:yyyyMMdd}', date0 = '{DateTime.Now:yyyyMMdd}', " +
+                          $"time = '{DateTime.Now:HH:mm:ss}', time0 = '{DateTime.Now:HH:mm:ss}', " +
+                          $"user_id = 1, user_id0 = 1, tk = '{data.TkNo}' WHERE stt_rec = '{sttRec}'";
+
+            var insertCt = $"INSERT INTO ct41 (stt_rec, stt_rec0, ma_ct, so_ct, ngay_ct, tk_i, ma_kh_i, " +
+                          $"dien_giaii, tien, tien_nt, tien_tt, ty_gia_ht2, ma_nt_i) VALUES " +
+                          $"('{sttRec}', '0001', 'PT1', '{soCt}', '{data.NgayCt:yyyyMMdd}', '{data.TkCo}', " +
+                          $"'{data.MaKh}', N'{dienGiai}', {data.SoTien}, {data.SoTien}, {data.SoTien}, 1, 'VND')";
+
+            await myDb.ExecuteSqlQueryAsync(updatePh);
+            await myDb.ExecuteSqlQueryAsync(insertCt);
+
+            AddBot($"✅ **Đã tạo phiếu thu thành công!**\n\n• Số chứng từ: **{soCt}**\n• Khách hàng: {data.MaKh}\n• TK nợ: **{data.TkNo}** - {checkTkNo.TenTk}\n• Số tiền: {data.SoTien:N0} VND\n• Trạng thái: Đã ghi sổ\n\nBạn có thể vào màn hình Phiếu thu để xem chi tiết.");
+            await Task.Delay(1000);
+            Navigation.NavigateTo("/Cactpt1", forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi khi tạo phiếu thu: {ex.Message}");
+        }
+    }
+
+    private async Task BulkCreateVouchers(List<VoucherCreateData> vouchers)
+    {
+        try
+        {
+            await myDb.ExecuteSqlQueryAsync("DELETE FROM ImexPT1");
+
+            int userId = 1;
+            string maDvcs = "001";
+            string maQs = "PT";
+
+            foreach (var data in vouchers)
+            {
+                var sql = $@"
+                    INSERT INTO ImexPT1 (
+                        ma_gd, ma_kh, so_ct, ngay_ct, dien_giai, tk, tk_i, 
+                        tien_nt, ma_qs, ma_dvcs, ma_nt, ty_gia, ty_gia_ht,
+                        ngay_lct, loai_ct, ma_ct, dien_giaii, ma_kh_i
+                    ) VALUES (
+                        '2', '{data.MaKh}', '{data.SoCt}', '{data.NgayCt:yyyyMMdd}', N'{data.DienGiai}', 
+                        '{data.TkNo}', '{data.TkCo}', {data.SoTien}, '{maQs}', '{maDvcs}', 
+                        'VND', 1, 1, '{data.NgayCt:yyyyMMdd}', '1', 'PT1', N'{data.DienGiai}', '{data.MaKh}'
+                    )";
+                await myDb.ExecuteSqlQueryAsync(sql);
+            }
+
+            var spParams = new Dictionary<string, object>
+            {
+                ["@User_id"] = userId,
+                ["@Ma_qs"] = maQs,
+                ["@Ma_dvcs"] = maDvcs,
+                ["@Xu_ly"] = "0"
+            };
+
+            var result = await myDb.LoadDataset("EXEC SmImexPT1 @User_id, @Ma_qs, @Ma_dvcs, @Xu_ly", spParams);
+
+            if (result != null && result.Tables.Count > 0)
+            {
+                var errorTable = result.Tables[0];
+                if (errorTable.Rows.Count > 0)
+                {
+                    AddBot($"⚠️ Có lỗi khi tạo hàng loạt:\n{errorTable.Rows[0][0]}");
+                    return;
+                }
+
+                if (result.Tables.Count > 1)
+                {
+                    var voucherTable = result.Tables[1];
+                    foreach (DataRow row in voucherTable.Rows)
+                    {
+                        string sttRec = row["stt_rec"].ToString();
+                        await myDb.ExecuteSqlQueryAsync($"EXEC [SmImexPT1];10 '{sttRec}'");
+                    }
+
+                    AddBot($"✅ **Đã tạo thành công {voucherTable.Rows.Count} phiếu thu!**\n\nBạn có thể vào màn hình Phiếu thu để xem danh sách.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AddBot($"❌ Lỗi khi tạo hàng loạt: {ex.Message}");
+        }
+    }
+
+    private async Task<string> GenerateSoCt(string maQs)
+    {
+        try
+        {
+            string autoSoct = myOption.GetOptionsValue("M_AUTO_SOCT") ?? "0";
+            int mAutoSoct = int.Parse(autoSoct);
+            
+            string sql;
+            if (mAutoSoct == 1)
+            {
+                sql = $"SELECT transform, so_ct + 1 as so_ct FROM dmqs WHERE ma_qs = '{maQs.Trim()}'";
+            }
+            else
+            {
+                sql = $"EXEC [GetNewSoct] '{maQs.Trim()}'";
+            }
+            
+            var ds = await myDb.LoadDataset(sql);
+            
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                var row = ds.Tables[0].Rows[0];
+                if (row[1] != null && row[1] != DBNull.Value)
+                {
+                    string nextNo = row[1].ToString();
+                    string transform = row[0].ToString();
+                    return string.Format(transform, Convert.ToDouble(nextNo));
+                }
+            }
+            
+            return "0000001";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GenerateSoCt error: {ex.Message}");
+            return DateTime.Now.ToString("yyyyMMddHHmmss");
+        }
+    }
+
+    private sealed class ChatMessage
+    {
+        public string Name { get; set; }
+        public string Role { get; set; }
+        public string Text { get; set; }
+        public DateTime Time { get; set; }
+        public VoucherCreateData VoucherData { get; set; }
+        public bool IsEditing { get; set; }
+    }
+
+    private sealed class VoucherCreateData
+    {
+        public string MaKh { get; set; }
+        public decimal SoTien { get; set; }
+        public string TkNo { get; set; }
+        public string TkCo { get; set; }
+        public string DienGiai { get; set; }
+        public DateTime NgayCt { get; set; }
+        public string SoCt { get; set; }
+        public string MaQs { get; set; }
+        public string MaDvcs { get; set; }
+        public string SttRec { get; set; }
+        public string TenKh { get; set; }
+        public string TenDvcs { get; set; }
+        public string TenTkNo { get; set; }
+        public string TenTkCo { get; set; }
+        public string DiaChi { get; set; }
+        public string OngBa { get; set; }
+        public string MaSoThue { get; set; }
+    }
+
+    private enum VoiceWizardStep
+    {
+        Customer,
+        Amount,
+        TkCo,
+        TkNo,
+        DienGiai,
+        Confirm
+    }
+
+    private sealed class VoiceWizardState
+    {
+        public VoiceWizardStep Step { get; set; } = VoiceWizardStep.Customer;
+        public VoucherCreateData Data { get; set; } = new();
+
+        public string StepLabel => Step switch
+        {
+            VoiceWizardStep.Customer  => "Bước 1/5: Nhập khách hàng",
+            VoiceWizardStep.Amount    => "Bước 2/5: Nhập số tiền",
+            VoiceWizardStep.TkCo      => "Bước 3/5: Nhập TK có",
+            VoiceWizardStep.TkNo      => "Bước 4/5: Nhập TK nợ",
+            VoiceWizardStep.DienGiai  => "Bước 5/5: Nhập diễn giải",
+            _                          => "Xác nhận"
+        };
+
+        public string InputHint => Step switch
+        {
+            VoiceWizardStep.Customer  => "Nói mã hoặc tên khách hàng...",
+            VoiceWizardStep.Amount    => "Nói số tiền (VD: 2 triệu)...",
+            VoiceWizardStep.TkCo      => "Nói mã TK có (VD: 131)...",
+            VoiceWizardStep.TkNo      => "Nói mã TK nợ hoặc 'bỏ qua'...",
+            VoiceWizardStep.DienGiai  => "Nói diễn giải hoặc 'bỏ qua'...",
+            _                          => "Xác nhận..."
+        };
+    }
+}

@@ -1,0 +1,255 @@
+﻿@page "/fabtpbts_tao"
+@page "/fabtpbts_tao/{Menu_id}"
+@inherits FAbtpbts_TaoBase
+@attribute [Authorize(Roles = "admin,fabtpbts_tao")]
+@using SisFa.Pages.Input.FAbtpbts_Tao
+@using DevExpress.Blazor
+@using System.Data
+
+@* ================================================================
+   PHẦN 1: LOADING
+   ================================================================ *@
+@if (ShowLoaddingVoucher)
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    CssClass="w-100"
+                    IndicatorVisible="true"
+                    IndicatorAreaVisible="true"
+                    Visible="true"
+                    Text="Đang tải dữ liệu..."
+                    TextAlignment="LoadingPanelTextAlignment.Right">
+        <div style="min-height: 250px;"></div>
+    </DxLoadingPanel>
+}
+else if (TblPH != null)
+{
+    <div class="row m-0 p-0">
+        <FrmBrowse3Component @ref="oBrowsePH"
+                             TblData="@TblPH"
+                             Page_size="@Page_size"
+                             IsPageSize="true"
+                             CssClass="grid-frm-height w-100"
+                             Fbrowse="@fbrowse"
+                             SelectItem="CurItem"
+                             SelectCol="tag"
+                             IsLangEn="@IsLangEn">
+        </FrmBrowse3Component>
+    </div>
+
+    <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+
+    @* ================================================================
+       PHẦN 3: LƯỚI CT (DETAIL)
+       ================================================================ *@
+    <div class="row my-1 mx-0 p-0">
+        <h8 class="fw-bold bg-light text-warning rounded-pill mb-1">Chi tiết</h8>
+        <FrmBrowseComponent @ref="oBrowseCT"
+                            TblData="@TblCT"
+                            CssClass="grid-frmct-height w-100"
+                            Fbrowse="@FbrowseCT"
+                            IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+}
+
+@* ================================================================
+   PHẦN 4: POPUP FILTER
+   ================================================================ *@
+<DxPopup @ref="popFilter"
+         CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="520px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="Tạo bút toán chi phí khấu hao TSCĐ">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Năm:">
+                        <DxSpinEdit @bind-Value="@FilterNam" DisplayFormat="####" MinValue="2000" MaxValue="2099" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Từ kỳ (1-12):">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy1" MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy1 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy1 >= 1 && FilterKy1 <= 12)
+                                {
+                                    <span>@(new DateTime(FilterNam, FilterKy1, 1).ToString("MM/yyyy"))</span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Đến kỳ (1-12):">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy2" MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy2 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy2 >= 1 && FilterKy2 <= 12)
+                                {
+                                    <span>@(new DateTime(FilterNam, FilterKy2, 1).AddMonths(1).AddDays(-1).ToString("MM/yyyy"))</span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success" Text="Thực hiện" Click="@BtnFilterOK" />
+                <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Danger" Text="Đóng" Click="@CloseFilter" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@* ================================================================
+   PHẦN 5: FORM POPUP — Tạo bút toán / Xóa / Ghi đè / Báo cáo
+   (Component con tách riêng — giống FrmInctpxe)
+   ================================================================ *@
+<FrmFAbtpbts_Tao @ref="frmAction"
+                 ShowDlgTaoBt="@ShowDlgTaoBt"
+                 ShowDlgTaoBtChanged="@((bool v) => { ShowDlgTaoBt = v; StateHasChanged(); })"
+                 DlgTaoBt="@DlgTaoBt"
+                 DlgLoading="@DlgLoading"
+                 DlgSoCt2="@DlgSoCt2"
+                 PendingTaggedRows="@_pendingTaggedRows"
+                 FilterNam="@FilterNam"
+                 FilterKy1="@FilterKy1"
+                 FilterKy2="@FilterKy2"
+                 IsLangEn="@IsLangEn"
+                 ShowConfirmDelete="@ShowConfirmDelete"
+                 ShowConfirmDeleteChanged="@((bool v) => { ShowConfirmDelete = v; StateHasChanged(); })"
+                 ShowConfirmOverwrite="@ShowConfirmOverwrite"
+                 ShowConfirmOverwriteChanged="@((bool v) => { ShowConfirmOverwrite = v; StateHasChanged(); })"
+                 OnDlgMaQsChanged="@OnDlgMaQsChanged"
+                 OnDlgTaoBtOK="@DlgTaoBt_OK"
+                 OnDlgTaoBtCancel="@DlgTaoBt_Cancel"
+                 OnConfirmDelete="@ConfirmDelete"
+                 OnCancelDelete="@CancelDelete"
+                 OnConfirmOverwrite="@ConfirmOverwriteAndContinue"
+                 OnCancelOverwrite="@CancelOverwrite" />
+
+@* ================================================================
+   PHẦN 6: POPUP IN — giống pattern Zcdmslts / INCD1Cpn
+   ================================================================ *@
+@* ================================================================
+   HÀNG ĐỢI IN TUẦN TỰ (CHỐNG CRASH DEVEXPRESS DXVIEWER)
+   ================================================================ *@
+@* ================================================================
+   HÀNG ĐỢI IN TUẦN TỰ (CHỐNG CRASH DEVEXPRESS DXVIEWER)
+   ================================================================ *@
+@if (PrintQueue != null && PrintQueue.Any())
+{
+    @* Chỉ lấy đúng 1 phiếu đầu tiên trong hàng đợi ra để vẽ *@
+    var currentPrintJob = PrintQueue.First();
+
+    <DxPopup @key="currentPrintJob.Id"
+             Visible="true"
+             VisibleChanged="@((bool v) => { if (!v) ClosePrintWindow(currentPrintJob); })"
+             CloseOnOutsideClick="false"
+             CloseOnEscape="true"
+             CssClass="dxPopup"
+             Width="80%" Height="90%"
+             ShowFooter="false"
+             HeaderText="@currentPrintJob.Title">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@currentPrintJob.Data"
+                                   Menu_id="@Menu_id.Replace('_', '.')"
+                                   OnBack="@(() => ClosePrintWindow(currentPrintJob))" />
+        </BodyTemplate>
+    </DxPopup>
+}
+<style>
+    .grid-frm-height   { height: 52vh; }
+    .grid-frmct-height { height: 28vh; }
+</style>
+
+@code {
+    private FrmFAbtpbts_Tao frmAction;
+    private DxGrid gridPH;
+    private DxPopup popPrint;
+
+    // ===================================================
+    // Parse Fbrowse → danh sách cột cho DxGrid lưới PH
+    // ===================================================
+    private record PhCol(string Field, string Caption, string Width, bool IsDate, bool IsNumber, bool IsHidden, string Format);
+
+    private IEnumerable<PhCol> PhColumns
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(fbrowse)) yield break;
+            foreach (var seg in fbrowse.Split(';'))
+            {
+                if (string.IsNullOrWhiteSpace(seg)) continue;
+                var p = seg.Trim().Split(':');
+                if (p.Length < 1) continue;
+                string field = p[0].Trim().ToLower();
+                if (field == "tag") continue;
+                string width  = p.Length > 1 ? p[1].Trim() + "px" : "100px";
+                string caption = "";
+                bool isDate = false, isNum = false, isHidden = false;
+                string fmt = "";
+                for (int i = 2; i < p.Length; i++)
+                {
+                    string f = p[i].Trim();
+                    if (f.StartsWith("h=", StringComparison.OrdinalIgnoreCase))
+                        caption = f.Substring(2).Split('&')[0];
+                    else if (f.Equals("D", StringComparison.OrdinalIgnoreCase))
+                        isDate = true;
+                    else if (f.Equals("IV", StringComparison.OrdinalIgnoreCase))
+                        isHidden = true;
+                    else if (f.StartsWith("N", StringComparison.OrdinalIgnoreCase) && f.Length <= 3)
+                    { isNum = true; fmt = f.ToUpper() == "N" ? "N0" : f.ToUpper(); }
+                }
+                if (string.IsNullOrEmpty(caption)) caption = field;
+                yield return new PhCol(field, caption, width, isDate, isNum, isHidden, fmt);
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Menu_id = string.IsNullOrEmpty(Menu_id) ? "wf.ct.09" : Menu_id;
+        base.OnInitialized();
+    }
+
+    private void OnPhRowClick(GridRowClickEventArgs e)
+    {
+        if (e.Grid.GetDataItem(e.VisibleIndex) is DataRowView rv)
+        {
+            SelectedItem = rv;
+            FilterCtBySelectedPh();
+            StateHasChanged();
+        }
+    }
+
+    private void OnCustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        if (e.ElementType == GridElementType.DataRow && SelectedItem is DataRowView selRv)
+        {
+            if (e.Grid.GetDataItem(e.VisibleIndex) is DataRowView rowRv && rowRv.Row == selRv.Row)
+                e.Style = "background-color: #f0f0f0;";
+        }
+    }
+}

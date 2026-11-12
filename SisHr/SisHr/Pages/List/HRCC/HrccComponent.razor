@@ -1,0 +1,219 @@
+@page "/hrcc"
+@page "/hrcc/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,hrcc")]
+
+<div class="row mt-1" @onkeydown="OnoBrowseKeyDown" tabindex="0">
+    <FrmBrowseComponent @ref="oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@fbrowse"
+                        Page_size="@Page_size"
+                        SelectItem="CurItem"
+                        OnRowDbClick="@OnRDBClick"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="40vw"
+              MinWidth="500px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible"
+                                 List_ID="@sqlTableName"
+                                 Ma_ma="@SqlTableKeyValue"
+                                 Title="@Lap["Change certificate type code"]"
+                                 Ten_item="@Ten_item"
+                                 OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible"
+                             CurDmimex="@CurDmimex"
+                             OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        mPage = "hrcc";
+        IsShowCopy = true;
+        IsShowImport = true;
+        Is_doi_ma = true;
+        sqlTableName = "DMLCC";
+        sqlTableView = "v_DMLCC";
+        SqlTableKey = "ma_lcc";
+        SqlItemName = "ten_lcc";
+        FrmType = typeof(SisHr.Pages.List.HRCC.EditHrcc);
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wr.dm.19";
+
+        base.OnInitialized();
+    }
+
+    public override async Task PageLoad()
+    {
+        await base.PageLoad();
+        Is_doi_ma = true;
+        SqlItemName = "ten_lcc";
+        sqlTableName = "DMLCC";
+        sqlTableView = "v_DMLCC";
+        SqlTableKey = "ma_lcc";
+    }
+
+    public override async void ChangeOK(string newID)
+    {
+        await Loaddata();
+        myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], newID));
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        string sql = $"SELECT * FROM {sqlTableView}";
+
+        try
+        {
+            System.Data.DataSet dsList = await myDb.LoadDataset(sql);
+            if (dsList != null && dsList.Tables.Count > 0)
+            {
+                TblData = dsList.Tables[0];
+                if (TblData.DefaultView.Count > 0)
+                    SelectedItem = TblData.DefaultView[0];
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Loaddata error: " + ex.Message);
+        }
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async void OnActionTaskchanged(ActionTask task)
+    {
+        if (task == ActionTask.Delete)
+        {
+            bool isValid = await ValidateBeforeDelete();
+            if (!isValid)
+            {
+                myStateMN.SetCurrentActionTask(ActionTask.None);
+                return;
+            }
+        }
+        base.OnActionTaskchanged(task);
+    }
+
+    async Task<bool> ValidateBeforeDelete()
+    {
+        if (SelectedItem == null) return false;
+
+        System.Data.DataRowView row = SelectedItem as System.Data.DataRowView;
+        if (row == null) return false;
+
+        string maLcc = row["ma_lcc"].ToString().Trim();
+
+        int checkResult = await CheckDeleteListIdAsync(maLcc);
+
+        if (checkResult > 0)
+        {
+            return true;
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["Unremoved data has been generated"]);
+            return false;
+        }
+    }
+
+    private async Task<int> CheckDeleteListIdAsync(string maLcc)
+    {
+        int result = 0;
+        try
+        {
+            string sql = $"SET NOCOUNT ON; exec dbo.CheckDeleteListId 'DMLCC', '{maLcc}'";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var val = ds.Tables[0].Rows[0][0];
+                if (val != DBNull.Value)
+                    result = Convert.ToInt32(val);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("CheckDeleteListIdAsync error: " + ex.Message);
+        }
+        return result;
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+        base.Dispose();
+    }
+}

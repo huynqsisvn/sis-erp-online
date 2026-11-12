@@ -1,0 +1,597 @@
+﻿@page "/fxhspbcc"
+@page "/fxhspbcc/{Menu_id}"
+@inherits TransBaseComponent
+@attribute [Authorize(Roles = "admin,fxhspbcc")]
+@using SisFx.Pages.Input.FXHSPBCC
+@using System.Data
+
+@* ================================================================
+   PHẦN 1: LOADING
+   ================================================================ *@
+@if (ShowLoaddingVoucher)
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    CssClass="w-100"
+                    IndicatorVisible="true"
+                    IndicatorAreaVisible="true"
+                    Visible="true"
+                    Text="@Lap["Processing..."]"
+                    TextAlignment="LoadingPanelTextAlignment.Right">
+        <div style="min-height:250px;"></div>
+    </DxLoadingPanel>
+}
+else if (TblPH != null)
+{
+    @* ================================================================
+       PHẦN 2: LƯỚI PH (MASTER)
+       ================================================================ *@
+    <div class="row m-0 p-0">
+        <FrmBrowseComponent @ref="@oBrowsePH"
+                            TblData="@TblPH"
+                            Page_size="@pageSize"
+                            IsPageSize="@IsPageSize"
+                            CssClass="grid-frm-height"
+                            Fbrowse="@FbrowsePH"
+                            SelectItem="CurItem"
+                            OnRowDbClick="@OnRDBClick"
+                            IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+    <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+
+    @* ================================================================
+       PHẦN 3: LƯỚI CT (DETAIL)
+       ================================================================ *@
+    <div class="row my-1 mx-0 p-0">
+        <h8 class="fw-bold bg-light text-warning rounded-pill mb-1">@Lap["Detail"]</h8>
+        @if (SelectedItem != null)
+        {
+            <FrmBrowseComponent @ref="@oBrowseCT"
+                                TblData="@TblCT"
+                                CssClass="grid-frmct-height"
+                                Fbrowse="@FbrowseCT"
+                                IsLangEn="@IsLangEn">
+            </FrmBrowseComponent>
+        }
+    </div>
+}
+
+@* ================================================================
+   PHẦN 4: POPUP FILTER
+   Giống WinForm FrmLoc: Năm, từ kỳ, Mã công cụ, Mã BPSD, Mã ĐVCS
+   ================================================================ *@
+<DxPopup @ref="popFilter"
+         CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         @bind-Visible="@popFilterVisible"
+         Width="520px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="@Lap["Allocation coefficient declaration for tools"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center py-4">
+                <div class="spinner-border text-primary" role="status" style="width:5rem;height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1 pb-2">
+                <DxFormLayout CssClass="w-100" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                    @* --- NĂM --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Year"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <DxSpinEdit @bind-Value="@FilterNam"
+                                            DisplayFormat="####"
+                                            MinValue="1900"
+                                            MaxValue="2079" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- CÓ HIỆU LỰC TỪ KỲ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Valid from period"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <DxSpinEdit @bind-Value="@FilterKy"
+                                            MinValue="1"
+                                            MaxValue="12" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- MÃ CÔNG CỤ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Tool code"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="w-100 p-0"
+                                                       Ma_dm="dmcc"
+                                                       @bind-Value="@FilterMaCc"
+                                                       IsLangEn="@IsLangEn">
+                                </AutocompleteComponent>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- MÃ BPSD --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Allocation code"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="w-100 p-0"
+                                                       Ma_dm="dmbpts"
+                                                       @bind-Value="@FilterMaBpcc"
+                                                       IsLangEn="@IsLangEn">
+                                </AutocompleteComponent>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success"
+                          Text="@Lap["OK"]"
+                          Click="@BtnFilterOK" />
+                <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Danger"
+                          Text="@Lap["Cancel"]"
+                          Click="@BtnFilterCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@* ================================================================
+   PHẦN 5: FORM THÊM / SỬA / XEM — DxWindow chứa FrmFXHSPBCC
+   ================================================================ *@
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="60vw"
+              MinWidth="600px"
+              MinHeight="200px"
+              Scrollable="true"
+              MaxWidth="1400px"
+              MaxHeight="92vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+<style>
+    .grid-frm-height   { height: 55vh; }
+    .grid-frmct-height { height: 30vh; }
+</style>
+
+@code {
+    // ===================================================
+    // BIẾN FILTER — giống WinForm FrmLoc
+    // ===================================================
+    public int    FilterNam   = DateTime.Now.Year;
+    public int    FilterKy    = DateTime.Now.Month;
+    public string FilterMaCc  = "";
+    public string FilterMaBpcc = "";
+
+    // ===================================================
+    // CẤU HÌNH CỘT LƯỚI PH — giống tbMain của WinForm
+    // ===================================================
+    private const string _FbrowsePH =
+        "Stt:45:h=Stt:FL:HR;" +
+        "ma_cc_me:120:h=Mã công cụ:FL;" +
+        "ten_cc:280:h=Tên công cụ:FL;" +
+        "ma_bpcc:100:h=Mã bpsd:FL;" +
+        "ten_bpcc:200:h=Tên bpsd:FL;" +
+        "tk_cp:90:h=Tk chi phí:FL;" +
+        "ma_phi:80:h=Mã phí:FL;" +
+        "ma_dvcs:80:h=Mã ĐVCS:FL";
+
+    // ===================================================
+    // CẤU HÌNH CỘT LƯỚI CT — giống GrdCt trong newForm.xaml
+    // ===================================================
+    private const string _FbrowseCT =
+        "Stt:45:h=Stt:FL:HR;" +
+        "tk_cp:90:h=Tk cp:FL;" +
+        "ma_bpht:90:h=Mã bpht:FL;" +
+        "ma_px:80:h=Mã px:FL;" +
+        "ma_vv:100:h=Mã dự án:FL;" +
+        "so_lsx:80:h=Số lsx:FL;" +
+        "ma_sp:80:h=Mã sp:FL;" +
+        "ngay_hl1:110:h=Hiệu lực từ ngày:FL:D;" +
+        "ngay_hl2:110:h=Hiệu lực đến ngày:FL:D;" +
+        "he_so:80:h=Hệ số:N2:I0:FL";
+
+    // ===================================================
+    // KHỞI TẠO
+    // ===================================================
+    protected override void OnInitialized()
+    {
+        Menu_id  = string.IsNullOrEmpty(Menu_id) ? "wf.xc.05" : Menu_id;
+        FrmType  = typeof(Input.FXHSPBCC.FrmFXHSPBCC);
+        LanguageID = "";
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+
+            if (curCommand != null)
+                await Lap.LoadLocalizationAsync(
+                    string.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+
+            string menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New",     true));
+                myStateMN.SetToolBar(new MyToolbar("Copy",    true));
+                myStateMN.SetToolBar(new MyToolbar("Import",  false));
+                myStateMN.SetToolBar(new MyToolbar("Edit",    true));
+                myStateMN.SetToolBar(new MyToolbar("Save",    false));
+                myStateMN.SetToolBar(new MyToolbar("Delete",  true));
+                myStateMN.SetToolBar(new MyToolbar("Change",  false));
+                myStateMN.SetToolBar(new MyToolbar("View",    true));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print",   false));
+                myStateMN.SetToolBar(new MyToolbar("Export",  true));
+                myStateMN.SetToolBar(new MyToolbar("Search",  true));
+                myStateMN.SetToolBar(new MyToolbar("Quit",    false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged    += OnLangguachange;
+            myStateMN.OnDvcsChanged       += OnDvcsChanged;
+
+            popFilterVisible = true;
+            StateHasChanged();
+        }
+    }
+
+    private async void OnDvcsChanged(string ma_dvcs)
+    {
+        await InvokeAsync(() => { BtnFilterOK(); });
+    }
+
+    // ===================================================
+    // PAGELOAD
+    // ===================================================
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            string pSize = myOption.GetOptionsValue("M_GRID_NROW");
+            pageSize = string.IsNullOrEmpty(pSize) ? 50 : int.Parse(pSize.Trim());
+        }
+        FbrowsePH = _FbrowsePH;
+        FbrowseCT = _FbrowseCT;
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // LOAD DATA — WinForm: store_proc trả 2 bảng từ hspbcc
+    //   tbMain   = Tables[0] → PH (master)
+    //   tbDetail = Tables[1] → CT (detail)
+    // ===================================================
+    public override async Task Loaddata(bool isFirst = true)
+    {
+        ShowLoaddingVoucher = true;
+        StateHasChanged();
+
+        try
+        {
+            string dvcs  = myStateMN.GetMa_Dvcs();
+            string where = string.IsNullOrEmpty(phFilter) || phFilter == "1=1" ? "1=1" : phFilter;
+
+            if (where == "1=1" && !string.IsNullOrEmpty(dvcs) && dvcs != "ALL")
+                where += $" AND h.ma_dvcs LIKE '{dvcs.Trim()}%'";
+
+            // MASTER: DISTINCT ma_cc_me + ma_bpcc, join dmcc / dmbpts để lấy tên
+            // Giống WinForm: LEFT JOIN dmcc (không phải ctdmcc)
+            string sqlPh = $@"SELECT
+                ROW_NUMBER() OVER (ORDER BY h.ma_cc_me, h.ma_bpcc) AS Stt,
+                h.ma_cc_me, h.ma_bpcc, h.ma_dvcs,
+                MAX(c.ten_cc)   AS ten_cc,
+                MAX(c.ten_cc2)  AS ten_cc2,
+                MAX(b.ten_bpts) AS ten_bpcc,
+                MAX(b.ten_bpts2) AS ten_bpcc2,
+                MAX(c.tk_cp)    AS tk_cp,
+                MAX(c.ma_phi)   AS ma_phi
+            FROM hspbcc h
+            LEFT JOIN dmcc c ON c.ma_cc_me = h.ma_cc_me
+            LEFT JOIN dmbpts b ON b.ma_bpts  = h.ma_bpcc
+            WHERE {where}
+            GROUP BY h.ma_cc_me, h.ma_bpcc, h.ma_dvcs";
+
+            DataSet dsPh = myDb.LoadDataSet(sqlPh);
+            TblPH = dsPh?.Tables.Count > 0 ? dsPh.Tables[0].Copy() : new DataTable();
+
+            // DETAIL: tất cả chi tiết khớp với các cặp (ma_cc_me, ma_bpcc) từ TblPH
+            string sqlCt;
+            if (TblPH != null && TblPH.Rows.Count > 0)
+            {
+                sqlCt = $@"SELECT
+                    ROW_NUMBER() OVER (PARTITION BY h.ma_cc_me, h.ma_bpcc ORDER BY h.ma_cc_me, h.ma_bpcc) AS Stt,
+                    h.*
+                FROM hspbcc h
+                WHERE EXISTS (
+                    SELECT 1 FROM ({sqlPh}) x
+                    WHERE x.ma_cc_me = h.ma_cc_me AND x.ma_bpcc = h.ma_bpcc
+                )";
+            }
+            else
+            {
+                sqlCt = "SELECT * FROM hspbcc WHERE 1=0";
+            }
+            DataSet dsCt = myDb.LoadDataSet(sqlCt);
+            TblCT = dsCt?.Tables.Count > 0 ? dsCt.Tables[0].Copy() : new DataTable();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Error"] + ": " + ex.Message);
+            TblPH = new DataTable();
+            TblCT = new DataTable();
+        }
+
+        ShowLoaddingVoucher = false;
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // CHỌN DÒNG PH — lọc TblCT theo ma_cc_me + ma_bpcc
+    // WinForm: oBrowse_F2 / oBrowse_F3 lấy 2 key này
+    // ===================================================
+    public override void CurItem(object obj)
+    {
+        if (obj == null) return;
+        SelectedItem = obj;
+        try
+        {
+            DataRowView rv   = (DataRowView)obj;
+            string maCcMe    = rv.Row.Table.Columns.Contains("ma_cc_me") ? rv["ma_cc_me"].ToString().Trim() : "";
+            string maBpcc    = rv.Row.Table.Columns.Contains("ma_bpcc")  ? rv["ma_bpcc"].ToString().Trim()  : "";
+            SqlTableKeyValue = $"{maCcMe}|{maBpcc}";
+
+            if (TblCT != null && !string.IsNullOrEmpty(maCcMe) && !string.IsNullOrEmpty(maBpcc))
+                TblCT.DefaultView.RowFilter = $"ma_cc_me='{maCcMe.Replace("'", "''")}' AND ma_bpcc='{maBpcc.Replace("'", "''")}'";
+        }
+        catch { }
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // DOUBLE-CLICK — mở form View
+    // ===================================================
+    public new void OnRDBClick(object obj)
+    {
+        if (obj == null) return;
+        try
+        {
+            DataRowView rv = (DataRowView)obj;
+            string maCcMe  = rv.Row.Table.Columns.Contains("ma_cc_me") ? rv["ma_cc_me"].ToString().Trim() : "";
+            string maBpcc  = rv.Row.Table.Columns.Contains("ma_bpcc")  ? rv["ma_bpcc"].ToString().Trim()  : "";
+            SqlTableKeyValue = $"{maCcMe}|{maBpcc}";
+
+            OpenForm(ActionTask.View);
+        }
+        catch { }
+    }
+
+    // ===================================================
+    // TOOLBAR ACTIONS
+    // ===================================================
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Moi();
+                break;
+            case ActionTask.Copy:
+                myStateMN.SetCurrentActionTask(ActionTask.Copy);
+                V_Copy();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Search:
+                myStateMN.SetCurrentActionTask(ActionTask.Search);
+                popFilterVisible = true;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    public override void V_Moi()
+    {
+        string dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrWhiteSpace(dvcs) || dvcs.Trim().ToUpper() == "ALL")
+        {
+            myStateMN.SetNewThongbao(Lap["Please, select Unit code"] + " !");
+            return;
+        }
+        OpenForm(ActionTask.New);
+    }
+
+    public override void V_Copy()
+    {
+        if (SelectedItem == null) { myStateMN.SetNewThongbao(Lap["No data selected"]); return; }
+        OpenForm(ActionTask.Copy);
+    }
+
+    public override void V_Sua()
+    {
+        if (SelectedItem == null) { myStateMN.SetNewThongbao(Lap["No data selected"]); return; }
+        OpenForm(ActionTask.Edit);
+    }
+
+    public override void V_Xem()
+    {
+        if (SelectedItem == null) { myStateMN.SetNewThongbao(Lap["No data selected"]); return; }
+        OpenForm(ActionTask.View);
+    }
+
+    public override async void V_Xoa()
+    {
+        if (SelectedItem == null) { myStateMN.SetNewThongbao(Lap["No data selected"]); return; }
+        try
+        {
+            var parts  = SqlTableKeyValue.Split('|');
+            string maCcMe = parts.Length > 0 ? parts[0].Trim() : "";
+            string maBpcc = parts.Length > 1 ? parts[1].Trim() : "";
+            if (string.IsNullOrEmpty(maCcMe) || string.IsNullOrEmpty(maBpcc)) return;
+
+            bool confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text             = string.Format(Lap["Do you want to delete :{0} ?"].ToString(), $"{maCcMe} | {maBpcc}"),
+                Title            = Lap["Confirm deletion of voucher"],
+                OkButtonText     = Lap["OK"],
+                CancelButtonText = Lap["Cancel"],
+                ShowIcon         = true,
+                ShowCloseButton  = false,
+                RenderStyle      = MessageBoxRenderStyle.Danger
+            });
+
+            if (confirm)
+            {
+                string s1 = maCcMe.Replace("'", "''");
+                string s2 = maBpcc.Replace("'", "''");
+                await myDb.ExecuteSqlQueryAsync(
+                    $"DELETE FROM hspbcc WHERE ma_cc_me='{s1}' AND ma_bpcc='{s2}'");
+                myStateMN.SetNewThongbao(string.Format(Lap["Edit successfully : {0}"].ToString(), maCcMe));
+                SelectedItem     = null;
+                SqlTableKeyValue = "";
+                await Loaddata(false);
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Error"] + ": " + ex.Message);
+        }
+    }
+
+    // ===================================================
+    // MỞ FORM — dùng chung cho mọi action
+    // ===================================================
+    private void OpenForm(ActionTask task)
+    {
+        Par.Clear();
+        Par.Add("Stt_rec",       (object)(task == ActionTask.New ? string.Empty : SqlTableKeyValue));
+        Par.Add("Ma_ct",         (object)Ma_ct);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("curActionTask", (object)task);
+        Par.Add("Closeform", EventCallback.Factory.Create<bool>(this, async (bool reload) =>
+        {
+            if (reload)
+            {
+                await Loaddata(false);
+                if (!string.IsNullOrEmpty(SqlTableKeyValue) && TblCT != null)
+                {
+                    var p = SqlTableKeyValue.Split('|');
+                    string cc = p.Length > 0 ? p[0].Trim().Replace("'", "''") : "";
+                    string bp = p.Length > 1 ? p[1].Trim().Replace("'", "''") : "";
+                    TblCT.DefaultView.RowFilter = $"ma_cc_me='{cc}' AND ma_bpcc='{bp}'";
+                }
+                if (task == ActionTask.New)
+                {
+                    SelectedItem = null;
+                    SqlTableKeyValue = "";
+                    if (TblCT != null) TblCT.DefaultView.RowFilter = "1=0";
+                }
+            }
+            IsShowFrm = false;
+            await InvokeAsync(StateHasChanged);
+        }));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // FILTER OK — giống WinForm FrmLoc.ConfirmGridView_OnOk
+    // ===================================================
+    private async void BtnFilterOK()
+    {
+        // Validate năm (giống WinForm FrmLoc)
+        if (FilterNam < 1900 || FilterNam > 2078)
+        {
+            myStateMN.SetNewThongbao(Lap["Year is invalid (must be > 0)."]);
+            return;
+        }
+        if (FilterKy < 1 || FilterKy > 12)
+        {
+            myStateMN.SetNewThongbao(Lap["From period must be 1 to 12."]);
+            return;
+        }
+
+        ShowLoadding = true;
+        string dvcs  = myStateMN.GetMa_Dvcs();
+
+        phFilter = "1=1";
+        if (!string.IsNullOrEmpty(dvcs) && dvcs != "ALL")
+            phFilter += $" AND h.ma_dvcs LIKE '{dvcs.Trim()}%'";
+
+        if (FilterNam > 0)
+            phFilter += $" AND YEAR(h.ngay_hl1) = {FilterNam}";
+
+        if (FilterKy > 0)
+            phFilter += $" AND MONTH(h.ngay_hl1) = {FilterKy}";
+
+        if (!string.IsNullOrEmpty(FilterMaCc))
+        {
+            string safeCc = FilterMaCc.Trim().Replace("'", "''");
+            phFilter += $" AND h.ma_cc_me LIKE '{safeCc}%'";
+        }
+
+        if (!string.IsNullOrEmpty(FilterMaBpcc))
+        {
+            string safeBp = FilterMaBpcc.Trim().Replace("'", "''");
+            phFilter += $" AND h.ma_bpcc LIKE '{safeBp}%'";
+        }
+
+        await Loaddata(false);
+        ShowLoadding     = false;
+        popFilterVisible = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void BtnFilterCancel()
+    {
+        popFilterVisible = false;
+        StateHasChanged();
+    }
+}

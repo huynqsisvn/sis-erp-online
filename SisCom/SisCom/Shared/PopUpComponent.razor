@@ -1,0 +1,32 @@
+﻿@using DevExpress.Blazor
+<DxPopup @bind-Visible="@PopupVisible"
+         ShowFooter="false"
+         CloseOnEscape="false"
+         CloseOnOutsideClick="false"
+         ShowCloseButton="false"
+         Width="600px"
+         HeaderText="@Pagetitle">
+    <BodyContentTemplate>
+        @if (!string.IsNullOrEmpty(LSdata))
+        {
+            <FileManagerComponent Stringdata="@LSdata" SaveDone="@FormResult"></FileManagerComponent>
+        }
+    </BodyContentTemplate>   
+</DxPopup>
+
+@code {   
+    [Parameter]
+    public bool PopupVisible { get; set; }
+    [Parameter]
+    public EventCallback<string> SaveDone { get; set; }
+    [Parameter]
+    public string Pagetitle { get; set; }   
+    [Parameter]
+    public string LSdata { get; set; }
+
+    void FormResult(string result)
+    {
+        PopupVisible = false;
+        SaveDone.InvokeAsync(result);
+    }   
+}

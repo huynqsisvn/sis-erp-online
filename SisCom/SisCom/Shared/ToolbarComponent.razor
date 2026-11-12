@@ -1,0 +1,920 @@
+﻿@inject IDbManager myDb
+@inject Statemanagerment myStatemanagerment
+@inject ILocalStorageService Localstore
+@inject NavigationManager navigation
+@inject ICommandManager Commands
+@inject IStringLocalizer<App> Lap
+
+<DxLayoutBreakpoint MaxWidth="1025" @bind-IsActive="@IsMobileLayout" />
+@if (IsShowToolBar)
+{
+    <div class="fform-control-sm form-toolbar m-0 py-1 px-1 css-toolbar">
+        <div class="row w-100 justify-content-evenly">
+            @if (!IsMobileLayout)
+            {
+                <div class="col-7 justify-content-start">
+                    <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Contained" Data="@ToolbarItems" ItemClick="@OnItemClicked">
+                        <DataMappings>
+                            <DxToolbarDataMapping Name="ValueName" Tooltip="Tooltip" Text="Text" Key="Id" CssClass="CssClass" IconCssClass="IconCssClass" ParentKey="ParentId" BeginGroup="BeginGroup" />
+                        </DataMappings>
+                    </DxToolbar>                    
+                </div>
+                <div class="col-2 justify-content-end">
+                    @*  <DxCheckBox @bind-Checked="IsMauNT" style="color:black;">@Lap["FC"]</DxCheckBox> *@
+                </div>
+                <div class="col-2 justify-content-end">
+                    @* <SearchItem SearchData="@OnSearchChanged" Placehoder="@searchPlaceholder" /> *@
+                    <DxSearchBox TextChanged="@OnSearchChanged" CssClass="search" aria-label="search" NullText="@Lap["Search"]" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                </div>
+                <div class="col-1 justify-content-end">
+                    <div class="row justify-content-end">
+                        <span style="width:44px;height:28px;background-color:white;border:solid 1px #CCC;align-items:end;">
+                            <img src=".\Images\Icon_cai_dat.svg" style="cursor:pointer;margin-top:2px;" width="20" height="20" onclick="@( ()=> BtnSetting())" />
+                        </span>                        
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="col">
+                    <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Contained" Data="@ToolbarItems" ItemClick="@OnItemClicked">
+                        <DataMappings>
+                            <DxToolbarDataMapping Name="ValueName" Tooltip="Tooltip" Text="Text" Key="Id" CssClass="CssClass" IconCssClass="IconCssClass" ParentKey="ParentId" BeginGroup="BeginGroup" />
+                        </DataMappings>
+                    </DxToolbar>
+                </div>
+                <div class="col-3">
+                    <div class="row m-0 p-0 justify-content-end">
+                        @* <SearchItem SearchData="@OnSearchChanged" Placehoder="@searchPlaceholder" /> *@
+                        <DxSearchBox TextChanged="@OnSearchChanged" CssClass="search" aria-label="search" NullText="@Lap["Search"]" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+    @if (windowVisible)
+    {
+        <CascadingValue Name="wtitle" Value="@wtitle">
+            <CascadingValue Name="curCommand" Value="@curCommand">
+                <CascadingValue Name="lang" Value="@IsLangEn">
+                    <SisCom.Shared.Commandfolder.CommandComponent Closeform="Closeform"> </SisCom.Shared.Commandfolder.CommandComponent>
+                </CascadingValue>
+            </CascadingValue>
+        </CascadingValue>
+    }
+}
+
+<style>
+    .buttonsetting {
+    max-width: 31px;
+    background-color: white;
+    border: solid 1px #CCC;
+    }
+
+    .tb-btn {
+    height: 28px;
+    }
+
+    .tb-icon {
+    width: 20px;
+    height: 20px;
+    background-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    background-position: center center;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    }
+
+    .fform-control-sm {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    left: 0%;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1;
+    color: #fff;
+    background-color: transparent;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: 0.25rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    margin-left: 0.25rem;
+    border: 1px solid #dcdcdc;
+    }
+
+    .icon-add {
+    width: 60px;
+    height: 24px;
+    background-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    background-position: center center;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-image: url(".\\Images\\Icon_them_moi.svg");
+    }
+
+    .tb-icon-settings {
+    margin-left: 5px;
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Icon_he_thong.svg');
+    }
+
+    .tb-icon-add {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Icon_them_moi.svg');
+    }
+
+    .tb-icon-copy {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Icon_them_moi.svg');
+    }
+
+    .tb-icon-search {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Search.png');
+    }
+
+    .tb-icon-edit {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Icon_sua.svg');
+    }
+
+    .tb-icon-view {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Icon_xem.svg');
+    }
+
+    .tb-icon-quit {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Backicon.png');
+    }
+
+    .tb-icon-del {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Icon_xoa.svg');
+    }
+
+    .tb-icon-print {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Icon_print.svg');
+    }
+
+    .tb-icon-save {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Save.png');
+    }
+
+    .tb-icon-detail {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Detail.png');
+    }
+
+    .tb-icon-change {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Change.png');
+    }
+
+    .tb-icon-aproval {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Aproval.png');
+    }
+
+    .tb-icon-import {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\import.png');
+    }
+
+    .tb-icon-export {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Export.png');
+    }
+    .tb-icon-btntoolbar1 {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Button1.png');
+    }
+
+    .tb-icon-btntoolbar2 {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Button2.png');
+    }
+
+    .tb-icon-btntoolbar3 {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Button3.png');
+    }
+
+    .tb-icon-btntoolbar4 {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Button4.png');
+    }
+
+    .tb-icon-btntoolbar5 {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\Button5.png');
+    }
+
+</style>
+@code {
+    List<FormatToolbarItem> ToolbarItems = new List<FormatToolbarItem>();
+    private bool IsShowPermiss { get; set; }
+    private bool IsShowToolBar { get; set; }
+    public bool AllowNew { get; set; }
+    public bool AllowView { get; set; }
+    public bool AllowEdit { get; set; }
+    public bool AllowPrint { get; set; }
+    public bool AllowDelete { get; set; }
+    public bool AllowSave { get; set; }
+    public bool AllowQuit { get; set; }
+    public bool AllowAproval { get; set; }
+    public bool IsMauNT { get; set; } = false;
+    private Users CurUser = null;
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
+    ClaimsPrincipal userCliams;
+    private string Message = "";
+    private string UserLang = "Vi";
+    private bool IsLangEn = false;
+    bool _isMobileLayout;
+    bool IsMobileLayout
+    {
+        get => _isMobileLayout;
+        set
+        {
+            _isMobileLayout = value;
+            AddSettingButton(value);
+        }
+    }
+    private List<string> LsRead;
+    private List<string> LsAdd;
+    private List<string> LsEdit;
+    private List<string> LsDel;
+    private List<string> LsApro;
+    bool windowVisible = false;
+    string searchPlaceholder;
+    string wtitle;
+    Command curCommand;
+    string _cssclass = "tb-btn";
+    string btnsetting = "Setting";
+    void OnSearchChanged(string value)
+    {
+        myStatemanagerment.SetSearchText(value);
+        myStatemanagerment.SetActionTask(ActionTask.Find);
+    }
+    async void Closeform(bool value)
+    {
+        if (value)
+        {
+            windowVisible = false;
+            try
+            {
+                await myDb.UpdateOneRow<Command>(curCommand, "command", "menu_id", curCommand.Menu_id);
+                Message = Lap["Saved. Please relogin for apply effect."];
+            }
+            catch
+            {
+                Message = Lap["Error. can not save"];
+            }
+            myStatemanagerment.SetNewThongbao(Message);
+        }
+        else
+        {
+            windowVisible = value;
+            StateHasChanged();
+        }
+    }
+    async void BtnSetting()
+    {
+        Message = "";
+        if (!CurUser.Admin_root.Equals(1))
+        {
+            Message = Lap["You don't have permission"];
+            myStatemanagerment.SetNewThongbao(Message);
+        }
+        else
+        {
+            string curPage = navigation.Uri.ToString();
+            if (!string.IsNullOrEmpty(curPage))
+            {
+                string[] page = curPage.Split('/');
+                string menu_id = page[page.Length - 1].Replace('_', '.');
+                curCommand = await Commands.GetSubMenuBymenuId(menu_id);
+                if (curCommand != null)
+                {
+                    windowVisible = true;
+                    StateHasChanged();
+                }
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        LsRead = new List<string>();
+        LsAdd = new List<string>();
+        LsEdit = new List<string>();
+        LsDel = new List<string>();
+        LsApro = new List<string>();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStatemanagerment.GetCurUser();
+            if (CurUser == null || string.IsNullOrEmpty(CurUser.User_name))
+                CurUser = await Localstore.GetItemAsync<Users>("user");
+
+            if (CurUser != null)
+            {
+                if (CurUser != null)
+                {
+                    if (!string.IsNullOrEmpty(CurUser.Wr_read))
+                    {
+                        LsRead.AddRange(CurUser.Wr_read.Split('/'));
+                    }
+                    if (!string.IsNullOrEmpty(CurUser.Wr_add))
+                    {
+                        LsAdd.AddRange(CurUser.Wr_add.Split('/'));
+                    }
+                    if (!string.IsNullOrEmpty(CurUser.Wr_edit))
+                    {
+                        LsEdit.AddRange(CurUser.Wr_edit.Split('/'));
+                    }
+                    if (!string.IsNullOrEmpty(CurUser.Wr_del))
+                    {
+                        LsDel.AddRange(CurUser.Wr_del.Split('/'));
+                    }
+                    if (!string.IsNullOrEmpty(CurUser.Wr_aproval))
+                    {
+                        LsApro.AddRange(CurUser.Wr_aproval.Split('/'));
+                    }
+                }
+                wtitle = Lap["Function config"];
+                searchPlaceholder = IsMobileLayout?"":Lap["Search"];
+                myStatemanagerment.OnLangguaChanged += OnLangguachange;
+                myStatemanagerment.OnToolbarChanged += OnToolbarChanged;
+                myStatemanagerment.OnAddToolbarButton += AddToolBarButton;
+                myStatemanagerment.OnAddOrderToolbarButton += AddOrderToolBarButton;
+            }
+            await Language();
+        }
+        base.OnAfterRender(firstRender);
+    }
+    void OnItemClicked(ToolbarItemClickEventArgs args)
+    {
+        FormatToolbarItem _item = (FormatToolbarItem)args.Info.Data;
+        string tbName = _item.ValueName.ToLower();
+        switch (tbName)
+        {
+            case "new":
+                btnAddnew();
+                break;
+            case "copy":
+                btnCopy();
+                break;
+            case "change":
+                btnChange();
+                break;
+            case "detail":
+                btnDetail();
+                break;
+            case "edit":
+                btnEdit();
+                break;
+            case "search":
+                btnSearch();
+                break;
+            case "view":
+                btnView();
+                break;
+            case "save":
+                btnSave();
+                break;
+            case "delete":
+                btnDelete();
+                break;
+            case "print":
+                btnPrint();
+                break;
+            case "quit":
+                btnQuit();
+                break;
+            case "aproval":
+                btnAproval();
+                break;
+            case "import":
+                btnImport();
+                break;
+            case "export1":
+                btnExport();
+                break;
+            case "export2":
+                btnExport2();
+                break;
+            case "export3":
+                btnExport3();
+                break;
+            case "setting":
+                BtnSetting();
+                break;
+            case "button1":
+                btnAdd1();
+                break;
+            case "button2":
+                btnAdd2();
+                break;
+            case "button3":
+                btnAdd3();
+                break;
+            case "button4":
+                btnAdd4();
+                break;
+            case "button5":
+                btnAdd5();
+                break;
+        }
+
+    }
+    void AddOrderToolBarButton(string tbName, string text, int order = 0)
+    {
+        FormatToolbarItem _itemcheck = ToolbarItems.Where(a => a.ValueName.Equals(tbName.ToLower().Trim())).FirstOrDefault();
+        if (_itemcheck == null)
+        {
+            FormatToolbarItem _item = new FormatToolbarItem();
+            _item.Id = ToolbarItems.Count + 1;
+            _item.Text = text.Split("-")[0];
+            _item.Tooltip = (!text.Contains("-") ? _item.Text : text.Split("-")[text.Split("-").Length-1]);
+            _item.ValueName = tbName.ToLower();
+            _item.CssClass = _cssclass;
+            if (order != 0)
+            {
+                _item.Index = order;
+            }
+            else
+            {
+                _item.Index = _item.Id;
+            }
+            if (tbName.ToLower().StartsWith("button1"))
+                _item.IconCssClass = "tb-icon tb-icon-btntoolbar1";
+            else if (tbName.ToLower().StartsWith("button2"))
+                _item.IconCssClass = "tb-icon tb-icon-btntoolbar2";
+            else if (tbName.ToLower().StartsWith("button3"))
+                _item.IconCssClass = "tb-icon tb-icon-btntoolbar3";
+            else if (tbName.ToLower().StartsWith("button4"))
+                _item.IconCssClass = "tb-icon tb-icon-btntoolbar4";
+            else if (tbName.ToLower().StartsWith("button5"))
+                _item.IconCssClass = "tb-icon tb-icon-btntoolbar5";
+
+            _item.BeginGroup = true;
+            int maxstt = ToolbarItems.Count > 0 ? ToolbarItems.Where(a => !a.ValueName.Equals(btnsetting)).Max(a => a.Id) : 14;
+            _item.Id = maxstt + 1;
+            _item.Childs = new List<FormatToolbarItem>();           
+
+            ToolbarItems.Add(_item);
+            ToolbarItems = ToolbarItems.OrderBy(a => a.Index).ToList();
+            StateHasChanged();
+        }
+    }
+    void AddToolBarButton(string tbName, string text)
+    {
+        AddOrderToolBarButton(tbName, text, 0);
+    }
+    async Task<bool> CheckPermission(string type)
+    {
+        bool result = false;
+        userCliams = (await authenticationState).User;
+        if (userCliams.IsInRole("admin"))
+        {
+            result = true;
+        }
+        else
+        {
+            string curPage = navigation.Uri.ToString();
+            if (!string.IsNullOrEmpty(curPage))
+            {
+                string[] page = (curPage.Split('/')).Where(s => s.StartsWith("w") && s.Length == 8 && s.Substring(2, 1) == @"_").ToArray();
+                if (page.Length > 0)
+                {
+                    string _cpage = page[0];                    
+                    Command curCommand = Commands.GetMenuBymenuId(_cpage.Replace("_","."));
+                    if (curCommand != null)
+                    {
+                        switch (type)
+                        {
+                            case "read":
+                                {
+                                    if (LsRead.Contains(curCommand.Menu_id))
+                                        result = true;
+                                    else
+                                        result = false;
+                                    break;
+                                }
+                            case "add":
+                                {
+                                    if (LsAdd.Contains(curCommand.Menu_id))
+                                        result = true;
+                                    else
+                                        result = false;
+                                    break;
+                                }
+                            case "edit":
+                                {
+                                    if (LsEdit.Contains(curCommand.Menu_id))
+                                        result = true;
+                                    else
+                                        result = false;
+                                    break;
+                                }
+                            case "del":
+                                {
+                                    if (LsDel.Contains(curCommand.Menu_id))
+                                        result = true;
+                                    else
+                                        result = false;
+                                    break;
+                                }
+                            case "apro":
+                                {
+                                    if (LsApro.Contains(curCommand.Menu_id))
+                                        result = true;
+                                    else
+                                        result = false;
+                                    break;
+                                }
+                        }
+                    }
+                    else
+                    {
+                        result = false;
+                    }
+                }
+                else
+                {
+                    result = false;
+                }
+            }
+            else
+            {
+                result = false;
+            }
+        }
+        return result;
+    }
+    private void OnToolbarChanged(MyToolbar tb)
+    {
+        string tbName = tb.Name;
+        string iconcssclass = "";
+        if (tbName.ToLower().Equals("toolbar"))
+        {
+            IsShowToolBar = tb.State;
+            ToolbarItems.Clear();
+        }
+        else
+        {
+            if (tb.State)
+            {
+                FormatToolbarItem _item = new FormatToolbarItem();
+                switch (tbName.ToLower())
+                {                    
+                    case "view":
+                        iconcssclass = "tb-icon tb-icon-view";
+                        _item.Id = 1;
+                        break;                    
+                    case "detail":
+                        iconcssclass = "tb-icon tb-icon-detail";
+                        _item.Id = 2;
+                        break;
+                    case "new":
+                        iconcssclass = "tb-icon tb-icon-add";
+                        _item.Id = 3;
+                        break;
+                    case "copy":
+                        iconcssclass = "tb-icon tb-icon-copy";
+                        _item.Id = 4;
+                        break;
+                    case "edit":
+                        iconcssclass = "tb-icon tb-icon-edit";
+                        _item.Id = 5;
+                        break;
+                    case "save":
+                        iconcssclass = "tb-icon tb-icon-save";
+                        _item.Id = 6;
+                        break;
+                    case "print":
+                        iconcssclass = "tb-icon tb-icon-print"; 
+                        _item.Id = 7;
+                        break;
+                    case "delete":
+                        iconcssclass = "tb-icon tb-icon-del";
+                        _item.Id = 8;
+                        break;
+                    case "change":
+                        iconcssclass = "tb-icon tb-icon-change";
+                        _item.Id = 9;
+                        break;
+                    case "search":
+                        iconcssclass = "tb-icon tb-icon-search";
+                        _item.Id = 10;
+                        break;
+                    case "aproval":
+                        iconcssclass = "tb-icon tb-icon-aproval";
+                        _item.Id = 11;
+                        break;
+                    case "import":
+                        iconcssclass = "tb-icon tb-icon-import";
+                        _item.Id = 12;
+                        break;
+                    case "quit":
+                        iconcssclass = "tb-icon tb-icon-quit";
+                        _item.Id = 21;
+                        break;
+                    case "export":
+                        iconcssclass = "tb-icon tb-icon-export";
+                        _item.Id = 14;
+                        _item.Childs = new List<FormatToolbarItem>();
+
+                        FormatToolbarItem _item1 = new FormatToolbarItem();
+                        _item1.Text = "XLSX";
+                        _item1.ValueName = "export1";
+                        _item1.Tooltip = "Export to XLSX";
+                        _item1.Id = 141;
+                        _item1.ParentId = _item.Id;
+                        ToolbarItems.Add(_item1);
+
+                        FormatToolbarItem _item2 = new FormatToolbarItem();
+                        _item2.Text = "XLS";
+                        _item2.ValueName = "export2";
+                        _item2.Tooltip = "Export to XLS";
+                        _item2.Id = 142;
+                        _item2.ParentId = _item.Id;
+                        ToolbarItems.Add(_item2);
+
+                        FormatToolbarItem _item3 = new FormatToolbarItem();
+                        _item3.Text = "CSV";
+                        _item3.ValueName = "export3";
+                        _item3.Id = 143;
+                        _item3.ParentId = _item.Id;
+                        _item3.Tooltip = "Export to CSV";
+                        ToolbarItems.Add(_item3);                        
+                        break;
+                    case "button1":
+                        iconcssclass = "tb-icon tb-icon-btntoolbar1";
+                        _item.Id = 15;
+                        break;
+                    case "button2":
+                        iconcssclass = "tb-icon tb-icon-btntoolbar2";
+                        _item.Id = 16;
+                        break;
+                    case "button3":
+                        iconcssclass = "tb-icon tb-icon-btntoolbar3";
+                        _item.Id = 17;
+                        break;
+                    case "button4":
+                        iconcssclass = "tb-icon tb-icon-btntoolbar4";
+                        _item.Id = 18;
+                        break;
+                    case "button5":
+                        iconcssclass = "tb-icon tb-icon-btntoolbar5";
+                        _item.Id = 19;
+                        break;
+                }
+                _item.Index = _item.Id;
+                _item.Text = Lap[tbName].ToString();
+                _item.Tooltip = _item.Text + (String.IsNullOrEmpty(tb.Tooltip)?"":" (" + tb.Tooltip + ")");
+                _item.ValueName = tbName.ToLower();
+                _item.CssClass = _cssclass;
+                _item.IconCssClass = iconcssclass;
+                _item.BeginGroup = true;
+                ToolbarItems.Add(_item);
+            }
+        }
+        ToolbarItems = ToolbarItems.OrderBy(a => a.Index).ToList();
+        StateHasChanged();
+    }
+    void AddSettingButton(bool visible)
+    {
+        searchPlaceholder = visible ? "" : Lap["Search"];
+        FormatToolbarItem _settingitem = ToolbarItems.Where(a => a.ValueName.Equals(btnsetting.ToLower())).FirstOrDefault();
+        if (visible)
+        {
+            if (_settingitem == null)
+            {
+                FormatToolbarItem _item = new FormatToolbarItem();
+                _item.Text = Lap[btnsetting].ToString();
+                _item.Tooltip = _item.Text;
+                _item.ValueName = btnsetting.ToLower();
+                _item.Id = 20;
+                _item.CssClass = _cssclass;
+                _item.IconCssClass = "tb-icon tb-icon-settings";
+                _item.BeginGroup = false;
+                ToolbarItems.Add(_item);
+            }
+        }
+        else
+        {
+            if (_settingitem != null)
+            {
+                ToolbarItems.Remove(_settingitem);
+            }
+        }
+        ToolbarItems = ToolbarItems.OrderBy(a => a.Id).ToList();
+        StateHasChanged();
+    }
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await Localstore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+    private async void btnAddnew()
+    {
+        bool result = await CheckPermission("add");
+        if (!result)
+        {
+            Message = Lap["You do not have permission to perform this function"];
+            myStatemanagerment.SetNewThongbao(Message);
+            return;
+        }
+        myStatemanagerment.SetActionTask(ActionTask.New);
+    }
+    private async void btnCopy()
+    {
+        bool result = await CheckPermission("add");
+        if (!result)
+        {
+            Message = Lap["You do not have permission to perform this function"];
+            myStatemanagerment.SetNewThongbao(Message);
+            return;
+        }
+        myStatemanagerment.SetActionTask(ActionTask.Copy);
+    }
+    private async void btnImport()
+    {
+        bool result = await CheckPermission("add");
+        if (!result)
+        {
+            Message = Lap["You do not have permission to perform this function"];
+            myStatemanagerment.SetNewThongbao(Message);
+            return;
+        }
+        myStatemanagerment.SetActionTask(ActionTask.Import);
+    }
+    private async void btnView()
+    {
+        bool result = await CheckPermission("read");
+        if (!result)
+        {
+            Message = Lap["You do not have permission to perform this function"];
+            myStatemanagerment.SetNewThongbao(Message);
+            return;
+        }
+        myStatemanagerment.SetActionTask(ActionTask.View);
+    }
+    private async void btnChange()
+    {      
+        bool result = await CheckPermission("edit");
+        if (!result)
+        {
+            Message = Lap["You do not have permission to perform this function"];
+            myStatemanagerment.SetNewThongbao(Message);
+            return;
+        }
+        myStatemanagerment.SetActionTask(ActionTask.Change);
+    }
+    private async void btnDetail()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Detail);
+    }
+    private async void btnEdit()
+    {
+        bool result = await CheckPermission("edit");
+        if (!result)
+        {
+            Message = Lap["You do not have permission to perform this function"];
+            myStatemanagerment.SetNewThongbao(Message);
+            return;
+        }
+        myStatemanagerment.SetActionTask(ActionTask.Edit);
+    }
+    private void btnPrint()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Print);
+    }
+    private async void btnSave()
+    {
+        bool result = await CheckPermission("edit");
+        if (!result)
+        {
+            Message = Lap["You do not have permission to perform this function"];
+            myStatemanagerment.SetNewThongbao(Message);
+            return;
+        }
+        myStatemanagerment.SetActionTask(ActionTask.Save);
+    }
+    private async void btnDelete()
+    {
+        bool result = await CheckPermission("del");
+        if (!result)
+        {
+            Message = Lap["You do not have permission to perform this function"];
+            myStatemanagerment.SetNewThongbao(Message);
+            return;
+        }
+        myStatemanagerment.SetActionTask(ActionTask.Delete);
+    }
+    private async void btnAproval()
+    {
+        bool result = await CheckPermission("apro");
+        if (!result)
+        {
+            Message = Lap["You do not have permission to perform this function"];
+            myStatemanagerment.SetNewThongbao(Message);
+            return;
+        }
+        myStatemanagerment.SetActionTask(ActionTask.Aproval);
+    }
+    private void btnQuit()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Quit);
+    }
+    private void btnSearch()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Search);
+    }
+    private void btnExport()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Export);
+    }
+
+    private void btnExport2()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Export2);
+    }
+    private void btnExport3()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Export3);
+    }
+    private void btnAdd1()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Button1);
+    }
+    private void btnAdd2()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Button2);
+    }
+    private void btnAdd3()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Button3);
+    }
+    private void btnAdd4()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Button4);
+    }
+    private void btnAdd5()
+    {
+        myStatemanagerment.SetActionTask(ActionTask.Button5);
+    }
+}

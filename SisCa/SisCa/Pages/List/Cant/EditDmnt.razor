@@ -1,0 +1,422 @@
+﻿@inherits FrmListBaseComponent
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmnt" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <DxFormLayoutItem Caption="@Lap["Currency code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="ma_nt_input" @bind-Text="@CurDmnt.Ma_nt" maxlength="3" Enabled="@AllowEditMa" InputCssClass="uppercase" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Sub code"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmnt.Ma_tra_cuu" maxlength="24" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Currency name"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmnt.Ten_nt" maxlength="250" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@(Lap["Currency name"] + " 2")" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmnt.Ten_nt2" maxlength="250" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Exchange rate type"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSLoaiTG"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmnt.Loai_tg">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmnt.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutGroup Caption="@Lap["Vietnamese reading"]" ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box" ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start" AnimationType="LayoutAnimationType.Slide">
+                    
+                    <DxFormLayoutItem Caption="@Lap["Symbol before number"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.Begin1" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Currency name after number"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.End1" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Decimal separator symbol"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.Point1" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Minor currency name"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.Endpoint1" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Read when exact"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.Only1" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Decimal reading method"]" ColSpanMd="6">
+                        <Template>
+                            <DxComboBox Enabled="@AllowEditMode"
+                                        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                        Data="LSDocSo"
+                                        TextFieldName="Ten"
+                                        ValueFieldName="Ma"
+                                        @bind-Value="@CurDmnt.Doc_vie">
+                                <Columns>
+                                    <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                    <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                                </Columns>
+                            </DxComboBox>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                </DxFormLayoutGroup>
+
+                <DxFormLayoutGroup Caption="@Lap["English reading"]" ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box" ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start" AnimationType="LayoutAnimationType.Slide">
+                    
+                    <DxFormLayoutItem Caption="@Lap["Symbol before"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.Begin2" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Currency name"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.End2" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Decimal separator"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.Point2" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Minor currency"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.Endpoint2" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Read when exact"]" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@CurDmnt.Only2" Enabled="@AllowEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Lap["Decimal reading"]" ColSpanMd="6">
+                        <Template>
+                            <DxComboBox Enabled="@AllowEditMode"
+                                        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                        Data="LSDocSo"
+                                        TextFieldName="Ten"
+                                        ValueFieldName="Ma"
+                                        @bind-Value="@CurDmnt.Doc_eng">
+                                <Columns>
+                                    <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                    <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                                </Columns>
+                            </DxComboBox>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayoutGroup>             
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+public Dmnt CurDmnt;
+private string menu_id = "wa.dm.01";
+
+private List<Dmtk> LSLoaiTG = new List<Dmtk>();
+
+private List<Dmtk> LSDocSo = new List<Dmtk>();
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmnt";
+        sqlTableView = "v_dmnt";
+        SqlTableKey = "ma_nt";
+        CheckSqlTableKey = "ma_nt";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "dmnt" : ParentPage;
+        CurDmnt = new Dmnt();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        LSLoaiTG = new List<Dmtk>
+            {
+                new Dmtk { Ma = "1", Ten = Lap["Multiply by the exchange rate"] },
+                new Dmtk { Ma = "2", Ten = Lap["Divide by the exchange rate"] }
+            };
+        LSDocSo = new List<Dmtk>
+            {
+                new Dmtk { Ma = "0", Ten =  Lap["Do not multiply by 100"] },
+                new Dmtk { Ma = "1", Ten =  Lap["Multiply by 100"] }
+            };
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await EditDM(Ma_ma);
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        await CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        await CreateCopyDM(Ma_ma);
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        break;
+                    }
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_nt_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmnt = new Dmnt();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmnt = new Dmnt();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(Ma_ma);
+    }
+
+    async Task SaveDM()
+    {
+        if (curActionTask == ActionTask.New)
+            if (!CheckValidCode())
+                return;
+
+        if (!CheckValid())
+            return;
+
+        CurDmnt.Ma_nt = CurDmnt.Ma_nt.ToUpper().Trim();
+        SqlTableKeyValue = CurDmnt.Ma_nt;
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmnt.Date = DateTime.Now.Date;
+            CurDmnt.Date0 = DateTime.Now.Date;
+            CurDmnt.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmnt.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmnt.User_id = curUser.User_id;
+                CurDmnt.User_id0 = curUser.User_id;
+                CurDmnt.User_name = curUser.User_name;
+                CurDmnt.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmnt.Ma_nt.Trim();
+            string[] strKey = CheckSqlTableKey.Split(';');
+            string[] strKeyValue = CheckSqlTableKeyValue.Split(';');
+            string condition = "";
+            if (strKey.Length > 0)
+            {
+                for (int x = 0; x < strKey.Length; x++)
+                {
+                    condition += strKey[x] + " = N'" + strKeyValue[x].ToUpper() + "' and ";
+                }
+                if (!string.IsNullOrEmpty(condition))
+                    condition = condition.Substring(0, condition.Length - 4);
+            }
+            string check = "Select " + strKey[0] + " from " + sqlTableName + " where " + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+            }
+            else
+            {
+                CurDmnt.Search = $"{CurDmnt.Ma_nt} {CurDmnt.Ten_nt} {CurDmnt.Ten_nt2}";
+                await myDb.InsertOneRow<Dmnt>(CurDmnt, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmnt.Date = DateTime.Now.Date;
+            CurDmnt.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmnt.User_id = curUser.User_id;
+                CurDmnt.User_name = curUser.User_name;
+            }
+
+            CurDmnt.Search = $"{CurDmnt.Ma_nt} {CurDmnt.Ten_nt} {CurDmnt.Ten_nt2}";
+            await myDb.UpdateOneRow<Dmnt>(CurDmnt, sqlTableName, SqlTableKey, Ma_ma);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        // Đóng Form nhập
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmnt.Ma_nt))
+        {
+            myStateMN.SetNewThongbao(Lap["Currency code is required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurDmnt.Ten_nt))
+        {
+            myStateMN.SetNewThongbao(Lap["Currency name is required"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = $"Select * from {sqlTableView} where {SqlTableKey} = '{SqlTableKeyValue}'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmnt> lsdetai = myDb.ConvertDataTable<Dmnt>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurDmnt = lsdetai[0];
+        }
+    }
+
+    public async Task CreateNewDM()
+    {
+        CurDmnt = new Dmnt();
+        CurDmnt.Status = "1";
+        CurDmnt.Loai_tg = "1";
+        CurDmnt.Doc_vie = "1";
+        CurDmnt.Doc_eng = "1";
+        // Default values cho tiếng Việt
+        CurDmnt.Point1 = "phẩy";
+        CurDmnt.Endpoint1 = "xu";
+        CurDmnt.End1 = "đồng";
+        CurDmnt.Only1 = "chẵn";
+        // Default values cho tiếng Anh
+        CurDmnt.Begin2 = "$";
+        CurDmnt.Point2 = "and";
+        CurDmnt.Endpoint2 = "cent(s)";
+        CurDmnt.End2 = "Dollars";
+        CurDmnt.Only2 = "only";
+        
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmnt = new Dmnt();
+        await LoadData(SqlTableKeyValue);
+
+        CurDmnt.Status = "1";
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+}

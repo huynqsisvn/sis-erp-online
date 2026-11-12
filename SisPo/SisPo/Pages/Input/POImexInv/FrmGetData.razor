@@ -1,0 +1,557 @@
+﻿@using System.Data
+@using System.Data.SqlClient
+@using System.Net.Http.Headers
+@inject XmlStringLocalizer Lap
+@inject IDbManager myDb
+@inject Statemanagerment myStateMN
+@inject IOptionsManager myOptions
+@inject ISysVarManager mySysvar
+@inject IWebHostEnvironment myHost
+
+<div class="container-fluid p-2">
+    <div class="row mb-2">
+        <div class="col-12 bg-light p-2 rounded" onkeydown="ModifyEnterKeyPressAsTab(event);">
+            <DxFormLayout CssClass="w-100" ItemSizeMode="SizeMode.Small">
+                <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["From date"]" >
+                    <DxDateEdit @bind-Date="@NgayCt1" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy"/>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["To date"]">
+                    <DxDateEdit @bind-Date="@NgayCt2" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy"/>
+                </DxFormLayoutItem>                
+                <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["User name"]">
+                    <DxComboBox Data="@UsersData"
+                                @bind-Value="@ten_nsd"
+                                TextFieldName="@nameof(UserItem.ten_nsd)"
+                                ValueFieldName="@nameof(UserItem.ten_nsd)"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto">
+                        <Columns>
+                            <DxListEditorColumn FieldName="@nameof(UserItem.ma_so_thue)" Caption="@Lap["Tax code"]" Width="150px" />
+                            <DxListEditorColumn FieldName="@nameof(UserItem.ten_nsd)" Caption="@Lap["User name"]" />
+                        </Columns>
+                    </DxComboBox>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["Seller’s tax code"]" BeginRow = "true">
+                    <DxTextBox @bind-Text="@MaSoThue" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["Denominator"]">
+                    <DxTextBox @bind-Text="@Mau_so" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["Symbol"]">
+                    <DxTextBox @bind-Text="@Kh_mau_so" />
+                </DxFormLayoutItem>
+                 <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["Invoice number"]">
+                    <DxTextBox @bind-Text="@So_ct" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["Invoice status"]">
+                    <DxComboBox Data="@InvoiceTthaiData"
+                                @bind-Value="@ma_tthai"
+                                TextFieldName="@(IsLangEn ? nameof(InvoiceTthaiItem.DisplayText2) : nameof(InvoiceTthaiItem.DisplayText))"
+                                ValueFieldName="@nameof(InvoiceTthaiItem.Ma_tthai)"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never">
+                                <Columns>
+                                <DxListEditorColumn FieldName="@nameof(InvoiceTthaiItem.Ma_tthai)" Caption="@Lap["ID"]" Width="50px" />
+                                @if (!IsLangEn)
+                                {
+                                    <DxListEditorColumn FieldName="@nameof(InvoiceTthaiItem.Ten_tthai)" Caption="@Lap["Name"]" />
+                                }
+                                else
+                                {
+                                    <DxListEditorColumn FieldName="@nameof(InvoiceTthaiItem.Ten_tthai2)" Caption="@Lap["Name 2"]" />
+                                }
+                            </Columns>
+                            </DxComboBox>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["Validation result"]">
+                    <DxComboBox Data="@InvoiceStatusData"
+                                @bind-Value="@KiemTra"
+                                TextFieldName="DisplayText"
+                                ValueFieldName="Value"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="3" Caption="">
+                    <DxButton Text="@Lap["Search"]" RenderStyle="ButtonRenderStyle.Primary" Click="@OnSearch" CssClass="w-75" />
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p class="mt-2">@Lap["Loading tax invoice data"]...</p>
+        </div>
+    }
+    else if (InvoiceList != null && InvoiceList.Count > 0)
+    {
+        <div class="row">
+            <div class="col-12">
+                <DxGrid Data="@InvoiceList"
+                        SelectionMode="GridSelectionMode.Multiple"
+                        @bind-SelectedDataItems="@SelectedInvoices"
+                        CssClass="invoice-grid">
+                    <Columns>
+                        <DxGridSelectionColumn Width="50px" />
+                        <DxGridDataColumn FieldName="ngay_ct0" Caption="Ngày HĐ" Width="100px" />
+                        <DxGridDataColumn FieldName="so_ct0" Caption="Số HĐ" Width="120px" />
+                        <DxGridDataColumn FieldName="so_seri0" Caption="Ký hiệu" Width="120px" />
+                        <DxGridDataColumn FieldName="kh_mau_hd0" Caption="Mẫu số" Width="100px" />
+                        <DxGridDataColumn FieldName="mst_ban" Caption="MST người bán" Width="150px" />
+                        <DxGridDataColumn FieldName="ten_dv_ban" Caption="Tên người bán" Width="250px" />
+                        <DxGridDataColumn FieldName="dia_chi_ban" Caption="Địa chỉ người bán" Width="250px" />
+                        <DxGridDataColumn FieldName="t_tien" Caption="Tiền hàng" Width="120px" DisplayFormat="N0" />
+                        <DxGridDataColumn FieldName="t_thue" Caption="Tiền thuế" Width="120px" DisplayFormat="N0" />
+                        <DxGridDataColumn FieldName="t_tt" Caption="Tổng tiền" Width="120px" DisplayFormat="N0" />
+                        <DxGridDataColumn FieldName="tinh_trang_hd" Caption="Trạng thái" Width="100px" />
+                    </Columns>
+                </DxGrid>
+            </div>
+        </div>
+
+        <div class="row mt-2">
+            <div class="col-12 d-flex justify-content-end gap-2">
+                @* <DxButton Text="@Lap["Create"]" RenderStyle="ButtonRenderStyle.Success" Click="@OnCreateVoucher" CssClass="px-4" Enabled="@(SelectedInvoices?.Any() == true)" /> *@
+                <DxButton Text="@Lap["Close"]" RenderStyle="ButtonRenderStyle.Secondary" Click="@OnClose" CssClass="px-4" />
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <p>@Lap["No data"]</p>
+        </div>
+    }
+</div>
+
+<style>
+    .invoice-grid {
+        height: 60vh;
+    }
+</style>
+
+@code {
+    [Parameter] public string Ma_ct { get; set; }
+    [Parameter] public string Token_TCT { get; set; }   
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public EventCallback<DataSet> OnDataReceived { get; set; }    
+
+    private DateTime? NgayCt1 = DateTime.Now.AddMonths(-1);
+    private DateTime? NgayCt2 = DateTime.Now;
+    private string MaSoThue = "";
+    private string KiemTra = "5";
+    private string ma_tthai = "";
+    private string ten_nsd = "";
+    private string Mau_so = "";
+    private string Kh_mau_so = "";
+    private string So_ct = "";
+    private DataTable InvoiceData;
+    private DataSet dataSet = new DataSet();
+    private List<InvoiceItem> InvoiceList;
+    private bool IsLoading = false;
+    private IReadOnlyList<object> SelectedInvoices;
+    private List<InvoiceTthaiItem> InvoiceTthaiData ; 
+    private List<InvoiceStatusItem> InvoiceStatusData ;
+    private List<UserItem> UsersData;
+
+    private System.Threading.Timer _keepAliveTimer;
+
+    protected override void OnInitialized()
+    {
+        InvoiceStatusData = new List<InvoiceStatusItem>
+        {
+            new InvoiceStatusItem { Value = "5", DisplayText = Lap["Invoice code issued"] },
+            new InvoiceStatusItem { Value = "6", DisplayText = Lap["Accept, no code"] },
+            new InvoiceStatusItem { Value = "8", DisplayText = Lap["From POS"] }
+        };
+        DataTable dt = myDb.GetTable("SELECT * FROM dmtthaihd ORDER BY stt");
+        DataRow row = dt.NewRow();
+        row["stt"] = 0;
+        row["ma_tthai"] = "";
+        row["ten_tthai"] = "Tất cả";
+        row["ten_tthai2"] = "All";
+        dt.Rows.Add(row);
+        dt.DefaultView.Sort = "stt";
+        InvoiceTthaiData = myDb.ConvertDataTable<InvoiceTthaiItem>(dt);
+
+        // Load Users data
+        DataTable dtUsers = myDb.GetTable("EXEC POImexInv_GetTkHddv");
+        UsersData = myDb.ConvertDataTable<UserItem>(dtUsers);
+        ten_nsd = UsersData.FirstOrDefault()?.ten_nsd;
+        //MaSoThue = UsersData.FirstOrDefault()?.ma_so_thue;
+        NgayCt1 = myStateMN.GetStartDate();
+        NgayCt2 = myStateMN.GetEndDate();
+        if (NgayCt1 == DateTime.Now.Date)
+        {
+            NgayCt1 = SisLib.Ctrl.NgayTC.StartOfPeriod(mySysvar, SisLib.Ctrl.NgayTC.GetStartDate(mySysvar, NgayCt1.Value).Year, SisLib.Ctrl.NgayTC.GetPeriodOfDate(mySysvar, NgayCt1.Value));
+        }
+        if (NgayCt2 == DateTime.Now.Date)
+        {
+            NgayCt2 = SisLib.Ctrl.NgayTC.EndOfPeriod(mySysvar, SisLib.Ctrl.NgayTC.GetStartDate(mySysvar, NgayCt2.Value).Year, SisLib.Ctrl.NgayTC.GetPeriodOfDate(mySysvar, NgayCt2.Value));
+        }
+
+        base.OnInitialized();
+    }
+
+    private async Task OnSearch()
+    {
+        if (NgayCt1 == null || NgayCt2 == null)
+        {
+            myStateMN?.SetNewThongbao(Lap["Please select date range"]);
+            return;
+        }
+
+        if (NgayCt1 > NgayCt2)
+        {
+            myStateMN?.SetNewThongbao(Lap["Start date must be before end date"]);
+            return;
+        }
+
+        myStateMN.SetStartDate(NgayCt1.Value);
+        myStateMN.SetEndDate(NgayCt2.Value);
+        IsLoading = true;
+        StateHasChanged();
+        
+        // Start keep-alive timer
+        _keepAliveTimer = new System.Threading.Timer(_ => 
+        {
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        
+        try
+        {
+            string token = Token_TCT;
+            if (String.IsNullOrEmpty(token))
+                token = await GetTokenFromDb();
+
+            if (string.IsNullOrEmpty(token))
+            {
+                myStateMN?.SetNewThongbao(Lap["Token not found. Please login again"]);
+                IsLoading = false;
+                return;
+            }
+
+            string pageState = "";
+            do{
+                string jsondata = await GetTaxInvoiceList(token);
+                if (!jsondata.StartsWith("{"))
+                {
+                    if (jsondata.Contains("Error"))
+                    {
+                        if (jsondata.Contains("Unauthorized"))
+                        {
+                            myStateMN.SetNewThongbao(Lap["Please login before performing this function"] + " !");                        
+                        }
+                        if (jsondata.Contains("(400) Bad Request"))
+                        {
+                            myStateMN.SetNewThongbao(Lap["Invalid data filter information"] + " !");                        
+                        }                        
+                        return;
+                    }
+                    jsondata = "";
+                }
+                if ((jsondata == ""))
+                {
+                    return;
+                }       
+                DataSet dataSet2 = Func.LoadPhData(jsondata,Ma_ct,myOptions,myDb,myStateMN,myHost);            
+                InvoiceList = ConvertToInvoiceList(dataSet2.Tables[0]);
+
+                if (InvoiceList == null || InvoiceList.Count == 0)
+                {
+                    myStateMN?.SetNewThongbao(Lap["No invoices found"]);
+                }
+                else
+                {
+                    myStateMN?.SetNewThongbao(string.Format(Lap["Found {0} invoices"], InvoiceList.Count));                
+                }
+
+                if (dataSet.Tables.Count == 0)
+                {
+                    dataSet = dataSet2;
+                }
+                else
+                {
+                    for (int i = 0; i < dataSet2.Tables.Count; i++)
+                    {
+                        dataSet.Tables[i].Merge(dataSet2.Tables[i]);
+                    }
+                }
+                pageState = JsonData.SelectToken(jsondata, "state");
+            }
+            while (!(pageState == ""));
+            await Func.UploadInv(token, dataSet, myDb, myOptions,myHost,myStateMN, mySysvar);
+        }
+        catch (Exception ex)
+        {
+            myStateMN?.SetNewThongbao($"{Lap["Search error"]}: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task<string> GetTokenFromDb()
+    {
+        try
+        {
+            SqlCommand cmd = new SqlCommand($"EXEC POImexInv_GetToken '{ten_nsd}'");
+            DataSet ds = await myDb.LoadDataset(cmd.CommandText);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                return ds.Tables[0].Rows[0][0].ToString();
+            }
+            return "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private async Task<string> GetTaxInvoiceList(string token)
+    {
+        try
+        {
+            var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            httpClient.DefaultRequestHeaders.Add("Authorization", token);
+
+            string dataTaxCode = string.IsNullOrEmpty(MaSoThue) ? "" : MaSoThue;
+            string searchFilter = "";
+            string str1 = "";
+            string str3 = "query";
+
+            if (!string.IsNullOrEmpty(dataTaxCode))
+                    str1 = str1 + ";nbmst==" + ReplaceVariable(dataTaxCode);
+            if (!string.IsNullOrEmpty(ma_tthai))
+                str1 = str1 + ";tthai==" + ReplaceVariable(ma_tthai);
+            if (!string.IsNullOrEmpty(KiemTra))
+            {
+                str1 = str1 + ";ttxly==" + ReplaceVariable(KiemTra);
+                if (KiemTra == "8")
+                    str3 = "sco-query";
+            }
+            string url = $"https://hoadondientu.gdt.gov.vn:30000/{str3}/invoices/purchase" +
+                        $"?sort=tdlap:desc&size=50" +
+                        $"&search=tdlap=ge={NgayCt1:dd/MM/yyyy}T00:00:00;tdlap=le={NgayCt2:dd/MM/yyyy}T23:59:59{str1}";
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Replace("Bearer ",""));
+            var response = await httpClient.GetAsync(url);
+            string content = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception(
+                    $"HTTP {(int)response.StatusCode} - {response.StatusCode}\n{content}");
+            }
+            return content;
+        }
+        catch (Exception ex)
+        {
+            return $"Error: {ex.Message}";
+        }
+    }
+
+    private DataTable ParseInvoiceData(string jsonData)
+    {
+        try
+        {
+            DataTable dt = new DataTable();
+            dt.Columns.Add("ngay_ct0", typeof(DateTime));
+            dt.Columns.Add("so_ct0", typeof(string));
+            dt.Columns.Add("so_seri0", typeof(string));
+            dt.Columns.Add("kh_mau_hd0", typeof(string));
+            dt.Columns.Add("mst_ban", typeof(string));
+            dt.Columns.Add("ten_dv_ban", typeof(string));
+            dt.Columns.Add("dia_chi_ban", typeof(string));
+            dt.Columns.Add("t_tien", typeof(decimal));
+            dt.Columns.Add("t_thue", typeof(decimal));
+            dt.Columns.Add("t_tt", typeof(decimal));
+            dt.Columns.Add("tinh_trang_hd", typeof(string));
+            dt.Columns.Add("id_hd", typeof(string));
+
+            var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonData);
+            if (jsonDoc.RootElement.TryGetProperty("datas", out var contentArray))
+            {
+                foreach (var item in contentArray.EnumerateArray())
+                {
+                    DataRow row = dt.NewRow();
+
+                    if (item.TryGetProperty("tdlap", out var tdlap))
+                        row["ngay_ct0"] = DateTime.Parse(tdlap.GetString());
+
+                    string shdonValue = "";
+                    if (item.TryGetProperty("shdon", out var shdon))
+                        shdonValue = shdon.ValueKind == System.Text.Json.JsonValueKind.Number ? shdon.GetInt64().ToString() : shdon.GetString();
+                    row["so_ct0"] = shdonValue;
+
+                    string khhdonValue = "";
+                    if (item.TryGetProperty("khhdon", out var khhdon))
+                        khhdonValue = khhdon.ValueKind == System.Text.Json.JsonValueKind.Number ? khhdon.GetInt64().ToString() : khhdon.GetString();
+                    row["so_seri0"] = khhdonValue;
+
+                    string khmshdonValue = "";
+                    if (item.TryGetProperty("khmshdon", out var khmshdon))
+                        khmshdonValue = khmshdon.ValueKind == System.Text.Json.JsonValueKind.Number ? khmshdon.GetInt64().ToString() : khmshdon.GetString();
+                    row["kh_mau_hd0"] = khmshdonValue;
+
+                    string nbmstValue = "";
+                    if (item.TryGetProperty("nbmst", out var nbmst))
+                        nbmstValue = nbmst.ValueKind == System.Text.Json.JsonValueKind.Number ? nbmst.GetInt64().ToString() : nbmst.GetString();
+                    row["mst_ban"] = nbmstValue;
+
+                    if (item.TryGetProperty("nbten", out var nban))
+                        row["ten_dv_ban"] = nban.GetString();
+
+                    if (item.TryGetProperty("nbdchi", out var nbdchi))
+                    row["dia_chi_ban"] = nbdchi.GetString();;
+
+                    if (item.TryGetProperty("tgtcthue", out var tgtcthue))
+                        row["t_tien"] = tgtcthue.ValueKind == System.Text.Json.JsonValueKind.String ? decimal.Parse(tgtcthue.GetString()) : tgtcthue.GetDecimal();
+
+                    if (item.TryGetProperty("tgtthue", out var tgtthue))
+                        row["t_thue"] = tgtthue.ValueKind == System.Text.Json.JsonValueKind.String ? decimal.Parse(tgtthue.GetString()) : tgtthue.GetDecimal();
+
+                    if (item.TryGetProperty("tgtttbso", out var tgtttbso))
+                        row["t_tt"] = tgtttbso.ValueKind == System.Text.Json.JsonValueKind.String ? decimal.Parse(tgtttbso.GetString()) : tgtttbso.GetDecimal();
+
+                    string tthaiValue = "";
+                    if (item.TryGetProperty("tthai", out var tthai))
+                        tthaiValue = tthai.ValueKind == System.Text.Json.JsonValueKind.Number ? tthai.GetInt32().ToString() : tthai.GetString();
+                    row["tinh_trang_hd"] = tthaiValue;
+
+                    string idHd = $"{nbmstValue}_{khmshdonValue}_{khhdonValue}_{shdonValue}";
+                    row["id_hd"] = idHd;
+
+                    dt.Rows.Add(row);
+                }
+            }
+
+            return dt;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error parsing invoice data: {ex.Message}");
+            return null;
+        }
+    }
+
+    private async Task OnCreateVoucher()
+    {
+        if (SelectedInvoices == null || !SelectedInvoices.Any())
+        {
+            myStateMN?.SetNewThongbao(Lap["Please select at least one invoice"]);
+            return;
+        }
+
+        try
+        {
+            foreach (var selectedItem in SelectedInvoices)
+            {
+                var invoice = selectedItem as InvoiceItem;
+                if (invoice != null)
+                {
+                    SqlCommand cmd = new SqlCommand("EXEC POImexInv_ImportInvoice @Id_hd, @Ngay_ct0, @So_ct0, @So_seri0, @Kh_mau_hd0, @Mst_ban, @Ten_dv_ban, @T_tien0, @T_thue, @T_tt");
+                    cmd.Parameters.Add("@Id_hd", SqlDbType.VarChar).Value = invoice.id_hd;
+                    cmd.Parameters.Add("@Ngay_ct0", SqlDbType.DateTime).Value = invoice.ngay_ct0;
+                    cmd.Parameters.Add("@So_ct0", SqlDbType.VarChar).Value = invoice.so_ct0;
+                    cmd.Parameters.Add("@So_seri0", SqlDbType.VarChar).Value = invoice.so_seri0;
+                    cmd.Parameters.Add("@Kh_mau_hd0", SqlDbType.VarChar).Value = invoice.kh_mau_hd0;
+                    cmd.Parameters.Add("@Mst_ban", SqlDbType.VarChar).Value = invoice.mst_ban;
+                    cmd.Parameters.Add("@Ten_dv_ban", SqlDbType.VarChar).Value = invoice.ten_dv_ban;
+                    cmd.Parameters.Add("@T_tien0", SqlDbType.Decimal).Value = invoice.t_tien;
+                    cmd.Parameters.Add("@T_thue", SqlDbType.Decimal).Value = invoice.t_thue;
+                    cmd.Parameters.Add("@T_tt", SqlDbType.Decimal).Value = invoice.t_tt;
+
+                    await myDb.ExecuteSqlCommandAsync(cmd);
+                }
+            }
+
+            myStateMN?.SetNewThongbao(Lap["Created successfully"]);
+            await OnDataReceived.InvokeAsync(dataSet);
+        }
+        catch (Exception ex)
+        {
+            myStateMN?.SetNewThongbao($"{Lap["Create error"]}: {ex.Message}");
+        }
+    }
+
+    private List<InvoiceItem> ConvertToInvoiceList(DataTable dt)
+    {
+        if (dt == null || dt.Rows.Count == 0)
+            return new List<InvoiceItem>();
+
+        var list = new List<InvoiceItem>();
+        foreach (DataRow row in dt.Rows)
+        {
+            list.Add(new InvoiceItem
+            {
+                ngay_ct0 = Convert.ToDateTime(row["ngay_ct0"]),
+                so_ct0 = row["so_ct0"].ToString(),
+                so_seri0 = row["so_seri0"].ToString(),
+                kh_mau_hd0 = row["kh_mau_hd0"].ToString(),
+                mst_ban = row["mst_ban"].ToString(),
+                ten_dv_ban = row["ten_dv_ban"].ToString(),
+                dia_chi_ban = row["dia_chi_ban"].ToString(),
+                t_tien = Convert.ToDecimal(row["t_tien"]),
+                t_thue = Convert.ToDecimal(row["t_thue"]),
+                t_tt = Convert.ToDecimal(row["t_tt"]),
+                tinh_trang_hd = row["tinh_trang_hd"].ToString(),
+                id_hd = row["id_hd"].ToString()
+            });
+        }
+        return list;
+    }
+
+    private string ReplaceVariable(string value)
+    {
+        value = value.Replace("'", "").Replace(";", "");
+        return value;
+    }
+    private void OnClose()
+    {
+        OnDataReceived.InvokeAsync(dataSet);
+    }
+    public class InvoiceStatusItem
+    {
+        public string Value { get; set; }
+        public string DisplayText { get; set; }    
+    }
+    public class InvoiceTthaiItem
+    {
+        public int Stt { get; set; }
+        public string Ma_tthai { get; set; }
+        public string Ten_tthai { get; set; }
+        public string Ten_tthai2 { get; set; }
+        public string DisplayText => string.IsNullOrEmpty(Ma_tthai) ? Ten_tthai : $"{Ma_tthai} - {Ten_tthai}";
+        public string DisplayText2 => string.IsNullOrEmpty(Ma_tthai) ? Ten_tthai2 : $"{Ma_tthai} - {Ten_tthai2}";
+    }
+    
+    public class UserItem
+    {
+        public string ma_so_thue { get; set; }
+        public string ma_dvcs { get; set; }
+        public string ten_nsd { get; set; }
+        public string mat_khau { get; set; }
+        public string ghi_chu { get; set; }
+    }
+
+    public class InvoiceItem
+    {
+        public DateTime ngay_ct0 { get; set; }
+        public string so_ct0 { get; set; }
+        public string so_seri0 { get; set; }
+        public string kh_mau_hd0 { get; set; }
+        public string mst_ban { get; set; }
+        public string ten_dv_ban { get; set; }
+        public string dia_chi_ban { get; set; }
+        public decimal t_tien { get; set; }
+        public decimal t_thue { get; set; }
+        public decimal t_tt { get; set; }
+        public string tinh_trang_hd { get; set; }
+        public string id_hd { get; set; }
+    }
+}
+

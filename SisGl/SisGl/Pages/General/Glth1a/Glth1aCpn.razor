@@ -1,0 +1,854 @@
+﻿@page "/glth1a"
+@page "/glth1a/{Menu_id}"
+@inherits RepoBaseComponent
+@attribute [Authorize(Roles = "admin,glth1a")]
+<div class="row" onkeydown="_handleFunctionKeys(event);">
+@if (!IsDetail)
+{
+    <div class="row">
+        <FrmBrowseComponent @ref="@oBrowse" TblData="@TblData" Fbrowse="@Fbrowse" SelectItem="@SelectedItem" RowStyleFunc="@GetRowStyle" CustomSummaryTextFormatter="@FormatSummaryText" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+}
+else
+{
+     <div class="row mx-1">
+        <h7 style="color:dodgerblue">@(IsDetailSum ? (IsDetailSumCT ? Lap["Detail by reference account"] : Lap["Total amount by reference account"]) : Lap["Detail"]) : @Tk</h7>
+        <hr />
+     </div>
+    <div class="row mt-1">
+        <FrmBrowseComponent @ref="@oBrowseCT" TblData="@TblDataCT" SelectItem="@SelectItemCT" Fbrowse="@FbrowseCT" RowStyleFunc="@GetRowStyle" CustomSummaryTextFormatter="@FormatSummaryText" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+}
+</div>
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup" onkeydown="ModifyEnterKeyPressAsTab(event);"
+@bind-Visible="@PopupVisible"
+Width="500px"
+Height="Auto"
+ShowFooter="true" Context="windowContext"
+HeaderText="@Title">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 4rem; height:4rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="p-3">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Account"]">
+                        <Template>
+                            <div class="col p-0">
+                                <AutocompleteComponent TblData="@TblDmtk" Ma_dm="dmtk" @bind-Value="@Tk" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date"]">
+                        <DxDateEdit @bind-Date="Tu_ngay" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"/>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date"]">
+                        <DxDateEdit @bind-Date="Den_ngay" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </DxFormLayoutItem>
+                   
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Report template"]">
+                        <DxComboBox Data="@LstMauBC" @bind-Value="@Mau_bc" ValueFieldName="Value" TextFieldName="Text" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <hr />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+
+                @if (Errors.Any())
+                {
+                    <div class="mt-2 alert alert-danger p-2">
+                        <ul class="mb-0">
+                            @foreach (var err in Errors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row m-0 justify-content-end align-content-end">
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@ConfirmGridView_OnOk" />
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@if (ShowPrint)
+{
+    <DxPopup @ref="popPrint" CloseOnOutsideClick="false" CssClass="dxPopup" @bind-Visible="@ShowPrint" Width="80%" Height="90%" ShowFooter="false" Context="windowContext" HeaderText= "@Lap["Printer"]">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@LsData" Menu_id="@Menu_id.Replace('_', '.')" OnBack="@(() => { ShowPrint = false;StateHasChanged();})"></ReportOptionComponent>
+        </BodyTemplate>
+    </DxPopup>
+}
+
+<style>
+    .popup-button-footer {
+    width: 100px;
+    margin-right: 20px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    }
+
+    .tb-icon-btntoolbar1 {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\detail.png');
+    }
+
+    .tb-icon-btntoolbar2 {
+    width: 24px;
+    height: 24px;
+    background-image: url('.\\Images\\detail.png');
+    }
+
+    .dxbl-grid-footer td {
+        white-space: pre-line;
+        line-height: 1.4em;
+    }
+</style>
+
+@code {
+    public DataTable TblDmtk { get; set; }
+    public FrmBrowseComponent oBrowseCT;
+    private DataSet dsGlcd;
+    // Filter values
+    private DateTime Tu_ngay = DateTime.Now.Date;
+    private DateTime Den_ngay = DateTime.Now.Date;
+    private string Condition = "";    
+    private string Ma_bc = "";
+    private string Tk = " ";
+    // Template / UI
+    IList<ReportStyle> ReportTemplate = new List<ReportStyle>();
+    private List<string> Errors { get; set; } = new();
+    private bool AllowEditMode = true;
+    private List<Glth1aModel> LsData;   
+    private List<object> StatusPsLK;
+
+    public bool IsDetail { get; set; } = false;
+    public bool IsDetailSum { get; set; } = false;
+    public bool IsDetailSumCT { get; set; } = false;
+    public DataTable TblDataCT;
+    public DataTable TblData2;
+    public DataTable TblDataSoDu;
+    public DataTable TblDataSoDu2;
+    private object CurItemCT{ get; set;}
+    private decimal TongPsNo { get; set; } = 0m;
+    private decimal TongPsCo { get; set; } = 0m;
+    private decimal TongPsNoNt { get; set; } = 0m;
+    private decimal TongPsCoNt { get; set; } = 0m;
+    public string FbrowseCT = "";
+    public string Tk_du = "";
+    public string[] sFieldArrays;
+    public DotNetObjectReference<Glth1aCpn> Pageobj;
+    private string ActiveComponentId = "oBrowse";
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+        if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowse"))
+        {
+            oBrowseHotKeyFunction(value);
+        }
+        else if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowseCT"))
+        {
+            oBrowseCTHotKeyFunction(value);
+        }
+    }
+    void oBrowseHotKeyFunction(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Equals("F2"))
+            {
+
+            }
+            if (value.Equals("F3"))
+            {
+
+            }
+            if (value.Equals("F4"))
+            {
+
+            }
+            if (value.Equals("F5"))
+            {
+                oBrowse_F5();
+                StateHasChanged();
+            }
+            else if (value.Equals("F7"))
+            {
+                try
+                {
+                    Print();
+                    StateHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            else if (value.Equals("F8"))
+            {
+
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+
+            }
+        }
+    }
+    void oBrowseCTHotKeyFunction(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Equals("F2"))
+            {
+
+            }
+            if (value.Equals("F3"))
+            {
+
+            }
+            if (value.Equals("F4"))
+            {
+
+            }
+            if (value.Equals("F5"))
+            {
+
+            }
+            else if (value.Equals("F7"))
+            {
+
+            }
+            else if (value.Equals("F8"))
+            {
+
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+                HideDetail();
+                StateHasChanged();
+            }
+        }
+    }
+    private async Task SetActiveComponentIdAsync(string id)
+    {
+        try
+        {
+            ActiveComponentId = id ?? ActiveComponentId;
+            if (Pageobj != null)
+            {
+                await JavacriptS.InvokeVoidAsync("SetPageFModeObj", Pageobj, ActiveComponentId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SetActiveComponentIdAsync error: " + ex.Message);
+        }
+    }
+    public void SelectItemCT(object obj)
+    {
+        CurItemCT = obj;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "wg.gb.08";
+        base.OnInitialized();
+
+        Tu_ngay = myStateMN.GetStartDate();
+        Den_ngay = myStateMN.GetEndDate();
+        StatusPsLK = new()
+        {
+            new { Value = 0, Text = Lap["No"] },
+            new { Value = 1, Text = Lap["Yes"] }
+
+        };
+    }
+
+    private void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Button1:
+                oBrowse_F5();
+                StateHasChanged();
+                break;
+            case ActionTask.Print:
+                Print();
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+            case ActionTask.Quit:
+                HideDetail();
+                StateHasChanged();
+                break;
+        }
+    }
+    public void HideDetail()
+    {
+        _ = SetActiveComponentIdAsync("oBrowse");
+        if (IsDetailSum)
+        {            
+            IsDetail = false;
+            IsDetailSum = false;
+            ShowToolBar();
+            IsDetailSumCT = false;
+        }
+        else
+        {
+            IsDetail = false;
+            IsDetailSum = false; 
+            ShowToolBar();
+        }
+        StateHasChanged();
+    }
+    public override async Task ShowToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.AddOrderToolBarButton("Button1", Lap["Detail"], 1);
+        myStateMN.AddOrderToolBarButton("Button2", Lap["Total amount by reference account"], 2);
+        myStateMN.SetToolBar(new MyToolbar("Search", true));
+        myStateMN.SetToolBar(new MyToolbar("Print", true));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+    }
+    public async Task ShowDetailToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.SetToolBar(new MyToolbar("Quit", true));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+    }
+    public async Task ShowDetailSumToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.AddOrderToolBarButton("Button1", Lap["Detail"], 1);
+        myStateMN.SetToolBar(new MyToolbar("Quit", true,"",17));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+    }
+
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+            await Language();
+    }
+
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+
+            if (curCommand != null)
+                Fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async void ConfirmGridView_OnOk()
+    {
+        if (!CheckValid()) return;
+        PopupVisible = false;
+
+        myStateMN.SetStartDate(Tu_ngay);
+        myStateMN.SetEndDate(Den_ngay);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool ok = true;
+        if (Tu_ngay == default)
+        {
+            Errors.Add("Ngày lọc chứng từ không hợp lệ!");
+            ok = false;
+        }
+        if (Den_ngay == default)
+        {
+            Errors.Add("Ngày lọc chứng từ không hợp lệ!");
+            ok = false;
+        }
+        if (Tu_ngay > Den_ngay)
+        {
+            Errors.Add("Ngày lọc chứng từ không hợp lệ!");
+            ok = false;
+        }
+        StateHasChanged();
+        return ok;
+    }
+    async Task Loaddata()
+    {
+        try
+        {
+            if (curCommand != null)
+            {
+                sFieldArrays = !(IsLangEn == false)
+                    ? (Mau_bc != 0 ? curCommand.Ebrowse2.ToString().Split("|") : curCommand.Ebrowse1.Split("|"))
+                    : (Mau_bc != 0 ? curCommand.Vbrowse2.ToString().Split("|") : curCommand.Vbrowse1.Split("|"));
+                Fbrowse = sFieldArrays.Length > 0 ? sFieldArrays[0] : Fbrowse;
+            }
+            string MaDVCS = myStateMN.GetDvcs().Ma_dvcs.Trim();
+            MaDVCS = MaDVCS == "ALL" ? "" : MaDVCS;
+            string param_name = "Tk;StartDate;EndDate;Ma_dvcs";
+            string param_value = $"{Tk};{Tu_ngay:yyyyMMdd};{Den_ngay:yyyyMMdd};{MaDVCS}";
+
+            string store_glth1 = curCommand.Store_proc?.Split('|')[0] ?? "";
+            var ds1 = await myDb.LoadStoreProcedure(store_glth1, param_name, param_value);
+
+            string store_sodu = curCommand.Store_proc?.Split('|')[1] ?? "";
+            var ds2 = await myDb.LoadStoreProcedure(store_sodu, param_name, param_value);
+
+            dsGlcd = new DataSet();
+
+            if (ds1 != null && ds1.Tables.Count > 0)
+            {
+                var t1 = ds1.Tables[0].Copy();
+                var t2 = ds1.Tables[1].Copy();
+                t1.TableName = "GLTH1_Main";
+                t2.TableName = "GLTH1_Main2";
+                dsGlcd.Tables.Add(t1);
+                dsGlcd.Tables.Add(t2);
+                TblData = t1; 
+                TblData2 = t2;
+            }
+            else
+            {
+                TblData = new DataTable();
+                TblData2 = new DataTable();
+            }
+
+            if (ds2 != null && ds2.Tables.Count > 0)
+            {
+                var t3 = ds2.Tables[0].Copy();
+                var t4 = ds2.Tables[1].Copy();
+                t3.TableName = "GLTH1_SoDu";
+                t4.TableName = "GLTH1_SoDu2";
+                dsGlcd.Tables.Add(t3);
+                dsGlcd.Tables.Add(t4);
+                TblDataSoDu = t3;
+                TblDataSoDu2 = t4;
+            }
+            else
+            {
+                TblDataSoDu = new DataTable();
+                TblDataSoDu2 = new DataTable();
+            }
+
+            // TÍNH TỔNG PHÁT SINH TRONG KỲ – CHÍNH LÀ 4 GIÁ TRỊ BẠN MUỐN IN BÁO CÁO
+            if (TblData != null && TblData.Rows.Count > 0)
+            {
+                TongPsNo = TblData.Compute("SUM(ps_no)", "") is DBNull ? 0m : Convert.ToDecimal(TblData.Compute("SUM(ps_no)", ""));
+                TongPsCo = TblData.Compute("SUM(ps_co)", "") is DBNull ? 0m : Convert.ToDecimal(TblData.Compute("SUM(ps_co)", ""));
+                TongPsNoNt = TblData.Compute("SUM(ps_no_nt)", "") is DBNull ? 0m : Convert.ToDecimal(TblData.Compute("SUM(ps_no_nt)", ""));
+                TongPsCoNt = TblData.Compute("SUM(ps_co_nt)", "") is DBNull ? 0m : Convert.ToDecimal(TblData.Compute("SUM(ps_co_nt)", ""));
+            }
+            else
+            {
+                TongPsNo = TongPsCo = TongPsNoNt = TongPsCoNt = 0m;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+
+    async void OnDvcsChanged(string ma_dvcs)
+    {
+        Ma_dvcs = ma_dvcs;
+        Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStateMN.GetCurUser();
+            Ma_dvcs = myStateMN.GetMa_Dvcs(); Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+            await PageLoad();
+            await LoadTemplate();
+            await Language();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+
+            if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.AddOrderToolBarButton("Button1", Lap["Detail"] + "-F5", 1);
+                myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+                myStateMN.SetToolBar(new MyToolbar("Print", true));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+            Pageobj = DotNetObjectReference.Create(this);
+            await SetActiveComponentIdAsync(IsDetail ? "oBrowseCT" : "oBrowse");
+            await Loaddata();
+            StateHasChanged();
+        }
+        else
+        {
+            if (IsDetail)
+            {
+                await oBrowseCT.FocusGridAsync();
+            }
+            else
+            {
+                await oBrowse.FocusGridAsync();
+            }
+        }
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+
+    void Print()
+    {
+        LsData = new List<Glth1aModel>();
+
+        Glth1aModel model = new Glth1aModel
+        {
+            Startdate = Tu_ngay,
+            Enddate = Den_ngay,
+            Ma_dvcs = Ma_dvcs,
+            Ps_no_trong_ky = TongPsNo,
+            Ps_co_trong_ky = TongPsCo,
+            Ps_no_trong_ky_nt = TongPsNoNt,
+            Ps_co_trong_ky_nt = TongPsCoNt,
+
+            LsData = TblData != null ? myDb.ConvertDataTable<Glth1a>(TblData) : new List<Glth1a>(),
+            LsSoDu = TblDataSoDu != null ? myDb.ConvertDataTable<dtInfo>(TblDataSoDu) : new List<dtInfo>(),
+            LsDetail = TblDataCT != null ? myDb.ConvertDataTable<Glth1a>(TblDataCT) : new List<Glth1a>()
+        };
+
+        LsData.Add(model);
+        ShowPrint = true;
+    }
+
+    private async Task oBrowse_F5()
+    {
+        try
+        {
+            DataRowView selectedObj = !IsDetailSum ? CurItem as DataRowView : CurItemCT as DataRowView;
+            if (selectedObj == null)
+            {
+                myStateMN.SetNewThongbao(Lap["Please select a row to view detail"] + " !");
+                return;
+            }
+            string MaDVCS = myStateMN.GetDvcs().Ma_dvcs.Trim();
+            MaDVCS = MaDVCS == "ALL" ? "" : MaDVCS;
+            string store_detail = curCommand.Store_proc?.Split('|')[2] ?? "";
+            DataSet dsDetail = null;
+
+            if (!IsDetailSum)
+            {
+                Tk_du = selectedObj["tk_du"].ToString().Trim();
+                string param_name = "Tk;Tk_du;StartDate;EndDate;Ma_dvcs";
+                string param_value = $"{Tk};{Tk_du};{Tu_ngay:yyyyMMdd};{Den_ngay:yyyyMMdd};{MaDVCS}";
+                dsDetail = await myDb.LoadStoreProcedure(store_detail, param_name, param_value);
+            }
+            else
+            {
+                Tk = selectedObj["tk"].ToString().Trim();
+                string param_name = "Tk;StartDate;EndDate;Ma_dvcs";
+                string param_value = $"{Tk};{Tu_ngay:yyyyMMdd};{Den_ngay:yyyyMMdd};{MaDVCS}";
+                dsDetail = await myDb.LoadStoreProcedure(store_detail, param_name, param_value);
+            }
+
+            TblDataCT = dsDetail != null && dsDetail.Tables.Count > 0 ? dsDetail.Tables[0].Copy() : new DataTable();
+            FbrowseCT = sFieldArrays.Length > 1 ? sFieldArrays[1] : "";
+
+            IsDetail = true;
+            IsDetailSum = !IsDetailSum ? false : true;
+            IsDetailSumCT = !IsDetailSum ? false : true;
+
+            StateHasChanged();
+            if (oBrowseCT != null)
+            {
+
+                await Task.Delay(50);
+                await oBrowseCT.FocusGridAsync();
+            }
+
+            ShowDetailToolBar();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            myStateMN.SetNewThongbao("Error loading detail: " + ex.Message);
+        }
+    }
+
+
+    public override async void ExportData(int type)
+    {
+        if (IsDetail)
+        {
+            oBrowseCT.ExPortGrid(type);
+        }
+        else
+        {
+            oBrowse.ExPortGrid(type);
+        }
+
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+    async Task LoadTemplate()
+    {
+        try
+        {
+            ReportTemplate.Clear();
+            ReportTemplate.Add(new ReportStyle() { Label = Lap["No"], Value = -1, File_mau = "", Ma_maubc = "", Nh_bc = "", Tt_qd = "" });
+            DataSet ds = await GetMauBC("GLTH1A");
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                int index = 0;
+                foreach (DataRow row in ds.Tables[0].Rows)
+                {
+                    ReportTemplate.Add(new ReportStyle() { Label = row["ten_maubc"].ToString(), Value = index, File_mau = row["file_maubc"].ToString().Trim(), Ma_maubc = row["ma_maubc"].ToString(), Nh_bc = row["nh_bc"].ToString().Trim(), Tt_qd = row["tt_qd"].ToString() });
+                    index++;
+                }
+            }
+            else
+            {
+                ReportTemplate.Add(new ReportStyle() { Label = "", Value = 0 });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task<DataSet> GetMauBC(string ma_maubc)
+    {
+        string[] strArray = myOption.GetOptionsValue("M_MAU_TT_QD").ToString().Split(';');
+        string str = "1=1";
+        if (strArray.Length > 1)
+            str = !(strArray[1].Trim() == "2") ? string.Format("(nh_dh={0} OR isnull(nh_dh,'')='') AND (mau_ttqd like '{1}' OR isnull(mau_ttqd,'')='')", (object)strArray[1].Trim(), (object)strArray[0].Trim()) : string.Format("(nh_dh={0} OR isnull(nh_dh,'')='') AND (mau_ttqd like '{1}' OR isnull(mau_ttqd,'')='')", (object)strArray[1].Trim(), (object)strArray[0].Trim());
+        string cmdText = string.Format("SELECT file_maubc, ten_maubc, ten_maubc2, tt_qd, nh_bc, ma_maubc, [default] FROM {0} WHERE ma_maubc = '{1}' AND {2} ORDER BY [order]", (object)"dmmaubc", (object)ma_maubc, (object)str);
+        DataSet ds = await myDb.LoadDataset(cmdText);
+        return ds;
+    }
+    public string RemoveUnwantedColumns(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return input;
+
+        // danh sách prefix cần loại bỏ
+        string[] prefixes = new[]
+        {
+        "lk_", "ps_no1", "ps_co1", "no_dn", "co_dn", "ps_no_nt1", "ps_co_nt1"
+    };
+
+        // tách các nhóm cột theo ký tự '|'
+        var groups = input.Split('|');
+
+        for (int g = 0; g < groups.Length; g++)
+        {
+            var cols = groups[g].Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+            var filteredCols = cols.Where(col =>
+            {
+                var fieldName = col.Split(':')[0].Trim();
+                return !prefixes.Any(p => fieldName.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+            });
+
+            groups[g] = string.Join(";", filteredCols);
+        }
+
+        return string.Join("|", groups);
+    }
+    void oBrowse_CustomSummary(GridCustomSummaryEventArgs e)
+    {
+        switch (e.SummaryStage)
+        {
+            case GridCustomSummaryStage.Start:
+                e.TotalValue = 0m;
+                break;
+            case GridCustomSummaryStage.Calculate:
+                if (e.Grid.IsDataItemSelected(e.DataItem))
+                    e.TotalValue = (decimal)e.TotalValue + (decimal)e.GetRowValue("ps_no");
+                break;
+        }
+    }
+    string GetOpt(string name) => myOption.GetOptionsValue(name) ?? "";
+    string GetOptInt(string name)
+    {
+        string f = GetOpt(name).ToString();
+        if (GetOpt("M_KIEU_SO_AM").ToString().Equals("2"))
+            f = NormalizeOptionNegativeFormat(f);
+        return "{0:" + f + "}";
+    }
+    string NormalizeOptionNegativeFormat(string s)
+    {
+        if (s == null) return s;
+        var parts = s.Split(';');
+        if (parts.Length > 1 && parts[1].StartsWith("-"))
+        {
+            parts[1] = "(" + parts[1].Substring(1).Trim() + ")";
+            return string.Join(";", parts);
+        }
+        return s;
+    }
+    string GetRowStyle(DataRowView row)
+    {
+        if (row.Row.Table.Columns.Contains("Bold") && row["Bold"].ToString().Trim() == "1")
+        {
+            return "bold-item";
+        }
+        return "";
+    }
+    string FormatSummaryText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        // Nếu không có dữ liệu → không hiển thị summary
+        if (TblData == null || TblData.Rows.Count == 0)
+            return null;
+        else if (TblDataSoDu == null || TblDataSoDu.Rows.Count == 0)
+            return null;
+        else if (TblDataSoDu2 == null || TblDataSoDu2.Rows.Count == 0)
+            return null;
+        else if (TblData2 == null || TblData2.Rows.Count == 0)
+            return null;
+
+        // Lấy các dòng số dư
+        DataRow totalRow3 = TblDataSoDu.Rows[0];
+
+        // Hàm tính tổng cột
+        decimal SumColumn(DataTable tbl, string col)
+        {
+            object value = tbl.Compute($"SUM({col})", "");
+            return value != DBNull.Value ? Convert.ToDecimal(value) : 0m;
+        }
+
+        switch (e.Item.Name)
+        {
+            case "dien_giai":
+                return Lap["Total arising during the period"];
+            case "ten_tk01":
+                return Lap["Opening Balance"];
+            case "ten_tk02":
+                return Lap["Occurred during the period"];
+            case "ten_tk03":
+                return Lap["Closing Balance"];
+
+            case "ps_no01":
+                return string.Format(GetOptInt("M_IP_TIEN"), totalRow3["no_dk"] ?? 0m);
+
+            case "ps_no02":
+                decimal totalPsNo = SumColumn(TblData, "ps_no");
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+
+            case "ps_no03":
+                return string.Format(GetOptInt("M_IP_TIEN"), totalRow3["no_ck"] ?? 0m);
+
+            case "ps_no_nt01":
+                return string.Format(GetOptInt("M_IP_TIEN_NT"), totalRow3["no_dk_nt"] ?? 0m);
+
+            case "ps_no_nt02":
+                decimal totalPsNoNT = SumColumn(TblData, "ps_no_nt");
+                return string.Format(GetOptInt("M_IP_TIEN_NT"), totalPsNoNT);
+
+            case "ps_no_nt03":
+                return string.Format(GetOptInt("M_IP_TIEN_NT"), totalRow3["no_ck_nt"] ?? 0m);
+
+
+            case "ps_co01":
+                return string.Format(GetOptInt("M_IP_TIEN"), totalRow3["co_dk"] ?? 0m);
+
+            case "ps_co02":
+                decimal totalPsCo = SumColumn(TblData, "ps_co");
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsCo);
+
+            case "ps_co03":
+                return string.Format(GetOptInt("M_IP_TIEN"), totalRow3["co_ck"] ?? 0m);
+
+            case "ps_co_nt01":
+                return string.Format(GetOptInt("M_IP_TIEN_NT"), totalRow3["co_dk_nt"] ?? 0m);
+
+            case "ps_co_nt02":
+                decimal totalPsCoNT = SumColumn(TblData, "ps_co_nt");
+                return string.Format(GetOptInt("M_IP_TIEN_NT"), totalPsCoNT);
+
+            case "ps_co_nt03":
+                return string.Format(GetOptInt("M_IP_TIEN_NT"), totalRow3["co_ck_nt"] ?? 0m);
+
+            default:
+                return null;
+        }
+    }
+
+    void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+
+    private string StartupTitle(Command cmd)
+    {
+        if (cmd == null) return "Glth1a";
+        return IsLangEn ? (cmd.Bar2 ?? cmd.Bar) : (cmd.Bar ?? cmd.Bar2);
+    }
+
+    class ReportStyle
+    {
+        public string Label { get; set; }
+        public int Value { get; set; }
+        public string File_mau { get; set; }
+        public string Ma_maubc { get; set; }
+        public string Nh_bc { get; set; }
+        public string Tt_qd { get; set; }
+    }
+}

@@ -1,0 +1,344 @@
+@inherits FrmListBaseComponent
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveCopxddck" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurCopxddck" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <DxFormLayoutItem Caption="@Lap["Date"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurCopxddck.Ngay" Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Workshop code"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_px_input" Ma_dm="dmpx" @bind-Value="@CurCopxddck.Ma_px" IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Account"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="tk_input" Ma_dm="dmtk1" @bind-Value="@CurCopxddck.Tk" IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Amount"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Enabled="@AllowEditMode" Value="@CurCopxddck.Tien" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newValue) => Tien_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Foreign currency amount"]" ColSpanMd="12">
+                    <Template>
+                        <DxSpinEdit Enabled="@AllowEditMode" Value="@CurCopxddck.Tien_nt" DisplayFormat="@M_IP_TIEN_NT" ValueChanged="@((decimal newValue) => Tien_nt_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurCopxddck.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+[Inject] public ISysVarManager mySysvar { get; set; }
+public Copxddck CurCopxddck;
+private string menu_id = "wo.gs.02";
+public string M_IP_TIEN = "";
+public string M_IP_TIEN_NT = "";
+
+protected override void OnInitialized()
+{
+    sqlTableName = "cdddpx";
+    sqlTableView = "cdddpx";
+    SqlTableKey = "ngay;tk;ma_px";
+    CheckSqlTableKey = "ma_px";
+    ParentPage = String.IsNullOrEmpty(ParentPage) ? "copxddck" : ParentPage;
+    CurCopxddck = new Copxddck();
+
+    if (String.IsNullOrEmpty(Menu_id))
+        Menu_id = menu_id;
+
+    M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN");
+    M_IP_TIEN_NT = myOption.GetOptionsValue("M_IP_TIEN_NT");
+
+    base.OnInitialized();
+}
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+
+                if (String.IsNullOrEmpty(CurCopxddck.Tk))
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('tk_input')?.focus()");
+                else
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_px_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task ViewRecord(string SqlTableKeyValue)
+    {
+        CurCopxddck = new Copxddck();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task EditRecord(string SqlTableKeyValue)
+    {
+        CurCopxddck = new Copxddck();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task NewRecord(string SqlTableKeyValue)
+    {
+        CurCopxddck = new Copxddck();
+        CurCopxddck.Ma_dvcs = myStateMN.GetDvcs().Ma_dvcs;
+        CurCopxddck.Status = "1";
+
+        if (SqlTableKeyValue.Split(";").Length >= 2)
+        {
+            CurCopxddck.Ngay = DateTime.Parse(SqlTableKeyValue.Split(";")[0]);
+            CurCopxddck.Tk = SqlTableKeyValue.Split(";")[1];
+            CurCopxddck.Tk = myDb.GetValue($"select top 1 tk from dmtk where tk like '{CurCopxddck.Tk.Trim()}%' order by tk")?.ToString();
+        }
+        else if (SqlTableKeyValue.Split(";").Length == 1)
+            CurCopxddck.Ngay = DateTime.Parse(SqlTableKeyValue.Split(";")[0]);
+        else
+            CurCopxddck.Ngay = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KY1"));
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task SaveCopxddck()
+    {
+        try
+        {
+            if (!CheckValid())
+            {
+                return;
+            }
+
+            if (curActionTask == ActionTask.Edit)
+            {
+                CurCopxddck.Date = DateTime.Now.Date;
+                CurCopxddck.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurCopxddck.User_id = curUser.User_id;
+                    CurCopxddck.User_name = curUser.User_name;
+                }
+
+                string _where = "";
+                string[] strkey = SqlTableKey.Split(';');
+                string[] strvalue = Ma_ma.Split(';');
+                if (strkey.Length == strvalue.Length)
+                {
+                    for (int x = 0; x < strkey.Length; x++)
+                    {
+                        if (strkey[x] == "ngay")
+                            _where += strkey[x] + " = '" + DateTime.Parse(strvalue[x]).ToString("yyyy-MM-dd") + "' and ";
+                        else
+                            _where += strkey[x] + " = '" + strvalue[x] + "' and ";
+                    }
+                }
+                if (_where.Length > 0)
+                {
+                    _where = _where.Substring(0, _where.Length - 4);
+                    await myDb.UpdateOneRow1<Copxddck>(CurCopxddck, sqlTableName, "", _where);
+                    myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurCopxddck.Ma_px));
+                }
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                string strsql = $"Select ma_px from {sqlTableName} where ngay='{CurCopxddck.Ngay?.ToString("yyyy-MM-dd")}' AND tk='{CurCopxddck.Tk.Trim()}' AND ma_px='{CurCopxddck.Ma_px.Trim()}'";
+                DataTable dt = myDb.GetTable(strsql);
+                if (dt.Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["This record already exists, can not add new"] + " !");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_px_input')?.focus()");
+                    return;
+                }
+
+                CurCopxddck.Date = DateTime.Now.Date;
+                CurCopxddck.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurCopxddck.Date0 = DateTime.Now.Date;
+                CurCopxddck.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurCopxddck.User_id = curUser.User_id;
+                    CurCopxddck.User_id0 = curUser.User_id;
+                    CurCopxddck.User_name = curUser.User_name;
+                    CurCopxddck.User_name0 = curUser.User_name;
+                }
+                await myDb.InsertOneRow<Copxddck>(CurCopxddck, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurCopxddck.Ma_px));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo(ParentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Save failed: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (String.IsNullOrEmpty(CurCopxddck.Ma_dvcs))
+        {
+            myStateMN.SetNewThongbao(Lap["Unit is required"] + " !");
+            return false;
+        }
+        if (!CurCopxddck.Ngay.HasValue)
+        {
+            myStateMN.SetNewThongbao(Lap["Date is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurCopxddck.Tk))
+        {
+            myStateMN.SetNewThongbao(Lap["Account is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurCopxddck.Ma_px))
+        {
+            myStateMN.SetNewThongbao(Lap["Workshop code is required"] + " !");
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {
+            string[] strarr = SqlTableKey.Split(";");
+            string[] strarrValue = SqlTableKeyValue.Split(";");
+            
+            string strwhere = "";
+            for (int i = 0; i < strarr.Length && i < strarrValue.Length; i++)
+            {
+                if (strarr[i] == "ngay")
+                    strwhere += $"{strarr[i]} = '{DateTime.Parse(strarrValue[i]):yyyy-MM-dd}' AND ";
+                else
+                    strwhere += $"{strarr[i]} = '{strarrValue[i]}' AND ";
+            }
+            
+            if (strwhere.Length > 0)
+                strwhere = strwhere.Substring(0, strwhere.Length - 5);
+
+            string sql = $"Select * from {sqlTableView} where {strwhere}";
+            DataSet DsTrans = await myDb.LoadDataset(sql);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<Copxddck> lsdetai = myDb.ConvertDataTable<Copxddck>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurCopxddck = lsdetai[0];
+                }
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Tien_ValueChanged(decimal newValue)
+    {
+        CurCopxddck.Tien = newValue;
+        StateHasChanged();
+    }
+
+    void Tien_nt_ValueChanged(decimal newValue)
+    {
+        CurCopxddck.Tien_nt = newValue;
+        StateHasChanged();
+    }
+}

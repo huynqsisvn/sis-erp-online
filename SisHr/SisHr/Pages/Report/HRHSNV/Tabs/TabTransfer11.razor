@@ -1,0 +1,370 @@
+﻿@namespace SisHr.Pages.Report.HRHSNV.Tabs
+
+@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using SisCom.Model
+@using SisCom.Shared
+@using SisLib.Lib
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using System.Linq
+
+@* ===== 11. EMPLOYEE TRANSFER (Điều chuyển nhân sự) ===== *@
+<DxFormLayoutGroup id="section-11" Caption="@Lap["Employee transfer"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="12">
+        <Template>
+            @if (AllowEditMode)
+            {
+                <div class="alert alert-info p-2 mb-2">
+                    <small><kbd>F4</kbd> để thêm dòng mới</small>
+                </div>
+            }
+            <div @ref="GridWrapperDieuChuyen" id="grid-wrapper-dieuchuyen" @onfocusout="OnGridDieuChuyenLostFocus" @onfocusin="OnGridFocus" @onkeydown="GridDieuChuyen_OnKeyDown" @onkeydown:stopPropagation="true" class="mt-2 mb-3">
+                <DxGrid @ref="GridDieuChuyen"
+                        Data="@(CurRow.ListDieuChuyen ?? new List<DieuChuyenRow>())"
+                        SizeMode="SizeMode.Small"
+                        CssClass="w-100 grid-height-dynamic"
+                        AllowSelectRowByClick="true"
+                        KeyboardNavigationEnabled="true"
+                        @bind-SelectedDataItem="@SelectedDieuChuyen"
+                        ValidationEnabled="false"
+                        EditMode="GridEditMode.EditRow"
+                        RowClick="@StartEditRow"
+                        SelectionMode="GridSelectionMode.Single"
+                        CustomizeEditModel="GridDieuChuyen_CustomizeEditModel"
+                        EditModelSaving="GridDieuChuyen_EditModelSaving"
+                        DataItemDeleting="GridDieuChuyen_DataItemDeleting"
+                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                        EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                        ShowAllRows="true"
+                        TextWrapEnabled="false"
+                        AllowSort="false"
+                        HighlightRowOnHover="true"
+                        FooterDisplayMode="GridFooterDisplayMode.Always">
+                    <Columns>
+                        <DxGridCommandColumn Width="70px" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                            <CellDisplayTemplate Context="ctx">
+                                <div class="grid-cell-align-center">
+                                    <a class="text-danger fw-bold cursor-pointer" tabindex="-1"
+                                       @onclick="@(() => GridDieuChuyen.ShowRowDeleteConfirmation(ctx.VisibleIndex))" title="Xóa dòng">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                </div>
+                            </CellDisplayTemplate>
+                            <CellEditTemplate Context="ctx">
+                            </CellEditTemplate>
+                        </DxGridCommandColumn>
+
+                        <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                        @* ===== NHÓM THÔNG TIN CŨ ===== *@
+                        <DxGridDataColumn FieldName="Ngay_dc_cu" Caption="@Lap["Old transfer date"]" Width="130px" DisplayFormat="dd/MM/yyyy">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Ngay_dc_cu" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ma_bpns_cu" Caption="@Lap["Old department"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmbpns" @bind-Value="@item.Ma_bpns_cu" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ma_cv_cu" Caption="@Lap["Old position"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@item.Ma_cv_cu" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ma_cd_cu" Caption="@Lap["Old job title"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmcd" @bind-Value="@item.Ma_cd_cu" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ghi_chu_cu" Caption="@Lap["Old note"]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ghi_chu_cu" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* ===== NHÓM THÔNG TIN MỚI ===== *@
+                        <DxGridDataColumn FieldName="Ngay_dc_moi" Caption="@Lap["New transfer date"]" Width="130px" DisplayFormat="dd/MM/yyyy" >
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Ngay_dc_moi" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ma_bpns_moi" Caption="@Lap["New department"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmbpns" @bind-Value="@item.Ma_bpns_moi" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ma_cv_moi" Caption="@Lap["New position"]" Width="150px" >
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@item.Ma_cv_moi" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ma_cd_moi" Caption="@Lap["New job title"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmcd" @bind-Value="@item.Ma_cd_moi" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ghi_chu_moi" Caption="@Lap["New note"]" Width="180px" >
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ghi_chu_moi" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* ===== TRẠNG THÁI ===== *@
+                        <DxGridDataColumn FieldName="Status" Caption="@Lap["Status"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (DieuChuyenRow)ctx.EditModel;
+                                }
+                                <DxComboBox Data="@StatusList"
+                                            @bind-Value="item.Status"
+                                            TextFieldName="Text"
+                                            ValueFieldName="Value" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+                    </Columns>
+                </DxGrid>
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+<style>
+    .grid-height-dynamic {
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .grid-cell-align-center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+@code {
+    [Parameter] public HsnvDetailModel CurRow { get; set; }
+    [Parameter] public bool AllowEditMode { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public dynamic Lap { get; set; }
+
+    [Inject] public IJSRuntime JS { get; set; }
+
+    public DxGrid GridDieuChuyen;
+    private object SelectedDieuChuyen;
+    private ElementReference GridWrapperDieuChuyen;
+    private string LastFocusedGrid = "DIEUCHUYEN";
+
+    private List<StatusItem> StatusList = new() {
+        new StatusItem { Value = "1", Text = "1 - Sử dụng" },
+        new StatusItem { Value = "0", Text = "0 - Không sử dụng" }
+    };
+    public class StatusItem { public string Value { get; set; } public string Text { get; set; } }
+
+    void GridDieuChuyen_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var model = (DieuChuyenRow)e.EditModel;
+            model.Stt = CurRow.ListDieuChuyen.Count > 0 ? CurRow.ListDieuChuyen.Max(a => a.Stt) + 1 : 1;
+            model.Status = "1";
+            model.Ngay_dc_moi = DateTime.Now.Date;
+        }
+    }
+
+    async Task GridDieuChuyen_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var item = (DieuChuyenRow)e.EditModel;
+
+        if (e.IsNew)
+        {
+            CurRow.ListDieuChuyen.Add(item);
+
+            // Dọn dẹp dòng trống
+            if (CurRow.ListDieuChuyen.Any(x => !string.IsNullOrEmpty(x.Ma_bpns_moi) && x != item))
+            {
+                CurRow.ListDieuChuyen.RemoveAll(x => string.IsNullOrEmpty(x.Ma_bpns_moi) && x != item);
+            }
+
+            SelectedDieuChuyen = item;
+        }
+        else
+        {
+            SelectedDieuChuyen = item;
+        }
+
+        // Cập nhật STT
+        int stt = 1;
+        CurRow.ListDieuChuyen.ForEach(x => x.Stt = stt++);
+
+        e.Cancel = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void GridDieuChuyen_DataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var item = (DieuChuyenRow)e.DataItem;
+        CurRow.ListDieuChuyen.Remove(item);
+
+        // Cập nhật lại số thứ tự sau khi xóa
+        int stt = 1;
+        foreach (var r in CurRow.ListDieuChuyen)
+        {
+            r.Stt = stt++;
+        }
+
+        e.Cancel = true;
+        StateHasChanged();
+    }
+
+    private async Task GridDieuChuyen_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await SaveAndMoveNextRow();
+                break;
+            case "F4":
+                AddNewRow();
+                break;
+            case "F8":
+                if (SelectedDieuChuyen != null) GridDieuChuyen.ShowDataItemDeleteConfirmation(SelectedDieuChuyen);
+                break;
+            case "Escape":
+                try { await GridDieuChuyen.CancelEditAsync(); GridDieuChuyen.ClearSelection(); } catch { }
+                break;
+        }
+    }
+
+    private async Task HandleSaveAndMoveNext(DxGrid grid, List<DieuChuyenRow> list, object selectedItem, Func<Task> onAddAction)
+    {
+        try
+        {
+            if (grid != null && grid.IsEditing())
+                await grid.SaveChangesAsync();
+
+            await Task.Delay(100);
+
+            // Luôn thêm dòng mới sau khi lưu
+            await onAddAction();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("HandleSaveAndMoveNext Error: " + ex.Message);
+        }
+    }
+
+    [JSInvokable]
+    public async Task SaveAndMoveNextRow()
+    {
+        try
+        {
+            await HandleSaveAndMoveNext(GridDieuChuyen, CurRow.ListDieuChuyen, SelectedDieuChuyen, AddNewRowAsync);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SaveAndMoveNextRow Error: " + ex.Message);
+        }
+    }
+
+    private async Task OnGridFocus()
+    {
+        LastFocusedGrid = "DIEUCHUYEN";
+    }
+
+    private async Task AddNewRowAsync()
+    {
+        if (AllowEditMode && GridDieuChuyen != null)
+        {
+            if (GridDieuChuyen.IsEditing())
+                await GridDieuChuyen.SaveChangesAsync();
+            await GridDieuChuyen.StartEditNewRowAsync();
+        }
+    }
+
+    private async void AddNewRow()
+    {
+        await AddNewRowAsync();
+    }
+
+    private void StartEditRow()
+    {
+        if (GridDieuChuyen != null && SelectedDieuChuyen != null && AllowEditMode)
+        {
+            if (GridDieuChuyen.IsEditing())
+                _ = GridDieuChuyen.SaveChangesAsync();
+            _ = GridDieuChuyen.StartEditDataItemAsync(SelectedDieuChuyen);
+        }
+    }
+
+    async void OnGridDieuChuyenLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            await Task.Delay(150);
+            bool inside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-dieuchuyen");
+            if (!inside && GridDieuChuyen != null && GridDieuChuyen.IsEditing())
+            {
+                await GridDieuChuyen.SaveChangesAsync();
+            }
+        }
+        catch { }
+    }
+}

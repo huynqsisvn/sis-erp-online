@@ -1,0 +1,1151 @@
+﻿@inherits TranBaseComponent
+@using System.Data
+@using DevExpress.Blazor
+
+<div class="m-0 p-0 w-100" data-spy="scroll" style="overflow:auto;">
+    @if (IsShowVoucher)
+    {
+        <FormTrans Title="@Pagetitle" @bind-curActionTask="@curActionTask" OnNew="@OnNew" OnCopy="@OnCopy" OnEdit="@OnEdit" OnSave="@OnSave" OnCancel="@OnCancel" OnPrint="@OnPrint" OnTemplateChanged="@OnTemplateChanged" Stt_rec="@CurPh.Stt_rec" curUser="@curUser" Ma_ct="@Ma_ct" Menu_id="@Menu_id" Phdbf="@M_Phdbf" LanguageID="@LanguageID">
+            <div class="row m-1 mt-3 me-2">
+                <DxFormLayout SizeMode="@Itemsizemode" CssClass="frm-header" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                    <DxFormLayoutGroup ColSpanMd="12" Caption="@Lap["Infomation"]" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box" ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start" AnimationType="LayoutAnimationType.Slide">
+                        <DxFormLayoutGroup ColSpanMd="8" Decoration="FormLayoutGroupDecoration.None" SizeMode="@Itemsizemode" CssClass="mt-3">
+                            <DxFormLayoutItem Caption="@Lap["Supplier code"]" ColSpanMd="8">
+                                <Template>
+                                    <AutocompleteComponent Id="ma_khach_input" TblData="@TblDmkh" Ma_dm="dmkh" @bind-Value="@CurPh.Ma_kh" SelectChanged="OnAutoCompleteKhachhangChanged" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["Address"]" ColSpanMd="12">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurPh.Dia_chi" Enabled="@AllowEditMode"></DxTextBox>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["Deliverer"]" ColSpanMd="12">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurPh.Ong_ba" Enabled="@AllowEditMode"></DxTextBox>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["Description"]" ColSpanMd="12">
+                                <Template>
+                                    <DxTextBox @bind-Text="@CurPh.Dien_giai" Enabled="@AllowEditMode"></DxTextBox>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["Credit account"]" ColSpanMd="8">
+                                <Template>
+                                    <AutocompleteComponent Ma_dm="dmnx" @bind-Value="@CurPh.Ma_nx" SelectChanged="OnAutoCompleteDMNXChanged" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                        
+                        <DxFormLayoutGroup Caption="@Lap["Voucher"]" ColSpanMd="4" Decoration="FormLayoutGroupDecoration.None" SizeMode="@Itemsizemode" CssClass="mt-3">
+                            <DxFormLayoutItem Caption="@Lap["GL date"]" ColSpanMd="12">
+                                <DxDateEdit Id="ngay_ct_input" @bind-Date="@CurPh.Ngay_ct" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="@AllowEditMode"></DxDateEdit>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["LCT date"]" ColSpanMd="12">
+                                <DxDateEdit @bind-Date="@CurPh.Ngay_lct" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="@AllowEditMode"></DxDateEdit>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["Book code"]" ColSpanMd="12">
+                                <AutocompleteComponent Id="ma_qs_input" Ma_dm="dmqs" @bind-Value="@CurPh.Ma_qs" SelectChanged="OnAutoCompleteQuyensoChanged" Filter="@_filter_qs" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["Voucher No"]" ColSpanMd="12">
+                                <DxTextBox Id="so_ct_input" @bind-Text="@CurPh.So_ct" Enabled="@AllowEditMode"></DxTextBox>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["Ex. rate"]" ColSpanMd="8">
+                                <Template>
+                                    <AutocompleteComponent Ma_dm="dmnt" @bind-Value="@CurPh.Ma_nt" SelectChanged="OnAutoCompleteMaNTChanged" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem CssClass="no-caption" Caption="" ColSpanMd="4">
+                                <Template>
+                                    <DxSpinEdit ReadOnly="@(CurPh?.Ma_nt?.Trim().Equals(M_ma_nt0) == true)" Value="@CurPh.Ty_gia" ValueExpression="@(() => CurPh.Ty_gia)" ValueChanged="@((decimal newvalue) => { OnValueTyGiaChanged(newvalue); })" DisplayFormat="@M_IP_TY_GIA" Enabled="@AllowEditMode" Id="Ty_gia"></DxSpinEdit>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["Customs ex.rate"]" ColSpanMd="12">
+                                <Template>
+                                    <DxSpinEdit ReadOnly="@(CurPh?.Ma_nt?.Trim().Equals(M_ma_nt0) == true)" Value="@CurPh.Ty_gia_hq" ValueExpression="@(() => CurPh.Ty_gia_hq)" ValueChanged="@((decimal newvalue) => { OnValueTyGiaHQChanged(newvalue); })" DisplayFormat="@M_IP_TY_GIA" Enabled="@AllowEditMode" Id="Ty_gia_hq"></DxSpinEdit>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12">
+                                <Template>
+                                    <AutocompleteComponent CssClass="col p-0" Ma_dm="dmpost" @bind-Value="@CurPh.Status" Filter="@filter_status" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                    </DxFormLayoutGroup>
+                    
+                    <DxFormLayoutTabPages ColSpanMd="12" CssClass="css-detail" @bind-ActiveTabIndex="@activeTabIndex" TabClick="@OnTabChanged">
+                        <DxFormLayoutTabPage Caption="@Lap["Details"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                            <DxFormLayoutItem ColSpanMd="12">
+                                <Template>
+                                    <div @ref="GridWrapper" id="grid-wrapper" @onfocusout="OnGridCTLostFocus" class="mt-2 mb-3">
+                                        <DxGrid @ref="GridCT" SizeMode="@Itemsizemode" CssClass="@grd_Css" @onkeydown="GridCT_OnKeyDown"
+                                                AllowSelectRowByClick=true KeyboardNavigationEnabled="true"
+                                                Data="@LSCt"
+                                                @bind-SelectedDataItem="@SelectedDataItemCT"
+                                                ValidationEnabled="false"
+                                                EditMode="GridEditMode.EditRow"
+                                                RowClick="@StartEditDataItemByClickCT"
+                                                SelectionMode="GridSelectionMode.Single"
+                                                CustomizeEditModel="Grid_CustomizeEditModelCT"
+                                                EditModelSaving="Grid_EditModelSavingCT"
+                                                CustomizeSummaryDisplayText="Grid_CustomizeSummaryDisplayText"
+                                                ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                EditNewRowPosition="@NewItemRowPosition"
+                                                ShowAllRows="true"
+                                                TextWrapEnabled="false" AllowSort="false"
+                                                HighlightRowOnHover="true">
+                                            <Columns>
+                                                <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                    <CellDisplayTemplate Context="cntedit">
+                                                        <div class="grid-cell-align-center">
+                                                            <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                      RenderStyle="ButtonRenderStyle.Link"
+                                                                      CssClass="grid-delete-btn"
+                                                                      aria-label="Delete"
+                                                                      Click="@(() => OnDeleteRowCT(cntedit.VisibleIndex, 0))" />
+                                                        </div>
+                                                    </CellDisplayTemplate>
+                                                    <CellEditTemplate Context="cntedit1">
+                                                        <div class="grid-cell-align-center">
+                                                            <DxButton Enabled="false"
+                                                                      CssClass="grid-disabled-button"
+                                                                      IconCssClass="grid-icon grid-icon-delete"
+                                                                      aria-label="Delete"
+                                                                      RenderStyle="ButtonRenderStyle.Link" />
+                                                        </div>
+                                                    </CellEditTemplate>
+                                                </DxGridCommandColumn>
+                                                <DxGridDataColumn FieldName="Ma_vt" Caption="@Lap["Item code"].ToString()" Width="120" CaptionAlignment="GridTextAlignment.Center">
+                                                    <CellEditTemplate Context="GrdContext">
+                                                        @{
+                                                            var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                        }
+                                                        <div id="@($"Ma_vt_{_Ct72.Stt_rec0}")" class="autocomplete-cell-wrapper m-0 p-0">
+                                                            <AutocompleteComponent Ma_dm="dmvt" @bind-Value="@_Ct72.Ma_vt" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Ma_vt"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                        </div>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Ten_vt" ReadOnly="true" Caption="@Lap["Item name"]" CaptionAlignment="GridTextAlignment.Center" Width="200" />
+
+                                                <DxGridDataColumn FieldName="Dvt1" Caption="@Lap["UOM"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="120">
+                                                    <CellEditTemplate Context="GrdContext">
+                                                        @{
+                                                            var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                        }
+                                                        <AutocompleteComponent Ma_dm="dmvtdvt" Filter="@(String.Format(" ma_vt = '{0}'", (_Ct72.Ma_vt?.Trim()) ?? ""))" @bind-Value="@_Ct72.Dvt1" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Dvt1"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                <DxGridDataColumn FieldName="Ma_kho_i" Caption="@Lap["Site code"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="120">
+                                                    <CellEditTemplate Context="GrdContext">
+                                                        @{
+                                                            var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                        }
+                                                        <AutocompleteComponent Ma_dm="dmkho" @bind-Value="@_Ct72.Ma_kho_i" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Ma_kho_i"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                
+                                                @if (M_QL_LO_CK == "1")
+                                                {
+                                                    <DxGridDataColumn FieldName="Ma_lo" Caption="@Lap["Lot code"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="120">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{
+                                                                var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                            }
+                                                            <AutocompleteComponent Ma_dm="dmlo" @bind-Value="@_Ct72.Ma_lo" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Ma_lo"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Han_sd_lot" ReadOnly="true" Caption="@Lap["Expiry date"]" CaptionAlignment="GridTextAlignment.Center" Width="120" />
+                                                }
+
+                                                <DxGridDataColumn FieldName="Ton13" ReadOnly="true" Caption="@Lap["Stock"]" CaptionAlignment="GridTextAlignment.Center" Width="120" DisplayFormat="@M_IP_SL" />
+
+                                                <DxGridDataColumn FieldName="So_luong" Caption="@Lap["Quantity"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="120" DisplayFormat="@M_IP_SL">
+                                                    <CellEditTemplate Context="GrdContext">
+                                                        @{
+                                                            var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.So_luong" DisplayFormat="@M_IP_SL" ValueExpression="@(() => _Ct72.So_luong)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "So_luong"); })" Id="So_luong"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                <DxGridDataColumn FieldName="Gia_nt0" Caption="@String.Concat(Lap["Price"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_GIA_NT">
+                                                    <CellEditTemplate Context="GrdContext">
+                                                        @{
+                                                            var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Gia_nt0" DisplayFormat="@M_IP_GIA_NT" ValueExpression="@(() => _Ct72.Gia_nt0)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Gia_nt0"); })" Id="Gia_nt0"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Gia0" Caption="@String.Concat(Lap["Price"], " ", M_ma_nt0.Trim())" Width="120">
+                                                    <CellEditTemplate Context="GrdContext">
+                                                        @{
+                                                            var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@(CurPh.Sua_tien == 1)" Value="@_Ct72.Gia0" DisplayFormat="@M_IP_GIA" ValueExpression="@(() => _Ct72.Gia0)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Gia0"); })" Id="Gia0"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                <DxGridDataColumn FieldName="Tien_nt0" Caption="@String.Concat(Lap["Goods amount"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_TIEN_NT">
+                                                    <CellEditTemplate Context="GrdContext">
+                                                        @{
+                                                            var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@(CurPh.Sua_tien == 1)" Value="@_Ct72.Tien_nt0" DisplayFormat="@M_IP_TIEN_NT" ValueExpression="@(() => _Ct72.Tien_nt0)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Tien_nt0"); })" Id="Tien_nt0"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Tien0" DisplayFormat="@M_IP_TIEN" Caption="@String.Concat(Lap["Goods amount"], " ", M_ma_nt0.Trim())" Width="120">
+                                                    <CellEditTemplate Context="GrdContext">
+                                                        @{
+                                                            var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@(CurPh.Sua_tien == 1)" Value="@_Ct72.Tien0" DisplayFormat="@M_IP_TIEN" ValueExpression="@(() => _Ct72.Tien0)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Tien0"); })" Id="Tien"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                
+                                                <DxGridDataColumn FieldName="Tk_vt" Caption="@Lap["Debit account"]" Width="120">
+                                                    <CellEditTemplate Context="GrdContext">
+                                                        @{
+                                                            var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                        }
+                                                        <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@_Ct72.Tk_vt" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Tk_vt"); })"  IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @foreach (FreeCodeInfo row in LsFreeCodeInfo)
+                                                {
+                                                    @if (row.Loai_dmctct == 1)
+                                                    {
+                                                        <DxGridDataColumn FieldName="@row.Field_ct" Caption="@row.Caption" Width="@row.sWidth">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <SisLib.Ctrl.FreeCodeDm Target="_Ct72" Ma_dm="@row.Ma_dm" FieldName="@row.Field_ct" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, row.Field_ct); })"
+                                                                                        IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></SisLib.Ctrl.FreeCodeDm>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                    }
+                                                    else if (row.Loai_dmctct == 3)
+                                                    {
+                                                        <DxGridDataColumn FieldName="@row.Field_ct" Caption="@row.Caption" Width="@row.sWidth" DisplayFormat="@M_IP_SL">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <SisLib.Ctrl.FreeCodeSl Target="_Ct72" FieldName="@row.Field_ct" IsEnable="@AllowEditMode" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, row.Field_ct); })"></SisLib.Ctrl.FreeCodeSl>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                    }
+                                                    else
+                                                    {
+                                                        <DxGridDataColumn FieldName="@row.Field_ct" Caption="@row.Caption" Width="@row.sWidth">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <SisLib.Ctrl.FreeCodeText Target="_Ct72" FieldName="@row.Field_ct"></SisLib.Ctrl.FreeCodeText>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                    }
+                                                }
+                                            </Columns>
+                                            <TotalSummary>
+                                                <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_SL" Name="So_luong" FieldName="So_luong" />
+                                                <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN" Name="Tien_nt0" FieldName="Tien_nt0" />
+                                                <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="Tien0" FieldName="Tien0" />
+                                            </TotalSummary>
+                                        </DxGrid>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutTabPage>
+                        
+                        <DxFormLayoutTabPage Caption="@Lap["Import tax"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                            <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box">
+                                <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" SizeMode="@Itemsizemode" CssClass="mt-3">                                    
+                                    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Total import tax"]">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <DxSpinEdit Value="@CurPh.T_nk_nt" Enabled="@AllowEditMode" DisplayFormat="@M_IP_TIEN_NT" ValueExpression="@(() => CurPh.T_nk_nt)" ValueChanged="@((decimal newvalue) => { OnValueDBChanged(newvalue, "T_nk_nt"); })"></DxSpinEdit>
+                                            @if (NotMaNt0Voucher)
+                                            {
+                                                <DxSpinEdit Id="t_nk_s" Enabled="false" CssClass="col-4 ms-2 text-end" Value="@CurPh.T_nk" DisplayFormat="@M_IP_TIEN" ValueExpression="@(() => CurPh.T_nk)" ValueChanged="@((decimal newvalue) => { OnValueDBChanged(newvalue, "T_nk"); })"></DxSpinEdit>
+                                            }
+                                        </div>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["Import tax account"]">
+                                        <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@CurPh.Tk_thue_nk" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem ColSpanMd="3">
+                                        <DxButton Text="@Lap["Allocate import tax"]" RenderStyle="ButtonRenderStyle.Primary" Click="@btnPhanBoNK_Click" Enabled="@AllowEditMode" />
+                                    </DxFormLayoutItem>  
+
+                                    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Total SCT tax"]" Visible="@SD_THUE_DB" BeginRow="true">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <DxSpinEdit Value="@CurPh.T_db_nt" Enabled="@AllowEditMode" DisplayFormat="@M_IP_TIEN_NT" ValueExpression="@(() => CurPh.T_db_nt)" ValueChanged="@((decimal newvalue) => { OnValueDBChanged(newvalue, "T_db_nt"); })"></DxSpinEdit>
+                                            @if (NotMaNt0Voucher)
+                                            {
+                                                <DxSpinEdit Id="t_db_s" Enabled="false" CssClass="col-4 ms-2 text-end" Value="@CurPh.T_db" DisplayFormat="@M_IP_TIEN" ValueExpression="@(() => CurPh.T_db)" ValueChanged="@((decimal newvalue) => { OnValueDBChanged(newvalue, "T_db"); })"></DxSpinEdit>
+                                            }
+                                        </div>                                        
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["SCT tax account"]" Visible="@SD_THUE_DB">
+                                        <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@CurPh.Tk_thue_db" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem ColSpanMd="3" Visible="@SD_THUE_DB">
+                                        <DxButton Text="@Lap["Allocate SCT tax"]" RenderStyle="ButtonRenderStyle.Primary" Click="@btnPhanBoDB_Click" Enabled="@AllowEditMode" />
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem ColSpanMd="12">
+                                        <Template>
+                                            <div @ref="GridTAXWrapper" id="gridtax-wrapper" class="mt-2 mb-3" @onfocusout="OnGridTAXLostFocus">
+                                                <DxGrid @ref="GridTAX" SizeMode="@Itemsizemode" CssClass="@grd_Css"
+                                                        Data="@LSCt" KeyboardNavigationEnabled="true"
+                                                        @bind-SelectedDataItem="@SelectedDataItemTAX"
+                                                        AllowSelectRowByClick=true
+                                                        ValidationEnabled="false"
+                                                        RowClick="@StartEditDataItemByClickTAX"
+                                                        CustomizeEditModel="Grid_CustomizeEditModelTAX"
+                                                        EditModelSaving="Grid_EditModelSavingTAX"                                                        
+                                                        CustomizeElement="Grid_CustomizeElement"
+                                                        CustomizeSummaryDisplayText="Grid_CustomizeSummaryDisplayText"
+                                                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                        EditMode="GridEditMode.EditRow"
+                                                        ShowAllRows="true"
+                                                        TextWrapEnabled="false" AllowSort="false"
+                                                        HighlightRowOnHover="true">
+                                                    <Columns>
+                                                        <DxGridDataColumn FieldName="Ma_vt" ReadOnly="true" Caption="@Lap["Item code"].ToString()" Width="120" CaptionAlignment="GridTextAlignment.Center" />
+                                                        <DxGridDataColumn FieldName="Ten_vt" ReadOnly="true" Caption="@Lap["Item name"]" CaptionAlignment="GridTextAlignment.Center" Width="200" />
+                                                        <DxGridDataColumn FieldName="So_luong" ReadOnly="true" Caption="@Lap["Quantity"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="120" DisplayFormat="@M_IP_SL"/>                                                        
+
+                                                        <DxGridDataColumn FieldName="Gia_nt1" Caption="@String.Concat(Lap["Import price"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_GIA_NT">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Gia_nt1" ValueExpression="@(() => _Ct72.Gia_nt1)" DisplayFormat="@M_IP_GIA_NT" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Gia_nt1"); })" Id="Gia_nt1"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Gia1" Caption="@String.Concat(Lap["Import price"], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_GIA">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Gia1" ValueExpression="@(() => _Ct72.Gia1)" DisplayFormat="@M_IP_GIA" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Gia1"); })" Id="Gia1"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+
+                                                        <DxGridDataColumn FieldName="Tien_nt1" Caption="@String.Concat(Lap["Import amount"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_TIEN_NT">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Tien_nt1" ValueExpression="@(() => _Ct72.Tien_nt1)" DisplayFormat="@M_IP_TIEN_NT" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Tien_nt1"); })" Id="Tien_nt1"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Tien1" Caption="@String.Concat(Lap["Import amount"], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_TIEN">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Tien1" ValueExpression="@(() => _Ct72.Tien1)" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Tien1"); })" Id="Tien1"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+
+                                                        <DxGridDataColumn FieldName="Ts_nk" Caption="@Lap["Import tax rate"]" Width="100" DisplayFormat="@M_IP_SL">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Ts_nk" ValueExpression="@(() => _Ct72.Ts_nk)" DisplayFormat="@M_IP_SL" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Ts_nk"); })" Id="Ts_nk"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+
+                                                        <DxGridDataColumn FieldName="Nk_nt" Caption="@String.Concat(Lap["Tax amount"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_TIEN_NT">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Nk_nt" ValueExpression="@(() => _Ct72.Nk_nt)" Id="Nk_nt" DisplayFormat="@M_IP_TIEN_NT" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Nk_nt"); })"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Nk" Caption="@String.Concat(Lap["Tax amount"], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_TIEN">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Nk" ValueExpression="@(() => _Ct72.Nk)" Id="Nk" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Nk"); })"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        @if (SD_THUE_DB)
+                                                        {
+                                                            <DxGridDataColumn FieldName="Ts_db" Caption="@Lap["SCT rate"]" Width="100" DisplayFormat="@M_IP_SL">
+                                                                <CellEditTemplate Context="GrdContext">
+                                                                    @{
+                                                                        var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                    }
+                                                                    <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Ts_db" ValueExpression="@(() => _Ct72.Ts_db)" DisplayFormat="@M_IP_SL" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Ts_db"); })" Id="Ts_db"></DxSpinEdit>
+                                                                </CellEditTemplate>
+                                                            </DxGridDataColumn>
+
+                                                            <DxGridDataColumn FieldName="Db_nt" Caption="@String.Concat(Lap["SCT tax"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_TIEN_NT">
+                                                                <CellEditTemplate Context="GrdContext">
+                                                                    @{
+                                                                        var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                    }
+                                                                    <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Db_nt" ValueExpression="@(() => _Ct72.Db_nt)" Id="Db_nt" DisplayFormat="@M_IP_TIEN_NT" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Db_nt"); })"></DxSpinEdit>
+                                                                </CellEditTemplate>
+                                                            </DxGridDataColumn>
+                                                            <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Db" Caption="@String.Concat(Lap["SCT tax"], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_TIEN">
+                                                                <CellEditTemplate Context="GrdContext">
+                                                                    @{
+                                                                        var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                    }
+                                                                    <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Db" ValueExpression="@(() => _Ct72.Db)" Id="Db" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newvalue) => { OnGridTAX_Value_Changed(newvalue, "Db"); })"></DxSpinEdit>
+                                                                </CellEditTemplate>
+                                                            </DxGridDataColumn>
+                                                        }
+                                                        <DxGridDataColumn FieldName="Tien_nt2" Caption="@String.Concat(Lap["Price with tax"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_TIEN_NT">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.Tien_nt2" ValueExpression="@(() => _Ct72.Tien_nt2)" Id="Tien_nt2" DisplayFormat="@M_IP_TIEN_NT"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Tien2" Caption="@String.Concat(Lap["Price with tax"], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_TIEN">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.Tien2" ValueExpression="@(() => _Ct72.Tien2)" Id="Tien2" DisplayFormat="@M_IP_TIEN"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+
+                                                        <DxGridDataColumn FieldName="Tk_vt" Caption="@Lap["Debit account"]" Width="120">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@_Ct72.Tk_vt" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Tk_vt"); })" IsEnable="@(!string.IsNullOrEmpty(_Ct72.Tk_vt))" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+
+
+                                                    </Columns>
+                                                    <TotalSummary>
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_SL" Name="So_luong" FieldName="So_luong" />
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="Tien_nt1" FieldName="Tien_nt1" />
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN" Name="Tien1" FieldName="Tien1" />
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="Nk_nt" FieldName="Nk_nt" />
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN" Name="Nk" FieldName="Nk"/>
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="Db_nt" FieldName="Db_nt" />
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN" Name="Db" FieldName="Db" />
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="Tien_nt2" FieldName="Tien_nt2" />
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN" Name="Tien2" FieldName="Tien2" />
+                                                    </TotalSummary>
+                                                </DxGrid>
+                                            </div>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                </DxFormLayoutGroup>
+                            </DxFormLayoutGroup>
+                        </DxFormLayoutTabPage>
+
+                        <DxFormLayoutTabPage Caption="@Lap["Charges"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                            <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box">
+                                <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" SizeMode="@Itemsizemode" CssClass="mt-3">
+                                    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Credit account"]">
+                                        <Template>
+                                            <AutocompleteComponent CssClass="col-5 p-0" Ma_dm="dmnx" @bind-Value="@CurPh.Tk_i" IsEnable="true" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Supplier code"]">
+                                        <Template>
+                                            <AutocompleteComponent CssClass="col-5 p-0" Ma_dm="dmkh" @bind-Value="@CurPh.Ma_kh_i" IsEnable="true" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem ColSpanMd="3" Caption="@Lap["Total charge"]">
+                                        <Template>
+                                            <DxSpinEdit CssClass="p-0" Enabled="@AllowEditMode" Value="@CurPh.T_cp_nt" ValueExpression="@(() => CurPh.T_cp_nt)" DisplayFormat="@M_IP_TIEN_NT" ValueChanged="@((decimal newvalue) => { OnValueChiPhiChanged(newvalue, "T_cp_nt"); })" Id="T_cp_nt"></DxSpinEdit>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem Visible="@NotMaNt0Voucher" ColSpanMd="3" Caption="@Lap[" "]">
+                                        <Template>
+                                            <DxSpinEdit CssClass="p-0" Enabled="@AllowEditMode" Value="@CurPh.T_cp" ValueExpression="@(() => CurPh.T_cp)" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newvalue) => { OnValueChiPhiChanged(newvalue, "T_cp"); })" Id="T_cp"></DxSpinEdit>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Distribution type"]">
+                                        <Template>
+                                            <div class="row">
+                                                <div class="col-10 p-0 pt-1">(@Lap["1 – by amount, 2 – by quantity"])</div>
+                                                <div class="col-2 p-0">
+                                                    <DxTextBox CssClass="p-0" @bind-Text="@CurPh.Loai_pb" Enabled="@AllowEditMode"></DxTextBox>
+                                                </div>
+                                            </div>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                    <DxFormLayoutItem ColSpanMd="2" Caption="@Lap[""]">
+                                        <Template>
+                                            <DxButton CssClass="p-0" RenderStyle="ButtonRenderStyle.Primary" RenderStyleMode="ButtonRenderStyleMode.Contained" Click="@btnPhanbo_Click" Text="@Lap["Auto allocate"]" Enabled="@AllowEditMode"></DxButton>
+                                        </Template>
+                                    </DxFormLayoutItem>
+
+                                    <DxFormLayoutItem ColSpanMd="12">
+                                        <Template>
+                                            <div @ref="GridWrapper" id="grid-wrapper" @onfocusout="OnGridCTLostFocus" class="mt-2 mb-3">
+                                                <DxGrid @ref="GridFE" SizeMode="@Itemsizemode" CssClass="@grd_Css" @onkeydown="GridCT_OnKeyDown"
+                                                        AllowSelectRowByClick=true KeyboardNavigationEnabled="true"
+                                                        Data="@LSCt"
+                                                        @bind-SelectedDataItem="@SelectedDataItemCT"
+                                                        ValidationEnabled="false"
+                                                        EditMode="GridEditMode.EditRow"
+                                                        RowClick="@StartEditDataItemByClickCP"
+                                                        SelectionMode="GridSelectionMode.Single"
+                                                        CustomizeEditModel="Grid_CustomizeEditModelCP"
+                                                        EditModelSaving="Grid_EditModelSavingCP"
+                                                        CustomizeSummaryDisplayText="Grid_CustomizeSummaryDisplayText"
+                                                        ColumnResizeMode="GridColumnResizeMode.NextColumn"                                                        
+                                                        ShowAllRows="true"
+                                                        TextWrapEnabled="false" AllowSort="false"
+                                                        HighlightRowOnHover="true">
+                                                    <Columns>
+                                                        <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                            <CellDisplayTemplate Context="cntedit">
+                                                                <div class="grid-cell-align-center">
+                                                                    <DxButton IconCssClass="grid-icon grid-icon-delete" RenderStyle="ButtonRenderStyle.Link" aria-label="Delete" Click="@(() => OnDeleteRowCT(cntedit.VisibleIndex, 1))" />
+                                                                </div>
+                                                            </CellDisplayTemplate>
+                                                            <CellEditTemplate Context="cntedit1">
+                                                                <div class="grid-cell-align-center">
+                                                                    <DxButton Enabled="false"
+                                                                              CssClass="grid-disabled-button"
+                                                                              IconCssClass="grid-icon grid-icon-delete"
+                                                                              aria-label="Delete"
+                                                                              RenderStyle="ButtonRenderStyle.Link" />
+                                                                </div>
+                                                            </CellEditTemplate>
+                                                        </DxGridCommandColumn>
+                                                        <DxGridDataColumn FieldName="Ma_vt" Caption="@Lap["Item code"].ToString()" Width="120" CaptionAlignment="GridTextAlignment.Center">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <AutocompleteComponent Ma_dm="dmvt" @bind-Value="@_Ct72.Ma_vt" IsEnable="false" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn FieldName="Ten_vt" ReadOnly="true" Caption="@Lap["Item name"]" CaptionAlignment="GridTextAlignment.Center" Width="200" />
+
+
+                                                        <DxGridDataColumn FieldName="So_luong" Caption="@Lap["Quantity"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="120" DisplayFormat="@M_IP_SL">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.So_luong" ValueExpression="@(() => _Ct72.So_luong)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "So_luong"); })" Id="So_luong"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+
+                                                        <DxGridDataColumn FieldName="Gia_nt0" Caption="@String.Concat(Lap["Price"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_GIA_NT">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.Gia_nt0" ValueExpression="@(() => _Ct72.Gia_nt0)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Gia_nt0"); })" Id="Gia_nt0"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+
+
+                                                        <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Gia0" Caption="@String.Concat(Lap["Price"], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_GIA">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.Gia0" ValueExpression="@(() => _Ct72.Gia0)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Gia0"); })" Id="Gia0"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+
+                                                        <DxGridDataColumn FieldName="Tien_nt0" Caption="@String.Concat(Lap["Goods amount"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_TIEN_NT">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.Tien_nt0" ValueExpression="@(() => _Ct72.Tien_nt0)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Tien_nt0"); })" Id="Tien_nt0"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Tien0" Caption="@String.Concat(Lap["Goods amount"], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_TIEN">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.Tien0" ValueExpression="@(() => _Ct72.Tien0)" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, "Tien0"); })" Id="Tien"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn FieldName="Cp_nt" Caption="@String.Concat(Lap["Charges"], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_TIEN_NT">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72.Cp_nt" ValueExpression="@(() => _Ct72.Cp_nt)" Id="Cp_nt" DisplayFormat="@M_IP_TIEN_NT" Format="@M_IP_TIEN_NT"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Cp" Caption="@String.Concat(Lap["Charges"], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_TIEN">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.Cp" ValueExpression="@(() => _Ct72.Cp)" Id="Cp" DisplayFormat="@M_IP_TIEN" Format="@M_IP_TIEN"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn FieldName="Gia_nt" Caption="@String.Concat(Lap["Price includes costs."], " ", CurPh.Ma_nt)" Width="120" DisplayFormat="@M_IP_GIA_NT">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.Gia_nt" ValueExpression="@(() => _Ct72.Gia_nt)" Id="Gia_nt"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn Visible="@NotMaNt0Voucher" FieldName="Gia" Caption="@String.Concat(Lap["Price includes costs."], " ", M_ma_nt0.Trim())" Width="120" DisplayFormat="@M_IP_GIA_NT">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <DxSpinEdit Enabled="false" Value="@_Ct72.Gia" ValueExpression="@(() => _Ct72.Gia)" Id="Gia"></DxSpinEdit>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                        <DxGridDataColumn FieldName="Tk_vt" Caption="@Lap["Debit account"]" Width="120">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72 = (Ct72)GrdContext.EditModel;
+                                                                }
+                                                                <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@_Ct72.Tk_vt" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, "Tk_vt"); })" IsEnable="@(!string.IsNullOrEmpty(_Ct72.Tk_vt))" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+
+
+                                                    </Columns>
+                                                    <TotalSummary>
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_SL" Name="So_luong" FieldName="So_luong" />
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN" Name="Tien_nt0" FieldName="Tien_nt0" />
+                                                        <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="Tien0" FieldName="Tien0" />
+                                                    </TotalSummary>
+                                                </DxGrid>
+                                            </div>
+                                        </Template>
+                                    </DxFormLayoutItem>
+                                </DxFormLayoutGroup>
+                            </DxFormLayoutGroup>
+                        </DxFormLayoutTabPage>
+
+                        <DxFormLayoutTabPage Caption="@Lap["Tax"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                            <DxFormLayoutItem ColSpanMd="12">
+                                <Template>
+                                    <div @ref="GridGTWrapper" id="gridgt-wrapper" @onfocusout="OnGridCTGTLostFocus" class="mt-2 mb-3">
+                                        <DxGrid @ref="GridCTGT" Data="@LSCtgt" CssClass="grd-detail" @onkeydown="GridCT_OnKeyDown"
+                                                @bind-SelectedDataItem="@SelectedDataItemCTGT"
+                                                KeyboardNavigationEnabled="true"
+                                                AllowSelectRowByClick=true
+                                                ValidationEnabled="false"
+                                                RowClick="@StartEditDataItemByClickCTGT"
+                                                CustomizeEditModel="Grid_CustomizeEditModelCTGT"
+                                                EditModelSaving="Grid_EditModelSavingCTGT"
+                                                DataItemDeleting="Grid_DataItemDeletingCTGT"
+                                                CustomizeElement="Grid_CustomizeElement"
+                                                CustomizeSummaryDisplayText="Grid_CustomizeSummaryDisplayText"
+                                                ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                EditMode="GridEditMode.EditRow"
+                                                EditNewRowPosition="@NewItemRowPosition"
+                                                ShowAllRows="true" SizeMode="@Itemsizemode"
+                                                TextWrapEnabled="true"
+                                                HighlightRowOnHover="true">
+                                            <Columns>
+                                                <DxGridCommandColumn MinWidth="30" Width="30px" Visible="@AllowEditMode" NewButtonVisible="false" VisibleIndex="0">
+                                                    <CellDisplayTemplate Context="cntedit">
+                                                        <div class="grid-cell-align-center">
+                                                            <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                      RenderStyle="ButtonRenderStyle.Link"
+                                                                      CssClass="grid-delete-btn"
+                                                                      aria-label="Delete"
+                                                                      Click="@(() => OnDeleteRowCTGT(cntedit.VisibleIndex))" />
+                                                        </div>
+                                                    </CellDisplayTemplate>
+                                                    <CellEditTemplate Context="cntedit1">
+                                                        <div class="grid-cell-align-center">
+                                                            <DxButton Enabled="false"
+                                                                      CssClass="grid-disabled-button"
+                                                                      IconCssClass="grid-icon grid-icon-delete"
+                                                                      aria-label="Delete"
+                                                                      RenderStyle="ButtonRenderStyle.Link" />
+                                                        </div>
+                                                    </CellEditTemplate>
+                                                </DxGridCommandColumn>
+
+                                                <DxGridDataColumn FieldName="Ma_ms" Caption="@Lap["Group invoice"].ToString()" Width="90px" VisibleIndex="@CtgtOrder.GetKey("1")">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <AutocompleteComponent Ma_dm="dmms" @bind-Value="@_Ct72gt.Ma_ms" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Ma_ms"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                <DxGridDataColumn FieldName="Ngay_ct0" Caption="@Lap["Invoice date"].ToString()" DisplayFormat="dd-MM-yyyy" CaptionAlignment="GridTextAlignment.Center" Width="100px">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxDateEdit @bind-Date="@_Ct72gt.Ngay_ct0" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="@AllowEditMode" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="So_ct0" Caption="@Lap["Invoice number"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="100px">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@_Ct72gt.So_ct0" Enabled="@AllowEditMode"></DxTextBox>
+
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Kh_mau_hd" Caption="@Lap["Denominator"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="100px">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@_Ct72gt.Kh_mau_hd" Enabled="@AllowEditMode"></DxTextBox>
+
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="So_seri0" Caption="@Lap["Symbol"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="100px">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@_Ct72gt.So_seri0" Enabled="@AllowEditMode"></DxTextBox>
+
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Ma_kh" Caption="@Lap["Customer code"].ToString()" Width="100px" CaptionAlignment="GridTextAlignment.Center">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <AutocompleteComponent Ma_dm="dmkh_thue" @bind-Value="@_Ct72gt.Ma_kh" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Ma_kh"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Ten_kh" ReadOnly="true" Caption="@Lap["Customer name"]" CaptionAlignment="GridTextAlignment.Center" Width="200" />
+
+                                                <DxGridDataColumn FieldName="Dia_chi" Caption="@Lap["Address"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="200">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@_Ct72gt.Dia_chi" ReadOnly="true"></DxTextBox>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Ma_so_thue" Caption="@Lap["Number tax"].ToString()" CaptionAlignment="GridTextAlignment.Center" Width="100px">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@_Ct72gt.Ma_so_thue" ReadOnly="true"></DxTextBox>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                <DxGridDataColumn FieldName="T_tien_nt" Caption="@String.Concat(Lap["Price Goods"], " ", CurPh.Ma_nt)" Width="100px" DisplayFormat="@M_IP_TIEN_NT">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72gt.T_tien_nt" ValueExpression="@(() => _Ct72gt.T_tien_nt)" DisplayFormat="@M_IP_TIEN_NT" Format="@M_IP_TIEN_NT" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_tien_nt"); })" Id="T_tien_nt"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                @if (NotMaNt0Voucher)
+                                                {
+                                                    <DxGridDataColumn FieldName="T_tien" Caption="@String.Concat(Lap["Price Goods"], " ", M_ma_nt0.Trim())" Width="100px" DisplayFormat="@M_IP_TIEN">
+                                                        <CellEditTemplate Context="GrdCTGTContext">
+                                                            @{
+                                                                var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                            }
+                                                            <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72gt.T_tien" ValueExpression="@(() => _Ct72gt.T_tien)" DisplayFormat="@M_IP_TIEN" Format="@M_IP_TIEN" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_tien"); })" Id="T_tien"></DxSpinEdit>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+                                                }
+
+                                                <DxGridDataColumn FieldName="Ma_thue" Caption="@Lap["Code tax"].ToString()" Width="70px" CaptionAlignment="GridTextAlignment.Center">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <AutocompleteComponent Ma_dm="dmthue30" @bind-Value="@_Ct72gt.Ma_thue" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Ma_thue"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Thue_suat" ReadOnly="true" Caption="@Lap["Tax rate"]" CaptionAlignment="GridTextAlignment.Center" Width="100px" />
+
+                                                <DxGridDataColumn FieldName="T_thue_nt" Caption="@String.Concat(Lap["Tax money"], " ", CurPh.Ma_nt)" Width="100px" DisplayFormat="@M_IP_TIEN_NT">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@(AllowEditMode && CurPh.Sua_tien == 1)" Value="@_Ct72gt.T_thue_nt" ValueExpression="@(() => _Ct72gt.T_thue_nt)" DisplayFormat="@M_IP_TIEN_NT" Format="@M_IP_TIEN_NT" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_thue_nt"); })" Id="T_thue_nt"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                @if (NotMaNt0Voucher)
+                                                {
+                                                    <DxGridDataColumn FieldName="T_thue" Caption="@String.Concat(Lap["Tax money"], " ", M_ma_nt0.Trim())" Width="100px" DisplayFormat="@M_IP_TIEN">
+                                                        <CellEditTemplate Context="GrdCTGTContext">
+                                                            @{
+                                                                var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                            }
+                                                            <DxSpinEdit Enabled="@(AllowEditMode && CurPh.Sua_tien == 1)" Value="@_Ct72gt.T_thue" ValueExpression="@(() => _Ct72gt.T_thue)" DisplayFormat="@M_IP_TIEN" Format="@M_IP_TIEN" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_thue"); })" Id="T_thue"></DxSpinEdit>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+                                                }
+
+                                                <DxGridDataColumn FieldName="T_tt_nt" Caption="@String.Concat(Lap["Total Money"], " ", CurPh.Ma_nt)" Width="100px" DisplayFormat="@M_IP_TIEN_NT">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@false" Value="@_Ct72gt.T_tt_nt" ValueExpression="@(() => _Ct72gt.T_tt_nt)" DisplayFormat="@M_IP_TIEN_NT" Format="@M_IP_TIEN_NT" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_tt_nt"); })" Id="T_tt_nt"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                @if (NotMaNt0Voucher)
+                                                {
+                                                    <DxGridDataColumn FieldName="T_tt" Caption="@String.Concat(Lap["Total Money"], " ", M_ma_nt0.Trim())" Width="100px" DisplayFormat="@M_IP_TIEN">
+                                                        <CellEditTemplate Context="GrdCTGTContext">
+                                                            @{
+                                                                var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                            }
+                                                            <DxSpinEdit Enabled="@false" Value="@_Ct72gt.T_tt" ValueExpression="@(() => _Ct72gt.T_tt)" DisplayFormat="@M_IP_TIEN" Format="@M_IP_TIEN" ValueChanged="@((decimal newvalue) => { OnGridCTGT_Value_Changed(newvalue, "T_tt"); })" Id="T_tt"></DxSpinEdit>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+                                                }
+
+                                                <DxGridDataColumn FieldName="Tk_thue_no" Caption="@Lap["Account tax"].ToString()" Width="100px" CaptionAlignment="GridTextAlignment.Center">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@_Ct72gt.Tk_thue_no" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Tk_thue_no"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Tk_du" Caption="@Lap["Account corresponding"].ToString()" Width="100px" CaptionAlignment="GridTextAlignment.Center">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="@_Ct72gt.Tk_du" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Tk_du"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"].ToString()" Width="7%">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxTextBox Enabled="@AllowEditMode"
+                                                                   Text="@_Ct72gt.Ghi_chu">
+                                                        </DxTextBox>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Ma_thck" Caption="@Lap["Payment term code"]" Width="100px" CaptionAlignment="GridTextAlignment.Center">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <AutocompleteComponent Ma_dm="dmthck" @bind-Value="@_Ct72gt.Ma_thck" SelectChanged="@((ExpandoObject value) => { OnGridCTGT_DMDM_Changed(value, "Ma_thck"); })" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                <DxGridDataColumn FieldName="Han_tt" Caption="@Lap["Payment deadline"]" Width="100px" DisplayFormat="N0">
+                                                    <CellEditTemplate Context="GrdCTGTContext">
+                                                        @{
+                                                            var _Ct72gt = (Ct72gt)GrdCTGTContext.EditModel;
+                                                        }
+                                                        <DxSpinEdit Enabled="@AllowEditMode" Value="@_Ct72gt.Han_tt" ValueExpression="@(() => _Ct72gt.Han_tt)" DisplayFormat="N0" Format="@M_IP_TIEN_NT" Id="Han_tt"></DxSpinEdit>
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                                @foreach (FreeCodeInfo row in LsFreeCodeInfo)
+                                                {
+                                                    @if (row.Loai_dmctct == 1)
+                                                    {
+                                                        <DxGridDataColumn FieldName="@row.Field_ct" Caption="@row.Caption" Width="@row.sWidth">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72gt = (Ct72gt)GrdContext.EditModel;
+                                                                }
+                                                                <SisLib.Ctrl.FreeCodeDm Target="_Ct72gt" Ma_dm="@row.Ma_dm" FieldName="@row.Field_ct" SelectChanged="@((ExpandoObject value) => { OnGridCT_DMDM_Changed(value, row.Field_ct); })"
+                                                                                        IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></SisLib.Ctrl.FreeCodeDm>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                    }
+                                                    else if (row.Loai_dmctct == 3)
+                                                    {
+                                                        <DxGridDataColumn FieldName="@row.Field_ct" Caption="@row.Caption" Width="@row.sWidth" DisplayFormat="@M_IP_SL">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72gt = (Ct72gt)GrdContext.EditModel;
+                                                                }
+                                                                <SisLib.Ctrl.FreeCodeSl Target="_Ct72gt" FieldName="@row.Field_ct" IsEnable="@AllowEditMode" ValueChanged="@((decimal newvalue) => { OnGridCT_Value_Changed(newvalue, row.Field_ct); })"></SisLib.Ctrl.FreeCodeSl>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                    }
+                                                    else
+                                                    {
+                                                        <DxGridDataColumn FieldName="@row.Field_ct" Caption="@row.Caption" Width="@row.sWidth">
+                                                            <CellEditTemplate Context="GrdContext">
+                                                                @{
+                                                                    var _Ct72gt = (Ct72gt)GrdContext.EditModel;
+                                                                }
+                                                                <SisLib.Ctrl.FreeCodeText Target="_Ct72gt" FieldName="@row.Field_ct"></SisLib.Ctrl.FreeCodeText>
+                                                            </CellEditTemplate>
+                                                        </DxGridDataColumn>
+                                                    }
+                                                }
+
+                                            </Columns>
+                                            <TotalSummary>
+                                                <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_SL" Name="So_luong" FieldName="So_luong" />
+                                                <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN" Name="T_thue" FieldName="T_thue" />
+                                                <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@M_IP_TIEN_NT" Name="T_thue_nt" FieldName="T_thue_nt" />
+                                            </TotalSummary>
+                                        </DxGrid>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutTabPage>
+                    </DxFormLayoutTabPages>
+                    
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <Template>
+                            <div class="row d-flex ms-1">
+                                <DxCheckBox CssClass="col-2 ms-1 chkclass" Enabled="@AllowEditMode" Checked="@(CurPh.Sua_tien == 1)" CheckedChanged="@((bool newvalue) => ChkSua_tien_Click(newvalue))">@Lap["Edit money"]</DxCheckBox>
+                                <DxCheckBox CssClass="col-2 ms-1 chkclass" Enabled="@(AllowTaoPC && AllowEditMode)" Checked="@(CurPh.Tao_pc == 1)" CheckedChanged="@((bool newvalue) => ChkTao_phieu_Click(newvalue))">@Lap["Create payment voucher"]</DxCheckBox>
+                                <DxButton Visible=@(!string.IsNullOrWhiteSpace(CurPh.Stt_rec_pc)) CssClass="col-1" RenderStyle="ButtonRenderStyle.Link" Click="@btnViewPC1_Click" Text="@Lap["View payment voucher"]"></DxButton>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutGroup Caption="@Lap["Total"]" ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box" ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start" AnimationType="LayoutAnimationType.Slide">
+                        <DxFormLayoutGroup ColSpanMd="6" Decoration="FormLayoutGroupDecoration.None">
+                            <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Total cost of goods"]">
+                                <Template>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <DxSpinEdit Id="t_tien_nt0" Enabled="false" CssClass="col-4 text-end" @bind-Value="@CurPh.T_tien_nt0" DisplayFormat="@M_IP_TIEN_NT"></DxSpinEdit>
+                                        @if (NotMaNt0Voucher)
+                                        {
+                                            <DxSpinEdit Id="t_tien0" Enabled="false" CssClass="col-4 ms-2 text-end" @bind-Value="@CurPh.T_tien0" DisplayFormat="@M_IP_TIEN"></DxSpinEdit>
+                                        }
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Total import tax"]">
+                                <Template>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <DxSpinEdit Id="t_nk_nt" Enabled="false" CssClass="col-4 text-end" @bind-Value="@CurPh.T_nk_nt" DisplayFormat="@M_IP_TIEN_NT"></DxSpinEdit>
+                                        @if (NotMaNt0Voucher)
+                                        {
+                                            <DxSpinEdit Id="t_nk" Enabled="false" CssClass="col-4 ms-2 text-end" @bind-Value="@CurPh.T_nk" DisplayFormat="@M_IP_TIEN"></DxSpinEdit>
+                                        }
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Total SCT tax"]" Visible="@SD_THUE_DB">
+                                <Template>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <DxSpinEdit Id="t_db_nt" Enabled="false" CssClass="col-4 text-end" @bind-Value="@CurPh.T_db_nt" DisplayFormat="@M_IP_TIEN_NT"></DxSpinEdit>
+                                        @if (NotMaNt0Voucher)
+                                        {
+                                            <DxSpinEdit Id="t_db" Enabled="false" CssClass="col-4 ms-2 text-end" @bind-Value="@CurPh.T_db" DisplayFormat="@M_IP_TIEN"></DxSpinEdit>
+                                        }
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Total charge"]">
+                                <Template>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <DxSpinEdit Id="t_cp_nt" Enabled="false" CssClass="col-4 text-end" @bind-Value="@CurPh.T_cp_nt" DisplayFormat="@M_IP_TIEN_NT"></DxSpinEdit>
+                                        @if (NotMaNt0Voucher)
+                                        {
+                                            <DxSpinEdit Id="t_cp" Enabled="false" CssClass="col-4 ms-2 text-end" @bind-Value="@CurPh.T_cp" DisplayFormat="@M_IP_TIEN"></DxSpinEdit>
+                                        }
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Tax money GTGT"]">
+                                <Template>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <DxSpinEdit Id="t_thue_nt" Enabled="false" CssClass="col-4 text-end" @bind-Value="@CurPh.T_thue_nt" DisplayFormat="@M_IP_TIEN_NT"></DxSpinEdit>
+                                        @if (NotMaNt0Voucher)
+                                        {
+                                            <DxSpinEdit Id="t_thue" Enabled="false" CssClass="col-4 ms-2 text-end" @bind-Value="@CurPh.T_thue" DisplayFormat="@M_IP_TIEN"></DxSpinEdit>
+                                        }
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Total amount"]">
+                                <Template>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <DxSpinEdit Id="t_tc_nt" Enabled="false" CssClass="col-4 text-end" @bind-Value="@CurPh.T_tc_nt" DisplayFormat="@M_IP_TIEN_NT"></DxSpinEdit>
+                                        @if (NotMaNt0Voucher)
+                                        {
+                                            <DxSpinEdit Id="t_tc" Enabled="false" CssClass="col-4 ms-2 text-end" @bind-Value="@CurPh.T_tc" DisplayFormat="@M_IP_TIEN"></DxSpinEdit>
+                                        }
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                    </DxFormLayoutGroup>
+                </DxFormLayout>
+            </div>
+        </FormTrans>
+    }
+    else
+    {
+        <SisLib.Lib.ReportVcComponent LSItems="LSData" Menu_id="@Menu_id.Replace('_', '.')" M_so_lien="@curDmct.So_lien" Parent_url="@mPage" OnBack="@OnPrintBack"></SisLib.Lib.ReportVcComponent>
+    }
+
+    <DxPopup Visible="@VisiblePC"
+             HeaderText="Tạo phiếu chi"
+             Width="80%"
+             Height="500px"
+             ShowCloseButton="true"
+             CloseOnOutsideClick="true">
+        <BodyContentTemplate>
+            <div class="w-100">
+                <div class=" m-1 me-2 rounded-1  bg-light">
+                    <div class="d-flex justify-content-end gap-2 me-3">
+                        <DxButton Text="Nhận"
+                                  RenderStyle="ButtonRenderStyle.Secondary"
+                                  Click="@( () => InsertPC(true) )"
+                                  CssClass="px-4  my-1" />
+                        <DxButton Text="Hủy"
+                                  RenderStyle="ButtonRenderStyle.Danger"
+                                  Click="@ExitPC"
+                                  CssClass="px-4  my-1" />
+                    </div>
+                </div>
+                <div class="row m-2 rounded-1 border border-1 ">
+                    <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form my-2" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                        <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box">
+                            <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None" SizeMode="@Itemsizemode" CssClass="mt-3">
+                                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Receipt type"]" BeginRow="true">
+                                    <Template Context="fl">
+                                        <div class="row">
+                                            <AutocompleteComponent CssClass="col p-0" Ma_dm="dmct" @bind-Value="@CurPh.Ma_ct_pc" Filter="ma_ct = 'PC1' OR ma_ct = 'BN1'" SelectChanged="OnAutoCompleteMactPCChanged" IsEnable="true" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                        </div>
+                                    </Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Transaction code"]" BeginRow="true">
+                                    <Template Context="fl">
+                                        <div class="row">
+                                            <AutocompleteComponent CssClass="col p-0" Ma_dm="dmmagd" @bind-Value="@CurPh.Ma_gd_pc" Filter="@_filter_gd" IsEnable="true" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                        </div>
+                                    </Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Book code"]" BeginRow="true">
+                                    <Template Context="fl">
+                                        <div class="row">
+                                            <AutocompleteComponent CssClass="col p-0" Ma_dm="dmqs" @bind-Value="@CurPh.Ma_qs_pc" SelectChanged="OnAutoCompleteQuyensoPCChanged" Filter="@_filter_pt" IsEnable="true" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                                        </div>
+                                    </Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Voucher Number"]" BeginRow="true">
+                                    <Template Context="fl">
+                                        <div class="row">
+                                            <DxTextBox CssClass="col" @bind-Text="@CurPh.So_ct_pc" Enabled="true"></DxTextBox>
+                                        </div>
+                                    </Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Currency code"]" BeginRow="true">
+                                    <Template Context="fl">
+                                        <div class="row">
+                                            <DxTextBox Enabled="false" @bind-Text="@CurPh.Ma_nt"></DxTextBox>
+                                        </div>
+                                    </Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Receiver"]" BeginRow="true">
+                                    <Template Context="fl">
+                                        <div class="row">
+                                            <DxTextBox CssClass="col" @bind-Text="@CurPh.Ong_ba_pc" Enabled="true"></DxTextBox>
+                                        </div>
+                                    </Template>
+                                </DxFormLayoutItem>
+                                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Reason for deposit"]" BeginRow="true">
+                                    <Template Context="fl">
+                                        <div class="row">
+                                            <DxTextBox CssClass="col" @bind-Text="@CurPh.Dien_giai_pc" Enabled="true"></DxTextBox>
+                                        </div>
+                                    </Template>
+                                </DxFormLayoutItem>
+
+                            </DxFormLayoutGroup>
+                        </DxFormLayoutGroup>
+                    </DxFormLayout>
+
+                </div>
+
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+</div>
+
+<style>
+    .disabled-grid {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .css-header {
+        height: auto;
+    }
+
+    .css-detail {
+        height: 230px;
+    }
+
+    .grd-detail {
+        height: 200px;
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .css-detail .dxbl-formlayout-tabpage {
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+        .css-detail .dxbl-formlayout-tabpage .dxbl-formlayout,
+        .css-detail .dxbl-formlayout-tabpage .dxbl-formlayout-group {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .css-detail .dxbl-formlayout-tabpage #grid-wrapper,
+        .css-detail .dxbl-formlayout-tabpage .dxbl-grid {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+        }
+
+    .dxbl-fl .dxbl-fl-tab-content {
+        padding: 3px 3px 3px 10px !important;
+    }
+
+    .dxbl-checkbox.dxbl-state-checked .dxbl-checkbox-check-element {
+        background-color: #ccc !important;
+        border-color: #ccc !important;
+    }
+
+    .text-end-custom ::deep input {
+        text-align: right !important;
+    }
+</style>
+
+@code {    
+    
+}

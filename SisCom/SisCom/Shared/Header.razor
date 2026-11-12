@@ -1,0 +1,554 @@
+﻿@layout Empty
+@inject NavigationManager navigation
+@inject Statemanagerment myStatemanagerment
+@inject ICommandManager Commands
+@inject IDbManager myDb
+@inject IOptionsManager myOption
+@using Microsoft.AspNetCore.Hosting;
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@inject ILocalStorageService Localstore
+@inject IWebHostEnvironment hostEnvironment;
+@implements IDisposable
+@inject XmlStringLocalizer Lap
+@inject NavigationManager myNavi
+@inject HttpClient http
+
+<div class="main-container">
+    <div class="topmenu-content">
+        <div class="row m-0 p-2 justify-content-center" style="height:70px;">
+            <a class="justify-content-center logo_box" href="@navigation.BaseUri">
+                <img class="brand-logo" src=".\Images\erplogo.svg" style="max-width:90%;" />
+            </a>
+            @if(M_IS_Expire)
+            {
+                <div class="row m-0 p-0 justify-content-center" style="height:18px;">
+                    <div class="col-12 m-0 p-0 text-center">
+                        <span style="color:red;font-size:0.7rem;font-weight:400;position: relative;top: -15px;">@M_TB_BQ</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="row m-0 p-0 justify-content-center" style="height:18px;">
+                    <div class="col-12 m-0 p-0 text-center">
+                        <span style="color:orange;font-size:0.7rem;font-weight:400;position: relative;top: -15px;">@M_TB_BQ</span>
+                    </div>
+                </div>
+            }
+        </div>
+        <hr style="height:1px;background-color:orange;margin-top:4px;margin-bottom:8px;padding:0px;">
+        <div class="row m-0 p-0 justify-content-center" style="height:30px;">
+            <div class="dropdown m-0 p-0" style="width:95%;">
+                <div class="dropdown-body m-0 p-0">
+                    <button class="col-btn">
+                        <span class="icaption"> @strphanhe </span>
+                        <img style="width:8px;height:9px;margin-right:10px;left:10px;" src=".\Images\erpSe.png" />
+                    </button>
+                    <div class="dropdown-content" aria-labelledby="droppButton" style="width:95%;left:2%;right:1%;">
+                        @foreach (DMPhanhe iphanhe in LSPHANHE)
+                        {
+                            string strsrc = (!IsLangEn ? iphanhe.Ten_phan_he : iphanhe.Ten_phan_he2);
+                            <a @onclick="@(e => ChangePhanhe(iphanhe.Ma_phan_he,e))" style="cursor:pointer;color: #1072B9;font-weight: bold;font-size: 0.88rem;">
+                                <img src=@GetTreeUrl(iphanhe.Ma_phan_he) width="30" height="30" style="margin-right:10px;"> @strsrc
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr style="height:1px;background-color:transparent;margin-top:2px;margin-bottom:2px;padding:0px;">
+        <div class="row m-0 p-0 justify-content-center">        
+            <DxSearchBox TextChanged="@OnSearchChanged" CssClass="search" aria-label="search" NullText="@Lap["Search"]"
+            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" style="width:93%;border-radius:6px;" />
+        </div>
+    </div>
+    <div class="row m-0 p-0 justify-content-center tree-ctn">
+        @if (TreeviewItems != null)
+        {
+            <DxTreeView @ref="myTreeview" Data="@TreeviewItems" CollapseButtonIconCssClass="CollapseButtonIconCssClass" ExpandButtonIconCssClass="ExpandButtonIconCssClass"
+            ShowFilterPanel="false" FilterMode="NavigationFilterMode.Nodes" FilterString="@_filterString" AnimationType="LayoutAnimationType.Slide">
+                <DataMappings>
+                    <DxTreeViewDataMapping Text="Name"
+                    Key="Id"
+                    NavigateUrl="NavigateUrl"
+                    IconUrl="IconUrl"
+                    ParentKey="CategoryId"
+                    CssClass="Cssclass" />
+                </DataMappings>           
+            </DxTreeView>
+        }
+    </div>
+   @*  <hr style="height:1px;background-color:orange;margin-top:4px;margin-bottom:8px;padding:0px;"> *@
+    <div class="status-bar">
+        <span><i class="fas fa-home"></i>@M_SVR_NAME</span>
+        <span>|</span>
+        <span><i class="fas fa-user-circle"></i> @M_DS_NAME</span>
+    </div>
+</div>
+<style>
+    .main-container {        
+        display: flex;
+        flex-direction: column;
+		height: 100vh;        
+    }
+
+    .col-btn {
+    width: 97%;
+    height: 28px;
+    border: 1px solid #f8f8ff;
+    border-radius: 5px;
+    margin: 2px 4px;
+    box-shadow: 0 0 3px 0 #CCCCFF;
+    outline: none;
+    background-color: #fff;
+    }   
+    .tree-ctn {
+        flex: 1;       
+    }
+    .status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: transparent;
+        color: #1072B9;
+        font-size: 9px;
+        border-top: 1px solid #ccc;
+		height: 20px;
+        margin-right:6px;
+    }
+
+    .status-bar i {
+        margin-right: 6px;
+        color: #555;
+    }
+
+    .dxbl-treeview-item-content img {
+    width: 24px;
+    height: 24px;
+    margin-left: 0px;
+    margin-right: 4px;
+    padding: 0px;
+    }
+
+    .dxbl-treeview-item-content {
+    color: #1072B9;
+    cursor: pointer;
+    font-size: 0.88rem;
+    vertical-align: middle;
+    padding: 8px 4px;
+    height: 40px;
+    margin-bottom:1px;
+    /* font-weight: bold; */
+    }
+
+    .dxbl-treeview-item-container{
+    margin:1px;
+    -webkit-overflow-scrolling:none;
+    }
+
+    .dxbl-treeview-item-container:hover {
+    color: #fff !important;
+    height: 140%;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #cde3fc 10%, #ffbc00 50%, #cde3fc 90%) no-repeat right bottom;
+    transition: background-size 350ms;
+    --bg-h: 100%;
+    }
+
+    .treeview-items span{
+    color: #1072B9;
+    cursor: pointer;
+    font-size: 0.78rem;   
+    font-weight: bold;
+    }
+
+    .treeview-leaf span {
+    color: #1072B9;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: normal;
+    }
+
+    .dxbl-treeview-item-container:hover span {
+    color: #fff;       
+    font-weight: bold;
+    }
+
+    .CollapseButtonIconCssClass {
+    background-image: url('.\\Images\\erpse.png');
+    background-repeat: no-repeat;
+    width: 10px;
+    height: 20px;
+    margin-top: 10px;
+    }
+
+    .ExpandButtonIconCssClass {
+    background-image: url('.\\Images\\erpcolapse.png');
+    background-repeat: no-repeat;
+    width: 10px;
+    height: 20px;
+    margin-top: 10px;
+    }
+
+    /* scrollbar width */
+    ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+    }
+
+    /* Track */
+    ::-webkit-scrollbar-track {
+    box-shadow: inset 0 0 2px grey;
+    border-radius: 3px;
+    opacity: 50%;
+    }
+
+    /* Handle */
+    ::-webkit-scrollbar-thumb {
+    background: dodgerblue;
+    border-radius: 3px;
+    }
+
+    /* Handle on hover */
+    ::-webkit-scrollbar-thumb:hover {
+    background: #ffbc00;
+    }
+</style>
+
+@code {
+    DxTreeView myTreeview { get; set; }
+    private bool collapseNavMenu = true;
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private List<MainPage> LSMENU = new List<MainPage>();
+    private string UserLang = "Vi";
+    private string src = @".\Images\User.png";
+    private bool IsLangEn = false;
+    private string Complogo = @".\Images\SISLogo.png";
+    static List<ComponentSet> Data = new List<ComponentSet>();
+    string searchPlaceholder = "Tìm kiếm";
+    string _filterString = "";
+    string MouseEventCssclass = "treeview-items-out";
+    List<FlatDataItem> TreeviewItems = new List<FlatDataItem>();
+    string M_TYPE_BH = "1";
+    string M_TB_BQ = "";
+    string M_DS_NAME = "";
+    string M_SVR_NAME = "";
+    bool M_IS_Expire = false;
+
+    void OnSearchChanged(string value)
+    {
+        _filterString = value;
+    }
+    bool _isMobileLayout;
+    bool IsMobileLayout
+    {
+        get => _isMobileLayout;
+        set
+        {
+            _isMobileLayout = value;
+        }
+    }
+
+    async void Logout()
+    {
+        try
+        {
+            Users user = await Localstore.GetItemAsync<Users>("user");
+            if (user != null)
+            {
+                if (user.User_name.Trim().Equals(CurUser.User_name.Trim()))
+                {
+                    await Localstore.RemoveItemAsync("user");
+                }
+            }
+            navigation.NavigateTo("");
+        }
+        catch
+        {
+
+        }
+    }
+    private Users CurUser = new Users();
+    async Task Language()
+    {
+        try
+        {
+            UserLang = await Localstore.GetItemAsync<string>("userlang");
+            IsLangEn = false;
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+    private bool Isshowloginlogout { get; set; }
+    private string EnColor = "White";
+    private string ViColor = "White";
+    string[] lsRight = new string[] { };
+    private string ma_ph = "";
+    private string strphanhe = "Quản lý nhân sự và tiền lương";
+    private List<DMPhanhe> LSPHANHE = new List<DMPhanhe>();
+    List<Command> LSCommand = new List<Command>();
+
+    async void ChangePhanhe(string ma_phan_he, MouseEventArgs e = null)
+    {   
+        await Localstore.SetItemAsync<string>("ma_phan_he", ma_phan_he);
+        TreeviewItems.Clear();
+        if (CurUser != null && !string.IsNullOrEmpty(CurUser.User_name))
+        {
+            if (!string.IsNullOrEmpty(CurUser.Wr_rights))
+            {
+                lsRight = CurUser.Wr_rights.Split('/');
+            }
+        }
+        if (LSPHANHE.Where(a => a.Ma_phan_he == ma_phan_he).Count() > 0)
+            strphanhe = IsLangEn ? LSPHANHE.Where(a => a.Ma_phan_he == ma_phan_he).First().Ten_phan_he2 : LSPHANHE.Where(a => a.Ma_phan_he == ma_phan_he).First().Ten_phan_he;
+        else
+        {
+            strphanhe = IsLangEn ? LSPHANHE.First().Ten_phan_he2 : LSPHANHE.First().Ten_phan_he;
+            ma_phan_he = LSPHANHE.First().Ma_phan_he;
+        }
+
+        LSCommand = Commands.GeteAllMenu(ma_phan_he);
+        {
+            if (LSCommand != null && CurUser != null)
+            {
+                foreach (Command cm in LSCommand.OrderBy(o => o.Stt))
+                {
+                    bool isshow = false;
+                    if (CurUser.Is_admin.Equals(1) || CurUser.Admin_root.Equals(1))
+                    {
+                        FlatDataItem _itemfl = new FlatDataItem() { Name = (IsLangEn ? cm.Bar2 : cm.Bar), Id = cm.Menu_id, NavigateUrl = string.IsNullOrEmpty(cm.Mobile_page) ? "" : cm.Mobile_page + @"/" + cm.Menu_id.Replace(".", "_"), IconUrl = Path.Combine(@"./images", cm.Picture.Trim()), Cssclass = string.IsNullOrEmpty(cm.Mobile_page) ? "treeview-items" : "treeview-leaf" };
+                        TreeviewItems.Add(_itemfl);
+                        isshow = true;
+                    }
+                    else
+                    {
+                        if (lsRight.Contains(cm.Menu_id))
+                        {
+                            FlatDataItem _itemfl = new FlatDataItem() { Name = (IsLangEn ? cm.Bar2 : cm.Bar), Id = cm.Menu_id, NavigateUrl = string.IsNullOrEmpty(cm.Mobile_page) ? "" : cm.Mobile_page + @"/" + cm.Menu_id.Replace(".", "_"), IconUrl = Path.Combine(@"./images", cm.Picture.Trim()), Cssclass = string.IsNullOrEmpty(cm.Mobile_page) ? "treeview-items" : "treeview-leaf" };
+                            TreeviewItems.Add(_itemfl);
+                            isshow = true;
+                        }
+                    }
+                    if (isshow)
+                    {
+                        List<Command> lscm = Commands.GetSubMenuByMenuid0(cm.Menu_id);
+                        foreach (Command cm1 in lscm.OrderBy(o=>o.Stt))
+                        {
+                            bool isshow1 = false;
+                            if (CurUser.Is_admin.Equals(1) || CurUser.Admin_root.Equals(1))
+                            {
+                                FlatDataItem _itemfl1 = new FlatDataItem() { Name = (IsLangEn ? cm1.Bar2 : cm1.Bar), Id = cm1.Menu_id, CategoryId = cm1.Menu_id0, NavigateUrl = string.IsNullOrEmpty(cm1.Mobile_page) ? "" : cm1.Mobile_page + @"/" + cm1.Menu_id.Replace(".", "_"), IconUrl = Path.Combine(@"./images", cm1.Picture.Trim()), CssItem = "tb-btnt", Cssclass = string.IsNullOrEmpty(cm1.Mobile_page) ? "treeview-items" : "treeview-leaf" };
+                                TreeviewItems.Add(_itemfl1);
+                                isshow1 = true;
+                            }
+                            else
+                            {
+                                if (lsRight.Contains(cm1.Menu_id))
+                                {
+                                    FlatDataItem _itemfl1 = new FlatDataItem() { Name = (IsLangEn ? cm1.Bar2 : cm1.Bar), Id = cm1.Menu_id, CategoryId = cm1.Menu_id0, NavigateUrl = string.IsNullOrEmpty(cm1.Mobile_page) ? "" : cm1.Mobile_page + @"/" + cm1.Menu_id.Replace(".", "_"), IconUrl = Path.Combine(@"./images", cm1.Picture.Trim()), CssItem = "tb-btnt", Cssclass = string.IsNullOrEmpty(cm1.Mobile_page) ? "treeview-items" : "treeview-leaf" };
+                                    TreeviewItems.Add(_itemfl1);
+                                    isshow1 = true;
+                                }
+                            }
+                            if (isshow1)
+                            {
+                                List<Command> lscm1 = Commands.GetSubMenuByMenuid0(cm1.Menu_id);
+                                if (lscm1.Count > 0)
+                                {
+                                    foreach (Command cm2 in lscm1)
+                                    {
+                                        if (CurUser.Is_admin.Equals(1) || CurUser.Admin_root.Equals(1))
+                                        {
+                                            FlatDataItem _itemfl2 = new FlatDataItem() { Name = (IsLangEn ? cm2.Bar2 : cm2.Bar), Id = cm2.Menu_id, CategoryId = cm2.Menu_id0, NavigateUrl = string.IsNullOrEmpty(cm2.Mobile_page) ? "" : cm2.Mobile_page + @"/" + cm2.Menu_id.Replace(".", "_"), IconUrl = Path.Combine(@"./images", cm2.Picture.Trim()), CssItem = "tb-btnt", Cssclass = string.IsNullOrEmpty(cm2.Mobile_page) ? "treeview-items" : "treeview-leaf" };
+                                            TreeviewItems.Add(_itemfl2);
+                                        }
+                                        else
+                                        {
+                                            if (lsRight.Contains(cm2.Menu_id))
+                                            {
+                                                FlatDataItem _itemfl2 = new FlatDataItem() { Name = (IsLangEn ? cm2.Bar2 : cm2.Bar), Id = cm2.Menu_id, CategoryId = cm2.Menu_id0, NavigateUrl = string.IsNullOrEmpty(cm2.Mobile_page) ? "" : cm2.Mobile_page + @"/" + cm2.Menu_id.Replace(".", "_"), IconUrl = Path.Combine(@"./images", cm2.Picture.Trim()), CssItem = "tb-btnt", Cssclass = string.IsNullOrEmpty(cm2.Mobile_page) ? "treeview-items" : "treeview-leaf" };
+                                                TreeviewItems.Add(_itemfl2);
+
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        myStatemanagerment.SetPhanhe(ma_phan_he, ma_phan_he);
+        myStatemanagerment.PhanheChanged(ma_phan_he);
+        if (e != null)
+        {            
+            string url = "Select top 1 (RTRIM(mobile_page) + '/' + menu_id) from command where is_mobile = 2 and ma_phan_he = '" + ma_phan_he.Trim() + "' AND menu_id0 = '' AND Isnull(mobile_page,'') <>'' order by stt";
+            var absoluteUrl = myDb.GetValue(url);
+
+            if (absoluteUrl != null)
+            {
+                if (!String.IsNullOrEmpty(absoluteUrl.ToString()))
+                {
+                    url = navigation.BaseUri + absoluteUrl.ToString().Trim().Replace(".", "_");
+                    myNavi.NavigateTo(url);
+                }
+            }
+        }
+
+        StateHasChanged();
+    }
+   
+    void Movetopage(string page)
+    {
+        navigation.NavigateTo(page);
+    }
+    private void Movetopass()
+    {
+        navigation.NavigateTo("changepassweb");
+    }
+    private void Movetouserinfo()
+    {
+        navigation.NavigateTo("user-info");
+    }
+    private void Movetoavatar()
+    {
+        navigation.NavigateTo("UploadImg");
+    }
+    private void ShowHideLoginLogout()
+    {
+        Isshowloginlogout = !Isshowloginlogout;
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {        
+        if (firstRender)
+        {
+            await Lap.LoadLocalizationAsync(String.Format("{0}", UserLang.Trim()));
+            M_TYPE_BH = myOption.GetOptionsValue("M_TYPE_BH").Trim();
+            if (M_TYPE_BH == "1" || M_TYPE_BH == "4")
+            {
+                string ngay_bh2 = myOption.GetOptionsValue("M_NGAY_BH2").Trim();
+                DateTime dngay_bh2 = StrtoDate(ngay_bh2);
+                if (dngay_bh2 > DateTime.Now)
+                {
+                    M_TB_BQ = Lap["Warranty period"] + " : " + ngay_bh2.Substring(6, 2) + "-" + ngay_bh2.Substring(4, 2) + "-" + ngay_bh2.Substring(0, 4);
+                }
+                else
+                {
+                    M_IS_Expire = true;
+                    M_TB_BQ = Lap["Warranty expires"] + " : " + ngay_bh2.Substring(6, 2) + "-" + ngay_bh2.Substring(4, 2) + "-" + ngay_bh2.Substring(0, 4);
+                }
+            }
+            if (M_TYPE_BH == "2")
+            {
+                string ngay_bh2 = myOption.GetOptionsValue("M_NGAY_BH2").Trim();
+                DateTime dngay_bh2 = StrtoDate(ngay_bh2);
+                DateTime Daynow = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0);
+                if (dngay_bh2 >= Daynow)
+                {
+                    M_TB_BQ = Lap["Expires"] + " : " + ngay_bh2.Substring(6, 2) + "-" + ngay_bh2.Substring(4, 2) + "-" + ngay_bh2.Substring(0, 4);
+                }
+                else
+                {
+                    M_IS_Expire = true;
+                    M_TB_BQ = Lap["Expires"] + " : " + ngay_bh2.Substring(6, 2) + "-" + ngay_bh2.Substring(4, 2) + "-" + ngay_bh2.Substring(0, 4);
+                }
+            }
+            M_DS_NAME = myDb.GetValue("SELECT DB_NAME() AS db01").ToString().Trim();
+            M_SVR_NAME = myDb.GetValue("SELECT @@SERVERNAME AS db01").ToString().Trim();
+            CurUser = myStatemanagerment.GetCurUser();
+            if (string.IsNullOrEmpty(CurUser.User_name))
+            {
+                try
+                {
+                    CurUser = await Localstore.GetItemAsync<Users>("user");
+                }
+                catch
+                {
+
+                }
+            }
+            if (CurUser != null)
+                if (!String.IsNullOrEmpty(CurUser.User_name))
+                {
+                    src = SysFunc.PictureHelper.GetImgSrc(CurUser.User_name, hostEnvironment);
+                }
+            if (IsMobileLayout)
+                collapseNavMenu = false;
+            ma_ph = await Localstore.GetItemAsync<string>("ma_phan_he");//myStatemanagerment.GetMa_Phanhe();
+            myStatemanagerment.OnLangguaChanged += OnLangguachange;
+            LSPHANHE = await myDb.GetPhanhe();
+            if (string.IsNullOrEmpty(ma_ph))
+            {
+                if (LSPHANHE != null && LSPHANHE.Count > 0)
+                {
+                    if (!string.IsNullOrEmpty(LSPHANHE[0].Ma_phan_he))
+                    {
+                        ma_ph = LSPHANHE[0].Ma_phan_he.Trim();
+                    }
+                }
+            }
+            await Language();
+            ChangePhanhe(ma_ph);
+            if (LSCommand.Count > 0)
+            {
+                Command mn = LSCommand[0];
+                if (myTreeview != null)
+                    myTreeview.SetNodeExpanded((n) => n.Text.Contains(mn.Bar.Trim()), true);
+            }
+			StateHasChanged();
+        }
+    }
+   
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+    private void Item_click(String url)
+    {
+        if (!String.IsNullOrEmpty(url))
+            navigation.NavigateTo(url, false);
+    }
+    string GetTreeUrl(String maph)
+    {
+        return @"./Images/Icon_" + maph.Trim() + ".svg";
+    }
+    public void Dispose()
+    {      
+        myStatemanagerment.OnLangguaChanged -= OnLangguachange;
+    }
+    public DateTime StrtoDate(string datestr)
+    {
+        if (!String.IsNullOrEmpty(datestr) && datestr.Length >= 8)
+        {
+            try
+            {
+                return new DateTime(Convert.ToInt32(datestr.Substring(0, 4)), Convert.ToInt32(datestr.Substring(4, 2)), Convert.ToInt32(datestr.Substring(6, 2)));
+            }
+            catch
+            {
+
+            }
+        }
+
+        return DateTime.MinValue;
+    }
+}

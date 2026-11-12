@@ -1,0 +1,44 @@
+﻿@namespace SisHr.Pages.Report.HRHSNV.Tabs
+
+@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using SisCom.Model
+@using SisLib.Lib
+@using Microsoft.AspNetCore.Components
+
+@* ===== 7. TRANSFER UNIT (Chuyển đơn vị) ===== *@
+<DxFormLayoutGroup id="section-7" Caption="@Lap["Transfer unit"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Transfer date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_chuyen_di" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Transfer status"]">
+        <Template>
+            @* Chuyển thành ComboBox để khớp logic "1"/"0" của WPF *@
+            <DxComboBox Data="@YesNoList"
+                        @bind-Value="CurRow.Da_chuyen_di"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+@code {
+    [Parameter] public HsnvDetailModel CurRow { get; set; }
+    [Parameter] public bool AllowEditMode { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public dynamic Lap { get; set; }
+
+    // Danh sách hỗ trợ logic "1" - "0" từ WPF
+    private List<StatusItem> YesNoList = new() {
+        new StatusItem { Value = "0", Text = "0 - Chưa chuyển" },
+        new StatusItem { Value = "1", Text = "1 - Đã chuyển" }
+    };
+
+    public class StatusItem { public string Value { get; set; } public string Text { get; set; } }
+}

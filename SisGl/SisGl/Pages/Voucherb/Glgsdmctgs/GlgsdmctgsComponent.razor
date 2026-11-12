@@ -1,0 +1,217 @@
+﻿@page "/glgsdmctgs"
+@page "/glgsdmctgs/{Menu_id}"
+@inherits ListBaseComponent
+@implements IAsyncDisposable
+@using System.Linq
+@using Microsoft.JSInterop;
+@attribute [Authorize(Roles = "admin,glgsdmctgs")]
+
+<div class="row my-1 py-1">
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 fw-bold">Ctgs từ ngày</label>
+        <div>
+            <DxDateEdit @bind-Date="NgayCt1" NullText="01-01-2020" Format="dd-MM-yyyy" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+        </div>
+    </div>
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2">Đến ngày</label>
+        <div>
+            <DxDateEdit @bind-Date="NgayCt2" NullText="01-01-2020" Format="dd-MM-yyyy" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+        </div>
+    </div>
+    <div class="col-auto d-flex align-items-center">
+        <DxButton RenderStyle="ButtonRenderStyle.Secondary" Text="@Lap["Search"]" Click="@OnSearchClick" />
+    </div>
+</div>
+
+<div class="row mt-1">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="65vw"
+              MinWidth="750px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@code {
+    private DateTime _ngayCt1 = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    private DateTime _ngayCt2 = new DateTime(DateTime.Now.Year, DateTime.Now.Month,
+        DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month));
+
+    public DateTime NgayCt1
+    {
+        get => _ngayCt1;
+        set { _ngayCt1 = value; }
+    }
+    public DateTime NgayCt2
+    {
+        get => _ngayCt2;
+        set { _ngayCt2 = value; }
+    }
+
+    protected override void OnInitialized()
+    {
+        mPage = "glgsdmctgs";
+        SqlTableKey = "stt_ctgs";
+        IsShowCopy = false;
+        IsShowImport = false;
+        FrmType = typeof(Voucherb.Glgsdmctgs.EditGlgsdmctgs);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.vb.01";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            SqlTableKey = "stt_ctgs";
+            fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true, "F4"));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            await Loaddata();
+            await Language();
+        }
+    }
+
+    async Task OnSearchClick()
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        string sql = $"SELECT * FROM ctgs WHERE ngay_ctgs1 >= @ngay1 AND ngay_ctgs1 <= @ngay2 ORDER BY ngay_ctgs1, stt_ctgs";
+        string paramValues = NgayCt1.ToString("yyyyMMdd") + ";" + NgayCt2.ToString("yyyyMMdd");
+        DataSet dsList = await myDb.LoadDataset(sql, "ngay1;ngay2", paramValues);
+        TblData = dsList.Tables[0];
+        if (TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+    }
+
+    public override void V_Moi()
+    {
+        Par.Clear();
+        Par.Add("NgayCt1", (object)NgayCt1);
+        Par.Add("NgayCt2", (object)NgayCt2);
+        Par.Add("Menu_id", (object)Menu_id);
+        Par.Add("ShowAdd", (object)true);
+        Par.Add("curActionTask", (object)ActionTask.New);
+        Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Sua()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            if (!rview.DataView.Table.Columns.Contains(SqlTableKey))
+                return;
+            if (!string.IsNullOrEmpty(rview[SqlTableKey].ToString()))
+            {
+                Par.Clear();
+                Par.Add("NgayCt1", (object)NgayCt1);
+                Par.Add("NgayCt2", (object)NgayCt2);
+                Par.Add("Ma_ma", (object)rview[SqlTableKey].ToString());
+                Par.Add("Menu_id", (object)Menu_id);
+                Par.Add("ShowAdd", (object)true);
+                Par.Add("curActionTask", (object)ActionTask.Edit);
+                Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                IsShowFrm = true;
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public override async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            if (!rview.DataView.Table.Columns.Contains(SqlTableKey))
+                return;
+            if (!string.IsNullOrEmpty(rview[SqlTableKey].ToString()))
+                SqlTableKeyValue = rview[SqlTableKey].ToString().Trim();
+
+            MessageDl = String.Format(Lap["Do you want to delete :{0} ?"], SqlTableKeyValue);
+            ResultDl = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+            {
+                Text = MessageDl,
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["OK"],
+                CancelButtonText = Lap["Cancel"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger,
+            });
+            if (ResultDl == true)
+            {
+                await Dongyxoa(true);
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public override async Task Dongyxoa(bool status)
+    {
+        if (status)
+        {
+            string sql = $"DELETE FROM ctgs WHERE stt_ctgs = '{SqlTableKeyValue}'";
+            await myDb.ExecuteSqlQueryAsync(sql);
+            await Loaddata();
+            myStateMN.SetNewThongbao(String.Format(Lap["Delete successfully : {0}"], SqlTableKeyValue));
+        }
+        MessageDl = "";
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _dotNetHelper?.Dispose();
+        base.Dispose();
+    }
+}

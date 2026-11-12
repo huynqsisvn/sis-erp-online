@@ -1,0 +1,129 @@
+@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.DMVPNV
+@using DevExpress.Blazor
+@using System.Data
+@using System.Linq
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveData" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                <DxFormLayoutItem Caption="@Lap["Voucher number"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="so_ct_input" @bind-Text="@CurPh.So_ct" Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Voucher date"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_ct_input" Enabled="@AllowEditMode" @bind-Date="@CurPh.Ngay_ct" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="6" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" @bind-Value="@CurPh.Ma_ns" IsEnable="@AllowEditMode" SelectChanged="@((ExpandoObject v) => Ma_ns_Changed(v))" IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+
+        <div class="row m-1 me-2 mt-2">
+            <h6 class="fw-bold text-primary m-0 mb-1">@Lap["Violation detail list"]</h6>
+
+            <div @ref="GridWrapperCt" id="grid-wrapper-ct" @onfocusout="OnGridCtLostFocus" @onfocusin='() => LastFocusedGrid = "CT"' class="mt-2 mb-3">
+                <DxGrid @ref="GridCT"
+                        Data="@LsCt"
+                        SizeMode="@Itemsizemode"
+                        CssClass="w-100 grid-height-dynamic"
+                        @onkeydown="GridCT_OnKeyDown"
+                        AllowSelectRowByClick="true"
+                        KeyboardNavigationEnabled="true"
+                        @bind-SelectedDataItem="@SelectedCt"
+                        ValidationEnabled="false"
+                        EditMode="GridEditMode.EditRow"
+                        RowClick="@StartEditRow"
+                        SelectionMode="GridSelectionMode.Single"
+                        CustomizeEditModel="Grid_CustomizeEditModel"
+                        EditModelSaving="Grid_EditModelSaving"
+                        DataItemDeleting="Grid_DataItemDeleting"
+                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                        EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                        ShowAllRows="true"
+                        TextWrapEnabled="false"
+                        AllowSort="false"
+                        HighlightRowOnHover="true"
+                        FooterDisplayMode="GridFooterDisplayMode.Always">
+                    <Columns>
+                        <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                            <CellDisplayTemplate Context="ctx">
+                                <div class="grid-cell-align-center">
+                                    <a class="text-danger fw-bold cursor-pointer" tabindex="-1"
+                                       @onclick="@(() => GridCT.ShowRowDeleteConfirmation(ctx.VisibleIndex))" title="Xóa dòng">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                </div>
+                            </CellDisplayTemplate>
+                            <CellEditTemplate Context="ctx">
+                            </CellEditTemplate>
+                        </DxGridCommandColumn>
+
+                        <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                        <DxGridDataColumn FieldName="Noi_dung_ky_luat" Caption="@Lap["Discipline content"]" MinWidth="200">
+                            <CellEditTemplate Context="ctx">
+                                @{ var item = (DmvpnvDtRow)ctx.EditModel; }
+                                <DxTextBox @bind-Text="@item.Noi_dung_ky_luat" CssClass="w-100" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Hinh_thuc_ky_luat" Caption="@Lap["Discipline form"]" MinWidth="180">
+                            <CellEditTemplate Context="ctx">
+                                @{ var item = (DmvpnvDtRow)ctx.EditModel; }
+                                <DxTextBox @bind-Text="@item.Hinh_thuc_ky_luat" CssClass="w-100" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Muc_do_vi_pham" Caption="@Lap["Violation severity"]" Width="130" CaptionAlignment="GridTextAlignment.Center" DisplayFormat="N2">
+                            <CellEditTemplate Context="ctx">
+                                @{ var item = (DmvpnvDtRow)ctx.EditModel; }
+                                <DxSpinEdit @bind-Value="@item.Muc_do_vi_pham" DisplayFormat="N2" ShowSpinButtons="false" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Trang_thai_xu_ly" Caption="@Lap["Processing status"]" MinWidth="160">
+                            <CellEditTemplate Context="ctx">
+                                @{ var item = (DmvpnvDtRow)ctx.EditModel; }
+                                <DxTextBox @bind-Text="@item.Trang_thai_xu_ly" CssClass="w-100" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"]" MinWidth="160">
+                            <CellEditTemplate Context="ctx">
+                                @{ var item = (DmvpnvDtRow)ctx.EditModel; }
+                                <DxTextBox @bind-Text="@item.Ghi_chu" CssClass="w-100" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+                    </Columns>
+                </DxGrid>
+            </div>
+        </div>
+    </FormList>
+</div>
+
+<style>
+    .grid-height-dynamic {
+        height: 300px;
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .grid-cell-align-center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>

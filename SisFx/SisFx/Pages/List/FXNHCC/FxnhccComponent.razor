@@ -1,0 +1,474 @@
+﻿@page "/fxnhcc"
+@page "/fxnhcc/{Menu_id}"
+@inherits ListBaseComponent
+@using SisFx.Pages.List.FXNHCC
+@attribute [Authorize(Roles = "admin,fxnhcc")]
+
+@* === FILTER POPUP: Chọn loại nhóm khi mở chức năng (tương đương CotdLoc.xaml) === *@
+<DxPopup @bind-Visible="@FilterVisible"
+         ShowFooter="false"
+         HeaderText="@Lap["Select group type"]"
+         CloseOnEscape="true"
+         CloseOnOutsideClick="false"
+         ShowCloseButton="true"
+         Width="350px"
+         MinHeight="150px">
+    <BodyContentTemplate>
+        <div class="p-3">
+            <div class="row pb-3">
+                <label class="col-5 col-form-label">@Lap["Group type"]:</label>
+                <DxComboBox CssClass="col"
+                            Data="LSLoaiNhom"
+                            TextFieldName="Ten"
+                            ValueFieldName="Ma"
+                            @bind-Value="@FilterLoaiNhStr"
+                            NullText="@Lap["Select ..."]"
+                            FilteringMode="DataGridFilteringMode.Contains"
+                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto">
+                    <Columns>
+                        <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                        <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                    </Columns>
+                </DxComboBox>
+            </div>
+            <div class="text-end">
+                <DxButton Text="@Lap["OK"]" RenderStyle="ButtonRenderStyle.Primary" Click="@FilterOK" CssClass="me-2" />
+                <DxButton Text="@Lap["Cancel"]" RenderStyle="ButtonRenderStyle.Secondary" Click="@FilterCancel" />
+            </div>
+        </div>
+    </BodyContentTemplate>
+</DxPopup>
+
+@if (!FilterVisible)
+{
+    <div class="row mt-1">
+        <FrmBrowseComponent @ref="oBrowse"
+                            TblData="@TblData"
+                            Fbrowse="@fbrowse"
+                            Page_size="@Page_size"
+                            SelectItem="CurItem"
+                            OnRowDbClick="@OnRDBClick"
+                            IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+}
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="30vw"
+              MinWidth="500px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible"
+                                 List_ID="@sqlTableName"
+                                 Ma_ma="@SqlTableKeyValue"
+                                 Title="@Lap["fxnhcc.change.title"]"
+                                 Ten_item="@Ten_item"
+                                 OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="40vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible"
+                             CurDmimex="@CurDmimex"
+                             OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@* === POPUP PHÂN NHÓM CCDC (tương đương FrmDMPhanNhom.xaml) === *@
+@if (ShowPhanNhom)
+{
+    <DxPopup @bind-Visible="@ShowPhanNhom"
+             HeaderText="@(IsLangEn ? "Assign tools to group" : "Phân nhóm công cụ dụng cụ")"
+             ShowFooter="false"
+             CloseOnEscape="true"
+             ShowCloseButton="true"
+             Width="90vw"
+             MinWidth="900px"
+             MaxHeight="90vh"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <FrmPhanNhomCC FilterLoaiNh="@FilterLoaiNh" IsLangEn="@IsLangEn" OnClose="@ClosePhanNhom" />
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    private const string DefaultFbrowseVN = "stt:50:h=STT;ma_nh:100:h=Mã nhóm;ten_nh:250:h=Tên nhóm;ten_nh2:250:h=Tên 2;date:100:h=Ngày sửa:D;time:80:h=Giờ sửa;user_name:100:h=Người sửa;date0:100:h=Ngày tạo:D;time0:80:h=Giờ tạo;user_name0:100:h=Người tạo";
+    private const string DefaultFbrowseEN = "stt:50:h=No;ma_nh:100:h=Group code;ten_nh:250:h=Group name;ten_nh2:250:h=Name 2;date:100:h=Modified date:D;time:80:h=Modified time;user_name:100:h=Modified by;date0:100:h=Created date:D;time0:80:h=Created time;user_name0:100:h=Created by";
+
+    private bool FilterVisible = true;
+    private int FilterLoaiNh = 1;
+    private string FilterLoaiNhStr = "1";
+    private bool ShowPhanNhom = false;
+
+    private List<LoaiNhomItem> LSLoaiNhom = new List<LoaiNhomItem>()
+    {
+        new LoaiNhomItem { Ma = "1", Ten = "1 - Nhóm 1" },
+        new LoaiNhomItem { Ma = "2", Ten = "2 - Nhóm 2" },
+        new LoaiNhomItem { Ma = "3", Ten = "3 - Nhóm 3" }
+    };
+
+    protected override void OnInitialized()
+    {
+        mPage = "fxnhcc";
+        IsShowCopy = true;
+        IsShowImport = false;
+        sqlTableName = "dmnhcc";
+        sqlTableView = "dmnhcc";
+        SqlTableKey = "loai_nh;ma_nh";
+        FrmType = typeof(SisFx.Pages.List.FXNHCC.EditFxnhcc);
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wf.xd.04";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            StateHasChanged();
+        }
+    }
+
+    void SetToolbarVisible()
+    {
+        string Menuid = Menu_id.Replace("_", ".");
+        if (curUser != null && (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW")))
+        {
+            myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+            myStateMN.SetToolBar(new MyToolbar("New", true, "F4"));
+            myStateMN.SetToolBar(new MyToolbar("Copy", IsShowCopy, ""));
+            myStateMN.SetToolBar(new MyToolbar("Import", false));
+            myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+            myStateMN.SetToolBar(new MyToolbar("Save", false));
+            myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+            myStateMN.SetToolBar(new MyToolbar("Change", false));
+            myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+            myStateMN.AddOrderToolBarButton("Button1", IsLangEn ? "Assign group" : "Phân nhóm", 1);
+            myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+            myStateMN.SetToolBar(new MyToolbar("Print", false));
+            myStateMN.SetToolBar(new MyToolbar("Export", true));
+            myStateMN.SetToolBar(new MyToolbar("Search", false));
+            myStateMN.SetToolBar(new MyToolbar("Quit", false));
+        }
+        else
+        {
+            myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+        }
+    }
+
+    async void FilterOK()
+    {
+        if (string.IsNullOrEmpty(FilterLoaiNhStr))
+        {
+            myStateMN.SetNewThongbao(Lap["Group type is required"]);
+            return;
+        }
+        FilterLoaiNh = int.Parse(FilterLoaiNhStr);
+        FilterVisible = false;
+        SetToolbarVisible();
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    void FilterCancel()
+    {
+        FilterVisible = false;
+        myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+        StateHasChanged();
+    }
+
+    public override async Task PageLoad()
+    {
+        try
+        {
+            curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+            if (curCommand != null)
+            {
+                fbrowse = IsLangEn ? curCommand.Vbrowse2 : curCommand.Vbrowse1;
+                string pSize = myOption.GetOptionsValue("M_GRID_NROW");
+                Page_size = string.IsNullOrEmpty(pSize) ? 50 : int.Parse(pSize.Trim());
+            }
+
+            if (string.IsNullOrEmpty(fbrowse))
+            {
+                fbrowse = IsLangEn ? DefaultFbrowseEN : DefaultFbrowseVN;
+                string pSize = myOption.GetOptionsValue("M_GRID_NROW");
+                Page_size = string.IsNullOrEmpty(pSize) ? 50 : int.Parse(pSize.Trim());
+            }
+        }
+        catch (Exception ex)
+        {
+            fbrowse = IsLangEn ? DefaultFbrowseEN : DefaultFbrowseVN;
+            Console.WriteLine("PageLoad error: " + ex.Message);
+        }
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        SelectedItem = null;
+        try
+        {
+            string sql = $"SELECT ROW_NUMBER() OVER (ORDER BY ma_nh) AS stt, * FROM {sqlTableView} WHERE loai_nh = {FilterLoaiNh} ORDER BY ma_nh";
+            DataSet dsList = await myDb.LoadDataset(sql);
+            TblData = dsList?.Tables[0];
+
+            if (TblData != null && TblData.DefaultView.Count > 0)
+                SelectedItem = TblData.DefaultView[0];
+
+            if (oBrowse != null)
+                await oBrowse.FocusGridAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Loaddata error: " + ex.Message);
+        }
+        StateHasChanged();
+    }
+
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public async void CloseForm()
+    {
+        IsShowFrm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    void ClosePhanNhom()
+    {
+        ShowPhanNhom = false;
+        StateHasChanged();
+    }
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Moi();
+                break;
+            case ActionTask.Copy:
+                myStateMN.SetCurrentActionTask(ActionTask.Copy);
+                V_Copy();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Button1:
+                ShowPhanNhom = true;
+                StateHasChanged();
+                break;
+            default:
+                base.OnActionTaskchanged(ac);
+                break;
+        }
+    }
+
+    public void V_Moi()
+    {
+        Par.Clear();
+        Par.Add("Ma_ma", "");
+        Par.Add("Menu_id", Menu_id);
+        Par.Add("ShowAdd", true);
+        Par.Add("curActionTask", ActionTask.New);
+        Par.Add("FilterLoaiNh", FilterLoaiNh);
+        Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Xem()
+    {
+        if (SelectedItem is System.Data.DataRowView rview)
+        {
+            SqlTableKeyValue = rview["loai_nh"].ToString().Trim() + ";" + rview["ma_nh"].ToString().Trim();
+            Par.Clear();
+            Par.Add("Ma_ma", SqlTableKeyValue);
+            Par.Add("Menu_id", Menu_id);
+            Par.Add("ShowAdd", true);
+            Par.Add("curActionTask", ActionTask.View);
+            Par.Add("FilterLoaiNh", FilterLoaiNh);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+        }
+    }
+
+    public override void V_Sua()
+    {
+        if (SelectedItem is System.Data.DataRowView rview)
+        {
+            SqlTableKeyValue = rview["loai_nh"].ToString().Trim() + ";" + rview["ma_nh"].ToString().Trim();
+            Par.Clear();
+            Par.Add("Ma_ma", SqlTableKeyValue);
+            Par.Add("Menu_id", Menu_id);
+            Par.Add("ShowAdd", true);
+            Par.Add("curActionTask", ActionTask.Edit);
+            Par.Add("FilterLoaiNh", FilterLoaiNh);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+        }
+    }
+
+    public void V_Copy()
+    {
+        if (SelectedItem is System.Data.DataRowView rview)
+        {
+            SqlTableKeyValue = rview["loai_nh"].ToString().Trim() + ";" + rview["ma_nh"].ToString().Trim();
+            Par.Clear();
+            Par.Add("Ma_ma", SqlTableKeyValue);
+            Par.Add("Menu_id", Menu_id);
+            Par.Add("ShowAdd", true);
+            Par.Add("curActionTask", ActionTask.Copy);
+            Par.Add("FilterLoaiNh", FilterLoaiNh);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+        }
+    }
+
+    // === VALIDATE & XÓA ===
+    public override async void V_Xoa()
+    {
+        if (SelectedItem == null)
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }
+
+        if (SelectedItem is System.Data.DataRowView rview)
+        {
+            int loaiNh = Convert.ToInt32(rview["loai_nh"]);
+            string maNh = rview["ma_nh"].ToString().Trim();
+            SqlTableKeyValue = loaiNh.ToString() + ";" + maNh;
+
+            bool hasData = await CheckExistsMaNhCc(loaiNh, maNh);
+            if (hasData)
+            {
+                myStateMN.SetNewThongbao(Lap["fxnhcc.err.has_data"]);
+                return;
+            }
+        }
+
+        base.V_Xoa();
+    }
+
+    async Task<bool> CheckExistsMaNhCc(int loai_nh, string ma_nh)
+    {
+        try
+        {
+            string colName = loai_nh switch
+            {
+                1 => "nh_cc1",
+                2 => "nh_cc2",
+                _ => "nh_cc3"
+            };
+            string sql = "Select count(ma_cc_me) as cnt From dmcc Where " + colName + " = '" + (ma_nh ?? "").Replace("'", "''") + "'";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                return Convert.ToInt32(ds.Tables[0].Rows[0]["cnt"]) > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("CheckExistsMaNhCc error: " + ex.Message);
+        }
+        return false;
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+    public class LoaiNhomItem
+    {
+        public string Ma { get; set; }
+        public string Ten { get; set; }
+    }
+}

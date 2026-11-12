@@ -1,0 +1,66 @@
+﻿@using DevExpress.Blazor
+@using SisData.Model
+
+<DxWindow @ref=windowRef
+          AllowResize="false"
+          ShowCloseButton="true"
+          CloseOnEscape="true"
+          HeaderText="@windowTitle"
+          ShowFooter="true"
+          Width="max(25vw, 250px)"
+          MinWidth="600"
+          MinHeight="600"
+          MaxWidth="800"
+          MaxHeight="800"
+          Closed="ClosedForm"
+          @bind-Visible=windowVisible>
+    <BodyTextTemplate>       
+        <CommandEditForm />
+    </BodyTextTemplate>
+    <FooterTextTemplate>
+        <DxButton CssClass="popup-button my-1 ms-2" RenderStyle="ButtonRenderStyle.Primary" Text="@(IsLangEn ? "Save" : "Lưu")" Click="@BtnOk" />
+        <DxButton CssClass="popup-button my-1 ms-2" RenderStyle="ButtonRenderStyle.Secondary" Text="@(IsLangEn ? "Cancel" : "Hủy")" Click="@BtnCancel" />
+    </FooterTextTemplate>
+</DxWindow>
+
+@code {
+    [CascadingParameter(Name = "lang")]
+    public bool IsLangEn { get; set; }
+    [CascadingParameter(Name ="wtitle")]
+    public string windowTitle { get; set; }
+    [CascadingParameter(Name = "curCommand")]
+    public Command curCommand { get; set; }
+    public bool windowVisible { get; set; } = true;
+    [Parameter]
+    public EventCallback<bool> Closeform { get; set; }
+    DxWindow windowRef;
+    async Task BtnCancel()
+    {
+        Closeform.InvokeAsync(false);
+        await windowRef.CloseAsync();
+    }
+    async Task BtnOk()
+    {
+        Closeform.InvokeAsync(true);
+        await windowRef.CloseAsync();
+    }
+    async Task ClosedForm()
+    {
+        Closeform.InvokeAsync(false);
+    }
+    async Task TogglePopupVisibilityAsync()
+    {
+        if (windowVisible)       
+            await windowRef.CloseAsync();       
+        else
+            await windowRef.ShowAsync();
+    }
+    protected override Task OnInitializedAsync()
+    {
+        return base.OnInitializedAsync();
+    }
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return base.OnAfterRenderAsync(firstRender);
+    }
+}

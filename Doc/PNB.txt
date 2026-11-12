@@ -1,0 +1,973 @@
+Thêm mới phiếu : Phiếu nhập khẩu
+- Menu_id = 'wp.ct.07', Page ='poctpnb', Ma_ct = 'PNB', m_phdbf = 'PH72', m_ctdbf = 'CT72',m_ctgtdbf = 'CT72GT'
+- Thư mục : \SisPo\Pages\Input\Poctpnb\
+- Các Component như các phiếu khác. 
+- Xem và kế thừa từ phiếu : Phiếu nhập mua hàng :PNA: \SisPo\Pages\Input\Poctpna\ 
+Các xử lý, tính toán tương tự PNA, form thêm mới kế thừa từ PNA và bổ sung phần Thuế NK, Thuế TTĐB dựa trên WinForm POCTPNB.
+có :
+	+ Tab :Thuế nhập khẩu ('Thuế NK') 
+	+ Các trường để phân bổ thuế NK.
+	+ Các trường về thuế tiêu thụ đặc biệt (Thuế TTDB)
+- Form thêm mới như ảnh, mẫu in như ảnh
+- Tham khảo chức năng đã làm trên wpf ở project POCTPNB, không build lại các project trên Wpf => quan trọng
+- Ko cần viết file .md nhiều, không viết file .sql, chỉ cần 1 README.md ở dạng đơn giản => quan trọng
+
+
+CREATE TABLE [dbo].[ph72](
+	[stt_rec] [dbo].[udt_stt_rec] NULL,
+	[row_id] [int] IDENTITY(1,1) NOT NULL,
+	[ws_id] [char](1) NULL,
+	[ma_ct] [dbo].[udt_ma_ct] NULL,
+	[ma_nk] [dbo].[udt_ma_nk] NULL,
+	[ma_gd] [dbo].[udt_ma_gd] NULL,
+	[ngay_ct] [dbo].[udt_ngay_ct] NULL,
+	[ngay_lct] [dbo].[udt_ngay_ct] NULL,
+	[so_ct] [dbo].[udt_so_ct] NULL,
+	[so_lo] [dbo].[udt_so_lo] NULL,
+	[ngay_lo] [dbo].[udt_ngay_ct] NULL,
+	[so_ct0] [dbo].[udt_so_ct] NULL,
+	[ngay_ct0] [dbo].[udt_ngay_ct] NULL,
+	[so_seri0] [dbo].[udt_so_seri] NULL,
+	[so_dh] [dbo].[udt_so_ct] NULL,
+	[ma_kh] [dbo].[udt_ma_kh] NULL,
+	[ong_ba] [dbo].[udt_ten_dien_giai] NULL,
+	[dia_chi] [dbo].[udt_dia_chi] NULL,
+	[dien_giai] [dbo].[udt_ten_dien_giai] NULL,
+	[ma_so_thue] [dbo].[udt_ma_so_thue] NULL,
+	[ma_nx] [dbo].[udt_tk] NULL,
+	[t_so_luong] [dbo].[udt_so_luong] NULL,
+	[t_soluong1] [dbo].[udt_so_luong] NULL,
+	[ma_nt] [dbo].[udt_ma_nt] NULL,
+	[ty_gia] [dbo].[udt_ty_gia] NULL,
+	[t_tien_nt] [dbo].[udt_tien_nt] NULL,
+	[t_tien] [dbo].[udt_tien] NULL,
+	[t_tien_nt0] [dbo].[udt_tien_nt] NULL,
+	[t_tien0] [dbo].[udt_tien] NULL,
+	[t_tien_nt1] [dbo].[udt_tien_nt] NULL,
+	[t_tien1] [dbo].[udt_tien] NULL,
+	[t_cp_nt] [dbo].[udt_tien_nt] NULL,
+	[t_cp] [dbo].[udt_tien] NULL,
+	[t_nk_nt] [dbo].[udt_tien_nt] NULL,
+	[t_nk] [dbo].[udt_tien] NULL,
+	[tk_thue_nk] [dbo].[udt_tk] NULL,
+	[t_db] [dbo].[udt_tien] NULL,
+	[t_db_nt] [dbo].[udt_tien_nt] NULL,
+	[tk_thue_db] [dbo].[udt_tk] NULL,
+	[tk_thue_no] [dbo].[udt_tk] NULL,
+	[ma_kh2] [dbo].[udt_ma_kh] NULL,
+	[tk_thue_co] [dbo].[udt_tk] NULL,
+	[ma_thue] [dbo].[udt_ma_thue] NULL,
+	[thue_suat] [dbo].[udt_thue_suat] NULL,
+	[t_thue_nt] [dbo].[udt_tien_nt] NULL,
+	[t_thue] [dbo].[udt_tien] NULL,
+	[so_hd_gtgt] [numeric](2, 0) NULL,
+	[t_tt_nt] [dbo].[udt_tien_nt] NULL,
+	[t_tt] [dbo].[udt_tien] NULL,
+	[han_tt] [numeric](3, 0) NULL,
+	[date] [dbo].[udt_ngay_ct] NULL,
+	[time] [dbo].[udt_time] NULL,
+	[user_id] [dbo].[udt_user_id] NULL,
+	[date0] [dbo].[udt_ngay_ct] NULL,
+	[time0] [dbo].[udt_time] NULL,
+	[user_id0] [dbo].[udt_user_id] NULL,
+	[status] [char](1) NULL,
+	[so_lo1] [dbo].[udt_so_lo] NULL,
+	[cp_thue_ck] [numeric](1, 0) NULL,
+	[ma_bpht] [dbo].[udt_ma_bp] NULL,
+	[loai_ct] [char](2) NULL,
+	[so_lsx] [dbo].[udt_so_lsx] NULL,
+	[ma_td1] [dbo].[udt_ma_td] NULL,
+	[ma_td2] [dbo].[udt_ma_td] NULL,
+	[ma_td3] [dbo].[udt_ma_td] NULL,
+	[ngay_td1] [dbo].[udt_ngay_ct] NULL,
+	[ngay_td2] [dbo].[udt_ngay_ct] NULL,
+	[ngay_td3] [dbo].[udt_ngay_ct] NULL,
+	[sl_td1] [dbo].[udt_so_luong] NULL,
+	[sl_td2] [dbo].[udt_so_luong] NULL,
+	[sl_td3] [dbo].[udt_so_luong] NULL,
+	[gc_td1] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_td2] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_td3] [dbo].[udt_ghi_chu_td] NULL,
+	[ma_hd] [dbo].[udt_ma_hop_dong] NULL,
+	[ma_ku] [dbo].[udt_ma_ku] NULL,
+	[sua_tien] [numeric](1, 0) NULL,
+	[ngay_s1] [dbo].[udt_ngay_ct] NULL,
+	[ngay_s2] [dbo].[udt_ngay_ct] NULL,
+	[gc_s1] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_s2] [dbo].[udt_ghi_chu_td] NULL,
+	[sl_s1] [dbo].[udt_so_luong] NULL,
+	[sl_s2] [dbo].[udt_so_luong] NULL,
+	[ma_s1] [dbo].[udt_ma_s1] NULL,
+	[ma_s2] [dbo].[udt_ma_s1] NULL,
+	[ma_tb] [dbo].[udt_ma_tb] NULL,
+	[ma_hdm] [dbo].[udt_ma_hop_dong] NULL,
+	[ma_dvcs] [dbo].[udt_ma_dvcs] NULL,
+	[ma_px] [dbo].[udt_ma_px] NULL,
+	[ma_qs] [dbo].[udt_ma_qs] NULL,
+	[ma_thck] [dbo].[udt_ma_thck] NULL,
+	[ty_giaf] [dbo].[udt_ty_gia] NULL,
+	[loai_pb] [char](1) NULL,
+	[t_ghi_chu] [nvarchar](max) NULL,
+	[ma_kh_i] [dbo].[udt_ma_kh] NULL,
+	[tk_i] [dbo].[udt_tk] NULL,
+	[thue_nk_cp] [numeric](1, 0) NULL,
+	[hd_thue] [char](1) NULL,
+	[stt_rec_pc] [char](11) NULL,
+	[so_ct_pc] [dbo].[udt_so_ct] NULL,
+	[ma_ct_pc] [dbo].[udt_ma_ct] NULL,
+	[ma_qs_pc] [dbo].[udt_ma_qs] NULL,
+	[tao_pc] [numeric](1, 0) NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_stt_rec]  DEFAULT ('') FOR [stt_rec]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ws_id]  DEFAULT ('') FOR [ws_id]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_ct]  DEFAULT ('') FOR [ma_ct]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_nk]  DEFAULT ('') FOR [ma_nk]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_so_ct]  DEFAULT ('') FOR [so_ct]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_so_lo]  DEFAULT ('') FOR [so_lo]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_so_ct0]  DEFAULT ('') FOR [so_ct0]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_so_seri0]  DEFAULT ('') FOR [so_seri0]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_so_dh]  DEFAULT ('') FOR [so_dh]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_kh]  DEFAULT ('') FOR [ma_kh]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ong_ba]  DEFAULT ('') FOR [ong_ba]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_dia_chi]  DEFAULT ('') FOR [dia_chi]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_dien_giai]  DEFAULT ('') FOR [dien_giai]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_so_thue]  DEFAULT ('') FOR [ma_so_thue]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_nx]  DEFAULT ('') FOR [ma_nx]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_so_luong]  DEFAULT ((0)) FOR [t_so_luong]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_soluong1]  DEFAULT ((0)) FOR [t_soluong1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_nt]  DEFAULT ('') FOR [ma_nt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ty_gia]  DEFAULT ((0)) FOR [ty_gia]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_tien_nt]  DEFAULT ((0)) FOR [t_tien_nt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_tien]  DEFAULT ((0)) FOR [t_tien]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_tien_nt0]  DEFAULT ((0)) FOR [t_tien_nt0]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_tien0]  DEFAULT ((0)) FOR [t_tien0]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [DF_ph72_t_tien_nt1]  DEFAULT ((0)) FOR [t_tien_nt1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [DF_ph72_t_tien1]  DEFAULT ((0)) FOR [t_tien1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_cp_nt]  DEFAULT ((0)) FOR [t_cp_nt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_cp]  DEFAULT ((0)) FOR [t_cp]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_nk_nt]  DEFAULT ((0)) FOR [t_nk_nt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_nk]  DEFAULT ((0)) FOR [t_nk]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_tk_thue_nk]  DEFAULT ('') FOR [tk_thue_nk]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_db]  DEFAULT ((0)) FOR [t_db]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_db_nt]  DEFAULT ((0)) FOR [t_db_nt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_tk_thue_db]  DEFAULT ('') FOR [tk_thue_db]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_tk_thue_no]  DEFAULT ('') FOR [tk_thue_no]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_kh2]  DEFAULT ('') FOR [ma_kh2]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_tk_thue_co]  DEFAULT ('') FOR [tk_thue_co]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_thue]  DEFAULT ('') FOR [ma_thue]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_thue_suat]  DEFAULT ((0)) FOR [thue_suat]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_thue_nt]  DEFAULT ((0)) FOR [t_thue_nt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_thue]  DEFAULT ((0)) FOR [t_thue]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_so_hd_gtgt]  DEFAULT ((0)) FOR [so_hd_gtgt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_tt_nt]  DEFAULT ((0)) FOR [t_tt_nt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_t_tt]  DEFAULT ((0)) FOR [t_tt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_han_tt]  DEFAULT ((0)) FOR [han_tt]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_time]  DEFAULT ('') FOR [time]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_time0]  DEFAULT ('') FOR [time0]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_status]  DEFAULT ('') FOR [status]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_so_lo1]  DEFAULT ('') FOR [so_lo1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_cp_thue_ck]  DEFAULT ((0)) FOR [cp_thue_ck]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_bpht]  DEFAULT ('') FOR [ma_bpht]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_loai_ct]  DEFAULT ('') FOR [loai_ct]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_so_lsx]  DEFAULT ('') FOR [so_lsx]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_td1]  DEFAULT ('') FOR [ma_td1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_td2]  DEFAULT ('') FOR [ma_td2]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_td3]  DEFAULT ('') FOR [ma_td3]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_sl_td1]  DEFAULT ((0)) FOR [sl_td1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_sl_td2]  DEFAULT ((0)) FOR [sl_td2]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_sl_td3]  DEFAULT ((0)) FOR [sl_td3]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_gc_td1]  DEFAULT ('') FOR [gc_td1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_gc_td2]  DEFAULT ('') FOR [gc_td2]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_gc_td3]  DEFAULT ('') FOR [gc_td3]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_hd]  DEFAULT ('') FOR [ma_hd]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_ku]  DEFAULT ('') FOR [ma_ku]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_sua_tien]  DEFAULT ((0)) FOR [sua_tien]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_gc_s1]  DEFAULT ('') FOR [gc_s1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_gc_s2]  DEFAULT ('') FOR [gc_s2]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_sl_s1]  DEFAULT ((0)) FOR [sl_s1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_sl_s2]  DEFAULT ((0)) FOR [sl_s2]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_s1]  DEFAULT ('') FOR [ma_s1]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_s2]  DEFAULT ('') FOR [ma_s2]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_tb]  DEFAULT ('') FOR [ma_tb]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_hdm]  DEFAULT ('') FOR [ma_hdm]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_dvcs]  DEFAULT ('') FOR [ma_dvcs]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_px]  DEFAULT ('') FOR [ma_px]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_qs]  DEFAULT ('') FOR [ma_qs]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ma_thck]  DEFAULT ('') FOR [ma_thck]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_ty_giaf]  DEFAULT ((0)) FOR [ty_giaf]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [ph72_loai_pb]  DEFAULT ('') FOR [loai_pb]
+GO
+
+ALTER TABLE [dbo].[ph72] ADD  CONSTRAINT [DF_ph72_cp_thue_ck1]  DEFAULT ((0)) FOR [thue_nk_cp]
+GO
+
+
+
+
+CREATE TABLE [dbo].[ct72](
+	[stt_rec] [dbo].[udt_stt_rec] NULL,
+	[stt_rec0] [dbo].[udt_stt_rec0] NULL,
+	[ma_ct] [dbo].[udt_ma_ct] NULL,
+	[ngay_ct] [dbo].[udt_ngay_ct] NULL,
+	[so_ct] [dbo].[udt_so_ct] NULL,
+	[ma_kho_i] [dbo].[udt_ma_kho] NULL,
+	[ma_vv_i] [dbo].[udt_ma_vv] NULL,
+	[ma_vt] [dbo].[udt_ma_vt] NULL,
+	[tk_vt] [dbo].[udt_tk] NULL,
+	[so_luong] [dbo].[udt_so_luong] NULL,
+	[gia_nt] [dbo].[udt_gia_nt] NULL,
+	[gia] [dbo].[udt_gia] NULL,
+	[tien_nt] [dbo].[udt_tien_nt] NULL,
+	[tien] [dbo].[udt_tien] NULL,
+	[gia_nt0] [dbo].[udt_gia_nt] NULL,
+	[gia0] [dbo].[udt_gia] NULL,
+	[tien_nt0] [dbo].[udt_tien_nt] NULL,
+	[tien0] [dbo].[udt_tien] NULL,
+	[cp_nt] [dbo].[udt_tien_nt] NULL,
+	[cp] [dbo].[udt_tien] NULL,
+	[nk_nt] [dbo].[udt_tien_nt] NULL,
+	[nk] [dbo].[udt_tien] NULL,
+	[thue_nt] [dbo].[udt_tien_nt] NULL,
+	[thue] [dbo].[udt_tien] NULL,
+	[ma_td_i] [dbo].[udt_ma_td] NULL,
+	[stt_rec_px] [char](11) NULL,
+	[stt_rec0px] [dbo].[udt_stt_rec0] NULL,
+	[ma_td2_i] [dbo].[udt_ma_td] NULL,
+	[ma_td3_i] [dbo].[udt_ma_td] NULL,
+	[ngay_td1_i] [dbo].[udt_ngay_ct] NULL,
+	[sl_td1_i] [dbo].[udt_so_luong] NULL,
+	[sl_td2_i] [dbo].[udt_so_luong] NULL,
+	[sl_td3_i] [dbo].[udt_so_luong] NULL,
+	[gc_td1_i] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_td2_i] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_td3_i] [dbo].[udt_ghi_chu_td] NULL,
+	[tk_thue_i] [dbo].[udt_tk] NULL,
+	[ma_sp] [dbo].[udt_ma_vt] NULL,
+	[sl_sp] [dbo].[udt_so_luong] NULL,
+	[ma_phi_i] [dbo].[udt_ma_phi] NULL,
+	[so_lsx_i] [dbo].[udt_so_lsx] NULL,
+	[so_dh_i] [dbo].[udt_so_ct] NULL,
+	[lot_nbr] [dbo].[udt_lot_nbr] NULL,
+	[han_sd_lot] [dbo].[udt_ngay_ct] NULL,
+	[ma_nvhh] [dbo].[udt_ma_nvhh] NULL,
+	[loc_id] [dbo].[udt_loc_id] NULL,
+	[dvt2] [dbo].[udt_dvt] NULL,
+	[so_luong2] [dbo].[udt_so_luong] NULL,
+	[ma_bpht_i] [dbo].[udt_ma_bp] NULL,
+	[ma_hd_i] [dbo].[udt_ma_hop_dong] NULL,
+	[ma_ku_i] [char](16) NULL,
+	[ngay_s1_i] [dbo].[udt_ngay_ct] NULL,
+	[ngay_s2_i] [dbo].[udt_ngay_ct] NULL,
+	[gc_s1_i] [nvarchar](32) NULL,
+	[gc_s2_i] [nvarchar](32) NULL,
+	[sl_s1_i] [dbo].[udt_so_luong] NULL,
+	[sl_s2_i] [dbo].[udt_so_luong] NULL,
+	[ma_s1_i] [dbo].[udt_ma_s1] NULL,
+	[ma_s2_i] [dbo].[udt_ma_s1] NULL,
+	[gc0_i] [dbo].[udt_ghi_chu_td] NULL,
+	[ma_ns_i] [dbo].[udt_ma_ns] NULL,
+	[ma_tb_i] [dbo].[udt_ma_tb] NULL,
+	[ma_hdm_i] [dbo].[udt_ma_hop_dong] NULL,
+	[ts_nk] [dbo].[udt_thue_suat] NULL,
+	[ts_db] [dbo].[udt_tien] NULL,
+	[db] [dbo].[udt_tien] NULL,
+	[db_nt] [dbo].[udt_tien_nt] NULL,
+	[so_ct_tc] [dbo].[udt_ten_dien_giai] NULL,
+	[ngay_ct_tc] [dbo].[udt_ngay_ct] NULL,
+	[ma_px_i] [dbo].[udt_ma_px] NULL,
+	[stt_dong] [dbo].[udt_stt_dong] NULL,
+	[sua_tk_vt] [numeric](1, 0) NULL,
+	[ma_td4_i] [dbo].[udt_ma_td] NULL,
+	[gia1] [dbo].[udt_gia] NULL,
+	[gia_nt1] [dbo].[udt_gia_nt] NULL,
+	[tien_nt1] [dbo].[udt_tien_nt] NULL,
+	[tien1] [dbo].[udt_tien] NULL,
+	[gia2] [dbo].[udt_gia] NULL,
+	[gia_nt2] [dbo].[udt_gia_nt] NULL,
+	[tien_nt2] [dbo].[udt_tien_nt] NULL,
+	[tien2] [dbo].[udt_tien] NULL,
+	[dvt1] [dbo].[udt_dvt] NULL,
+	[he_so1] [dbo].[udt_he_so_vt] NULL,
+	[so_luong1] [dbo].[udt_so_luong] NULL,
+	[ma_lo] [dbo].[udt_ma_lo] NULL
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_stt_rec]  DEFAULT ('') FOR [stt_rec]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_stt_rec0]  DEFAULT ('') FOR [stt_rec0]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_ct]  DEFAULT ('') FOR [ma_ct]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_so_ct]  DEFAULT ('') FOR [so_ct]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_kho_i]  DEFAULT ('') FOR [ma_kho_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_vv_i]  DEFAULT ('') FOR [ma_vv_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_vt]  DEFAULT ('') FOR [ma_vt]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_tk_vt]  DEFAULT ('') FOR [tk_vt]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_so_luong]  DEFAULT ((0)) FOR [so_luong]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gia_nt]  DEFAULT ((0)) FOR [gia_nt]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gia]  DEFAULT ((0)) FOR [gia]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_tien_nt]  DEFAULT ((0)) FOR [tien_nt]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_tien]  DEFAULT ((0)) FOR [tien]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gia_nt0]  DEFAULT ((0)) FOR [gia_nt0]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gia0]  DEFAULT ((0)) FOR [gia0]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_tien_nt0]  DEFAULT ((0)) FOR [tien_nt0]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_tien0]  DEFAULT ((0)) FOR [tien0]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_cp_nt]  DEFAULT ((0)) FOR [cp_nt]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_cp]  DEFAULT ((0)) FOR [cp]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_nk_nt]  DEFAULT ((0)) FOR [nk_nt]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_nk]  DEFAULT ((0)) FOR [nk]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_thue_nt]  DEFAULT ((0)) FOR [thue_nt]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_thue]  DEFAULT ((0)) FOR [thue]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_td_i]  DEFAULT ('') FOR [ma_td_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_stt_rec_px]  DEFAULT ('') FOR [stt_rec_px]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_stt_rec0px]  DEFAULT ('') FOR [stt_rec0px]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_td2_i]  DEFAULT ('') FOR [ma_td2_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_td3_i]  DEFAULT ('') FOR [ma_td3_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_sl_td1_i]  DEFAULT ((0)) FOR [sl_td1_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_sl_td2_i]  DEFAULT ((0)) FOR [sl_td2_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_sl_td3_i]  DEFAULT ((0)) FOR [sl_td3_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gc_td1_i]  DEFAULT ('') FOR [gc_td1_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gc_td2_i]  DEFAULT ('') FOR [gc_td2_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gc_td3_i]  DEFAULT ('') FOR [gc_td3_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_tk_thue_i]  DEFAULT ('') FOR [tk_thue_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_sp]  DEFAULT ('') FOR [ma_sp]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_sl_sp]  DEFAULT ((0)) FOR [sl_sp]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_phi]  DEFAULT ('') FOR [ma_phi_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_so_lsx_i]  DEFAULT ('') FOR [so_lsx_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_so_dh_i]  DEFAULT ('') FOR [so_dh_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_lot_nbr]  DEFAULT ('') FOR [lot_nbr]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_nvhh]  DEFAULT ('') FOR [ma_nvhh]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_loc_id]  DEFAULT ('') FOR [loc_id]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_dvt2]  DEFAULT ('') FOR [dvt2]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_so_luong2]  DEFAULT ((0)) FOR [so_luong2]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_bpht_i]  DEFAULT ('') FOR [ma_bpht_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_hd_i]  DEFAULT ('') FOR [ma_hd_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_ku_i]  DEFAULT ('') FOR [ma_ku_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gc_s1_i]  DEFAULT ('') FOR [gc_s1_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gc_s2_i]  DEFAULT ('') FOR [gc_s2_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_sl_s1_i]  DEFAULT ((0)) FOR [sl_s1_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_sl_s2_i]  DEFAULT ((0)) FOR [sl_s2_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_s1_i]  DEFAULT ('') FOR [ma_s1_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_s2_i]  DEFAULT ('') FOR [ma_s2_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_gc0_i]  DEFAULT ('') FOR [gc0_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_ns_i]  DEFAULT ('') FOR [ma_ns_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_tb_i]  DEFAULT ('') FOR [ma_tb_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_hdm_i]  DEFAULT ('') FOR [ma_hdm_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ts_nk]  DEFAULT ((0)) FOR [ts_nk]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ts_db]  DEFAULT ((0)) FOR [ts_db]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_db]  DEFAULT ((0)) FOR [db]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_db_nt]  DEFAULT ((0)) FOR [db_nt]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_so_ct_tc]  DEFAULT ('') FOR [so_ct_tc]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_ma_px_i]  DEFAULT ('') FOR [ma_px_i]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [ct72_stt_dong]  DEFAULT ((0)) FOR [stt_dong]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [DF_ct72_gia1]  DEFAULT ((0)) FOR [gia1]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [DF_ct72_tien_nt1]  DEFAULT ((0)) FOR [tien_nt1]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [DF_ct72_tien1]  DEFAULT ((0)) FOR [tien1]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [DF_ct72_gia2]  DEFAULT ((0)) FOR [gia2]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [DF_ct72_tien_nt11]  DEFAULT ((0)) FOR [tien_nt2]
+GO
+
+ALTER TABLE [dbo].[ct72] ADD  CONSTRAINT [DF_ct72_tien11]  DEFAULT ((0)) FOR [tien2]
+GO
+
+
+U
+
+CREATE TABLE [dbo].[ct72gt](
+	[mau_bc] [numeric](1, 0) NULL,
+	[stt_rec] [dbo].[udt_stt_rec] NULL,
+	[stt_rec0] [dbo].[udt_stt_rec0] NULL,
+	[ma_ct] [dbo].[udt_ma_ct] NULL,
+	[ngay_ct] [dbo].[udt_ngay_ct] NULL,
+	[so_ct] [dbo].[udt_so_ct] NULL,
+	[ngay_ct0] [dbo].[udt_ngay_ct] NULL,
+	[so_ct0] [dbo].[udt_so_ct] NULL,
+	[so_seri0] [dbo].[udt_so_seri] NULL,
+	[ma_kh] [dbo].[udt_ma_kh] NULL,
+	[ten_kh] [dbo].[udt_ten_dien_giai] NULL,
+	[dia_chi] [dbo].[udt_dia_chi] NULL,
+	[ma_so_thue] [dbo].[udt_ma_so_thue] NULL,
+	[ma_nt] [dbo].[udt_ma_nt] NULL,
+	[ty_gia] [dbo].[udt_ty_gia] NULL,
+	[ma_vv] [dbo].[udt_ma_vv] NULL,
+	[ma_kho] [dbo].[udt_ma_kho] NULL,
+	[ten_vt] [dbo].[udt_ten_dien_giai] NULL,
+	[so_luong] [dbo].[udt_so_luong] NULL,
+	[gia_nt] [dbo].[udt_gia_nt] NULL,
+	[gia] [dbo].[udt_gia] NULL,
+	[t_tien_nt] [dbo].[udt_tien_nt] NULL,
+	[t_tien] [dbo].[udt_tien] NULL,
+	[thue_suat] [dbo].[udt_thue_suat] NULL,
+	[t_thue_nt] [dbo].[udt_tien_nt] NULL,
+	[t_thue] [dbo].[udt_tien] NULL,
+	[t_tt] [dbo].[udt_tien] NULL,
+	[t_tt_nt] [dbo].[udt_tien_nt] NULL,
+	[tk_thue_no] [dbo].[udt_tk] NULL,
+	[ma_kh2] [dbo].[udt_ma_kh] NULL,
+	[tk_du] [dbo].[udt_tk] NULL,
+	[ghi_chu] [dbo].[udt_ghi_chu] NULL,
+	[ma_td] [dbo].[udt_ma_td] NULL,
+	[ma_td2] [dbo].[udt_ma_td] NULL,
+	[ma_td3] [dbo].[udt_ma_td] NULL,
+	[ngay_td1] [dbo].[udt_ngay_ct] NULL,
+	[ngay_td2] [dbo].[udt_ngay_ct] NULL,
+	[ngay_td3] [dbo].[udt_ngay_ct] NULL,
+	[sl_td1] [dbo].[udt_so_luong] NULL,
+	[sl_td2] [dbo].[udt_so_luong] NULL,
+	[sl_td3] [dbo].[udt_so_luong] NULL,
+	[gc_td1] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_td2] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_td3] [dbo].[udt_ghi_chu_td] NULL,
+	[date] [dbo].[udt_ngay_ct] NULL,
+	[time] [dbo].[udt_time] NULL,
+	[user_id] [dbo].[udt_user_id] NULL,
+	[date0] [dbo].[udt_ngay_ct] NULL,
+	[time0] [dbo].[udt_time] NULL,
+	[user_id0] [dbo].[udt_user_id] NULL,
+	[status] [char](1) NULL,
+	[ma_thue] [dbo].[udt_ma_thue] NULL,
+	[ma_sp] [dbo].[udt_ma_vt] NULL,
+	[sl_sp] [dbo].[udt_so_luong] NULL,
+	[so_lsx] [dbo].[udt_so_lsx] NULL,
+	[ma_bpht] [dbo].[udt_ma_bp] NULL,
+	[ma_phi] [dbo].[udt_ma_phi] NULL,
+	[loai_ct] [char](2) NULL,
+	[ma_gd] [dbo].[udt_ma_gd] NULL,
+	[so_dh] [dbo].[udt_so_ct] NULL,
+	[lot_nbr] [dbo].[udt_lot_nbr] NULL,
+	[han_sd_lot] [dbo].[udt_ngay_ct] NULL,
+	[ma_nvhh] [dbo].[udt_ma_nvhh] NULL,
+	[loc_id] [dbo].[udt_loc_id] NULL,
+	[dvt2] [dbo].[udt_dvt] NULL,
+	[so_luong2] [dbo].[udt_so_luong] NULL,
+	[ma_hd] [dbo].[udt_ma_hop_dong] NULL,
+	[ma_ku] [dbo].[udt_ma_ku] NULL,
+	[ngay_s1] [dbo].[udt_ngay_ct] NULL,
+	[ngay_s2] [dbo].[udt_ngay_ct] NULL,
+	[gc_s1] [dbo].[udt_ghi_chu_td] NULL,
+	[gc_s2] [dbo].[udt_ghi_chu_td] NULL,
+	[sl_s1] [dbo].[udt_so_luong] NULL,
+	[sl_s2] [dbo].[udt_so_luong] NULL,
+	[ma_s1] [dbo].[udt_ma_s1] NULL,
+	[ma_s2] [dbo].[udt_ma_s1] NULL,
+	[gc0] [dbo].[udt_ghi_chu_td] NULL,
+	[ma_ns] [dbo].[udt_ma_ns] NULL,
+	[ma_tb] [dbo].[udt_ma_tb] NULL,
+	[han_tt] [numeric](3, 0) NULL,
+	[ma_hdm] [dbo].[udt_ma_hop_dong] NULL,
+	[ma_ms] [dbo].[udt_ma_ms] NULL,
+	[mau_so] [dbo].[udt_mau_so] NULL,
+	[ty_giaf] [dbo].[udt_ty_gia] NULL,
+	[tien_cn_nt] [dbo].[udt_tien_nt] NULL,
+	[tien_cn] [dbo].[udt_tien] NULL,
+	[ma_td4] [dbo].[udt_ma_td] NULL,
+	[kh_mau_hd] [dbo].[udt_ky_hieu_mau_hd] NULL,
+	[ma_thck] [dbo].[udt_ma_thck] NULL,
+	[loai_hd] [dbo].[udt_loai_hop_dong] NULL,
+	[dvt] [dbo].[udt_dvt] NULL
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_mau_bc]  DEFAULT ((0)) FOR [mau_bc]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_stt_rec]  DEFAULT ('') FOR [stt_rec]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_stt_rec0]  DEFAULT ('') FOR [stt_rec0]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_ct]  DEFAULT ('') FOR [ma_ct]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_so_ct]  DEFAULT ('') FOR [so_ct]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_so_ct0]  DEFAULT ('') FOR [so_ct0]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_so_seri0]  DEFAULT ('') FOR [so_seri0]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_kh]  DEFAULT ('') FOR [ma_kh]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ten_kh]  DEFAULT ('') FOR [ten_kh]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_dia_chi]  DEFAULT ('') FOR [dia_chi]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_so_thue]  DEFAULT ('') FOR [ma_so_thue]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_nt]  DEFAULT ('') FOR [ma_nt]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ty_gia]  DEFAULT ((0)) FOR [ty_gia]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_vv]  DEFAULT ('') FOR [ma_vv]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_kho]  DEFAULT ('') FOR [ma_kho]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ten_vt]  DEFAULT ('') FOR [ten_vt]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_so_luong]  DEFAULT ((0)) FOR [so_luong]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_gia_nt]  DEFAULT ((0)) FOR [gia_nt]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_gia]  DEFAULT ((0)) FOR [gia]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_t_tien_nt]  DEFAULT ((0)) FOR [t_tien_nt]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_t_tien]  DEFAULT ((0)) FOR [t_tien]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_thue_suat]  DEFAULT ((0)) FOR [thue_suat]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_t_thue_nt]  DEFAULT ((0)) FOR [t_thue_nt]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_t_thue]  DEFAULT ((0)) FOR [t_thue]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_tk_thue_no]  DEFAULT ('') FOR [tk_thue_no]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_kh2]  DEFAULT ('') FOR [ma_kh2]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_tk_du]  DEFAULT ('') FOR [tk_du]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ghi_chu]  DEFAULT ('') FOR [ghi_chu]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_td]  DEFAULT ('') FOR [ma_td]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_td2]  DEFAULT ('') FOR [ma_td2]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_td3]  DEFAULT ('') FOR [ma_td3]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_sl_td1]  DEFAULT ((0)) FOR [sl_td1]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_sl_td2]  DEFAULT ((0)) FOR [sl_td2]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_sl_td3]  DEFAULT ((0)) FOR [sl_td3]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_gc_td1]  DEFAULT ('') FOR [gc_td1]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_gc_td2]  DEFAULT ('') FOR [gc_td2]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_gc_td3]  DEFAULT ('') FOR [gc_td3]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_time]  DEFAULT ('') FOR [time]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_time0]  DEFAULT ('') FOR [time0]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_status]  DEFAULT ('') FOR [status]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_thue]  DEFAULT ('') FOR [ma_thue]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_sp]  DEFAULT ('') FOR [ma_sp]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_sl_sp]  DEFAULT ((0)) FOR [sl_sp]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_so_lsx]  DEFAULT ('') FOR [so_lsx]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_bpht]  DEFAULT ('') FOR [ma_bpht]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_phi]  DEFAULT ('') FOR [ma_phi]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_loai_ct]  DEFAULT ('') FOR [loai_ct]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [DF_ct72gt_ma_gd]  DEFAULT ('') FOR [ma_gd]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_so_dh]  DEFAULT ('') FOR [so_dh]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_lot_nbr]  DEFAULT ('') FOR [lot_nbr]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_nvhh]  DEFAULT ('') FOR [ma_nvhh]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_loc_id]  DEFAULT ('') FOR [loc_id]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_dvt2]  DEFAULT ('') FOR [dvt2]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_so_luong2]  DEFAULT ((0)) FOR [so_luong2]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_hd]  DEFAULT ('') FOR [ma_hd]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_ku]  DEFAULT ('') FOR [ma_ku]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_gc_s1]  DEFAULT ('') FOR [gc_s1]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_gc_s2]  DEFAULT ('') FOR [gc_s2]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_sl_s1]  DEFAULT ((0)) FOR [sl_s1]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_sl_s2]  DEFAULT ((0)) FOR [sl_s2]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_s1]  DEFAULT ('') FOR [ma_s1]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_s2]  DEFAULT ('') FOR [ma_s2]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_gc0]  DEFAULT ('') FOR [gc0]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_ns]  DEFAULT ('') FOR [ma_ns]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_tb]  DEFAULT ('') FOR [ma_tb]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_han_tt]  DEFAULT ((0)) FOR [han_tt]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_hdm]  DEFAULT ('') FOR [ma_hdm]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ma_ms]  DEFAULT ('') FOR [ma_ms]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_mau_so]  DEFAULT ('') FOR [mau_so]
+GO
+
+ALTER TABLE [dbo].[ct72gt] ADD  CONSTRAINT [ct72gt_ty_giaf]  DEFAULT ((0)) FOR [ty_giaf]
+GO
+
+

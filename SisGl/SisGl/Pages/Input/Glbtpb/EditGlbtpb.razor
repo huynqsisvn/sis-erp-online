@@ -1,0 +1,771 @@
+﻿@inherits FrmListBaseComponent
+@using System.Data
+@using DevExpress.Blazor
+
+<FormList Title="@Title" @bind-curActionTask="@curActionTask" OnNew="@OnNew" OnCopy="@OnCopy" OnEdit="@OnEdit" OnSave="@OnSave" OnCancel="@OnCancel">
+    <div class="row m-1 me-2 rounded-1 border border-light shadow">
+        <DxFormLayout Data="@CurPh" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+            <DxFormLayoutItem Caption="@Lap["No."]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxSpinEdit @bind-Value="CurPh.Stt" DisplayFormat="0" Min="0" Max="999" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Delivery time"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxDateEdit @bind-Date="CurPh.Ngay_ct" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Book code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmqs" @bind-Value="CurPh.Ma_qs" IsEnable="@AllowEditMode" Filter="@_filter_qs" IsLangEn="@IsLangEn" SelectChanged="MaQs_LostFocus" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Voucher No"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxTextBox @bind-Text="CurPh.So_ct" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Entry name"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxTextBox @bind-Text="CurPh.Ten_bt" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Account allocation"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmtk" @bind-Value="CurPh.Tk_no" IsEnable="@AllowEditMode" SelectChanged="TkNo_LostFocus" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Object of allocation"]" ColSpanMd="6" BeginRow="true" >
+                <Template>
+                    <DxComboBox Data="@DoiTuongList" Enabled="@AllowEditMode"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                NullText="@Lap["Select ..."]"
+                                ListRenderMode="ListRenderMode.Virtual"
+                                FilteringMode="DataGridFilteringMode.Contains"
+                                ValueFieldName="Ma" @bind-Value="@CurPh.Doi_tuong"
+                                SelectedItemChanged="@((Dmtk value) => { Doituong_Changed(value); })"
+                                EditFormat="{0}-{1}">
+                        <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)"
+                                            Caption="@Lap["ID"]"
+                                            Width="50px" />
+                        <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)"
+                                            Caption="@Lap["Name"]" />
+                        <DxListEditorColumn FieldName="@nameof(Dmtk.Value2)"
+                                            Caption="@Lap["List ID"]" />
+                    </DxComboBox>                    
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Object ID"]" ColSpanMd="6">
+                <Template>                    
+                    <AutocompleteComponent @ref="autMadt" Ma_dm="@Ma_dm" @bind-Value="CurPh.Ma_dt" IsEnable="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Cal amount method"]" ColSpanMd="3">
+                <Template>
+                    <DxComboBox Id="cboCachpb" Enabled="@AllowEditMode"
+                                CssClass="col"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                Data="@CachPbList"
+                                TextFieldName="Ten"
+                                ValueFieldName="Ma"
+                            @bind-Value="@CurPh.Cach_pb"/>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Amount allocated"]" ColSpanMd="3">
+                <Template>
+                    <DxSpinEdit @bind-Value="CurPh.Tien_pb" DisplayFormat="N0" Enabled="@(AllowEditMode && (CurPh.Cach_pb=="2"))" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Allocation coefficient"]" ColSpanMd="6">
+                <Template>
+                     <DxComboBox Id="cboCachhs" Enabled="@AllowEditMode"                                
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                Data="@CachHsList"
+                                TextFieldName="Ten"
+                                ValueFieldName="Ma"
+                            @bind-Value="@CurPh.Cach_hs"/>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Debit list"]" ColSpanMd="12">
+                <Template>
+                    <DxTextBox @bind-Text="CurPh.Ds_tk_no" Enabled="@(AllowEditMode && (CurPh.Cach_hs == "2"))" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Credit list"]" ColSpanMd="12">
+                <Template>
+                    <DxTextBox @bind-Text="CurPh.Ds_tk_co" Enabled="@(AllowEditMode && (CurPh.Cach_hs == "2"))" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6">
+                <Template>
+                    <DxComboBox Data="@LSStatus" @bind-Value="@CurPh.Trang_thai"
+                    TextFieldName="Ten" ValueFieldName="Ma" Enabled="@AllowEditMode">
+                    </DxComboBox>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Automatic get ID"]" ColSpanMd="6">
+                <Template>
+                    <DxButton Click="@PopulateFromDs" Text="@Lap["Get ID"]" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>           
+        </DxFormLayout>
+
+        <div class="mt-0 d-flex justify-content-between">   
+            <div></div>
+            @* <div class="text-muted">F4 - Thêm, F8 - Xóa</div> *@
+        </div>
+        <div style="height:400px">
+            <DxGrid @ref="GridCT" Data="@LSCt" ShowPager="false" ShowFilterRow="false" CssClass="mt-2 grd-detail" KeyboardNavigationEnabled="true" PagerVisible="false"
+                EditMode="GridEditMode.EditRow" EditNewRowPosition="GridEditNewRowPosition.Bottom" ValidationEnabled="false" AllowSelectRowByClick="true"
+                CustomizeEditModel="Grid_CustomizeEditModelCT" EditModelSaving="Grid_EditModelSavingCT" DataItemDeleting="Grid_DataItemDeletingCT"
+                RowClick="@StartEditDataItemByClickCT" VirtualScrollingEnabled="true" ColumnResizeMode="GridColumnResizeMode.ColumnsContainer" TextWrapEnabled="true"
+                @bind-SelectedDataItem="@SelectedDataItemCT">
+            <Columns>
+                <DxGridCommandColumn Width="60" Visible="@AllowEditMode" NewButtonVisible="true">                        
+                        <CellDisplayTemplate Context="cntdel">
+                            <div class="grid-cell-align-center">
+                                <DxButton IconCssClass="fa-solid fa-pen-to-square"
+                                          RenderStyle="ButtonRenderStyle.Link"
+                                          CssClass="grid-edit-btn"
+                                          aria-label="Edit"
+                                          Click="@(() => GridCT.StartEditDataItemAsync(cntdel.DataItem))"/>
+                                <DxButton IconCssClass="fa-solid fa-trash-can"
+                                          RenderStyle="ButtonRenderStyle.Link"
+                                          CssClass="grid-delete-btn"
+                                          aria-label="Delete"
+                                          Click="@(() => GridCT.ShowRowDeleteConfirmation(cntdel.VisibleIndex))" />
+                            </div>
+                        </CellDisplayTemplate>
+                        <CellEditTemplate Context="cntdel1">
+                            <div class="grid-cell-align-center">
+                                <DxButton Enabled="false"
+                                          CssClass="grid-disabled-button"
+                                          IconCssClass="grid-icon grid-icon-delete"
+                                          aria-label="Delete"
+                                          RenderStyle="ButtonRenderStyle.Link" />
+                            </div>
+                        </CellEditTemplate>
+                    </DxGridCommandColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Stt)" Caption="#" Width="50" ReadOnly="true" />
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Tk_no)" Caption="@Lap["Debit account"]" Width="150">
+                    <CellEditTemplate Context="ctx">
+                        @{
+                            var item = (Ctdmpb)ctx.EditModel;
+                        }
+                        <AutocompleteComponent Ma_dm="dmtk1" @bind-Value="item.Tk_no" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </CellEditTemplate>
+                </DxGridDataColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Tk_co)" Caption="@Lap["Credit account"]" Width="150" ReadOnly="true">
+                    <CellEditTemplate Context="ctx">
+                        @{
+                            var item = (Ctdmpb)ctx.EditModel;
+                        }
+                        <AutocompleteComponent Ma_dm="dmtk" @bind-Value="item.Tk_co" IsEnable="false" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </CellEditTemplate>
+                </DxGridDataColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.He_so)" Caption="@Lap["Coefficient"]" DisplayFormat="@M_IP_SL" Width="100" />
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Ma_bpht)" Caption="@Lap["Dept. code"]" Width="120">
+                    <CellEditTemplate Context="ctx">
+                        @{
+                            var item = (Ctdmpb)ctx.EditModel;
+                        }
+                        <AutocompleteComponent Ma_dm="dmbpht" @bind-Value="item.Ma_bpht" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </CellEditTemplate>
+                </DxGridDataColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Ma_px)" Caption="@Lap["Process code"]" Width="120">
+                        <CellEditTemplate Context="ctx">
+                            @{
+                                var item = (Ctdmpb)ctx.EditModel;
+                            }
+                            <AutocompleteComponent Ma_dm="dmpx" @bind-Value="item.Ma_px" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Ma_vv)" Caption="@Lap["Project code"]" Width="120">
+                    <CellEditTemplate Context="ctx">
+                            @{
+                                var item = (Ctdmpb)ctx.EditModel;
+                            }
+                            <AutocompleteComponent Ma_dm="dmvv" @bind-Value="item.Ma_vv" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>"
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Ma_phi)" Caption="@Lap["Fee code"]" Width="120">
+                        <CellEditTemplate Context="ctx">
+                            @{
+                                var item = (Ctdmpb)ctx.EditModel;
+                            }
+                            <AutocompleteComponent Ma_dm="dmphi" @bind-Value="item.Ma_phi" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Ma_sp)" Caption="@Lap["Product code"]" Width="120">
+                        <CellEditTemplate Context="ctx">
+                            @{
+                                var item = (Ctdmpb)ctx.EditModel;
+                            }
+                            <AutocompleteComponent Ma_dm="dmsp" @bind-Value="item.Ma_sp" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Ma_hd)" Caption="@Lap["Order no."]" Width="120">
+                    <CellEditTemplate Context="ctx">
+                        @{var item = (Ctdmpb)ctx.EditModel;}
+                        <AutocompleteComponent Ma_dm="dmhd" @bind-Value="item.Ma_hd" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </CellEditTemplate>
+                 </DxGridDataColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Ma_td)" Caption="@Lap["Free code"]" Width="120">
+                        <CellEditTemplate Context="ctx">
+                            @{
+                                var item = (Ctdmpb)ctx.EditModel;
+                            }
+                            <AutocompleteComponent Ma_dm="dmtd" @bind-Value="item.Ma_td" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </CellEditTemplate>
+                </DxGridDataColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Ma_td2)" Caption="@(Lap["Free code"] + " 2")" Width="120">
+                        <CellEditTemplate Context="ctx">
+                            @{
+                                var item = (Ctdmpb)ctx.EditModel;
+                            }
+                            <AutocompleteComponent Ma_dm="dmtd2" @bind-Value="item.Ma_td2" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </CellEditTemplate>
+                </DxGridDataColumn>
+                <DxGridDataColumn FieldName="@nameof(Ctdmpb.Ma_td3)" Caption="@(Lap["Free code"] + " 3")" Width="120">
+                        <CellEditTemplate Context="ctx">
+                            @{
+                                var item = (Ctdmpb)ctx.EditModel;
+                            }
+                            <AutocompleteComponent Ma_dm="dmtd3" @bind-Value="item.Ma_td3" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </CellEditTemplate>
+                </DxGridDataColumn>
+            </Columns>
+        </DxGrid>
+        </div>
+    </div>
+</FormList>
+
+@code {
+    [Parameter] public string Ma_ct { get; set; } = "PK4";    
+    [Parameter] public int Nam { get; set; } = DateTime.Now.Year;
+    [Parameter] public int Ky { get; set; } = DateTime.Now.Month;
+    [Parameter] public int Ky2 { get; set; } = DateTime.Now.Month;
+
+    public AutocompleteComponent autMadt;
+    Phdmpb CurPh = new Phdmpb();
+    List<Ctdmpb> LSCt = new List<Ctdmpb>();    
+    DxGrid GridCT;
+
+    public List<Dmtk> DoiTuongList { get; set; }
+    public List<Dmtk> CachPbList { get; set; }
+    public List<Dmtk> CachHsList { get; set; }
+
+    public string Stt_rec { get; set; } = "";
+    public string M_IP_SL = "";
+    public string M_WS_ID = "Z";
+    public string[] Procedures;
+    public string Ma_dm = "dmvv";
+    public string _filter_qs = "";
+    public int ActiveTabIndex { get; set; } = 1;
+    public DotNetObjectReference<EditGlbtpb> Pageobj;
+    string end_GridCt = "end_input_GridCt0";
+
+    public object selectedDataItemCT;
+    public object SelectedDataItemCT
+    {
+        get => selectedDataItemCT;
+        set
+        {
+            selectedDataItemCT = value;
+        }
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Stt_rec = Ma_ma?.Trim();
+        PageLoad();
+        LoadOptions();
+        Procedures = curCommand.Store_proc.ToString().Split('|');
+        _filter_qs = String.Format("ma_cts = '' OR CHARINDEX('{0}',ma_cts) > 0", Ma_ct);
+
+        CurPh = new Phdmpb();
+        LSCt = new List<Ctdmpb>();
+
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                Title = Lap["View"] + ": " + (IsLangEn ? CurPh.Ten_bt2 : CurPh.Ten_bt);
+                V_Xem();
+                break;
+            case ActionTask.Edit:
+                Title = Lap["Edit"] + ": " + (IsLangEn ? CurPh.Ten_bt2 : CurPh.Ten_bt);
+                V_Sua();
+                break;
+            case ActionTask.New:
+                Title = Lap["New"] + ": " + Lap["Allocation"];
+                V_Moi();
+                break;
+            default:
+                V_Xem();
+                break;
+        }
+        DoiTuongList = new List<Dmtk>() {
+            new Dmtk() {Ma= "0",Ten= Lap["No object"],Value2 = "",Value3="" },
+            new Dmtk() {Ma= "1",Ten= Lap["Department"],Value2 = "dmbpht" ,Value3="ma_bpht"},
+            new Dmtk() {Ma= "2",Ten= Lap["Project"],Value2 = "dmvv",Value3="ma_vv" },
+            new Dmtk() {Ma= "3",Ten= Lap["Fee"],Value2 = "dmphi",Value3="ma_phi" },
+            new Dmtk() {Ma= "4",Ten= Lap["Free field"],Value2 = "dmtd",Value3="ma_td"},
+            new Dmtk() {Ma= "5",Ten= Lap["Free field"] +" 2",Value2 = "dmtd2",Value3="ma_td2"},
+            new Dmtk() {Ma= "6",Ten= Lap["Free field"] +" 3",Value2 = "dmtd3",Value3="ma_td3"},
+            new Dmtk() {Ma= "7",Ten= Lap["Workshop"],Value2 = "dmpx",Value3="ma_px"}
+        };
+        CachPbList = new List<Dmtk>(){            
+            new Dmtk() {Ma= "1",Ten= Lap["Call"]},
+            new Dmtk() {Ma= "2",Ten= Lap["Manual"]}
+        };
+        CachHsList= new List<Dmtk>(){            
+            new Dmtk() {Ma= "1",Ten= Lap["Coefficients manually"]},
+            new Dmtk() {Ma= "2",Ten= Lap["Based on the occurrence of other accounts"]}
+        };            
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {   
+            base.OnAfterRenderAsync(firstRender);
+            Pageobj = DotNetObjectReference.Create(this);
+            await JavacriptS.InvokeVoidAsync("SetPageObj", Pageobj);
+            await JavacriptS.InvokeVoidAsync("AttachEnterAsTab");
+            StateHasChanged();
+        }
+        await JavacriptS.InvokeVoidAsync("changeTextNewRowButton", Lap["Click here to add a new row"].ToString().Trim());
+    }
+    [JSInvokable]
+    public void CallGridEditMode(string value)
+    {
+        if (!string.IsNullOrEmpty(value) && AllowEditMode)
+        {
+            if (value.Equals(end_GridCt))
+                GridCT.StartEditNewRowAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async void GridFMode(string value)
+    {
+        if (!string.IsNullOrEmpty(value) && AllowEditMode)
+        {
+            if (value.Equals("F4"))
+            {
+                if (ActiveTabIndex == 1)
+                {
+
+                }
+            }
+            else if (value.Equals("F8"))
+            {
+                if (ActiveTabIndex == 1)
+                {
+                    if (SelectedDataItemCT != null)
+                        GridCT.ShowDataItemDeleteConfirmation(SelectedDataItemCT);
+                    else
+                    {
+                        myStateMN.SetNewThongbao(Lap["No row selected to delete"] + " !");
+                        StateHasChanged();
+                        return;
+                    }
+                }
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+                if (ActiveTabIndex == 1)
+                {
+                    await GridCT.CancelEditAsync();
+                    if (LSCt.Count > 0)
+                        LSCt.Remove(LSCt[LSCt.Count - 1]);
+                }
+            }
+        }
+    }
+
+    async Task OnNew() { V_Moi(); curActionTask = ActionTask.New; StateHasChanged(); }
+    async Task OnCopy() { V_Copy(); curActionTask = ActionTask.New; StateHasChanged(); }
+    async Task OnEdit() { V_Sua(); }
+
+    public async Task Loaddata()
+    {
+
+    }
+
+    async void V_Moi()
+    {
+        CurPh.Stt_rec = GetStt_rec();
+        CurPh.Stt = GetNewStt();
+        CurPh.Ngay_ct = DateTime.Now.Date;
+        CurPh.Doi_tuong = "7";
+        CurPh.Cach_pb = "1";
+        CurPh.Cach_hs = "2";
+        CurPh.Tien_pb = 0;
+        CurPh.Tien_pb_nt = 0;
+        CurPh.Trang_thai = "1";
+        CurPh.Ky = Ky;
+        CurPh.Ky2 = Ky2;
+        CurPh.Ma_dvcs = myStateMN.GetMa_Dvcs();
+        CurPh.Ma_ct = Ma_ct;
+        CurPh.Ma_qs = "";
+        CurPh.Date0 = DateTime.Now;
+        CurPh.Time0 = DateTime.Now.ToString("HH:mm:ss");
+        CurPh.User_id0 = curUser?.User_id ?? 0;
+        LSCt = new List<Ctdmpb>();
+        AllowEditMode = true;
+        StateHasChanged();
+    }
+
+    async void V_Copy()
+    {
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await LoadData(Stt_rec);
+            CurPh.Stt_rec = GetStt_rec();
+            CurPh.Stt = GetNewStt();
+            CurPh.Doi_tuong = String.IsNullOrEmpty(CurPh.Doi_tuong) ? "0" : CurPh.Doi_tuong.Trim();
+            foreach (var ct in LSCt)
+            {
+                ct.Stt_rec = CurPh.Stt_rec;
+                ct.Stt_rec0 = ct.Stt_rec0;
+            }
+            AllowEditMode = true;
+            curActionTask = ActionTask.New;
+            StateHasChanged();
+        }
+    }
+
+    async void V_Xem()
+    {
+        AllowEditMode = false;
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await LoadData(Stt_rec);
+            CurPh.Doi_tuong = String.IsNullOrEmpty(CurPh.Doi_tuong) ? "0" : CurPh.Doi_tuong.Trim();
+            StateHasChanged();
+        }
+    }
+
+    async void V_Sua()
+    {
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await LoadData(Stt_rec);
+            CurPh.Doi_tuong = String.IsNullOrEmpty(CurPh.Doi_tuong)?"0": CurPh.Doi_tuong.Trim();
+            AllowEditMode = true;
+            curActionTask = ActionTask.Edit;
+            StateHasChanged();
+        }
+    }
+
+    async Task LoadData(string sttRec)
+    {
+        try
+        {
+            string sql = $"select * from dmpbph where stt_rec = @sttRec";
+            var ds = await myDb.LoadDataset(sql, "sttRec", sttRec);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                var list = myDb.ConvertDataTable<Phdmpb>(ds.Tables[0]);
+                CurPh = list.First();
+            }
+
+            string sqlct = $"select * from dmpbct where stt_rec = @sttRec order by stt";
+            var dsct = await myDb.LoadDataset(sqlct, "sttRec", sttRec);
+            if (dsct != null && dsct.Tables[0].Rows.Count > 0)
+            {
+                LSCt = myDb.ConvertDataTable<Ctdmpb>(dsct.Tables[0]);
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi tải dữ liệu: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    async Task OnSave()
+    {
+        if (curActionTask == ActionTask.New || curActionTask == ActionTask.Edit)
+            await Save();
+    }
+
+    private async Task Save()
+    {
+        if (!CheckValid()) return;
+
+        try
+        {            
+            CurPh.Date = DateTime.Now;
+            CurPh.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurPh.User_id = curUser?.User_id ?? 0;
+            CurPh.Ma_dvcs = myStateMN.GetMa_Dvcs();
+            CurPh.Nam = Nam;
+
+            if (curActionTask == ActionTask.New)
+            {
+                CurPh.Date0 = DateTime.Now;
+                CurPh.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                CurPh.User_id0 = curUser?.User_id ?? 0;
+                await myDb.InsertOneRow<Phdmpb>(CurPh, "dmpbph");
+                if (LSCt.Count > 0) await myDb.InsertManyRow<Ctdmpb>(LSCt, "dmpbct", "stt_rec", CurPh.Stt_rec);
+                curActionTask = ActionTask.View;
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurPh.So_ct));
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                await myDb.UpdateOneRow<Phdmpb>(CurPh, "dmpbph", "stt_rec", Stt_rec);                
+                await myDb.ExecuteSqlQueryAsync($"Delete from dmpbct where stt_rec = '{CurPh.Stt_rec}'");
+                if (LSCt.Count > 0) await myDb.InsertManyRow<Ctdmpb>(LSCt, "dmpbct", "stt_rec", CurPh.Stt_rec);
+                curActionTask = ActionTask.View;
+                myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurPh.So_ct));
+            }
+
+            StateHasChanged();
+            AllowEditMode = false;
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi khi lưu: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (CurPh.Stt <= 0) { myStateMN.SetNewThongbao("Chưa vào stt!"); StateHasChanged(); return false; }
+        if (string.IsNullOrWhiteSpace(CurPh.Ma_qs)) { myStateMN.SetNewThongbao("Chưa vào quyển chứng từ!"); StateHasChanged(); return false; }
+        if (string.IsNullOrWhiteSpace(CurPh.So_ct)) { myStateMN.SetNewThongbao("Chưa vào số chứng từ!"); StateHasChanged(); return false; }
+        if (string.IsNullOrWhiteSpace(CurPh.Ten_bt)) { myStateMN.SetNewThongbao("Chưa vào tên bút toán!"); StateHasChanged(); return false; }
+        if (string.IsNullOrWhiteSpace(CurPh.Tk_no)) { myStateMN.SetNewThongbao("Chưa vào tài khoản tập hợp phân bổ!"); StateHasChanged(); return false; }
+        if (CurPh.Cach_pb == "2" && CurPh.Tien_pb == 0) { myStateMN.SetNewThongbao("Chưa vào tiền phân bổ!"); StateHasChanged(); return false; }
+        if (CurPh.Cach_hs == "2" && string.IsNullOrWhiteSpace(CurPh.Ds_tk_no) && string.IsNullOrWhiteSpace(CurPh.Ds_tk_co)) { myStateMN.SetNewThongbao("Chưa vào danh sách tài khoản nợ, có!"); StateHasChanged(); return false; }
+        if (LSCt == null || LSCt.Count == 0) { myStateMN.SetNewThongbao("Chưa vào chi tiết!"); StateHasChanged(); return false; }
+        if (LSCt.Any(d => string.IsNullOrWhiteSpace(d.Tk_no))) { myStateMN.SetNewThongbao("Có chi tiết chưa có tài khoản nợ!"); StateHasChanged(); return false; }
+        return true;
+    }
+
+    void AddRow()
+    {
+        var r = new Ctdmpb { Stt = LSCt.Count + 1, Tk_co = CurPh.Tk_no, Tk_no = "", Stt_rec = CurPh.Stt_rec, Stt_rec0 = (LSCt.Count + 1).ToString("0000") };
+        LSCt.Add(r);        
+    }
+
+    void DeleteSelectedRow()
+    {
+        if (SelectedDataItemCT != null)
+        {
+            LSCt.Remove((Ctdmpb)SelectedDataItemCT);
+            for (int i = 0; i < LSCt.Count; i++) { LSCt[i].Stt = i + 1; LSCt[i].Stt_rec0 = (i + 1).ToString("0000"); }
+            SelectedDataItemCT = null;
+            StateHasChanged();
+        }
+    }
+
+    async Task PopulateFromDs()
+    {
+        if (!AllowEditMode) return;
+        if (CurPh.Doi_tuong == "0" || String.IsNullOrEmpty(CurPh.Doi_tuong)) return;
+        if (string.IsNullOrWhiteSpace(CurPh.Ds_tk_no)) { myStateMN.SetNewThongbao("Chưa vào danh sách tk nợ?"); StateHasChanged(); return; }
+        if (string.IsNullOrWhiteSpace(CurPh.Ds_tk_co)) { myStateMN.SetNewThongbao("Chưa vào danh sách tk có?"); StateHasChanged(); return; }
+
+        await GridCT.SaveChangesAsync();
+        try
+        {
+            string proc = Procedures.Length > 5 ? Procedures[5] : "Glbtpb_AddMAPX";
+            string sql = $"Exec {proc} '{CurPh.Ds_tk_no.Trim()}','{CurPh.Ds_tk_co.Trim()}','{Ky}','{GetMa_doituong(CurPh.Doi_tuong)}','{Ky2}','{Nam}'";
+            var tbl = await myDb.LoadDataset(sql, null, null);
+            if (tbl != null && tbl.Tables[0].Rows.Count > 0)
+            {
+                string _tkno = CurPh.Tk_no;
+                string _tkco = "";
+                if (LSCt.Count >0)
+                {
+                    _tkco = LSCt[0].Tk_no;
+                }
+                
+                var doituong = GetMa_doituong(CurPh.Doi_tuong);
+                var newList = new List<Ctdmpb>();
+                int i = 1;
+                foreach (DataRow r in tbl.Tables[0].Rows)
+                {
+                    var d = new Ctdmpb { Stt = i++, Tk_co = _tkno, Tk_no = _tkco, Stt_rec = CurPh.Stt_rec, Stt_rec0 = (i - 1).ToString("0000") };
+                    var code = r["ma_ma"]?.ToString();
+                    switch (doituong)
+                    {
+                        case "ma_bpht": d.Ma_bpht = code; break;
+                        case "ma_vv": d.Ma_vv = code; break;
+                        case "ma_phi": d.Ma_phi = code; break;
+                        case "ma_td": d.Ma_td = code; break;
+                        case "ma_td2": d.Ma_td2 = code; break;
+                        case "ma_td3": d.Ma_td3 = code; break;
+                        case "ma_px": d.Ma_px = code; break;
+                    }
+                    newList.Add(d);
+                }
+
+                LSCt = newList;
+                myStateMN.SetNewThongbao(Lap["Code added successfully"]);
+                StateHasChanged();
+            }
+            else
+            {
+                myStateMN.SetNewThongbao(Lap["No codes for this period found"] + $": {Ky} -> {Ky2}");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Error: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+    string GetMa_doituong(string doituong)
+    {
+        string Doituong = DoiTuongList.FirstOrDefault(d => d.Ma == doituong.Trim())?.Value3 ?? "";
+        return Doituong;
+    }
+    // grid events
+    void Grid_CustomizeEditModelCT(GridCustomizeEditModelEventArgs e)
+    {
+        var current = (Ctdmpb)e.EditModel;
+        if (e.IsNew)
+        {
+            current.Stt = LSCt.Count > 0 ? LSCt.Max(a => a.Stt) + 1 : 1;
+            current.Stt_rec0 = current.Stt.ToString("0000");
+            current.Stt_rec = CurPh.Stt_rec;
+            current.Tk_co = CurPh.Tk_no;
+        }
+    }
+
+    async Task Grid_EditModelSavingCT(GridEditModelSavingEventArgs e)
+    {
+        var current = (Ctdmpb)e.EditModel;
+        if (e.IsNew)
+        {
+            LSCt.Add(current);
+        }
+        else
+        {
+            var existing = LSCt.FirstOrDefault(x => x.Stt_rec == current.Stt_rec && x.Stt == current.Stt);
+            if (existing != null)
+            {                
+                existing.Tk_no = current.Tk_no;
+                existing.Tk_co = current.Tk_co;
+                existing.He_so = current.He_so;
+                existing.Ma_bpht = current.Ma_bpht;
+                existing.Ma_px = current.Ma_px;
+                existing.Ma_vv = current.Ma_vv;
+                existing.Ma_phi = current.Ma_phi;
+                existing.Ma_sp = current.Ma_sp;
+                existing.Ma_hd = current.Ma_hd;
+                existing.Ma_td = current.Ma_td;
+                existing.Ma_td2 = current.Ma_td2;
+                existing.Ma_td3 = current.Ma_td3;
+            }
+        }
+    }
+
+    async Task Grid_DataItemDeletingCT(GridDataItemDeletingEventArgs e)
+    {
+        var item = (Ctdmpb)e.DataItem;
+        LSCt.Remove(item);
+        int stt = 1;
+        LSCt.ForEach(ct => { ct.Stt = stt; ct.Stt_rec0 = stt.ToString("0000"); stt++; });
+    }
+    async void StartEditDataItemByClickCT()
+    {
+        if (GridCT.IsEditing())
+            await GridCT.SaveChangesAsync();
+        if (SelectedDataItemCT != null)
+            await GridCT.StartEditDataItemAsync(SelectedDataItemCT);
+    }
+
+    async Task MaQs_LostFocus(ExpandoObject value)
+    {
+        if (string.IsNullOrWhiteSpace(CurPh.So_ct))
+        {
+            try
+            {
+                string sql = $"SELECT transform, so_ct + 1 as so_ct FROM dmqs WHERE ma_qs = @maqs";
+                var ds = await myDb.LoadDataset(sql, "maqs", CurPh.Ma_qs ?? "");
+                if (ds != null && ds.Tables[0].Rows.Count > 0)
+                {
+                    var row = ds.Tables[0].Rows[0];
+                    CurPh.So_ct = string.Format(row["transform"]?.ToString() ?? "{0}", Convert.ToDouble(row["so_ct"] ?? 0));
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
+    }
+
+    void TkNo_LostFocus(ExpandoObject value)
+    {
+        if (LSCt.Count == 0)
+        {
+            LSCt = new List<Ctdmpb>();
+            AddRow();            
+        }
+        foreach (var d in LSCt) d.Tk_co = CurPh.Tk_no;
+        StateHasChanged();
+    }
+    void Doituong_Changed(Dmtk value)
+    {
+        Ma_dm = value.Value2;
+        CurPh.Doi_tuong = value.Ma;
+        StateHasChanged();
+    }
+    public string GetStt_rec()
+    {
+        int result = 0;
+        object obj = myDb.GetValue("SELECT MAX(stt_rec) FROM dmpbph");
+        if (obj == null || obj == DBNull.Value)
+            return string.Format("{0}PK4{1:0000000}", M_WS_ID, (object)(result + 1));
+        int.TryParse(obj.ToString().Substring(4), out result);
+        return string.Format("{0}PK4{1:0000000}", M_WS_ID, (object)(result + 1));
+    }
+    public int GetNewStt()
+    {
+        string strsql = $"select isnull(max(stt),0) + 1 as New_stt from dmpbph where nam={Nam.ToString().Trim()} AND Ky = {Ky.ToString().Trim()} AND Ky2 = {Ky2.ToString().Trim()}";
+        var obj = myDb.GetValue(strsql);
+        int x = int.TryParse(obj?.ToString(), out var v) ? v : 0;
+        return x;
+    }
+    public virtual void LoadOptions()
+    {        
+        M_WS_ID = myOption.GetOptionsValue("M_WS_ID").Trim().ToUpper();
+        M_IP_SL = myOption.GetOptionsValue("M_IP_SL");
+    }
+    public virtual void OnCancel()
+    {
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo(ParentPage);
+    }
+}

@@ -1,0 +1,336 @@
+﻿@page "/Arctbh1"
+@page "/Arctbh1/{menu_id}"
+@inherits RepoBaseComponent
+@inject IWebHostEnvironment webhost
+@attribute [Authorize(Roles = "admin,arctbh1")]
+
+@if (!IsDetail)
+{
+    <div class="row mt-1">
+        <FrmBrowseComponent @ref="@oBrowse" TblData="@TblData" SelectItem="@SelectedItem" Fbrowse="@FbrowsePH" IsLangEn="@IsLangEn" CustomSummaryTextFormatter="@FormatSummaryText"></FrmBrowseComponent>
+    </div>
+}
+else
+{        
+    <div class="row mt-1">
+        <FrmBrowseComponent @ref="@oBrowseCT" TblData="@TblDataCT" Fbrowse="@FbrowseCT" IsLangEn="@IsLangEn" CustomSummaryTextFormatter="@FormatSummaryText"></FrmBrowseComponent>
+    </div>
+}
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="500px"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Item code"]">
+                        <AutocompleteComponent TblData="@TblDmvt"
+                                               Ma_dm="dmvt"
+                                               @bind-Value="@Ma_vt"
+                                               IsEnable="@AllowEditMode"
+                                               IsLangEn="@IsLangEn"
+                                               CssClass="@(string.IsNullOrWhiteSpace(Ma_vt) ? "input-invalid" : "")">
+                        </AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idTu_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idDen_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Quyển sổ"]">
+                        <DxTextBox  CssClass="col" @bind-Text="@QuyenSo" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"/>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Book opening date"]">
+                        <DxDateEdit @bind-Date="NgayMs" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Report template"]">
+                        <DxComboBox Data="@StatusList2"
+                                    @bind-Value="@Ma_nt"
+                                    ValueField="Value"
+                                    TextField="Text"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"  
+                                    NullText="VND" />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        }
+
+    </BodyTemplate>
+
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {            
+             <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col col-3 mx-4" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@BtnSave" />
+                <DxButton CssClass="col col-3" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>            
+        }
+    </FooterTemplate>
+</DxPopup>
+
+<style>
+    .input-invalid {
+        border: 1px solid red !important;
+        border-radius: 4px;
+    }
+</style>
+@code {
+    public FrmBrowseComponent oBrowseCT;
+    public bool IsDetail { get; set; } = false;
+    public List<Arctbh1> LstData;
+    public List<Arctbh1Model> LsData;
+    public DataTable TblDataCT;
+    public string FbrowsePH = "";
+    private DateTime? NgayMs { get; set; }
+    public string sFieldArrays;
+    public string FbrowseCT = "";
+    private string Ma_nt = "VND";
+    public DataTable TblDmvt { get; set; }
+    private string QuyenSo = "";
+    private bool AllowEditMode = true;
+    protected override void OnInitialized()
+    {
+        //Itype = typeof(Soth1);
+        base.OnInitialized();
+
+    }
+    public override async Task ShowToolBar()
+    {
+        // myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.SetToolBar(new MyToolbar("Search", true));
+        myStateMN.SetToolBar(new MyToolbar("Print", true));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+    }
+    
+  
+
+    public override async void ExportData(int type)
+    {
+        if(IsDetail)
+        {
+            oBrowseCT.ExPortGrid(type);
+        }
+        else
+        {
+            oBrowse.ExPortGrid(type);
+        }       
+
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+    #region "Tim kiem"
+    private string Ma_kh = "";
+    private string Ma_kho = "";
+    private string Ma_vt = "";
+    public string stradv = "";
+    private async void BtnSave()
+    {
+        ShowLoadding = true;
+        myStateMN.SetStartDate((DateTime)Ngay_ct1);
+        myStateMN.SetEndDate((DateTime)Ngay_ct2);
+
+        bool ok = await Loaddata();
+
+        ShowLoadding = false;
+
+        if (ok)
+            PopupVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+    private List<object> StatusList2 = new()
+    {
+        new { Value = "VND", Text = "Mẫu VND" },
+        new { Value = "NT", Text = "Ngoại Tệ" },
+    };
+
+    private void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+    string FormatSummaryText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        if (TblData == null || TblData.Rows.Count == 0)
+            return null;
+
+        var totalRow = TblData.Rows[0];
+
+        switch (e.Item.Name)
+        {
+            case "dien_giai":
+                return Lap["Summary"];
+        }
+
+        return null;
+    }
+    public override async Task<bool> Loaddata()
+    {
+
+        if (Ngay_ct1 == null || Ngay_ct2 == null || Ngay_ct1 > Ngay_ct2)
+        {
+            myStateMN.SetNewThongbao(Lap["Incorrect date declaration"] + " !");
+            return false;
+        }
+
+
+        if (string.IsNullOrWhiteSpace(Ma_vt))
+        {
+            myStateMN.SetNewThongbao(Lap["Chưa nhập mã vật tư"] + " !");
+            PopupVisible = true;
+            return false;
+        }
+
+
+        if (curCommand != null)
+        {
+            sFieldArrays = IsLangEn
+                ? (Ma_nt != "VND" ? curCommand.Ebrowse2 : curCommand.Ebrowse1)
+                : (Ma_nt != "VND" ? curCommand.Vbrowse2 : curCommand.Vbrowse1);
+
+            FbrowsePH = sFieldArrays.Length > 0 ? sFieldArrays : FbrowsePH;
+            
+        }
+
+        ShowLoadding = true;
+
+        string maVt = Ma_vt.Trim() + "%";
+
+        string maDvcs = myStateMN.GetDvcs().Ma_dvcs.Trim();
+        maDvcs = maDvcs == "ALL" ? "%" : maDvcs + "%";
+
+        string filter = "1=1";
+
+        filter += $"AND ma_vt LIKE '{maVt}'";
+
+        filter += $" AND ma_dvcs LIKE '{maDvcs}'";
+
+        string param_name = "@TuNg;@DenNg;@tk_dt;@tk_gt;@tk_thue;@tk_thue_gt;@filter";
+
+        string param_value =
+            $"{Ngay_ct1:yyyyMMdd};" +
+            $"{Ngay_ct2:yyyyMMdd};" +
+            $";" +      
+            $";" +      
+            $";" +      
+            $";" +      
+            $"{filter}";
+
+        DataSet ds = await myDb.LoadStoreProcedure("ARCTBH1", param_name, param_value);
+        if (ds?.Tables?.Count > 0)
+        {
+            TblData = ds.Tables[1].Copy();  
+            TblDataCT = ds.Tables[0].Copy();
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["No data available"] + " !");
+        }
+
+        ShowLoadding = false;
+        StateHasChanged();
+
+        return true;
+    }
+    async void OnDvcsChanged(string ma_dvcs)
+    {
+        Ma_dvcs = ma_dvcs;
+        Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+        await Loaddata();
+        StateHasChanged();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStateMN.GetCurUser();
+            Ma_dvcs = myStateMN.GetMa_Dvcs(); Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+            await PageLoad();
+            await Language();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+
+            if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+                myStateMN.SetToolBar(new MyToolbar("Print", true));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+            await Loaddata();
+            StateHasChanged();
+        }
+        else
+        {
+            if (IsDetail)
+            {
+                await oBrowseCT.FocusGridAsync();
+            }
+            else
+            {
+                await oBrowse.FocusGridAsync();
+            }
+        }
+    }
+    private async Task<(string ten_vt, string ten_vt2)>
+    LayThongTinTheoDieuKien(string Ma_vt)
+    {
+        string ten_vt = "", ten_vt2 = "";
+
+        if (!string.IsNullOrEmpty(Ma_vt))
+        {
+            string sqlVT = $"SELECT ten_vt, ten_vt2 FROM dmvt WHERE ma_vt = '{Ma_vt}'";
+            var dsVT = await myDb.LoadDataset(sqlVT);
+            if (dsVT != null && dsVT.Tables[0].Rows.Count > 0)
+            {
+                ten_vt = dsVT.Tables[0].Rows[0]["ten_vt"]?.ToString();
+                ten_vt2 = dsVT.Tables[0].Rows[0]["ten_vt2"]?.ToString();
+            }
+        }
+        return (ten_vt, ten_vt2);
+    }
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+    public override async void Print()
+    {    
+        var info = await LayThongTinTheoDieuKien(Ma_vt);
+        LsData = new List<Arctbh1Model>();
+        Arctbh1Model Data = new Arctbh1Model();
+        Data.Ngay_ct1 = (DateTime)Ngay_ct1;
+        Data.Ngay_ct2 = (DateTime)Ngay_ct2;
+        Data.QuyenSo = QuyenSo;
+        Data.Ma_vt = Ma_vt;
+        Data.Ten_vt = info.ten_vt;
+        Data.Ten_vt2 = info.ten_vt2;
+        LstData = myDb.ConvertDataTable<Arctbh1>(TblData);
+        Data.LsData = LstData;
+        LsData.Add(Data);
+        
+        ShowReport(LsData, typeof(Arctbh1Model));       
+    }
+    #endregion
+}

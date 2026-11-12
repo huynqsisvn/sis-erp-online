@@ -1,0 +1,90 @@
+﻿@implements IDisposable
+@inherits DxWindow
+@inject IOptionsManager options
+@inject IDxWindowService modalService
+@foreach (var model in DxWindowService.Modals) {
+    if (model.IsVisible)
+    {
+        <DxWindow Closed="() => OnClosed(model)" @bind-Visible="@model.IsVisible"
+                  Width="@(String.IsNullOrEmpty(model.nWitdh)?((model.Type == "CT" || model.Type == "BC")? "75vw":"Auto"):model.nWitdh)"
+            MinWidth="680px"
+            MinHeight="200px" Scrollable = "true" 
+            MaxHeight="98vh"
+            CssClass="custom-popup-header"
+            AllowResize="true"
+            AllowDrag="true"
+            AllowDragByHeaderOnly="true"
+            ShowHeader ="true"
+            ShowFooter = "false">
+            <HeaderTemplate>
+                @if(options.GetOptionsValue("M_IS_DEMO").Trim() == "TRUE")
+                {
+                    <div class="text-danger text-center ishdcaption">DEMO : @options.GetOptionsValue("M_TEN_CTY") @model.Title</div>
+                }
+                else
+				{
+                    <div class="ishcaption text-center">@options.GetOptionsValue("M_TEN_CTY") @model.Title</div>
+				}
+                @if (!String.IsNullOrEmpty(model.CancelCaption))
+                {
+                    <DxButton CssClass="popup-button my-1 ms-2" RenderStyle="ButtonRenderStyle.Secondary" Text="@model.CancelCaption" Click="@context.CloseCallback" />
+                }
+            </HeaderTemplate>
+            <BodyTemplate>                
+                <DynamicComponent Type="@model.ComponentType" Parameters="@model.Attributes"/>
+            </BodyTemplate>
+        </DxWindow>
+    }
+}
+<style>    
+    .custom-popup-header .dxbs-popup-header {
+        height: 10px;
+        font-size:6px;
+    }
+
+    .ishdcaption {        
+        font-size: 0.7rem;
+        font-family: SVN-Gilroy;
+		width: 100%;
+    }
+
+    .ishcaption {
+        color: dodgerblue;
+        font-size: 0.7rem;        
+        width: 100%;
+    }
+</style>
+
+@code {
+    DxWindowService DxWindowService {
+        get {
+            return (DxWindowService)modalService;
+        }
+    }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        DxWindowService.ShownAsync += ModalShown;
+        DxWindowService.ClosedAsync += ModalClosed;
+    }
+
+    protected void OnClosed(DxWindowModel model) {        
+        DxWindowService.Result(model);
+    }
+
+    protected async Task ModalShown(DxWindowModel model)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected async Task ModalClosed(DxWindowModel model)
+    {
+        OnClosed(model);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() {
+        DxWindowService.ShownAsync -= ModalShown;
+        DxWindowService.ClosedAsync -= ModalClosed;
+    }
+}

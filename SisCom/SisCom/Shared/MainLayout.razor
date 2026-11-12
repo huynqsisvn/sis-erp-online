@@ -1,0 +1,586 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject Statemanagerment myStatemanagerment
+@inject IOptionsManager myoptions
+@inject ILocalStorageService Localstore
+@inject IJSRuntime JavacriptS
+@inject IDbManager myDb
+@inject ISisTypeManager mySType
+@inject ICommandManager Commands
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager navigation
+@inject IChatService SisChatService
+@inject IStringLocalizer<App> Lap
+
+<DxLayoutBreakpoint MaxWidth="1025" @bind-IsActive="@IsDesktop" />
+<title>@Apptitle</title>
+<div @ref="@contentContainerRef" class="demo-content @LayoutStateCssClass">
+    <div class="sidebar p-0 m-0">
+        <Header></Header>
+    </div>
+    <div class="main p-0">
+        <div class="row pt-1" style="height:40px;background-color:aliceblue;">
+            <div class="col-1">
+                <DemoLayoutToggleButton @bind-Toggled="@LayoutToggled" />
+            </div>
+            <div class="col-11">
+                @if (!String.IsNullOrEmpty(Message))
+                {
+                    <MessageComponent Content="@Message" HideMessage="HideMessage" string_ok="@Lap["OK"]"></MessageComponent>
+                }
+                @if (!String.IsNullOrEmpty(ToastMessage))
+                {
+                    <ToastComponent Id="@ToastId" Message="@ToastMessage" OnCall="@Call_Toast"></ToastComponent>
+                }
+                
+                <TopMenuComponent>  </TopMenuComponent>
+                
+            </div>
+        </div>
+        <div class="content">
+            <ToolbarComponent></ToolbarComponent>           
+            <div>
+                @Body
+            </div>
+            <hr style="height:1px;background-color:dimgrey;margin:0px;padding:0px;">
+            <div  style="height:19px;">                
+                <DxMenu ItemClick="@OnItemClicked"
+                        Data="@MenuItems"
+                        CssClass="bg-transparent"
+                        Orientation="Orientation.Horizontal"
+                        SizeMode="SizeMode.Medium">
+                    <DataMappings>
+                        <DxMenuDataMapping Text="Text"
+                                           NavigateUrl="NavigateUrl"
+                                           BeginGroup="BeginGroup"
+                                           IconCssClass="IconCssClass"                                           
+                                           CssClass="CssClass"
+                                           Enabled="Enabled" />
+                    </DataMappings>
+                </DxMenu>
+            </div>
+        </div>
+        @if (!IsshowChatBox && !IsshowMskt && !IslistMskt)
+        {            
+            <div id="ggemini">                
+                <img id="btngemini" src=".\Images\sbot_icon.jpg" @onclick="ShowChatBox" />
+            </div>
+            
+        }
+        @if (IsshowChatBox)
+        {
+            <SisCom.Pages.GGemini.GGeminiComponent CloseWindow="@HideChatBox"></SisCom.Pages.GGemini.GGeminiComponent>            
+        }       
+
+    </div>
+    <XacnhanComponent Content="@Messagetb" Xacnhanxoa="Dongymsg"></XacnhanComponent>   
+</div>
+<DxWindows></DxWindows>
+<style> 
+    #ggemini {
+        position: absolute;
+        bottom: 10px;
+        right: 0px;
+        margin: 0;
+        padding: 0;
+        z-index: 999999;
+    }
+
+    #btngemini {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background-color: transparent;
+        box-shadow: 0 0 5px #005fff;
+        cursor: pointer;
+    }
+
+    .fab-container {
+        position: fixed;
+        bottom: 50px;
+        right: 0px;
+        z-index: 999;
+        cursor: pointer;
+    }
+
+    .fab-icon-holder {
+        width: 30px;
+        height: 30px;
+        border-radius: 100%;
+        background: skyblue;
+        opacity : 0.8;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .fab-icon-holder:hover {
+        opacity: 0.8;
+    }
+
+    .fab-icon-holder i {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        font-size: 25px;
+        color: #ffffff;
+    }
+
+    .fab {
+        width: 30px;
+        height: 30px;
+        background: #FE9900;
+        box-shadow: 0 0 5px skyblue;
+    }
+
+    .fab-options {
+        list-style-type: none;
+        margin: 0;
+        position: absolute;
+        bottom: 30px;
+        right: 0;
+        opacity: 0;
+        transition: all 0.3s ease;
+        transform: scale(0);
+        transform-origin: 85% bottom;
+    }
+
+    .fab:hover + .fab-options,
+    .fab-options:hover {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .fab-options li {
+        display: flex;
+        justify-content: flex-end;
+        padding: 5px;
+    }
+
+    .fab-label {
+        padding: 2px 5px;
+        align-self: center;
+        user-select: none;
+        white-space: nowrap;
+        border-radius: 3px;
+        font-size: 12px;        
+        color: orangered;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        margin-right: 10px;
+        border-color: Tomato;
+    }
+</style>
+@code {
+    static readonly int DateTimeNowYear = DateTime.Now.Year;
+    private string Message { get; set; } = "";
+    private string ToastMessage { get; set; } = "";
+    private string ToastId = "HeaderToastID"; 
+    private string _full_url = "";
+    private string Pagetitle = "Tra mã số kiểm tra";
+    private string Apptitle = "Công ty CP S.I.S Việt Nam";
+    string _themeName;
+    public string Usermskt = "";
+    bool _layoutToggled;
+    bool _themeSwitcherShown;
+    bool _isDesktop = true;
+    bool _isshowChatBox = false;
+    bool _isshowMskt = false;
+    bool _islistMskt = false;
+
+    DateTime ngay_ms1 { get; set; } = DateTime.Now;
+    DateTime ngay_ms2 { get; set; } = DateTime.Now;
+    string User_ms { get; set; } = "";
+
+    public DataTable TblMskt { get; set; }
+    string _searchString = "";
+    Users CurUser = null;
+    List<MenuTextFormatting> MenuItems = new List<MenuTextFormatting>();
+    ElementReference contentContainerRef;
+    [Inject]
+    NavigationManager NavigationManager { get; set; }
+    [Inject]
+    IJSRuntime JsRuntime { get; set; }
+    bool IsshowChatBox
+    {
+        get => _isshowChatBox;
+        set
+        {
+            _isshowChatBox = value;
+        }
+    }
+    bool IsshowMskt
+    {
+        get => _isshowMskt;
+        set
+        {
+            _isshowMskt = value;
+        }
+    }
+    bool IslistMskt
+    {
+        get => _islistMskt;
+        set
+        {
+            _islistMskt = value;
+        }
+    }
+    bool IsDesktop
+    {
+        get => !_isDesktop;
+        set
+        {
+            _isDesktop = !value;
+        }
+    }
+
+    void HideChatBox(bool value)
+    {
+        IsshowChatBox = !value;
+    }
+
+    void HideMskt()
+    {
+        IsshowMskt = false;
+    }
+    void ShowMskt()
+    {
+        IsshowMskt = !IsshowMskt;
+    }
+    void ShowChatBox()
+    {
+        IsshowChatBox = !IsshowChatBox;
+    }
+    void OnItemClicked(MenuItemEventArgs args)
+    {
+        MenuTextFormatting value = (MenuTextFormatting)args.ItemInfo.Data;
+        if (CurUser != null)
+        {
+            bool isAdd = false;
+            if (value.Name.Equals("favourite"))
+            {
+                isAdd = true;
+                if (!string.IsNullOrEmpty(CurUser.Wr_fav))
+                {
+                    if (!CurUser.Wr_fav.Split('/').Contains(value.Menu_id))
+                    {
+                        CurUser.Wr_fav += "/" + value.Menu_id;
+                    }
+                }
+                else
+                {
+                    CurUser.Wr_fav = value.Menu_id;
+                }
+            }
+            else if (value.Name.Equals("unfavourite"))
+            {
+                isAdd = false;
+                if (!string.IsNullOrEmpty(CurUser.Wr_fav))
+                {
+                    List<string> _ls_fav = CurUser.Wr_fav.Split('/').ToList();
+                    if (_ls_fav.Contains(value.Menu_id))
+                    {
+                        _ls_fav.Remove(value.Menu_id);
+                        CurUser.Wr_fav = string.Join("/", _ls_fav);
+                    }
+                }
+            }
+            string sql = string.Format("Update userinfo set wr_fav = '{1}' where user_id = {0}", CurUser.User_id, CurUser.Wr_fav);
+            myDb.ExecuteSqlQueryAsync(sql);
+            AddSubMenu(value.Menu_id);
+            myStatemanagerment.AddNewFavorite(value.Menu_id, isAdd);
+        }
+    }
+    protected override void OnInitialized()
+    {        
+        if (myoptions.GetOptionsValue("M_IS_DEMO").Trim() == "TRUE")
+            Apptitle = "DEMO : " + myoptions.GetOptionsValue("M_TEN_CTY").Trim();
+        else 
+            Apptitle = myoptions.GetOptionsValue("M_TEN_CTY").Trim();
+        string VcSize = !IsDesktop ? (myoptions.GetOptionsValue("M_STYLE").Trim().Equals("1") ? "2" : "3") : (myoptions.GetOptionsValue("M_STYLE").Trim().Equals("1") ? "1" : "2");
+        Options opt = new Options();
+        opt.Ma_phan_he = "SM";
+        opt.Name = "M_SIZE_MODE";
+        opt.Value = VcSize;
+        opt.Default = VcSize;
+        myoptions.AddOptions(opt);        
+        NavigationManager.LocationChanged += OnLocationChanged;
+        myStatemanagerment.OnAlertMesssagechanged += OnAlertMesssagechanged;
+        myStatemanagerment.OnToastMesssagechanged += OnToastMesssagechanged;
+        //WLog("OnInitialized: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss") + " - " + Apptitle + " - " + NavigationManager.Uri);
+    }
+    void HideMessage(bool value)
+    {
+        if (value)
+        {
+            Message = "";
+            StateHasChanged();
+        }
+    }
+    async void OnTu_ms1Changed(DateTime tu_ngay)
+    {
+        ngay_ms1 = tu_ngay;
+        ShowMsktClick();
+        StateHasChanged();
+    }
+    async void OnDen_ms2Changed(DateTime tu_ngay)
+    {
+        ngay_ms2 = tu_ngay;
+        ShowMsktClick();
+        StateHasChanged();
+    }
+    async void OnUser_msChanged(string userms)
+    {
+        User_ms = userms.Trim();
+        ShowMsktClick();
+        StateHasChanged();
+    }
+
+    async void ShowMsktClick()
+    {
+        string sql = "Select convert(char,a.date0,120) as ngayct,a.*,b.ten_kh,c.ten_nhsp from dmkhmskt a left join dmkhcr b ON Rtrim(a.ma_kh) = Rtrim(b.ma_kh) left join dmnhsp c ON Rtrim(a.ma_nhsp) = Rtrim(c.ma_nhsp) " +
+        "where convert(char,a.date0,112) >= '" + ngay_ms1.ToString("yyyyMMdd") + "' AND convert(char,a.date0,112) <= '" + ngay_ms2.ToString("yyyyMMdd") + "' AND a.user_name0 like '%"+User_ms+"%' order by a.date0 desc,a.time0 desc";
+        DataSet dsm = await myDb.LoadDataset(sql);
+        TblMskt = dsm.Tables[0];
+        IslistMskt = true;
+        StateHasChanged();
+    }
+
+    void HidelistMskt()
+    {
+        IslistMskt = false;
+    }
+
+    async void MsktClick()
+    {
+        //await JavacriptS.InvokeVoidAsync("navigator.clipboard.writeText", CurUser.User_name);
+        try
+        {
+            ShowMskt();
+        }
+        catch(Exception ex)
+        {
+
+        }
+    }
+
+    private void OnAlertMesssagechanged(string payload)
+    {
+        if (!string.IsNullOrEmpty(payload))
+        {
+            Message = payload;
+            StateHasChanged();
+        }
+    }
+    private async void OnToastMesssagechanged(string payload)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(payload))
+            {
+                ToastMessage = payload;
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(100);
+                await JavacriptS.InvokeVoidAsync("ShowToast", ToastId);
+                //await JavacriptS.InvokeVoidAsync("BroweserPushNotification", "S.I.S Việt Nam", payload, "");
+            }
+        }
+        catch (Exception ex)
+        {
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {            
+            CurUser = await Localstore.GetItemAsync<Users>("user");
+            if (CurUser != null)
+            {
+                myStatemanagerment.SetState(CurUser.Comment, CurUser.User_name, true, CurUser.Is_admin);
+                myStatemanagerment.SetCurUser(CurUser);
+                ((CustomAuthenticationStateProvider)AuthenticationStateProvider).MarkUserAsAuthenticated(CurUser);   
+                Usermskt = myoptions.GetOptionsValue("M_USER_MSKT").Trim().ToUpper();
+            }
+            else
+            {
+                navigation.NavigateTo("");
+            }
+
+            SavedLayoutToggled = LayoutToggled;
+            IsFirstTimeRendered = true;
+        }
+    }
+    async void OnLocationChanged(object sender, LocationChangedEventArgs args)
+    {
+
+        Uri uri = new Uri(args.Location);
+        //string stra = uri.Scheme + "??" + uri.Host + "??" + uri.AbsolutePath + "::" + uri.Query;
+        string[] _value = args.Location.ToString().Split('/');        
+        AddSubMenu(_value[_value.Length - 1].Replace('_', '.'));
+        //TryRedirect(args.Location);
+        ThemeSwitcherShown = false;
+        if (!_isDesktop)
+        {
+            LayoutToggled = false;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+    void AddSubMenu(string menu_id)
+    {
+        MenuItems.Clear();
+        Command _command = Commands.GetMenuBymenuId(menu_id);
+        if (_command != null)
+        {
+            if (CurUser != null)
+            {
+                if (string.IsNullOrEmpty(CurUser.Wr_fav))
+                {
+                    MenuItems.Add(new MenuTextFormatting() { Text = " ... ", Stt = 4, Name = "favourite", Menu_id = _command.Menu_id, IconCssClass = "m-menu-icon", CssClass = "m-menu-item" });
+                }
+                else
+                {
+                    string title = (CurUser.Wr_fav.Split('/').Contains(_command.Menu_id) ? "-" : "+");
+                    string _name = (CurUser.Wr_fav.Split('/').Contains(_command.Menu_id) ? "unfavourite" : "favourite");
+                    MenuItems.Add(new MenuTextFormatting() { Text = title, Stt = 4, Name = _name, Menu_id = _command.Menu_id, IconCssClass = "m-menu-icon", CssClass = "m-menu-item" });
+                }
+            }
+            MenuItems.Add(new MenuTextFormatting() { Text = _command.Bar, NavigateUrl = string.IsNullOrEmpty(_command.Mobile_page) ? "" : _command.Mobile_page + @"/" + _command.Menu_id.Replace(".", "_"), Stt = 3, Name = "nomarl", Menu_id = _command.Menu_id, IconCssClass = "m-menu-icon", CssClass = "m-menu-item" });
+            Command _command1 = Commands.GetMenuByMenuid0(_command.Menu_id0);
+            if (_command1 != null && !string.IsNullOrEmpty(_command1.Menu_id0))
+            {
+                MenuItems.Add(new MenuTextFormatting() { Text = _command1.Bar, NavigateUrl = string.IsNullOrEmpty(_command1.Mobile_page) ? "" : _command1.Mobile_page + @"/" + _command1.Menu_id.Replace(".", "_"), Stt = 2, Name = "nomarl", Menu_id = _command.Menu_id, IconCssClass = "m-menu-icon", CssClass = "m-menu-item" });
+                Command _command2 = Commands.GetMenuByMenuid0(_command1.Menu_id0);
+                if (_command2 != null)
+                {
+                    MenuItems.Add(new MenuTextFormatting() { Text = _command2.Bar, NavigateUrl = string.IsNullOrEmpty(_command2.Mobile_page) ? "" : _command2.Mobile_page + @"/" + _command2.Menu_id.Replace(".", "_"), Stt = 1, Name = "nomarl", Menu_id = _command.Menu_id, IconCssClass = "m-menu-icon", CssClass = "m-menu-item" });
+                }
+            }
+        }
+        MenuItems = MenuItems.OrderBy(a => a.Stt).ToList();
+    }
+    [JSInvokable]
+    public async Task OnQueryChanged(bool isDesktop)
+    {
+        if (_isDesktop != isDesktop)
+        {
+            _isDesktop = isDesktop;
+            LayoutToggled = false;
+            ThemeSwitcherShown = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    bool LayoutToggled
+    {
+        get { return _layoutToggled; }
+        set
+        {
+            if (_layoutToggled != value)
+            {
+                _layoutToggled = value;
+                if (!_isDesktop && _layoutToggled)
+                    ThemeSwitcherShown = false;
+            }
+        }
+    }
+    string LayoutStateCssClass { get { 
+        return IsFirstTimeRendered ? (((_isDesktop && LayoutToggled) || (!_isDesktop && !LayoutToggled)) ? "sidebar-hidden" : "sidebar-shown") : ""; } }
+    bool SavedLayoutToggled { get; set; }
+    bool ModalBackgroundShown { get { return !_isDesktop && (ThemeSwitcherShown || LayoutToggled); } }
+    bool IsFirstTimeRendered { get; set; }
+
+    bool ThemeSwitcherShown
+    {
+        get { return _themeSwitcherShown; }
+        set
+        {
+            if (_themeSwitcherShown != value)
+            {
+                _themeSwitcherShown = value;
+                if (!_isDesktop && _themeSwitcherShown)
+                    LayoutToggled = false;
+            }
+        }
+    }
+
+    string GetDemoContentContainerCss()
+    {
+        List<string> cssClasses = new List<string>();
+        cssClasses.Add("demo-content-container");
+
+        return string.Join(" ", cssClasses);
+    }
+
+    void ToggleThemeSwitcherPanel()
+    {
+        ThemeSwitcherShown = !ThemeSwitcherShown;
+    }
+
+    void ModalBackdropShownChanged(bool shown)
+    {
+        if (!shown)
+        {
+            ThemeSwitcherShown = false;
+            LayoutToggled = false;
+        }
+    }
+
+    bool HasAnchorInUrl(string uri)
+    {
+        return !string.IsNullOrEmpty(NavigationManager.ToAbsoluteUri(uri).Fragment.Replace("#", ""));
+    }
+
+    bool ScrollToTargetLocked { get; set; } = true;
+
+    public void Dispose()
+    {
+        myStatemanagerment.OnToastMesssagechanged -= OnToastMesssagechanged;
+        myStatemanagerment.OnAlertMesssagechanged -= OnAlertMesssagechanged;
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+    public string Messagetb { get; set; } = "";
+    public string Messagecmd { get; set; } = "";
+
+    async void Call_Toast(string Id)
+    {        
+            string[] data = Id.Split('|');
+            if (data.Length > 3)
+            {
+                Messagecmd = data[3].Trim();
+                if (Messagecmd.ToLower().StartsWith("cmd:mskt"))
+                {
+                    Messagetb = data[2].Trim();
+                    StateHasChanged();
+                }
+            }
+        
+        //myStatemanagerment.SetNewAlertMessage(Id);
+    }
+    private async Task Dongymsg(bool status)
+    {
+        Messagetb = "";       
+        if (status)
+        {
+            
+        }
+    }
+
+    
+    public static void WLog(string logMessage)
+    {
+        using (StreamWriter w = File.AppendText(@".\Mainerr.txt"))
+        {
+            Log(logMessage.Trim(), w);
+        }
+    }
+
+    //---------------------------------------------------
+    public static void Log(string logMessage, TextWriter w)
+    {
+        w.WriteLine("{0} {1}", DateTime.Now.ToLongTimeString(),
+            DateTime.Now.ToLongDateString());
+        w.WriteLine("{0}", logMessage);
+        w.WriteLine("-------------------------------");
+    }
+    
+}

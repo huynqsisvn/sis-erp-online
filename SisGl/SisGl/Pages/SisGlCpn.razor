@@ -1,0 +1,739 @@
+﻿@page "/SisGl"
+@page "/SisGl/{Menu_id}"
+@using SisData.Service
+@using SisData.Data
+@inject IJSRuntime JS
+@inject ILocalStorageService myLcStore
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ebf0 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px; /* giảm từ 16px */
+            padding: 16px; /* giảm từ 30px */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); /* nhẹ hơn */
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+            padding: 6px 0;
+            color: #2c3e50;
+            min-height: 30px;
+        }
+
+            .card-header i {
+                font-size: 17px;
+                line-height: 1;
+            }
+
+            .card-header h2 {
+                font-size: 17px;
+                font-weight: 600;
+                line-height: 1.2;
+                margin: 0;
+                color: #2196f3;
+            }
+
+        /* Tác vụ chính - Card lớn bên trái */
+        .main-card {
+            grid-row: 1 / 3;
+            background: white url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><defs><filter id="blur"><feGaussianBlur stdDeviation="3"/></filter></defs><g filter="url(%23blur)" opacity="0.15"><circle cx="200" cy="200" r="80" fill="none" stroke="%23ccc" stroke-width="3"/><circle cx="200" cy="120" r="30" fill="none" stroke="%23ccc" stroke-width="3"/><circle cx="270" cy="160" r="30" fill="none" stroke="%23ccc" stroke-width="3"/><circle cx="270" cy="240" r="30" fill="none" stroke="%23ccc" stroke-width="3"/><circle cx="200" cy="280" r="30" fill="none" stroke="%23ccc" stroke-width="3"/><circle cx="130" cy="240" r="30" fill="none" stroke="%23ccc" stroke-width="3"/><circle cx="130" cy="160" r="30" fill="none" stroke="%23ccc" stroke-width="3"/><line x1="200" y1="150" x2="200" y2="170" stroke="%2398c1d9" stroke-width="2"/><line x1="240" y1="175" x2="225" y2="185" stroke="%2398c1d9" stroke-width="2"/><line x1="255" y1="210" x2="230" y2="210" stroke="%2398c1d9" stroke-width="2"/><line x1="240" y1="245" x2="225" y2="235" stroke="%2398c1d9" stroke-width="2"/><line x1="200" y1="260" x2="200" y2="240" stroke="%2398c1d9" stroke-width="2"/><line x1="160" y1="245" x2="175" y2="235" stroke="%2398c1d9" stroke-width="2"/><line x1="145" y1="210" x2="170" y2="210" stroke="%2398c1d9" stroke-width="2"/><line x1="160" y1="175" x2="175" y2="185" stroke="%2398c1d9" stroke-width="2"/></g></svg>') no-repeat center center;
+            background-size: 45%;
+        }
+
+        .center-hub {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 40px auto;
+            aspect-ratio: 1;
+        }
+
+        .center-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+            z-index: 10;
+            cursor: pointer;
+        }
+
+            .center-circle i {
+                font-size: 18px;
+                color: white;
+                margin-bottom: 4px;
+            }
+
+            .center-circle span {
+                color: white;
+                font-size: 11px;
+                font-weight: 600;
+            }
+
+        .orbit-item {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid #e8ebf0;
+        }
+
+            .orbit-item:hover {
+                transform: scale(1.1);
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+                border-color: #3498db;
+            }
+
+            .orbit-item i {
+                font-size: 21px;
+                margin-bottom: 5px;
+            }
+
+            .orbit-item span {
+                font-size: 13px;
+                color: #2c3e50;
+                text-align: center;
+                font-weight: 500;
+            }
+
+            /* Vị trí các orbit items */
+            .orbit-item:nth-child(1) {
+                top: -10%;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+                .orbit-item:nth-child(1) i {
+                    color: #f39c12;
+                }
+
+            .orbit-item:nth-child(2) {
+                top: 10%;
+                right: -10%;
+            }
+
+                .orbit-item:nth-child(2) i {
+                    color: #3498db;
+                }
+
+            .orbit-item:nth-child(3) {
+                bottom: 10%;
+                right: -10%;
+            }
+
+                .orbit-item:nth-child(3) i {
+                    color: #e74c3c;
+                }
+
+            .orbit-item:nth-child(4) {
+                bottom: -10%;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+                .orbit-item:nth-child(4) i {
+                    color: #2ecc71;
+                }
+
+            .orbit-item:nth-child(5) {
+                bottom: 10%;
+                left: -10%;
+            }
+
+                .orbit-item:nth-child(5) i {
+                    color: #9b59b6;
+                }
+
+            .orbit-item:nth-child(6) {
+                top: 10%;
+                left: -10%;
+            }
+
+                .orbit-item:nth-child(6) i {
+                    color: #1abc9c;
+                }
+
+        /* Chức năng - Card phải trên */
+        .function-card {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .function-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .function-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+            .function-item:hover {
+                background: #e3f2fd;
+                border-color: #2196f3;
+                transform: translateX(5px);
+            }
+
+            .function-item i {
+                font-size: 20px;
+                color: #2196f3;
+            }
+
+            .function-item span {
+                color: #2c3e50;
+                font-weight: 500;
+                font-size: 14px;
+            }
+
+        /* Danh mục - Card phải giữa */
+        .category-card {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .category-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #fff8e1;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+            .category-item:hover {
+                background: #fff3cd;
+                border-color: #ffc107;
+                transform: translateX(5px);
+            }
+
+            .category-item i {
+                font-size: 20px;
+                color: #f39c12;
+            }
+
+            .category-item span {
+                color: #2c3e50;
+                font-weight: 500;
+                font-size: 14px;
+            }
+
+        /* Báo cáo - Card dưới cùng */
+        .report-card {
+            grid-column: 1 / -1;
+        }
+
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .report-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+            .report-item:hover {
+                background: linear-gradient(135deg, #667eea25 0%, #764ba225 100%);
+                border-color: #667eea;
+                transform: translateY(-3px);
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+            }
+
+            .report-item i {
+                font-size: 24px;
+                color: #667eea;
+            }
+
+            .report-item span {
+                color: #2c3e50;
+                font-weight: 500;
+                font-size: 14px;
+            }
+
+        @@media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .main-card {
+                grid-row: auto;
+            }
+
+            .report-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Tác vụ chính -->
+        <div class="card main-card">
+            <div class="card-header">
+                <i class="fas fa-cog"></i>
+                <h2>Tác vụ chính</h2>
+            </div>
+
+            <div class="center-hub">
+                <div class="orbit-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.ct.01"))">
+                    <i class="fas fa-download"></i>
+                    <span>@GetBar("wg.ct.01")</span>
+                </div>
+                <div class="orbit-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.ct.06"))">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>@GetBar("wg.ct.06")</span>
+                </div>
+                <div class="orbit-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.ct.15"))">
+                    <i class="fas fa-file-invoice"></i>
+                    <span>@((MarkupString)Split2Ln(Lap["Data closing"]))</span>
+                </div>
+                <div class="orbit-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.kc.00"))">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>@GetBar("wg.kc.00")</span>
+                </div>
+                <div class="orbit-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.sd.00"))">
+                    <i class="fas fa-balance-scale"></i>
+                    <span>@GetBar("wg.sd.00")</span>
+                </div>
+                <div class="orbit-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.ct.03"))">
+                    <i class="fas fa-upload"></i>
+                    <span>@GetBar("wg.ct.03")</span>
+                </div>
+
+                <div class="center-circle " role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.gb.03"))">
+                    <i class="fas fa-book"></i>
+                    <span class="fw-bold" style="font-size: 16px;">@GetBar("wg.gb.03", 0)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chức năng -->
+        <div class="card function-card">
+            <div class="card-header">
+                <i class="fas fa-users"></i>
+                <h2>@Lap["Function"]</h2>
+            </div>
+            <div class="function-list">
+                <div class="function-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.ct.09"))">
+                    <i class="far fa-file-alt"></i>
+                    <span>@GetBar("wg.ct.09", 0)</span>
+                </div>
+                <div class="function-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.ct.06"))">
+                    <i class="fas fa-percentage"></i>
+                    <span>@GetBar("wg.ct.06", 0)</span>
+                </div>
+                <div class="function-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.ct.14"))">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>@GetBar("wg.ct.14",0)</span>
+                </div>
+                @* <div class="function-item" role="button" tabindex="0" onclick="location.href='#'">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Tiện ích</span>
+                </div> *@
+            </div>
+        </div>
+
+        <!-- Danh mục -->
+        <div class="card category-card">
+            <div class="card-header">
+                <i class="fas fa-list"></i>
+                <h2>@Lap["List maintenance"]</h2>
+            </div>
+            <div class="category-list">
+                <div class="category-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.dm.01"))">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>@GetBar("wg.dm.01", 0)</span>
+                </div>
+                <div class="category-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.dm.02"))">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>@GetBar("wg.dm.02", 0)</span>
+                </div>
+                <div class="category-item" role="button" tabindex="0" @onclick="@(() => NavigateToTarget("wg.dm.03"))">
+                    <i class="fas fa-calculator"></i>
+                    <span>Bộ phân hạch toán</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Báo cáo -->
+        <div class="card report-card">
+            <div class="card-header">
+                <i class="fas fa-file-chart-line"></i>
+                <h2>@Lap["Reports"]</h2>
+            </div>
+            <div class="report-grid">
+                <div class="report-item" role="button" tabindex="0" @onclick="@(e => NavigateToTarget("wg.bc.00", e))">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>@GetBar("wg.bc.00", 0)</span>
+                </div>
+                <div class="report-item" role="button" tabindex="0" @onclick="@(e => NavigateToTarget("wg.tc.00", e))">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <span>@GetBar("wg.tc.00", 0)</span>
+                </div>
+                <div class="report-item" role="button" tabindex="0" @onclick="@(e => NavigateToTarget("wg.gb.00", e))">
+                    <i class="fas fa-journal-whills"></i>
+                    <span>@GetBar("wg.gb.00", 0)</span>
+                </div>
+                <div class="report-item" role="button" tabindex="0" @onclick="@(e => NavigateToTarget("wg.vb.00", e))">
+                    <i class="fas fa-certificate"></i>
+                    <span>@GetBar("wg.vb.00", 0)</span>
+                </div>
+                <div class="report-item" role="button" tabindex="0" @onclick="@(e => NavigateToTarget("wg.db.00", e))">
+                    <i class="fas fa-calculator"></i>
+                    <span>@GetBar("wg.db.00", 0)</span>
+                </div>               
+               @*  <div class="report-item" role="button" tabindex="0" @onclick="@(e => NavigateToTarget("wg.mb.00", e))">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>@GetBar("wg.mb.00", 0)</span>
+                </div>    *@            
+            </div>
+        </div>
+    </div>
+
+    @if (ShowContextMenu)
+    {
+        <div class="context-menu-overlay" style="position:fixed;top:0;left:0;width:400px;height:100vh;z-index:999;background:rgba(0,0,0,0.06);" @onclick="() => ShowContextMenu = false">
+            <div id="contextMenu" class="context-menu"
+                 style="position:fixed;
+                        left:@(ContextMenuLeft.ToString("F0"))px;
+                        top:@(ContextMenuTop.ToString("F0"))px;
+                        background:white;
+                        padding:12px;
+                        border-radius:8px;
+                        box-shadow:0 2px 12px rgba(0,0,0,0.15);
+                        min-width:200px;
+                        z-index:1000;"
+                 @onclick:stopPropagation>
+                <h6 style="margin:0 0 8px 0;color:dodgerblue;">@Lap["Select action"]</h6>
+                <ul style="list-style:none;padding:0;margin:0;">
+                    @foreach (var item in ContextMenuItems)
+                    {
+                        <li style="margin-bottom:8px;">
+                            <button class="btn btn-light" style="width:100%;text-align:left;" @onclick="() => OnContextMenuItemSelected(item)">
+                                @item.Title
+                            </button>
+                        </li>
+                    }
+                </ul>
+                <div class="d-flex justify-content-center mt-3">
+                    <button class="btn btn-secondary" style="width:50%;"
+                            @onclick="() => ShowContextMenu = false"> @Lap["Cancel"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <script>
+        // Animation cho center circle (kept for visual effect)
+        const centerCircle = document.querySelector('.center-circle');
+        if (centerCircle) {
+        setInterval(() => {
+        centerCircle.style.transform = 'translate(-50%, -50%) scale(1.05)';
+        setTimeout(() => {
+        centerCircle.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 500);
+        }, 3000);
+        }
+
+         window.adjustContextMenu = (left, top) => {
+            const menu = document.getElementById('contextMenu');
+            if (!menu) return;
+
+            // enforce fixed width (sync with CSS)
+            const fixedWidth = 350;
+            menu.style.width = fixedWidth + 'px';
+
+            // set initial coordinates
+            let x = Math.max(8, Math.round(left));
+            let y = Math.max(8, Math.round(top));
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+
+            const rect = menu.getBoundingClientRect();
+            const vh = window.innerHeight;
+            const vw = window.innerWidth;
+            let newTop = rect.top;
+            let newLeft = rect.left;
+
+            // If menu bottom goes beyond viewport, show it above click point
+            if (rect.bottom > vh) {
+                // place above the click, but not off-screen
+                newTop = Math.max(8, Math.round(top - rect.height));
+            }
+
+            // If menu right goes beyond viewport, shift it left
+            if (rect.right > vw) {
+                newLeft = Math.max(8, Math.round(vw - rect.width - 8));
+            }
+
+            // If menu top goes above viewport (rare), clamp it
+            if (newTop < 8) newTop = 8;
+            if (newLeft < 8) newLeft = 8;
+
+            menu.style.top = newTop + 'px';
+            menu.style.left = newLeft + 'px';
+        };
+    </script>
+</body>
+</html>
+@code {
+
+
+
+    [Parameter] public string Menu_id { get; set; }
+    [Inject] public Statemanagerment myStateMN { get; set; }
+    [Inject] public NavigationManager myNavi { get; set; }
+    [Inject] public ICommandManager Commands { get; set; }    
+    [Inject] public IWebHostEnvironment myWebhost { get; set; }
+    [Inject] public XmlStringLocalizer Lap { get; set; }  
+
+    public bool IsLangEn = false;
+    public string UserLang = "";
+    private List<MenuItem> ContextMenuItems { get; set; } = new();
+    private bool ShowContextMenu { get; set; } = false;
+    private string PendingMenuId { get; set; }
+    private double ContextMenuLeft { get; set; }
+    private double ContextMenuTop { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", "gl", UserLang.Trim()));
+            StateHasChanged();
+        }
+    }
+
+    private async Task NavigateToTarget(string menuId = null, Microsoft.AspNetCore.Components.Web.MouseEventArgs e = null)
+    {
+        try
+        {
+            await Language(); // ensure IsLangEn set for menu titles
+
+            var id = string.IsNullOrEmpty(menuId) ? Menu_id : menuId;
+            if (string.IsNullOrEmpty(id))
+            {
+                myNavi.NavigateTo("glso11/wg_gb_03");
+                return;
+            }
+
+            string lookupId = id.Replace('_', '.').Trim();
+
+            // Check for child menus and show context menu
+            List<Command> childMenus = Commands.GetSubMenuByMenuid0(lookupId);
+            if (childMenus != null && childMenus.Any())
+            {
+                ContextMenuItems = childMenus.Select(cmd => new MenuItem
+                {
+                    MenuId = cmd.Menu_id,
+                    Title = IsLangEn ? cmd.Bar2 : cmd.Bar
+                })
+                 .ToList();
+
+                // use client coordinates if provided, otherwise fallback to center of component
+                if (e != null)
+                {
+                    ContextMenuLeft = e.ClientX;
+                    ContextMenuTop = e.ClientY;
+                }
+                else
+                {
+                    // fallback: center of viewport
+                    ContextMenuLeft = (double)(Math.Round(await JS.InvokeAsync<double>("eval", "window.innerWidth / 2")));
+                    ContextMenuTop = (double)(Math.Round(await JS.InvokeAsync<double>("eval", "window.innerHeight / 2")));
+                }
+
+                ShowContextMenu = true;
+                PendingMenuId = id;
+                StateHasChanged();
+
+                // wait for DOM to render then adjust if it overflows
+                await Task.Delay(1); // ensure element exists
+                await JS.InvokeVoidAsync("adjustContextMenu", ContextMenuLeft, ContextMenuTop);
+                return;
+            }
+
+            // No children -> navigate using Mobile_page
+            var cmd = await Commands.GetSubMenuBymenuId(lookupId);
+            var mobile = cmd?.Mobile_page?.Trim();
+            if (string.IsNullOrEmpty(mobile))
+            {
+                myNavi.NavigateTo("#");
+                return;
+            }
+
+            string urlMenuId = (id ?? "").Replace('.', '_').Replace("__", "_").Trim();
+            string url = $"{mobile.Trim().TrimEnd('/')}/{urlMenuId}";
+            myNavi.NavigateTo(url);
+        }
+        catch
+        {
+            myNavi.NavigateTo("#");
+        }
+    }
+
+    public virtual async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    public async void Dispose()
+    {
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+    }
+
+    private async Task OnContextMenuItemSelected(MenuItem item)
+    {
+        ShowContextMenu = false;
+        await NavigateToTarget(item.MenuId);
+    }
+    public static string Split2Ln(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return input;
+
+        var words = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 1)
+            return input;
+
+        int totalLength = input.Length;
+        int half = totalLength / 2;
+
+        string line1 = "";
+        string line2 = "";
+
+        foreach (var word in words)
+        {
+            if ((line1 + " " + word).Trim().Length <= half)
+                line1 = (line1 + " " + word).Trim();
+            else
+                line2 += (line2 == "" ? word : " " + word);
+        }
+
+        // chèn <br>
+        return $"{line1}<br>{line2}";
+    }
+
+
+
+    public MarkupString GetBar(string Menu_id,int ploai = 1)
+    {
+        Command cmd = Commands.GetMenuBymenuId(Menu_id);
+        if (cmd != null)
+        {
+            if(ploai==0)
+                return (MarkupString)(IsLangEn ? (string.IsNullOrWhiteSpace(cmd.Short_bar2) ? cmd.Bar2 : cmd.Short_bar2) : (string.IsNullOrWhiteSpace(cmd.Short_bar) ? cmd.Bar: cmd.Short_bar));
+            else
+                return (MarkupString)(IsLangEn ? Split2Ln((string.IsNullOrWhiteSpace(cmd.Short_bar2) ? cmd.Bar2 : cmd.Short_bar2)) : Split2Ln((string.IsNullOrWhiteSpace(cmd.Short_bar) ? cmd.Bar : cmd.Short_bar)));
+        }
+        return (MarkupString)"";
+    }
+    public class MenuItem
+    {
+        public string MenuId { get; set; }
+        public string Title { get; set; }
+    }
+}

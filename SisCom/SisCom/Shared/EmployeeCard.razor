@@ -1,0 +1,154 @@
+﻿@inject IWebHostEnvironment hostEnvironment;
+@inject NavigationManager navigation
+@inject ILocalStorageService Localstore
+@inject IStringLocalizer<App> Lap
+
+<div class="md-12">
+    <div class="e-main d-flex align-items-center">
+        <div class="flex-shrink-0">
+            <img class="e-photo" src=@GetPhotoUrl() alt="" @attributes=@ImageAttributes/>
+        </div>
+        <div class="e-info flex-grow-1 ms-3">
+            <div class="row">
+                <div class="col col-4 e-title">@Lap["User ID"]</div>
+                <div class="col col-8 e-name">@($":  {EmployeeInfo.User_id}")</div>
+            </div>
+            <div class="row">
+                <div class="col col-4 e-title">@Lap["User name"]</div>
+                <div class="col col-8 e-name">@($":  {EmployeeInfo.User_name}")</div>
+            </div>            
+            <div class="row">
+                <div class="col col-4 e-title">@Lap["Full name"]</div>
+                <div class="col col-8 e-name">@($":  {EmployeeInfo.Comment}")</div>
+            </div>             
+        </div>
+    </div>
+
+    <div class="e-divider my-12"></div>
+    <div class="container row">
+        <div class="col md-6 justify-content-start">
+            <button class="col-ali90 " @onclick="@( ()=> Movetouserinfo())">
+                <img class="ipicture" src="./Images/Icon_cai_dat.svg"/>
+                <span class="icaption">@Lap["Settings"]</span>                
+            </button>
+        </div>
+        <div class="col md-6 justify-content-start">
+            <button class="col-ali90" @onclick="@( ()=> Movetopass())">
+                <img class="ipicture" src="./Images/hethong.png" />
+                <span class="icaption">@Lap["Change password"]</span>
+            </button>
+        </div>
+            
+    </div>
+    <div class="container row">
+        <div class="col md-6 justify-content-center">
+            <button class="col-ali90" @onclick="@( ()=> Movetoavatar())">
+                <img class="ipicture" src="./Images/Icon_avt.svg" />
+                <span class="icaption">@Lap["Avatar"]</span>
+            </button>
+        </div>
+        <div class="col md-6 justify-content-center">
+            <button class="col-ali90" @onclick="@( ()=> Logout())">
+                <img class="ipicture" src="./Images/Icon_he_thong.svg" />
+                <span class="icaption">@Lap["Log out"]</span>
+            </button>
+        </div>
+
+    </div>
+</div>
+<style>
+    .col-ali90 {
+        width: 95%;
+        height: 38px;
+        border: .5px solid #ffcc00;
+        border-radius: 5px;
+        margin: 2px 4px;
+        /* box-shadow: 0 0 3px 0 #CCCCFF; */
+        outline: none;
+        justify-content:start;
+    }
+
+   
+    .e-main {
+        line-height: 1;
+    }
+    .e-name {
+        --color-opacity: 1;
+        margin-bottom: 0.25rem;
+        color: #ffbc00;
+        font-weight:bold;
+        font-size: 1.1rem;
+    }
+    
+    .e-title {
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+        color: lightskyblue;
+    }
+
+.e-divider {
+    --color-opacity: 0.2;
+}
+.e-divider {
+    height: 1px;
+    background-color: #ffbc00;
+    margin:20px;
+}
+.e-photo {
+    border: 1px solid gold;
+    object-fit: cover;
+    object-position: center top;
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+}
+
+</style>
+
+@code {
+    [Parameter] public Users EmployeeInfo { get; set; }
+    [Parameter] public IEnumerable<KeyValuePair<string, object>> ImageAttributes { get; set; }
+    [Parameter] public EventCallback<bool> OnHideClick { get; set; }
+    private bool Isshowloginlogout { get; set; }
+
+    string GetPhotoUrl() {
+        return SysFunc.PictureHelper.GetImgSrc(EmployeeInfo.User_name, hostEnvironment);
+    }
+    private void Movetouserinfo()
+    {
+        navigation.NavigateTo("user-info");
+    }
+    private void Movetopass()
+    {
+        navigation.NavigateTo("changepassweb");
+    }
+    private void Movetoavatar()
+    {
+        OnHideClick.InvokeAsync(false);
+        navigation.NavigateTo("UploadImg");
+    }
+    private void ShowHideLoginLogout()
+    {
+        Isshowloginlogout = !Isshowloginlogout;
+    }
+    
+    async void Logout()
+    {
+        try
+        {
+            Users user = await Localstore.GetItemAsync<Users>("user");
+            if (user != null)
+            {
+                if (user.User_name.Trim().Equals(EmployeeInfo.User_name.Trim()))
+                {
+                    await Localstore.RemoveItemAsync("user");
+                }
+            }
+            navigation.NavigateTo("");
+        }
+        catch
+        {
+
+        }
+    }
+}

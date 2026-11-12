@@ -1,0 +1,516 @@
+﻿@page "/Zcdmslts"
+@page "/Zcdmslts/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,zcdmslts")]
+@using SisFa.Pages.Input.Zcdmslts
+@using DevExpress.Blazor
+@using System.Data
+
+<div class="row mt-1" tabindex="0" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@fbrowse"
+                        Page_size="@Page_size"
+                        SelectItem="CurItem"
+                        OnRowDbClick="@OnRDBClick"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@* ================================================================
+   POPUP FILTER
+   ================================================================ *@
+<DxPopup @ref="popFilter"
+         CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="500px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="Nhập sản lượng phát sinh">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width:5rem;height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Năm" CaptionCssClass="fw-bold">
+                        <DxSpinEdit @bind-Value="@FilterNam"
+                                    DisplayFormat="####"
+                                    MinValue="2000"
+                                    MaxValue="2099" />
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Từ kỳ (1-12):" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterTuKy"
+                                                MinValue="1"
+                                                MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterTuKy = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterTuKy >= 1 && FilterTuKy <= 12)
+                                {
+                                    <span class="badge text-dark">
+                                        @(new DateTime(FilterNam, FilterTuKy, 1).ToString("MM-yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Đến kỳ (1-12):" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterDenKy"
+                                                MinValue="1"
+                                                MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterDenKy = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterDenKy >= 1 && FilterDenKy <= 12)
+                                {
+                                    <span class="badge text-dark">
+                                        @(new DateTime(FilterNam, FilterDenKy, 1).AddMonths(1).AddDays(-1).ToString("MM-yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success" Text="Nhận" Click="@BtnFilterSave" />
+                <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Danger" Text="Hủy" Click="@BtnFilterCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@* ================================================================
+   POPUP FORM THÊM/SỬA/XEM
+   ================================================================ *@
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="25vw"
+              MinWidth="350px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@* ================================================================
+   POPUP IN — giống pattern INCD1Cpn / GlsnkctCpn
+   ================================================================ *@
+@if (frmPrintVisible)
+{
+    <DxPopup @ref="popPrint"
+             CloseOnOutsideClick="false"
+             CssClass="dxPopup"
+             @bind-Visible="@frmPrintVisible"
+             Width="80%" Height="90%"
+             ShowFooter="false"
+             HeaderText="In sản lượng tài sản">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@LsData"
+                                   Menu_id="@Menu_id.Replace('_', '.')"
+                                   OnBack="@(() => { frmPrintVisible = false; StateHasChanged(); })" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@code {
+    // ===================================================
+    // BIẾN CỤC BỘ
+    // ===================================================
+    private DxPopup popFilter;
+    private DxPopup popPrint;
+    private bool PopupVisible  = false;
+    private bool frmPrintVisible = false;
+    private int FilterNam;
+    private int FilterTuKy  = 1;
+    private int FilterDenKy = 12;
+    private string pfFilter = "";
+    private List<ZcdmsltsModel> LsData;
+
+    // ===================================================
+    // KHỞI TẠO
+    // ===================================================
+    protected override void OnInitialized()
+    {
+        mPage        = "Zcdmslts";
+        editPage     = "";
+        sqlTableName = "ctslts";
+        sqlTableView = "ctslts";
+        SqlTableKey  = "so_the_ts;ma_bpts;nam;ky";
+        SqlItemName  = "so_the_ts";
+        IsShowCopy   = false;
+        IsShowImport = false;
+        FrmType      = typeof(FrmZcdmslts);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wf.ct.04";
+
+        FilterNam = DateTime.Now.Year;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+
+            string menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New",     true,  "F4"));
+                myStateMN.SetToolBar(new MyToolbar("Copy",    false));
+                myStateMN.SetToolBar(new MyToolbar("Import",  false));
+                myStateMN.SetToolBar(new MyToolbar("Edit",    true,  "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save",    false));
+                myStateMN.SetToolBar(new MyToolbar("Delete",  true,  "F8"));
+                myStateMN.SetToolBar(new MyToolbar("Change",  false));
+                myStateMN.SetToolBar(new MyToolbar("View",    true,  "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print",   true,  "F7"));
+                myStateMN.SetToolBar(new MyToolbar("Export",  true));
+                myStateMN.SetToolBar(new MyToolbar("Search",  true,  "Ctrl + F"));
+                myStateMN.SetToolBar(new MyToolbar("Quit",    false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged    += OnLangguachange;
+            myStateMN.OnDvcsChanged       += OnDvcsChanged;
+
+            PopupVisible = true;
+            StateHasChanged();
+        }
+        else
+        {
+            if (oBrowse != null)
+                await oBrowse.FocusGridAsync();
+        }
+    }
+
+    // ===================================================
+    // PAGELOAD
+    // ===================================================
+    public override async Task PageLoad()
+    {
+        try
+        {
+            if (myCommand == null) return;
+            curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+            if (curCommand != null)
+            {
+                fbrowse   = IsLangEn ? curCommand.Vbrowse2 : curCommand.Vbrowse1;
+                string ps = myOption.GetOptionsValue("M_GRID_NROW");
+                Page_size = string.IsNullOrEmpty(ps) ? 50 : int.Parse(ps.Trim());
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("PageLoad error: " + ex.Message);
+        }
+    }
+
+    // ===================================================
+    // LOAD DATA
+    // ===================================================
+    public override async Task Loaddata()
+    {
+        SelectedItem = null;
+
+        // 1. Lấy mã ĐVCS hiện tại đang chọn trên thanh tiêu đề
+        string maDvcs = myStateMN.GetDvcs()?.Ma_dvcs?.Trim() ?? "";
+
+        // 2. Tạo điều kiện lọc theo ĐVCS (Nếu là ALL thì lấy tất cả, ngược lại lọc theo mã)
+        // Lưu ý: Dùng d.ma_dvcs vì cột ĐVCS nằm ở bảng danh mục tài sản (dmts được alias là d)
+        string dvcsCondition = (maDvcs == "ALL" || string.IsNullOrEmpty(maDvcs))
+                                ? "1=1"
+                                : $"d.ma_dvcs LIKE '{maDvcs}%'";
+
+        // 3. Lấy điều kiện từ Popup Filter (Năm, Kỳ)
+        string popupCondition = string.IsNullOrEmpty(pfFilter) ? "1=1" : pfFilter;
+
+        // 4. Gộp cả 2 điều kiện lại bằng AND
+        string where = $"({popupCondition}) AND ({dvcsCondition})";
+
+        // 5. Ráp vào câu SQL (bạn chú ý tôi đã truyền biến {where} mới vào)
+        string sql = $"SELECT ROW_NUMBER() OVER (ORDER BY c.date0, c.time0, c.so_the_ts, c.ma_bpts, c.nam, c.ky) AS stt, c.*, d.ten_ts, d.loai_ts, d.nh_ts1, d.nh_ts2, d.nh_ts3, d.ma_dvcs FROM {sqlTableView} c LEFT JOIN dmts d ON d.so_the_ts = c.so_the_ts WHERE {where} ORDER BY c.date0, c.time0, c.so_the_ts, c.ma_bpts, c.nam, c.ky";
+
+        DataSet ds = await myDb.LoadDataset(sql);
+        TblData = ds?.Tables[0];
+
+        if (TblData != null && TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // XỬ LÝ TOOLBAR ACTIONS
+    // ===================================================
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Them();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Print:
+                DoPrint();
+                StateHasChanged();
+                break;
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    // ===================================================
+    // POPUP FILTER: OK
+    // ===================================================
+    private async void BtnFilterSave()
+    {
+        if (FilterTuKy < 1 || FilterTuKy > 12)
+        {
+            myStateMN.SetNewThongbao("Từ kỳ phải từ 1 đến 12!");
+            return;
+        }
+        if (FilterDenKy < 1 || FilterDenKy > 12)
+        {
+            myStateMN.SetNewThongbao("Đến kỳ phải từ 1 đến 12!");
+            return;
+        }
+        if (FilterTuKy > FilterDenKy)
+        {
+            myStateMN.SetNewThongbao("Từ kỳ không được lớn hơn Đến kỳ!");
+            return;
+        }
+
+        ShowLoadding = true;
+        pfFilter = $"nam = {FilterNam} AND ky >= {FilterTuKy} AND ky <= {FilterDenKy}";
+        await Loaddata();
+        ShowLoadding = false;
+        PopupVisible = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void BtnFilterCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // IN — theo đúng pattern INCD1Cpn / GlsnkctCpn
+    // ===================================================
+    private void DoPrint()
+    {
+        if (TblData == null || TblData.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao("Không có dữ liệu để in!");
+            return;
+        }
+
+        LsData = new List<ZcdmsltsModel>();
+        var model = new ZcdmsltsModel
+        {
+            TuKy   = FilterTuKy,
+            DenKy  = FilterDenKy,
+            Nam    = FilterNam,
+            MaDvcs = myStateMN.GetDvcs()?.Ma_dvcs?.Trim() ?? "",
+            KyNam  = FilterTuKy == FilterDenKy
+                         ? $"KỲ: {FilterTuKy} NĂM {FilterNam}"
+                         : $"TỪ KỲ: {FilterTuKy} ĐẾN KỲ: {FilterDenKy} - NĂM {FilterNam}",
+            LsData = myDb.ConvertDataTable<ZcdmsltsDetail>(TblData)
+        };
+        LsData.Add(model);
+
+        frmPrintVisible = true;
+    }
+
+    // ===================================================
+    // THÊM MỚI
+    // ===================================================
+    public virtual void V_Them()
+    {
+        Par.Clear();
+        Par.Add("Ma_ma",         (object)string.Empty);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("ShowAdd",       (object)true);
+        Par.Add("curActionTask", (object)ActionTask.New);
+        Par.Add("FilterNam",     (object)FilterNam);
+        Par.Add("FilterTuKy",    (object)FilterTuKy);
+        Par.Add("FilterDenKy",   (object)FilterDenKy);
+        Par.Add("OnClose",       EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // SỬA
+    // ===================================================
+    public override void V_Sua()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null) { myStateMN.SetNewThongbao("Chưa chọn dòng dữ liệu!"); return; }
+
+        string compositeKey = rview["so_the_ts"].ToString().Trim() + ";" +
+                              rview["ma_bpts"].ToString().Trim()   + ";" +
+                              rview["nam"].ToString().Trim()       + ";" +
+                              rview["ky"].ToString().Trim();
+
+        Par.Clear();
+        Par.Add("Ma_ma",         (object)compositeKey);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("ShowAdd",       (object)true);
+        Par.Add("curActionTask", (object)ActionTask.Edit);
+        Par.Add("FilterNam",     (object)FilterNam);
+        Par.Add("FilterTuKy",    (object)FilterTuKy);
+        Par.Add("FilterDenKy",   (object)FilterDenKy);
+        Par.Add("OnClose",       EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // XEM
+    // ===================================================
+    public virtual void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null) { myStateMN.SetNewThongbao("Chưa chọn dòng dữ liệu!"); return; }
+
+        string compositeKey = rview["so_the_ts"].ToString().Trim() + ";" +
+                              rview["ma_bpts"].ToString().Trim()   + ";" +
+                              rview["nam"].ToString().Trim()       + ";" +
+                              rview["ky"].ToString().Trim();
+
+        Par.Clear();
+        Par.Add("Ma_ma",         (object)compositeKey);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("ShowAdd",       (object)true);
+        Par.Add("curActionTask", (object)ActionTask.View);
+        Par.Add("FilterNam",     (object)FilterNam);
+        Par.Add("FilterTuKy",    (object)FilterTuKy);
+        Par.Add("FilterDenKy",   (object)FilterDenKy);
+        Par.Add("OnClose",       EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // XÓA
+    // ===================================================
+    public virtual async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null) { myStateMN.SetNewThongbao("Chưa chọn dòng dữ liệu!"); return; }
+
+        string soTheTs = rview["so_the_ts"].ToString().Trim();
+        string maBpts  = rview["ma_bpts"].ToString().Trim();
+        string nam     = rview["nam"].ToString().Trim();
+        string ky      = rview["ky"].ToString().Trim();
+
+        var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+        {
+            Text             = $"Bạn có muốn xóa [{soTheTs} - {maBpts} - Năm {nam} Kỳ {ky}] không?",
+            Title            = "Xác nhận xóa",
+            OkButtonText     = "Có",
+            CancelButtonText = "Không",
+            ShowIcon         = true,
+            ShowCloseButton  = false,
+            RenderStyle      = MessageBoxRenderStyle.Danger
+        });
+
+        if (!confirm) return;
+
+        try
+        {
+            string safe_ts   = soTheTs.Replace("'", "''");
+            string safe_bpts = maBpts.Replace("'", "''");
+            string sql = $"DELETE FROM {sqlTableName} WHERE so_the_ts='{safe_ts}' AND ma_bpts='{safe_bpts}' AND nam={nam} AND ky={ky}";
+            await myDb.ExecuteSqlQueryAsync(sql);
+            await Loaddata();
+            myStateMN.SetNewThongbao($"Xóa thành công: {soTheTs}/{maBpts} - Năm {nam} Kỳ {ky}");
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Xóa thất bại: " + ex.Message);
+        }
+    }
+
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public async void CloseForm()
+    {
+        IsShowFrm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged    -= OnLangguachange;
+        myStateMN.OnDvcsChanged       -= OnDvcsChanged;
+    }
+}

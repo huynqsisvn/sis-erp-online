@@ -1,0 +1,481 @@
+﻿@page "/Inctpxe"
+@page "/Inctpxe/{Menu_id}"
+@inherits TransBaseComponent
+@attribute [Authorize(Roles = "admin,inctpxe")]
+
+@if (ShowLoaddingVoucher)
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    CssClass="w-100"
+                    IndicatorVisible="true"
+                    IndicatorAreaVisible="true"
+                    Visible="true"
+                    Text="Processing..."
+                    TextAlignment="LoadingPanelTextAlignment.Right">
+        <div style="min-height: 250px;"></div>
+    </DxLoadingPanel>
+}
+else if (TblPH != null)
+{
+    <div class="row m-0 p-0">
+        <FrmBrowseComponent @ref="@oBrowsePH" TblData="@TblPH" Page_size="@pageSize" IsPageSize="@IsPageSize" CssClass="grid-frm-height" Fbrowse="@FbrowsePH" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+    <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+    <div class="row my-1 mx-0 p-0">
+        <h8 class="fw-bold bg-light text-warning rounded-pill mb-1"> @Lap["Detail"] </h8>
+        <FrmBrowseComponent @ref="@oBrowseCT" TblData="@TblCT" CssClass="grid-frmct-height" Fbrowse="@FbrowseCT" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+}
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@popFilterVisible"
+         Width="500px"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From number"]">
+                        <DxTextBox CssClass="col" @bind-Text="@So_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idTu_so" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To number"]">
+                        <DxTextBox CssClass="col" @bind-Text="@So_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idDen_so" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Book code"]">
+                        <Template>
+                            <AutocompleteComponent CssClass="col p-0" Ma_dm="dmqs" @bind-Value="@Ma_qs" Filter="@_filter_qs" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idTu_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idDen_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Transaction code"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmmagd" @bind-Value="@Ma_gd" Filter="@_filter_gd" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Export warehouse"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmkho" @bind-Value="@Ma_kho" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Import warehouse"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmkho" @bind-Value="@Ma_khon" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Item code"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmvt" @bind-Value="@Ma_vt" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Status"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmpost" Filter="@filter_status" @bind-Value="@Status" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Dvcs code"]">
+                        <DxTextBox CssClass="col" @bind-Text="@Ma_dvcs" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idMa_dvcs"></DxTextBox>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Filter by user"]">
+                        <DxTextBox CssClass="col" @bind-Text="@NSD" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idNSD" />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@BtnFilterOK" />
+                <DxButton CssClass="col " RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnFilterCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm" CloseOnEscape="true"
+              Width="90vw"
+              MinWidth="720px"
+              MinHeight="600px" Scrollable="true"
+              MaxWidth="1400px"
+              MaxHeight="92vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="false" CloseOnOutsideClick="false"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportCT CurDmimex="@CurDmimex" Menu_id="@Menu_id" @bind-IsImportPopupVisible="@IsImportPopupVisible" OnImportCompleted="@ImportOK" ShowError="@ShowError" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+<style>
+    .grid-frm-height {
+        height: 55vh;
+    }
+
+    .grid-frmct-height {
+        height: 30vh;
+    }
+</style>
+
+@code {
+    public string Ma_qs = "";
+    public string Tk_i = "";
+    public string Status = "";
+    public string So_ct1 = "";
+    public string So_ct2 = "";
+    public string Ma_dvcs = "";
+    public string NSD = "";
+    public string Ma_kho = "";
+    public string Ma_khon = "";
+    public string Ma_vt = "";
+    public string Ma_gd = "";
+
+    string _filter_qs = "";
+    string _filter_gd = "";
+    string filter_status = "ma_ct like '%PXE%' and status = 1 ";
+
+    protected override void OnInitialized()
+    {
+        Menu_id = (String.IsNullOrEmpty(Menu_id) ? "wi.ct.03" : Menu_id);
+        FrmType = typeof(Input.Inctpxe.FrmInctpxe);
+        IsShowImport = true;
+        LanguageID = "";
+        _filter_qs = String.Format("ma_cts like '%{0}%'", "PXE");
+        _filter_gd = String.Format("ma_ct like '%{0}%' and [status] = 1", "PXE");
+        base.OnInitialized();
+    }
+
+    private async void BtnFilterOK()
+    {
+        ShowLoadding = true;
+
+        myStateMN.SetStartDate((DateTime)Ngay_ct1);
+        myStateMN.SetEndDate((DateTime)Ngay_ct2);
+        string dvcs = myStateMN.GetMa_Dvcs();
+        phFilter = "1=1";
+        ctFilter = "1=1";
+
+        if (!string.IsNullOrEmpty(Ma_dvcs))
+        {
+            phFilter = phFilter + " AND ma_dvcs LIKE ''" + Ma_dvcs.Trim() + "%''";
+        }
+        if (string.IsNullOrEmpty(Ma_dvcs))
+        {
+            if (dvcs != "ALL")
+            {
+                phFilter = phFilter + " AND ma_dvcs LIKE ''" + dvcs.Trim() + "%''";
+            }
+        }
+        if (Ngay_ct1 != null)
+        {
+            phFilter = phFilter + " AND ngay_ct >= ''" + Ngay_ct1.ToString("yyyyMMdd") + "''";
+        }
+        if (Ngay_ct2 != null)
+        {
+            phFilter = phFilter + " AND ngay_ct <= ''" + Ngay_ct2.ToString("yyyyMMdd") + "''";
+        }
+        if (!String.IsNullOrEmpty(So_ct1))
+        {
+            phFilter = phFilter + " AND so_ct >= ''" + So_ct1.ToString() + "''";
+        }
+        if (!String.IsNullOrEmpty(So_ct2))
+        {
+            phFilter = phFilter + " AND so_ct <= ''" + So_ct2.ToString() + "''";
+        }
+        if (!String.IsNullOrEmpty(Ma_qs))
+        {
+            phFilter = phFilter + " AND ma_qs LIKE ''" + Ma_qs.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(Status))
+        {
+            phFilter = phFilter + " AND status  LIKE ''" + Status.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(Ma_gd))
+        {
+            phFilter = phFilter + " AND ma_gd  LIKE ''" + Ma_gd.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(Tk_i))
+        {
+            ctFilter = ctFilter + " AND ma_nx_i  LIKE ''" + Tk_i.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(NSD) && NSD.Trim().Equals("1"))
+        {
+            phFilter = phFilter + " AND user_id  = " + curUser.User_id + " ";
+        }
+        if (!String.IsNullOrEmpty(Ma_kho))
+        {
+            phFilter = phFilter + " AND ma_kho LIKE ''" + Ma_kho.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(Ma_khon))
+        {
+            phFilter = phFilter + " AND ma_khon LIKE ''" + Ma_khon.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(Ma_vt))
+        {
+            ctFilter = ctFilter + " AND ma_vt LIKE ''" + Ma_vt.Trim() + "%''";
+        }
+
+        await Loaddata(false);
+
+        ShowLoadding = false;
+        popFilterVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public override void V_Copy()
+    {
+        var rview = (DataRowView)SelectedItem;
+        if (rview == null)
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }
+
+        SqlTableKeyValue = rview[SqlTableKey].ToString().Trim();
+
+        Par.Clear();
+        Par.Add("Stt_rec", (object)SqlTableKeyValue);
+        Par.Add("Ma_ct", (object)Ma_ct);
+        Par.Add("Menu_id", (object)Menu_id);
+        Par.Add("curActionTask", (object)ActionTask.Copy);
+        Par.Add("Closeform", EventCallback.Factory.Create<bool>(this, (bool value) => {
+            if (value)
+            {
+                _ = Loaddata(false);
+            }
+            IsShowFrm = false;
+            InvokeAsync(StateHasChanged);
+        }));
+
+        IsShowFrm = true;
+        StateHasChanged();
+    }   
+    public override async void V_In()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null)
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }
+        DataSet DataSource = CopyVoucherToDataSet(SqlTableKeyValue);
+        DataTable ds = AddTbTkPs(DataSource.Tables[0].Rows[0]["stt_rec"].ToString());
+        if (DataSource != null && DataSource.Tables.Count > 0)
+        {
+            LSData = new List<PXEModel>();
+            PXEModel _curModel = new PXEModel();
+            _curModel.LSPh = myDb.ConvertDataTable<Ph85>(DataSource.Tables[0]);
+            _curModel.LSCt = myDb.ConvertDataTable<Ct85>(DataSource.Tables[1]);
+
+            string tk_no = "";
+            string tk_co = "";
+            int i = 0;
+            foreach (Ct85 ct in _curModel.LSCt)
+            {
+                if (!tk_no.Contains(ct.Ma_nx_i))
+                    tk_no += ct.Ma_nx_i + "; ";
+                if (!tk_co.Contains(ct.Tk_vt))
+                    tk_co += ct.Tk_vt + "; ";
+                _curModel.LSCt[i].Stt = i + 1;
+                i++;
+            }
+
+            _curModel.Tk_co = tk_co;
+            _curModel.Tk_no = tk_no;
+            _curModel.TotalString = DocSo.Doc_so(_curModel.LSPh[0].T_tien_nt, myOption, myDb, false);
+            _curModel.DateString = ToDateString(_curModel.LSPh[0].Ngay_ct.Value);
+            _curModel.Ten_lien = "Liên 1 : giao khách hàng";
+            _curModel.So_lien = curDmct.So_lien;
+            _curModel.TotalStringVi = DocSo.Doc_so(_curModel.LSPh[0].T_tien, myOption, myDb, false, M_ma_nt0);
+            _curModel.TotalStringEn = DocSo.Doc_so(_curModel.LSPh[0].T_tien, myOption, myDb, true, M_ma_nt0);
+            _curModel.TotalStringVi_nt = DocSo.Doc_so(_curModel.LSPh[0].T_tien_nt, myOption, myDb, false, _curModel.LSPh[0].Ma_nt);
+            _curModel.TotalStringEn_nt = DocSo.Doc_so(_curModel.LSPh[0].T_tien_nt, myOption, myDb, true, _curModel.LSPh[0].Ma_nt);
+            LSData.Add(_curModel);
+
+        }
+        ShowReport(LSData, typeof(PXEModel));
+
+    }
+    public DataTable AddTbTkPs(string sttrec)
+    {        
+        string sql = string.Format("select tk_vt as tk_vt,ma_nx_i as ma_nx_i,MIN(stt_rec0) as stt_rec0, case when abs(sum(tien))> 0 then sum(tien) else sum(tien) end as tien, sum(tien_nt) as tien_nt from " + M_Ctdbf.Trim() + " where stt_rec='" + sttrec + "' group by tk_vt,ma_nx_i order by stt_rec0");
+        DataTable ds = myDb.LoadDataSet(sql).Tables[0].Copy();
+        return ds;
+
+    }
+    public string ToDateString(DateTime date)
+    {
+        return $"ngày {date.Day} tháng {date.Month} năm {date.Year}";
+    }
+
+    private bool ShowError(DataErrArgs args)
+    {
+        if (args == null || args.DataErr == null || args.DataErr.Tables.Count == 0)
+            return true;
+
+        bool result = true;
+        foreach (DataTable table in args.DataErr.Tables)
+        {
+            if (table.Rows.Count != 0)
+            {
+                string columnName = table.Columns[0].ColumnName;
+                string errorMessage = "";
+                string fieldDef = "";
+
+                switch (columnName)
+                {
+                    case "ma_kh":
+                        fieldDef = "ma_kh:H=" + Lap["Customer ID"];
+                        errorMessage = Lap["List the client code is not in the list of customers"];
+                        result = false;
+                        break;
+                    case "ma_kho":
+                        fieldDef = "ma_kho:H=" + Lap["Export warehouse"] + ";ma_dvcs:H=" + Lap["Unit code"];
+                        errorMessage = Lap["List of code repositories is not in the list or not on the unit code repository of documents"];
+                        result = false;
+                        break;
+                    case "ma_khon":
+                        fieldDef = "ma_khon:H=" + Lap["Import warehouse"] + ";ma_dvcs:H=" + Lap["Unit code"];
+                        errorMessage = Lap["List of import warehouse code is not in the list or not on the unit code repository of documents"];
+                        result = false;
+                        break;
+                    case "ma_vt":
+                        fieldDef = "ma_vt:H=" + Lap["Item code"];
+                        errorMessage = Lap["List of supplies code is not in the list of materials"];
+                        result = false;
+                        break;
+                    case "ma_qs":
+                        fieldDef = "ma_qs:H=" + Lap["Book no."];
+                        errorMessage = Lap["Book list is not in the list or book vouchers of this book"];
+                        result = false;
+                        break;
+                    case "so_ct":
+                        fieldDef = "ma_qs:H=" + Lap["Book no."] + ";so_ct:H=" + Lap["Voucher no."];
+                        errorMessage = Lap["List of vouchers with duplicate number"];
+                        result = false;
+                        break;
+                    case "ma_gd":
+                        fieldDef = "ma_gd:H=" + Lap["Transaction code"];
+                        errorMessage = Lap["List an invalid transaction code"];
+                        result = false;
+                        break;
+                    case "tk_no":
+                        fieldDef = "tk_no:H=" + Lap["Account debit"] + ";ten_tk:H=" + Lap["Account name"];
+                        errorMessage = Lap["List creditors account is not in the list of accounts or consolidated accounts"];
+                        result = false;
+                        break;
+                    case "tk_co":
+                        fieldDef = "tk_co:H=" + Lap["Account credit"] + ";ten_tk:H=" + Lap["Account name"];
+                        errorMessage = Lap["List of no account in the chart of accounts or consolidated accounts"];
+                        result = false;
+                        break;
+                    case "ma_td_i":
+                        fieldDef = "ma_td_i:H=" + Lap["Free code 1"];
+                        errorMessage = Lap["List of free codes 1 are not included in the list of free codes 1"];
+                        result = false;
+                        break;
+                    case "ma_td2_i":
+                        fieldDef = "ma_td2_i:H=" + Lap["Free code 2"];
+                        errorMessage = Lap["List of free codes 2 are not included in the list of free codes 2"];
+                        result = false;
+                        break;
+                    case "ma_td3_i":
+                        fieldDef = "ma_td3_i:H=" + Lap["Free code 3"];
+                        errorMessage = Lap["List of free codes 3 are not included in the list of free codes 3"];
+                        result = false;
+                        break;
+                    case "ma_dvcs":
+                        fieldDef = "ma_dvcs:H=" + Lap["Unit code"];
+                        errorMessage = Lap["Unit code list is not in the list of unit code"];
+                        result = false;
+                        break;
+                    case "ngay_ct":
+                        fieldDef = "ngay_ct:H=" + Lap["Voucher date"] + ":D";
+                        errorMessage = Lap["List of documents smaller day open day window"];
+                        result = false;
+                        break;
+                    case "ma_vv_i":
+                        fieldDef = "ma_vv_i:H=" + Lap["Project code"];
+                        errorMessage = Lap["List of project code is not in the list of projects"];
+                        result = false;
+                        break;
+                    case "so_ct_khac_ngay":
+                        fieldDef = "so_ct_khac_ngay:H=" + Lap["Voucher no."] + ";ma_qs:H=" + Lap["Book no."];
+                        errorMessage = Lap["List of documents with different dates vouchers"];
+                        result = false;
+                        break;
+                    case "ma_px_i":
+                        fieldDef = "ma_px_i:H=" + Lap["Workshop code"];
+                        errorMessage = Lap["List of workshops code is not in the list of workshops"];
+                        result = false;
+                        break;
+                    case "ma_sp":
+                        fieldDef = "ma_sp:H=" + Lap["Product code"];
+                        errorMessage = Lap["List product code is not in the list of products"];
+                        result = false;
+                        break;
+                    case "ma_bpht_i":
+                        fieldDef = "ma_bpht_i:H=" + Lap["DEPT. ID"];
+                        errorMessage = Lap["List the accounting department code is not in the list of the accounting department"];
+                        result = false;
+                        break;
+                    case "ngay_ct_ks":
+                        fieldDef = "ngay_ct_ks:H=" + Lap["Voucher date"] + ":D";
+                        errorMessage = Lap["List of documents smaller day close day window"];
+                        result = false;
+                        break;
+                    case "so_lsx_i":
+                        fieldDef = "so_lsx_i:H=" + Lap["Manufacturing order"];
+                        errorMessage = Lap["List of manufacturing order is not in the list of manufacturing order entry"];
+                        result = false;
+                        break;
+                    case "dvt1":
+                        fieldDef = "ma_vt:H=" + Lap["Item code"] + "; dvt1:H=" + Lap["Unit"];
+                        errorMessage = Lap["List of units not included in the list of units of conversion"];
+                        result = false;
+                        break;
+                    default:
+                        continue;
+                }
+
+                if (!result)
+                {
+                    if (!string.IsNullOrEmpty(fieldDef))
+                        SisLib.ReportLib.BrowTable(myModal, table, fieldDef, " : " + errorMessage, Lap["Cancel"]);
+                }
+            }
+        }
+
+        return !result;
+    }
+    
+}

@@ -1,0 +1,465 @@
+﻿@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRTPGD
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveHrtpgd" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurHrtpgd" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <!-- Row 0: Employee code + Order number -->
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" Filter="status = 1" @bind-Value="@CurHrtpgd.Ma_ns" IsEnable="@AllowEditMa" SelectChanged="Ma_ns_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Order number"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Id="stt_input" Enabled="@AllowEditMode" Value="@CurHrtpgd.Stt" DisplayFormat="0" ValueChanged="@((int newValue) => Stt_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Family relation code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_qhgd_input" Ma_dm="dmqhgd" @bind-Value="@CurHrtpgd.Ma_qhgd" IsEnable="@AllowEditMode" SelectChanged="Ma_qhgd_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 2: Full name (Họ và tên) -->
+                <DxFormLayoutItem Caption="@Lap["Family member name"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="ten_tpgd_input" @bind-Text="@CurHrtpgd.Ten_tpgd" maxlength="@tblLength["ten_tpgd"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 2 (cont): Full name 2 + Gender code + Personal tax code -->
+                <DxFormLayoutItem Caption="@Lap["Full name 2"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Ten_tpgd2" maxlength="@tblLength["ten_tpgd2"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Gender code"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_gioitinh_input" Ma_dm="dmgioitinh" @bind-Value="@CurHrtpgd.Ma_gioitinh" IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Personal tax code"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Ma_so_thue" maxlength="@tblLength["ma_so_thue"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 3: Birth year + ID number + Occupation -->
+                <DxFormLayoutItem Caption="@Lap["Birth year"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Nam_sinh" maxlength="@tblLength["nam_sinh"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["ID number"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Cmnd" maxlength="@tblLength["cmnd"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Occupation"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Nghe_nghiep" maxlength="@tblLength["nghe_nghiep"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Dependent person"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" Data="LSDependentStatus" TextFieldName="Ten" ValueFieldName="Ma" Value="@SelectedDependent" ValueChanged="@((string val) => OnDependentChanged(val))">
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 5: Workplace (full width) -->
+                <DxFormLayoutItem Caption="@Lap["Workplace"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Noi_lam_viec" maxlength="@tblLength["noi_lam_viec"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 6: Current residence (full width) -->
+                <DxFormLayoutItem Caption="@Lap["Current residence"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Cho_o_hien_nay" maxlength="@tblLength["cho_o_hien_nay"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 7: Political level (full width) -->
+                <DxFormLayoutItem Caption="@Lap["Political level"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Trinh_do_chinh_tri" maxlength="@tblLength["trinh_do_chinh_tri"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 8: Before revolution (full width) -->
+                <DxFormLayoutItem Caption="@Lap["Before revolution"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Truoc_cach_mang" maxlength="@tblLength["truoc_cach_mang"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 9: During revolution (full width) -->
+                <DxFormLayoutItem Caption="@Lap["During revolution"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Trong_cach_mang" maxlength="@tblLength["trong_cach_mang"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 10: After revolution (full width) -->
+                <DxFormLayoutItem Caption="@Lap["After revolution"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Sau_cach_mang" maxlength="@tblLength["sau_cach_mang"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 11: Note (full width) -->
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrtpgd.Ghi_chu" Rows="3" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Row 12: Status + Note about status -->
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" Data="LSStatus" TextFieldName="Ten" ValueFieldName="Ma" @bind-Value="@CurHrtpgd.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    
+public HRTPGD CurHrtpgd;
+private string menu_id = "wr.ct.03";
+private string SelectedDependent = "0";
+private string TenQhgd = "";
+private List<dynamic> LSDependentStatus = new();
+
+protected override void OnInitialized()
+{
+    sqlTableName = "dmtpgd";
+    sqlTableView = "v_dmtpgd";
+    SqlTableKey = "ma_tpgd";
+    CheckSqlTableKey = "ma_tpgd";
+    ParentPage = String.IsNullOrEmpty(ParentPage) ? "hrtpgd" : ParentPage;
+    CurHrtpgd = new HRTPGD();
+
+    LSDependentStatus.Add(new { Ma = "0", Ten = "0 - Không phụ thuộc" });
+    LSDependentStatus.Add(new { Ma = "1", Ten = "1 - Phụ thuộc" });
+
+    if (String.IsNullOrEmpty(Menu_id))
+        Menu_id = menu_id;
+
+    base.OnInitialized();
+}
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+
+                if (String.IsNullOrEmpty(CurHrtpgd.Ma_ns))
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                else
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = false;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task ViewRecord(string SqlTableKeyValue)
+    {
+        CurHrtpgd = new HRTPGD();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        SelectedDependent = CurHrtpgd.Nguoi_phu_thuoc.ToString();
+    }
+
+    async Task EditRecord(string SqlTableKeyValue)
+    {
+        CurHrtpgd = new HRTPGD();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        await LoadData(SqlTableKeyValue);
+        SelectedDependent = CurHrtpgd.Nguoi_phu_thuoc.ToString();
+    }
+
+    async Task NewRecord(string SqlTableKeyValue)
+    {
+        CurHrtpgd = new HRTPGD();
+        CurHrtpgd.Ma_tpgd = Guid.NewGuid().ToString();
+        CurHrtpgd.Ma_ns = SqlTableKeyValue;
+        CurHrtpgd.Status = "1";
+        CurHrtpgd.Nguoi_phu_thuoc = 0;
+        SelectedDependent = "0";
+
+        int nextStt = await GetNextStt();
+        CurHrtpgd.Stt = nextStt;
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task SaveHrtpgd()
+    {
+        try
+        {
+            if (!CheckValid())
+            {
+                return;
+            }
+
+            CurHrtpgd.Nguoi_phu_thuoc = int.Parse(SelectedDependent);
+            CurHrtpgd.Ten_tpgd2 = CurHrtpgd.Ten_tpgd2 ?? "";
+            CurHrtpgd.Ma_so_thue = CurHrtpgd.Ma_so_thue ?? "";
+            CurHrtpgd.Nam_sinh = CurHrtpgd.Nam_sinh ?? "";
+            CurHrtpgd.Cmnd = CurHrtpgd.Cmnd ?? "";
+            CurHrtpgd.Nghe_nghiep = CurHrtpgd.Nghe_nghiep ?? "";
+            CurHrtpgd.Noi_lam_viec = CurHrtpgd.Noi_lam_viec ?? "";
+            CurHrtpgd.Cho_o_hien_nay = CurHrtpgd.Cho_o_hien_nay ?? "";
+            CurHrtpgd.Trinh_do_chinh_tri = CurHrtpgd.Trinh_do_chinh_tri ?? "";
+            CurHrtpgd.Truoc_cach_mang = CurHrtpgd.Truoc_cach_mang ?? "";
+            CurHrtpgd.Trong_cach_mang = CurHrtpgd.Trong_cach_mang ?? "";
+            CurHrtpgd.Sau_cach_mang = CurHrtpgd.Sau_cach_mang ?? "";
+            CurHrtpgd.Ghi_chu = CurHrtpgd.Ghi_chu ?? "";
+            CurHrtpgd.Ma_gioitinh = CurHrtpgd.Ma_gioitinh ?? "";
+
+            if (curActionTask == ActionTask.Edit)
+            {
+                CurHrtpgd.Date = DateTime.Now.Date;
+                CurHrtpgd.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrtpgd.User_id = curUser.User_id;
+                    CurHrtpgd.User_name = curUser.User_name;
+                }
+
+                await myDb.UpdateOneRow1<HRTPGD>(CurHrtpgd, sqlTableName, "", "ma_tpgd = '" + Ma_ma + "'");
+                myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurHrtpgd.Ten_tpgd));
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                string strsql = $"Select ma_tpgd from {sqlTableName} where ma_ns='{CurHrtpgd.Ma_ns.Trim()}' AND ten_tpgd='{CurHrtpgd.Ten_tpgd.Trim()}'";
+                DataTable dt = myDb.GetTable(strsql);
+                if (dt.Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["This record already exists, can not add new"] + " !");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ten_tpgd_input')?.focus()");
+                    return;
+                }
+
+                CurHrtpgd.Date = DateTime.Now.Date;
+                CurHrtpgd.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurHrtpgd.Date0 = DateTime.Now.Date;
+                CurHrtpgd.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrtpgd.User_id = curUser.User_id;
+                    CurHrtpgd.User_id0 = curUser.User_id;
+                    CurHrtpgd.User_name = curUser.User_name;
+                    CurHrtpgd.User_name0 = curUser.User_name;
+                }
+                await myDb.InsertOneRow<HRTPGD>(CurHrtpgd, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurHrtpgd.Ten_tpgd));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo(ParentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Save failed: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (String.IsNullOrEmpty(CurHrtpgd.Ma_ns))
+        {
+            myStateMN.SetNewThongbao(Lap["Employee code is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurHrtpgd.Ten_tpgd))
+        {
+            myStateMN.SetNewThongbao(Lap["Family member name is required"] + " !");
+            return false;
+        }
+        if (!String.IsNullOrEmpty(CurHrtpgd.Ma_so_thue))
+        {
+            if (!IsNumeric(CurHrtpgd.Ma_so_thue.Trim()))
+            {
+                myStateMN.SetNewThongbao(Lap["Personal tax code is invalid"] + " !");
+                return false;
+            }
+        }
+        if (!String.IsNullOrEmpty(CurHrtpgd.Cmnd))
+        {
+            if (!IsNumeric(CurHrtpgd.Cmnd.Trim()))
+            {
+                myStateMN.SetNewThongbao(Lap["ID number is invalid"] + " !");
+                return false;
+            }
+        }
+        if (!String.IsNullOrEmpty(CurHrtpgd.Nam_sinh))
+        {
+            if (!IsNumeric(CurHrtpgd.Nam_sinh.Trim()))
+            {
+                myStateMN.SetNewThongbao(Lap["Birth year is invalid"] + " !");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool IsNumeric(string value)
+    {
+        return System.Text.RegularExpressions.Regex.IsMatch(value, @"^[0-9]+$");
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {
+            string sql = $"Select * from {sqlTableView} where {SqlTableKey} = @{SqlTableKey}";
+            DataSet DsTrans = await myDb.LoadDataset(sql, SqlTableKey, SqlTableKeyValue);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<HRTPGD> lsdetai = myDb.ConvertDataTable<HRTPGD>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurHrtpgd = lsdetai[0];
+                }
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Ma_ns_Changed(ExpandoObject value)
+    {
+        StateHasChanged();
+    }
+
+    void Ma_qhgd_Changed(ExpandoObject value)
+    {
+        TenQhgd = "";
+        if (!String.IsNullOrEmpty(CurHrtpgd.Ma_qhgd))
+        {
+            string col_name = IsLangEn ? "ten_qhgd2" : "ten_qhgd";
+            TenQhgd = myDb.GetValue($"select {col_name} from dmqhgd where ma_qhgd = '{CurHrtpgd.Ma_qhgd.Trim()}'")?.ToString() ?? "";
+            StateHasChanged();
+        }
+    }
+
+    void Stt_ValueChanged(int newValue)
+    {
+        CurHrtpgd.Stt = newValue;
+        StateHasChanged();
+    }
+
+    void OnDependentChanged(string value)
+    {
+        SelectedDependent = value;
+        StateHasChanged();
+    }
+
+    async Task<int> GetNextStt()
+    {
+        try
+        {
+            string sql = "SELECT ISNULL(MAX(stt), 0) + 1 as next_stt FROM " + sqlTableName;
+            DataTable dt = myDb.GetTable(sql);
+            if (dt.Rows.Count > 0)
+            {
+                return Convert.ToInt32(dt.Rows[0]["next_stt"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("GetNextStt error: " + ex.Message);
+        }
+        return 1;
+    }
+}

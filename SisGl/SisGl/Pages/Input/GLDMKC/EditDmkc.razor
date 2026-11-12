@@ -1,0 +1,401 @@
+﻿@inherits FrmListBaseComponent
+
+<FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveGldmkc" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+    <div class="row m-2 me-2 rounded-1 border border-light shadow">
+        <DxFormLayout Data="@Cur" ItemSizeMode="@Itemsizemode" onkeydown="ModifyEnterKeyPressAsTab(event);">
+            <DxFormLayoutItem Caption="@Lap["No."]" ColSpanMd="4">
+                <Template>
+                    <DxSpinEdit @bind-Value="Cur.Stt" Min="0" Max="9999999" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>            
+
+            <DxFormLayoutItem Caption="@Lap["Description"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxTextBox @ref="tenBtComponent" @bind-Text="Cur.Ten_bt" Enabled="@AllowEditMode" MaxLength="@tblLength["ten_bt"]" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@(Lap["Description"] + " 2")" ColSpanMd="12">
+                <Template>
+                    <DxTextBox @bind-Text="Cur.Ten_bt2" Enabled="@AllowEditMode" MaxLength="@tblLength["ten_bt2"]" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Loại k/c"]" ColSpanMd="6">
+                <Template>
+                    <DxComboBox Data="@LoaikcList" TextFieldName="Text" ValueFieldName="Value" @bind-Value="Cur.Loai_kc" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Tk k/c đi"]" ColSpanMd="6" BeginRow="true">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmtk" @bind-Value="Cur.Tk_no" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                    <div class="small mt-1 text-muted">@LblTenTkNo</div>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Tk nhận k/c"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmtk" @bind-Value="Cur.Tk_co" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                    <div class="small mt-1 text-muted">@LblTenTkCo</div>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["K/c theo mã"]" ColSpanMd="12">
+                <Template>
+                    <div class="row">
+                        <div class="col-6">
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_vv"> @Lap["Dự án"] </DxCheckBox>
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_bpht"> @Lap["Bộ phận hạch toán"] </DxCheckBox>
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_phi"> @Lap["Mã phí"] </DxCheckBox>
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_hd"> @Lap["Đơn hàng bán"] </DxCheckBox>
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_hdm"> @Lap["Đơn hàng mua"] </DxCheckBox>
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_px"> @Lap["Mã cđ(px)"] </DxCheckBox>
+                        </div>
+                        <div class="col-6">
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_sp"> @Lap["Sản phẩm"] </DxCheckBox>
+                            <DxCheckBox @bind-Checked="Cur.Kc_so_lsx"> @Lap["Lệnh sx"] </DxCheckBox>
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_td"> @Lap["Free code"] </DxCheckBox>
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_td2"> @(Lap["Free code"] + " 2") </DxCheckBox>
+                            <DxCheckBox @bind-Checked="Cur.Kc_ma_td3"> @(Lap["Free code"]+ " 3") </DxCheckBox>
+                        </div>
+                    </div>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Thực hiện k/c"]" ColSpanMd="6">
+                <Template>
+                    <DxComboBox Data="@ThkList" TextFieldName="Text" ValueFieldName="Value" @bind-Value="Cur.Th_kc" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6">
+                <Template>
+                    <DxComboBox Data="@StatusList" TextFieldName="Text" ValueFieldName="Value" @bind-Value="Cur.Status" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem ColSpanMd="12">
+                <Template>
+                    <hr />
+                </Template>
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </div>
+</FormList>
+
+@code {
+    [Parameter] public int Nam { get; set; }
+    DxTextBox tenBtComponent;
+    private GldmkcModel Cur { get; set; } = new();
+    private string Title = "";
+    private string LblTenTkNo = "";
+    private string LblTenTkCo = "";
+    private List<object> LoaikcList = new() {
+        new { Value = "1", Text = "1 - Tk có -> tk nợ" },
+        new { Value = "2", Text = "2 - Tk nợ -> tk có" },
+        new { Value = "3", Text = "3 - K/c lãi lỗ" }
+    };
+    private List<object> ThkList ;
+    private List<object> StatusList;
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmkc";
+        SqlTableKey = "stt_kc";
+        ParentPage = "gldmkc";
+        Cur.Nam = Nam;
+        base.OnInitialized();
+        ThkList = new() {
+            new { Value = "1", Text = Lap["Only with codes"] ?? "1 - Chỉ k/c các ps có mã" },
+            new { Value = "2", Text = Lap["All"] ?? "2 - K/c tất cả các ps" },
+            new { Value = "3", Text = Lap["Ending balance"] ?? "3 - K/c số dư cuối kỳ" }
+        };
+        StatusList = new() {
+            new { Value = "1", Text = "1 - " + (Lap["Using"] ?? "Còn sử dụng") },
+            new { Value = "0", Text = "0 - " + (Lap["None"] ?? "Không còn sử dụng") }
+        };
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                if (!string.IsNullOrEmpty(Ma_ma))
+                    await LoadData(Ma_ma);
+                AllowEditMode = false;
+                AllowEditMa = false;
+                break;
+            case ActionTask.Edit:
+                AllowEditMode = true;
+                AllowEditMa = true;
+                await LoadData(Ma_ma);
+                break;
+            case ActionTask.New:
+                await CreateNew();
+                break;
+            case ActionTask.Copy:
+                await CreateCopy(Ma_ma);
+                break;
+            default:
+                if (!string.IsNullOrEmpty(Ma_ma))
+                    await LoadData(Ma_ma);
+                break;
+        }
+    }
+
+    async Task CreateNew()
+    {
+        Cur = new GldmkcModel();
+        Cur.Status = "1";
+        Cur.Th_kc = "2";
+        Cur.Loai_kc = "1";
+        Cur.Nam = Nam;
+        Cur.Stt = await GetNextStt(Cur.Nam);
+        Cur.Stt_kc = await GetNextSttKc();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();        
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        SqlTableKey = "stt_kc";
+        if (firstRender)
+        {
+            await tenBtComponent.FocusAsync();
+        }
+    }
+    async Task CreateCopy(string existingKey)
+    {
+        if (string.IsNullOrEmpty(existingKey)) { await CreateNew(); return; }
+        await LoadData(existingKey);
+        Cur.Stt = await GetNextStt(Cur.Nam);
+        Cur.Stt_kc = await GetNextSttKc();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();        
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string sql = $"SELECT * FROM {sqlTableName} WHERE Nam = @nam and stt_kc = @stt_kc";
+            DataSet ds = await myDb.LoadDataset(sql, "nam;stt_kc", Nam.ToString().Trim() + ";" + key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                var row = ds.Tables[0].Rows[0];
+                Cur = new GldmkcModel
+                {
+                    Stt = row["stt"] is DBNull ? 0 : Convert.ToDecimal(row["stt"]),
+                    Stt_kc = row["stt_kc"].ToString(),
+                    Ten_bt = row["ten_bt"].ToString(),
+                    Ten_bt2 = row["ten_bt2"].ToString(),
+                    Loai_kc = row["loai_kc"].ToString(),
+                    Tk_no = row["tk_no"].ToString(),
+                    Tk_co = row["tk_co"].ToString(),
+                    Th_kc = row["th_kc"].ToString(),
+                    Status = row["status"].ToString(),
+                    Kc_ma_vv = ToBool(row["kc_ma_vv"]),
+                    Kc_ma_bpht = ToBool(row["kc_ma_bpht"]),
+                    Kc_ma_phi = ToBool(row["kc_ma_phi"]),
+                    Kc_ma_hd = ToBool(row["kc_ma_hd"]),
+                    Kc_ma_hdm = ToBool(row["kc_ma_hdm"]),
+                    Kc_ma_sp = ToBool(row["kc_ma_sp"]),
+                    Kc_so_lsx = ToBool(row["kc_so_lsx"]),
+                    Kc_ma_td = ToBool(row["kc_ma_td"]),
+                    Kc_ma_td2 = ToBool(row["kc_ma_td2"]),
+                    Kc_ma_td3 = ToBool(row["kc_ma_td3"]),
+                    Kc_ma_px = ToBool(row["kc_ma_px"]),
+                    Nam = row.Table.Columns.Contains("nam") && row["nam"] != DBNull.Value ? Convert.ToInt32(row["nam"]) : DateTime.Now.Year
+                };
+                if (Cur != null || string.IsNullOrEmpty(Cur.Stt_kc))
+                {
+                    Cur.Stt_kc = await GetNextSttKc();
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi tải dữ liệu: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool ToBool(object o) => !(o is DBNull) && (o is bool b ? b : (o.ToString() == "1" || o.ToString().ToLower() == "true"));
+
+    async Task<decimal> GetNextStt(int nam)
+    {
+        try
+        {
+            string sql = $"SELECT MAX(stt) FROM {sqlTableName} WHERE nam = {nam}";
+            var obj = await Task.Run(() => myDb.GetValue(sql));
+            if (obj == null || obj is DBNull) return 1;
+            if (decimal.TryParse(obj.ToString(), out decimal v)) return v + 1;
+        }
+        catch { }
+        return 1;
+    }
+
+    async Task<string> GetNextSttKc()
+    {
+        try
+        {
+            string sql = "SELECT TOP 1 stt_kc FROM dmkc WHERE RTRIM(stt_kc) != '' ORDER BY stt_kc DESC";
+            var obj = await Task.Run(() => myDb.GetValue(sql));
+            if (obj == null || obj is DBNull) return $"KC{1:000000000}";
+            string s = obj.ToString();
+            if (s.Length > 2 && int.TryParse(s.Substring(2), out int n)) return $"KC{(n + 1):000000000}";
+            return $"KC{1:000000000}";
+        }
+        catch { return $"KC{1:000000000}"; }
+    }
+
+    async Task SaveGldmkc()
+    {
+        try
+        {
+            if (!CheckValid()) return;
+            
+            Cur.Stt_kc = (Cur.Stt_kc ?? "").Trim();
+            Cur.Ten_bt = (Cur.Ten_bt ?? "").Trim();
+
+            SqlTableKeyValue = Cur.Stt_kc;
+
+            if (curActionTask == ActionTask.New)
+            {
+                string checkSql = $"SELECT {SqlTableKey} FROM {sqlTableName} WHERE {SqlTableKey} = @key";
+                DataSet ds = await myDb.LoadDataset(checkSql, "key", SqlTableKeyValue);
+                if (ds != null && ds.Tables[0].Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(String.Format(Lap["Mã [{0}] đã tồn tại!"], SqlTableKeyValue));
+                    StateHasChanged();
+                    return;
+                }
+                
+                Cur.Nam = (Nam == 0 ? DateTime.Now.Year : Nam);
+                Cur.Stt = Cur.Stt == 0 ? await GetNextStt(Cur.Nam) : Cur.Stt;
+
+                await myDb.InsertOneRow<GldmkcModel>(Cur, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Thêm mới thành công: {0}"], SqlTableKeyValue));
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                await myDb.UpdateOneRow<GldmkcModel>(Cur, sqlTableName, SqlTableKey, Ma_ma);
+                myStateMN.SetNewThongbao(String.Format(Lap["Sửa thành công: {0}"], SqlTableKeyValue));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo("/" + ParentPage);
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao("Mất kết nối với server, vui lòng thử lại.");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi khi lưu: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(Cur.Ten_bt?.Trim()))
+        {
+            myStateMN.SetNewThongbao(Lap["Chưa nhập tên bút toán"]);
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(Cur.Tk_no?.Trim()))
+        {
+            myStateMN.SetNewThongbao(Lap["Chưa nhập tài khoản nợ"]);
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(Cur.Tk_co?.Trim()))
+        {
+            myStateMN.SetNewThongbao(Lap["Chưa nhập tài khoản có"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    async Task OnEdit()
+    {
+        if(Cur != null || string.IsNullOrEmpty(Cur.Stt_kc))
+        {
+            Cur.Stt_kc = await GetNextSttKc();
+        }
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();        
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopy(Cur.Stt_kc);
+    }
+
+    void HideVoucher()
+    {
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo(ParentPage);
+    }
+   
+  
+    // model used for binding
+    public class GldmkcModel
+    {
+        public decimal Stt { get; set; }
+        public string Stt_kc { get; set; } = "";
+        public string Ten_bt { get; set; } = "";
+        public string Ten_bt2 { get; set; } = "";
+        public string Loai_kc { get; set; } = "1";
+        public string Tk_no { get; set; } = "";
+        public string Tk_co { get; set; } = "";
+        public string Th_kc { get; set; } = "2";
+        public string Status { get; set; } = "1";
+
+        // flags stored as booleans for ease; conversion handled by myDb.InsertOneRow if needed
+        public bool Kc_ma_vv { get; set; }
+        public bool Kc_ma_bpht { get; set; }
+        public bool Kc_ma_phi { get; set; }
+        public bool Kc_ma_hd { get; set; }
+        public bool Kc_ma_hdm { get; set; }
+        public bool Kc_ma_sp { get; set; }
+        public bool Kc_so_lsx { get; set; }
+        public bool Kc_ma_td { get; set; }
+        public bool Kc_ma_td2 { get; set; }
+        public bool Kc_ma_td3 { get; set; }
+        public bool Kc_ma_px { get; set; }
+
+        public int Nam { get; set; }
+    }
+}

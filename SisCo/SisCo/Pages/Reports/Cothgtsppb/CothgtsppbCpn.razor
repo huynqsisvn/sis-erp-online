@@ -1,0 +1,386 @@
+﻿@page "/cothgtsppb"
+@page "/cothgtsppb/{Menu_id}"
+@inherits RepoBaseComponent
+@attribute [Authorize(Roles = "admin,cothgtsppb")]
+
+@if (!PopupVisible)
+{
+    <div class="row" @onkeydown:preventDefault="true">
+        <FrmBrowseComponent @ref="@oBrowse" TblData="@TblData" Fbrowse="@Fbrowse" IsLangEn="@IsLangEn" CustomSummaryTextFormatter="@FormatSummaryText"></FrmBrowseComponent>
+    </div>
+}
+else
+{
+    <DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup" onkeydown="ModifyEnterKeyPressAsTab(event);"
+         @bind-Visible="@PopupVisible"
+         Width="500px"
+         Height="Auto"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Title">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 4rem; height:4rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Year"]">
+                        <DxSpinEdit @bind-Value="@Nam" MinValue="1900" MaxValue="2079" />
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From period"]">
+                        <DxSpinEdit @bind-Value="@Ky" MinValue="1" MaxValue="12" />
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To period"]">
+                        <DxSpinEdit @bind-Value="@Ky2" MinValue="1" MaxValue="12" />
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Workshop"]">
+                        <Template>
+                            <AutocompleteComponent TblData="@TblDmpx" Ma_dm="dmpx" @bind-Value="@Ma_px" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Product code"]">
+                        <Template>
+                            <AutocompleteComponent TblData="@TblDmsp" Ma_dm="dmsp" @bind-Value="@Ma_sp" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Account"]">
+                        <Template>
+                            <AutocompleteComponent TblData="@TblDmtk" Ma_dm="dmtk" @bind-Value="@Tk" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Report template"]">
+                        <DxComboBox Data="@LstMauBC" @bind-Value="@Mau_bc" ValueFieldName="Value" TextFieldName="Text" Enabled="false" />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+            <div class="p-3">                
+                @if (Errors.Any())
+                {
+                    <div class="mt-2 alert alert-danger p-2">
+                        <ul class="mb-0">
+                            @foreach (var err in Errors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row m-0 justify-content-end align-content-end">
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@ConfirmGridView_OnOk" />
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+}
+
+@if (ShowPrint)
+{
+    <DxPopup @ref="popPrint" CloseOnOutsideClick="false" CssClass="dxPopup" @bind-Visible="@ShowPrint" Width="80%" Height="90%" ShowFooter="false" Context="windowContext" HeaderText="@Lap["Printer"]">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@LsData" Menu_id="@Menu_id.Replace('_', '.')" OnBack="@(() => { ShowPrint = false; StateHasChanged(); })"></ReportOptionComponent>
+        </BodyTemplate>
+    </DxPopup>
+}
+
+<style>
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+
+    fieldset {
+        border-radius: 5px;
+    }
+
+    legend {
+        font-size: 0.9rem;
+        font-weight: bold;
+    }
+</style>
+
+@code {
+    public DataTable TblDmtk { get; set; }
+    public DataTable TblDmsp { get; set; }
+    public DataTable TblDmpx { get; set; }
+
+    // Filter values
+    private int Nam = DateTime.Now.Year;
+    private int Ky = DateTime.Now.Month;
+    private int Ky2 = DateTime.Now.Month;
+    private DateTime Ngay_ct1 = DateTime.Now.Date;
+    private DateTime Ngay_ct2 = DateTime.Now.Date;
+    private string Ma_px = "";
+    private string Ma_sp = "";
+    private string Tk = "";
+
+    private List<string> Errors { get; set; } = new();
+    private bool AllowEditMode = true;
+    private List<CothgtsppbModel> LsData;    
+    public DataTable TblDataTotal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "wo.gb.01";
+        Nam = myStateMN.GetCurrentYear().Year;
+        Ky = myStateMN.GetCurrentMonth();
+        Ky2 = Ky;
+        base.OnInitialized();
+    }
+
+    private void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Print:
+                Print();
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+
+    public override async Task ShowToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.SetToolBar(new MyToolbar("Search", true));
+        myStateMN.SetToolBar(new MyToolbar("Print", true));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+    }
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+            await Language();
+    }
+
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+
+            if (curCommand != null)
+                Fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async void ConfirmGridView_OnOk()
+    {
+        ShowLoadding = true;
+        bool ok = await Loaddata();
+        ShowLoadding = false;
+
+        if (ok)
+            PopupVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public override async Task<bool> Loaddata()
+    {
+        if (Ky > Ky2)
+        {
+            myStateMN.SetNewThongbao(Lap["Kỳ không hợp lệ"] + " !");
+            return false;
+        }
+
+        ShowLoadding = true;
+        Ngay_ct1 = SisLib.Ctrl.NgayTC.StartOfPeriod(mySysvar, Nam, Ky);
+        Ngay_ct2 = SisLib.Ctrl.NgayTC.EndOfPeriod(mySysvar, Nam, Ky);
+       
+        DataSet ds = await myDb.LoadDataset(Store_proc.Split(";")[0] + " @nam, @thang, @thang2, @ngay_ct1, @ngay_ct2, @ma_px, @ma_sp, @tk", new Dictionary<string, object>
+        {
+            ["@nam"]=Nam,["@thang"]=Ky,["@thang2"]= Ky2,
+           ["@ngay_ct1"]=Ngay_ct1,["@ngay_ct2"]=Ngay_ct2,["@ma_px"]=Ma_px,["@ma_sp"]=Ma_sp,["@tk"]=Tk 
+        });
+
+        if (ds?.Tables?.Count > 0)
+        {
+            TblData = ds.Tables[0].Copy();
+            TblDataTotal = ds.Tables.Count > 1 ? ds.Tables[1].Copy() : new DataTable();
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["No data"] + " !");
+            TblData = new DataTable();
+            TblDataTotal = new DataTable();
+        }
+
+        ShowLoadding = false;
+        StateHasChanged();
+        return true;
+    }
+
+    async void OnDvcsChanged(string ma_dvcs)
+    {
+        Ma_dvcs = ma_dvcs;
+        Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStateMN.GetCurUser();
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+            await PageLoad();
+            await Language();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+
+            if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+                myStateMN.SetToolBar(new MyToolbar("Print", true));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+            StateHasChanged();
+        }
+        else
+        {
+            await oBrowse.FocusGridAsync();
+        }
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+    public override async void ExportData(int type)
+    {
+        oBrowse.ExPortGrid(type);
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+
+    string GetOpt(string name) => myOption.GetOptionsValue(name) ?? "";
+    
+    string GetOptInt(string name)
+    {
+        string f = GetOpt(name).ToString();
+        if (GetOpt("M_KIEU_SO_AM").ToString().Equals("2"))
+            f = NormalizeOptionNegativeFormat(f);
+        return "{0:" + f + "}";
+    }
+
+    string NormalizeOptionNegativeFormat(string s)
+    {
+        if (s == null) return s;
+        var parts = s.Split(';');
+        if (parts.Length > 1 && parts[1].StartsWith("-"))
+        {
+            parts[1] = "(" + parts[1].Substring(1).Trim() + ")";
+            return string.Join(";", parts);
+        }
+        return s;
+    }
+
+    string FormatSummaryText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        if (TblDataTotal == null || TblDataTotal.Rows.Count == 0)
+            return "0";
+
+        DataRow total = TblDataTotal.Rows[0];
+
+        decimal ToDec(object v)
+            => v == null || v == DBNull.Value ? 0m : Convert.ToDecimal(v);
+
+        switch (e.Item.Name)
+        {
+            case "ten_sp":
+                return Lap["Cộng:"];
+            case "sl_nhap_kho":
+                return string.Format(GetOptInt("M_IP_SL"), ToDec(total["total_sl_nhap_kho"]));
+            case "do_dang_dau_ky":
+                return string.Format(GetOptInt("M_IP_TIEN"), ToDec(total["total_do_dang_dau_ky"]));
+            case "phat_sinh_trong_ky":
+                return string.Format(GetOptInt("M_IP_TIEN"), ToDec(total["total_phat_sinh_trong_ky"]));
+            case "do_dang_cuoi_ky":
+                return string.Format(GetOptInt("M_IP_TIEN"), ToDec(total["total_do_dang_cuoi_ky"]));
+            case "gia_thanh_tong_cong":
+                return string.Format(GetOptInt("M_IP_TIEN"), ToDec(total["total_gia_thanh_tong_cong"]));
+            default:
+                return null;
+        }
+    }
+
+    void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+
+    public override async void Print()
+    {
+        var data = new CothgtsppbModel
+        {
+            Nam = Nam,
+            Ky = Ky,
+            Ky2 = Ky2,
+            Ngay_ct1 = Ngay_ct1,
+            Ngay_ct2 = Ngay_ct2,
+            Ma_px = Ma_px,
+            Ma_sp = Ma_sp,
+            Tk = Tk,
+            LsData = myDb.ConvertDataTable<Cothgtsppb>(TblData),
+            LsTotal = myDb.ConvertDataTable<CothgtsppbTotal>(TblDataTotal)
+        };
+
+        LsData = new List<CothgtsppbModel> { data };
+        ShowReport(LsData, typeof(CothgtsppbModel));
+    }
+}

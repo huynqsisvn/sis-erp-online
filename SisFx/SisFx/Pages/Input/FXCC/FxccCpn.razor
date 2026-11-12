@@ -1,0 +1,469 @@
+﻿@page "/fxcc"
+@page "/fxcc/{Menu_id}"
+@inherits ListBaseComponent
+@inject IJSRuntime JSRuntime
+@using System.Data
+@using SisLib.List
+@using DevExpress.Blazor
+@attribute [Authorize(Roles = "admin,fxcc")]
+
+    <div class="row m-0 p-0">
+        <FrmBrowseComponent @ref="oBrowse"
+                            TblData="@TblData"
+                            Fbrowse="@fbrowse"
+                            Page_size="@Page_size"
+                            CssClass="grid-frm-height"
+                            SelectItem="CurItem"
+                            OnRowDbClick="@OnRDBClick"
+                            IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+    <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+    <div class="row my-1 mx-0 p-0">
+        <h8 class="fw-bold bg-light text-warning rounded-pill mb-1">@Lap["Tool detail cards"]</h8>
+        <FrmBrowseComponent @ref="oBrowseCT"
+                            TblData="@TblCT"
+                            CssClass="grid-frmct-height"
+                            Fbrowse="@fbrowseCt"
+                            IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+
+@* ---- POPUP FORM THÊM/SỬA/XEM ---- *@
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="60vw"
+              MinWidth="600px"
+              Scrollable="true"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@* ---- POPUP ĐỔI MÃ ---- *@
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible"
+                                 List_ID="@sqlTableName"
+                                 Ma_ma="@SqlTableKeyValue"
+                                 Title="@GetChangeToolCodeTitle()"
+                                 Ten_item="@Ten_item"
+                                 OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@* ---- POPUP XÁC NHẬN XÓA ---- *@
+@if (PopupConfirmDeleteVisible)
+{
+    <DxPopup @bind-Visible="@PopupConfirmDeleteVisible"
+             HeaderText="@GetConfirmDeleteToolTitle()"
+             Width="420px"
+             ShowFooter="true"
+             CloseOnOutsideClick="false">
+        <BodyContentTemplate>
+            <div class="d-flex align-items-center p-2">
+                <i class="fa fa-exclamation-triangle text-danger fa-2x me-3"></i>
+                <span class="fs-6">
+                    @Lap["Confirm delete tool detail"]<br />
+                    <small class="text-muted">(@Lap["Data will be permanently deleted"])</small>
+                </span>
+            </div>
+        </BodyContentTemplate>
+        <FooterContentTemplate>
+            <div class="w-100 d-flex justify-content-end">
+                <DxButton Text="@GetDeleteButtonText()" RenderStyle="ButtonRenderStyle.Danger" Click="ExecuteDeleteVoucher" CssClass="me-2 fw-bold" />
+                <DxButton Text="@GetCancelButtonText()" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => PopupConfirmDeleteVisible = false)" />
+            </div>
+        </FooterContentTemplate>
+    </DxPopup>
+}
+
+<style>
+    .grid-frm-height {
+        height: 55vh;
+    }
+    .grid-frmct-height {
+        height: 30vh;
+    }
+</style>
+
+@code {
+bool PopupConfirmDeleteVisible = false;
+bool ShowLoaddingVoucher = false;
+bool ShowLoadding = false;
+bool popFilterVisible = false;
+DxPopup popFilter;
+FrmBrowseComponent oBrowseCT;
+DataTable TblCT;
+string fbrowseCt = "";
+
+// Filter fields
+string F_NhCc = "";
+string F_LoaiCc = "";
+string F_MaDvcs = "";
+
+    protected override void OnInitialized()
+    {
+        mPage = "fxcc";
+        sqlTableName = "dmcc";
+        sqlTableView = "v_dmcc";
+        SqlTableKey = "ma_cc_me";
+        SqlItemName = "ma_cc_me";
+        IsShowCopy = true;
+        FrmType = typeof(Input.FXCC.FrmFxcc);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wf.xc.01";
+
+        myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(string.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+
+            string menuId = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(menuId, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true));
+                myStateMN.SetToolBar(new MyToolbar("Copy", true));
+                myStateMN.SetToolBar(new MyToolbar("Import", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true));
+                myStateMN.SetToolBar(new MyToolbar("Change", true));
+                myStateMN.SetToolBar(new MyToolbar("View", true));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            await Loaddata();
+            StateHasChanged();
+        }
+    }
+
+    public async void CloseForm()
+    {
+        IsShowFrm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            // Vbrowse1 chứa nhiều lưới phân cách bởi '|': PH|CT1|CT2|...
+            // Mỗi lưới dùng ';' phân cách cột
+            string vbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+            if (!string.IsNullOrWhiteSpace(vbrowse))
+            {
+                string[] parts = vbrowse.Split('|');
+                fbrowse = parts.Length > 0 ? parts[0] : "";
+                fbrowseCt = parts.Length > 1 ? parts[1] : "";
+            }
+            else
+            {
+                fbrowse = "";
+                fbrowseCt = "";
+            }
+            string pSize = myOption.GetOptionsValue("M_GRID_NROW");
+            Page_size = string.IsNullOrEmpty(pSize) ? 50 : int.Parse(pSize.Trim());
+        }
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        ShowLoaddingVoucher = true;
+        StateHasChanged();
+
+        string maDvcs = myStateMN.GetMa_Dvcs();
+        string preFilter = "1=1";
+
+        if (!string.IsNullOrEmpty(maDvcs) && !maDvcs.Equals("ALL"))
+            preFilter = $"ma_dvcs LIKE '{maDvcs.Trim()}%'";
+
+        if (!string.IsNullOrEmpty(F_NhCc))
+            preFilter += $" AND nh_cc LIKE '{F_NhCc.Trim()}%'";
+        if (!string.IsNullOrEmpty(F_LoaiCc))
+            preFilter += $" AND loai_cc LIKE '{F_LoaiCc.Trim()}%'";
+        if (!string.IsNullOrEmpty(F_MaDvcs))
+            preFilter += $" AND ma_dvcs LIKE '{F_MaDvcs.Trim()}%'";
+
+        string sql = $"SELECT * FROM {sqlTableName} WHERE {preFilter} ORDER BY ma_cc_me";
+
+        try
+        {
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                TblData = ds.Tables[0];
+                AddKieuPbColumn(TblData);
+                AddSttColumn(TblData);
+                if (TblData.DefaultView.Count > 0)
+                    SelectedItem = TblData.DefaultView[0];
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi LoadData FXCC: " + ex.Message);
+        }
+
+        // Load CT cho dòng đầu tiên
+        await LoadCTData();
+
+        ShowLoaddingVoucher = false;
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+
+        StateHasChanged();
+    }
+
+    private async Task LoadCTData()
+    {
+        if (SelectedItem == null) { TblCT = null; return; }
+        DataRowView row = SelectedItem as DataRowView;
+        if (row == null) { TblCT = null; return; }
+
+        string maCcMe = row["ma_cc_me"].ToString().Trim().Replace("'", "''");
+        // Query từ ctdmcc + LEFT JOIN dmbpts để có ten_bpcc, thêm STT
+        string sqlCt = $@"SELECT ROW_NUMBER() OVER (ORDER BY c.ma_cc) AS stt,
+                   c.*,
+                   ISNULL(b.ten_bpts, '') AS ten_bpcc
+            FROM ctdmcc c
+            LEFT JOIN dmbpts b ON b.ma_bpts = c.ma_bpcc
+            WHERE c.ma_cc_me = N'{maCcMe}' AND ISNULL(c.cc0, '1') = '1'
+            ORDER BY c.ma_cc";
+        try
+        {
+            DataSet dsCt = await myDb.LoadDataset(sqlCt);
+            if (dsCt != null && dsCt.Tables.Count > 0)
+            {
+                TblCT = dsCt.Tables[0];
+                AddSttColumn(TblCT);
+            }
+            else
+                TblCT = new DataTable();
+        }
+        catch
+        {
+            TblCT = new DataTable();
+        }
+    }
+
+    // Khi chọn dòng PH -> reload CT
+    public async Task CurItem(object item)
+    {
+        SelectedItem = item;
+        await LoadCTData();
+        StateHasChanged();
+    }
+
+    private async void BtnFilterOK()
+    {
+        ShowLoadding = true;
+        await Loaddata();
+        ShowLoadding = false;
+        popFilterVisible = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void BtnFilterCancel()
+    {
+        popFilterVisible = false;
+    }
+
+    private async void OnDvcsChanged(string maDvcs)
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+        base.Dispose();
+    }
+
+    // ---- XỬ LÝ ACTION TASK (Bắt nút Xóa riêng để validate) ----
+    private async void OnActionTaskchanged(ActionTask task)
+    {
+        if (task == ActionTask.Delete)
+        {
+            bool isValid = await ValidateBeforeDelete();
+            if (isValid)
+            {
+                PopupConfirmDeleteVisible = true;
+                StateHasChanged();
+            }
+        }
+        else
+        {
+            try { base.OnActionTaskchanged(task); } catch { }
+        }
+    }
+
+    async Task<bool> ValidateBeforeDelete()
+    {
+        if (SelectedItem == null) return false;
+
+        DataRowView row = SelectedItem as DataRowView;
+        if (row == null) return false;
+
+        string maCcMe = row["ma_cc_me"].ToString().Trim();
+        string maDvcsRow = row["ma_dvcs"].ToString().Trim();
+        string userMaDvcs = myStateMN.GetMa_Dvcs().Trim();
+
+        if (!userMaDvcs.Equals("ALL") && !maDvcsRow.Equals(userMaDvcs, StringComparison.OrdinalIgnoreCase))
+        {
+            myStateMN.SetNewThongbao(Lap["fxcc.err.other_dvcs"]);
+            return false;
+        }
+
+        int checkResult = await CheckDeleteListDmcc(maCcMe);
+        if (checkResult == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["fxcc.err.has_generated"]);
+            return false;
+        }
+
+        return true;
+    }
+
+    async Task ExecuteDeleteVoucher()
+    {
+        if (SelectedItem == null) return;
+        DataRowView row = SelectedItem as DataRowView;
+        if (row == null) return;
+
+        string maCcMe = row["ma_cc_me"].ToString().Trim().Replace("'", "''");
+
+        try
+        {
+            string sqlDelete = $"EXEC [FXCC-Delete] @ma_cc_me = N'{maCcMe}'";
+            await myDb.ExecuteSqlQueryAsync(sqlDelete);
+
+            PopupConfirmDeleteVisible = false;
+            myStateMN.SetNewThongbao(Lap["fxcc.msg.delete_ok"]);
+            await Loaddata();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(string.Format(Lap["fxcc.err.delete"], ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Thêm cột ten_kieu_pb vào DataTable nếu chưa có.
+    /// Tính từ cột kieu_kh: 1 -> "1. Theo thời gian", 2 -> "2. Phân bổ 2 lần", khác -> ""
+    /// </summary>
+    private static void AddKieuPbColumn(DataTable tbl)
+    {
+        if (tbl == null) return;
+        if (!tbl.Columns.Contains("kieu_kh")) return;
+        if (!tbl.Columns.Contains("ten_kieu_pb"))
+            tbl.Columns.Add("ten_kieu_pb", typeof(string));
+
+        foreach (DataRow row in tbl.Rows)
+        {
+            var raw = row["kieu_kh"];
+            string val = (raw == null || raw == DBNull.Value) ? "" : raw.ToString().Trim();
+            row["ten_kieu_pb"] = val switch
+            {
+                "1" => "1. Theo thời gian",
+                "2" => "2. Phân bổ 2 lần",
+                _   => ""
+            };
+        }
+        tbl.AcceptChanges();
+    }
+
+    /// <summary>
+    /// Thêm cột stt (số thứ tự) vào DataTable nếu chưa có.
+    /// </summary>
+    private static void AddSttColumn(DataTable tbl)
+    {
+        if (tbl == null) return;
+        if (tbl.Columns.Contains("stt")) return;
+
+        tbl.Columns.Add("stt", typeof(int));
+        int stt = 1;
+        foreach (DataRow row in tbl.Rows)
+        {
+            row["stt"] = stt++;
+        }
+        tbl.AcceptChanges();
+    }
+
+    public async Task<int> CheckDeleteListDmcc(string ma_cc_me)
+    {
+        int num = 0;
+        try
+        {
+            string sql = $@"
+                DECLARE @return_value int;
+                EXEC @return_value = [CheckXoacc] @ma_cc_me = N'{ma_cc_me}';
+                SELECT @return_value AS KetQua;";
+
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var val = ds.Tables[0].Rows[0][0];
+                if (val != DBNull.Value) num = Convert.ToInt32(val);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi CheckDelete: " + ex.Message);
+        }
+        return num;
+    }
+
+    // Helper methods để lấy localized strings cho attribute binding
+    private string GetChangeToolCodeTitle() => Lap["Change Tool code"];
+    private string GetConfirmDeleteToolTitle() => Lap["Confirm delete tool"];
+    private string GetDeleteButtonText() => Lap["Delete"];
+    private string GetCancelButtonText() => Lap["Cancel"];
+}

@@ -1,0 +1,83 @@
+@page "/apthue"
+@page "/apthue/{Menu_id}"
+@inherits ListBaseComponent
+@using SisLib.List
+@using Microsoft.Extensions.Localization
+@using SisPo.Pages.List.Apthue
+@using DevExpress.Blazor
+@attribute [Authorize(Roles = "admin,apthue")]
+
+<div class="row mt-1">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="60vw"
+              MinWidth="700px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible" List_ID="@sqlTableName" Ma_ma="@SqlTableKeyValue" Title="@Lap["Change tax code"]" Ten_item="@Ten_item" OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible" CurDmimex="@CurDmimex" OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        mPage = "apthue";
+        IsShowCopy = true;
+        IsShowImport = true;
+        FrmType = typeof(SisPo.Pages.List.Apthue.EditApthue);
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wp.dm.08";
+
+        base.OnInitialized();
+    }
+}

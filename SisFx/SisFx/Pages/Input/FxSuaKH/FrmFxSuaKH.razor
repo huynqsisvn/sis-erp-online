@@ -1,0 +1,299 @@
+﻿@inherits FrmListBaseComponent
+@using SisFx.Pages.Input.FxSuaKH
+@using DevExpress.Blazor
+@using System.Data
+
+<div style="width:auto;" @ref="_frmContainer">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                @* --- MÃ CÔNG CỤ (ReadOnly) --- *@
+                <DxFormLayoutItem Caption="@Lap["Tool code:"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <div class="d-flex gap-2 align-items-center">
+                            <DxTextBox @bind-Text="@CurItem.Ma_cc_me" ReadOnly="true" CssClass="w-50" />
+                            <span class="text-muted small">@EditTenCc</span>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- SỐ THẺ / CARD (ReadOnly) - Thêm trường này --- *@
+                <DxFormLayoutItem Caption="@Lap["Card no.:"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurItem.Ma_cc" ReadOnly="true" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- MÃ BỘ PHẬN SỬ DỤNG (ReadOnly) --- *@
+                <DxFormLayoutItem Caption="@Lap["Dept. code:"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@EditMaBpsd" ReadOnly="true" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- GT PHÂN BỔ KỲ (ReadOnly - hiển thị đúng giá trị) --- *@
+                <DxFormLayoutItem Caption="@Lap["Alloc. value/period:"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit Value="@_gtKhKy0"
+                                    DisplayFormat="N0"
+                                    ShowSpinButtons="false"
+                                    Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- GT ĐIỀU CHỈNH (Editable) --- *@
+                <DxFormLayoutItem Caption="@Lap["Adjusted value:"]" ColSpanMd="12" CaptionCssClass="fw-bold text-danger">
+                    <Template>
+                        <DxSpinEdit Id="gt_kh_dc_input"
+                                    Value="@CurItem.Gt_kh_dc"
+                                    DisplayFormat="N0"
+                                    ShowSpinButtons="false"
+                                    Enabled="@AllowEditMode"
+                                    ValueChanged="@((decimal v) => OnGtKhDcChanged(v))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- GT CÒN LẠI 2 (auto-calculated) --- *@
+                <DxFormLayoutItem Caption="@Lap["Remaining value 2:"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit Value="@_gtCl2"
+                                    DisplayFormat="N0"
+                                    ShowSpinButtons="false"
+                                    Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- GHI CHÚ (Editable) --- *@
+                <DxFormLayoutItem Caption="@Lap["Note:"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox Id="dien_giai_input"
+                                   @bind-Text="@CurItem.Dien_giai"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    [Parameter] public string StoreUpdate { get; set; } = "";
+    [Parameter] public DataTable EditRowData { get; set; }
+
+    public FxSuaKHItem CurItem = new();
+    private string EditTenCc = "";
+    private string EditMaBpsd = "";
+    private ElementReference _frmContainer;
+
+    // gt_kh_ky0: GT phân bổ kỳ gốc (readonly, từ cột gt_kh_ky)
+    private decimal _gtKhKy0 = 0;
+    // _gtCl2: GT còn lại 2, tự tính = gt_cl0 - gt_kh_dc + gt_kh_ky0
+    private decimal _gtCl2   = 0;
+    // _gtCl0: GT còn lại đầu kỳ (dùng trong công thức)
+    private decimal _gtCl0   = 0;
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "ctkhcc";
+        sqlTableView = "ctkhcc";
+        SqlTableKey  = "ma_cc_me;nam;ky;ma_bpcc";
+        ParentPage   = string.IsNullOrEmpty(ParentPage) ? "fxsuakh" : ParentPage;
+        Itemsizemode = SizeMode.Medium;
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(string.Format("fx-{0}", UserLang.Trim()));
+
+            if (curActionTask == ActionTask.Edit || curActionTask == ActionTask.View)
+                LoadFromRowData(curActionTask == ActionTask.Edit);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Lỗi: " + ex.Message);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                if (AllowEditMode)
+                {
+                    await JavacriptS.InvokeVoidAsync("eval", @"
+                        if (!window._fxsuakhSelectAll) {
+                            window._fxsuakhSelectAll = true;
+                            document.addEventListener('focusin', function(e) {
+                                var input = e.target;
+                                if (input && input.tagName === 'INPUT' && input.type === 'text' && !input.readOnly) {
+                                    setTimeout(function() { input.select(); }, 0);
+                                }
+                            });
+                        }
+                    ");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('gt_kh_dc_input')?.focus()");
+                }
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Load dữ liệu từ dòng grid — giống WinForm FaSuakhF3 (DataContext binding).
+    /// Grid SQL columns (từ FxSuaKHBase.Loaddata):
+    ///   stt, ma_cc_me, ten_cc, ten_cc2, ma_bpcc, nam, ky, ma_dvcs,
+    ///   nguyen_gia, gt_da_kh, gt_cl, gt_cl0, gt_kh_ky, gt_kh_dc, gt_cl2,
+    ///   sua_kh, dien_giai, tk_cc, tk_kh, tk_cp, ma_phi, ma_bpht, ma_px, ma_vv, ma_nv
+    /// </summary>
+    void LoadFromRowData(bool allowEdit)
+    {
+        CurItem = new FxSuaKHItem();
+        AllowEditMode = allowEdit;
+        AllowEditMa   = false;
+
+        if (EditRowData == null || EditRowData.Rows.Count == 0) return;
+
+        DataRow row = EditRowData.Rows[0];
+        DataColumnCollection cols = EditRowData.Columns;
+
+        // Lấy các giá trị cơ bản từ grid
+        CurItem.Ma_cc_me  = ReadStr(row, cols, "ma_cc_me");
+        CurItem.Ma_cc = ReadStr(row, cols, "ma_cc");    // Bổ sung đọc Số thẻ
+        if (string.IsNullOrEmpty(CurItem.Ma_cc))
+        {
+            CurItem.Ma_cc = CurItem.Ma_cc_me;
+        }
+        CurItem.Ma_bpcc = ReadStr(row, cols, "ma_bpcc");
+        CurItem.Nam       = ReadInt(row, cols, "nam");
+        CurItem.Ky        = ReadInt(row, cols, "ky");
+        CurItem.Ma_bpcc   = ReadStr(row, cols, "ma_bpcc");
+        CurItem.Ma_dvcs   = ReadStr(row, cols, "ma_dvcs");
+        CurItem.Dien_giai = ReadStr(row, cols, "dien_giai");
+
+        // Tên công cụ hiển thị (theo ngôn ngữ)
+        EditTenCc = IsLangEn ? ReadStr(row, cols, "ten_cc2") : ReadStr(row, cols, "ten_cc");
+
+        // === BỘ PHẬN SỬ DỤNG CHỈ ĐỌC ===
+        // Lấy từ danh mục dmcc nếu cần - hiện tại để trống hoặc từ ma_dvcs
+        EditMaBpsd = "";
+
+        // === GIÁTRỊ PHÂN BỔ KỲ (ReadOnly) ===
+        // Từ cột gt_kh_ky - đây là GT phân bổ kỳ gốc
+        _gtKhKy0 = ReadDec(row, cols, "gt_kh_ky");
+        CurItem.Gt_kh_ky = _gtKhKy0;
+
+        // === GT ĐIỀU CHỈNH (Editable) ===
+        // Từ cột gt_kh_dc
+        CurItem.Gt_kh_dc = ReadDec(row, cols, "gt_kh_dc");
+
+        // === GT CÒN LẠI ĐẦU KỲ (dùng trong công thức) ===
+        // Từ cột gt_cl0
+        _gtCl0 = ReadDec(row, cols, "gt_cl0");
+
+        // === TÍNH GT CÒN LẠI 2 ===
+        // Công thức: gt_cl2 = gt_cl0 - gt_kh_dc + gt_kh_ky
+        _gtCl2 = ReadDec(row, cols, "gt_cl2");
+        EditMaBpsd = CurItem.Ma_bpcc; // Gán đúng Mã bộ phận vào UI
+
+        // === GIÁ TRỊ PHÂN BỔ KỲ GỐC ===
+        _gtKhKy0 = ReadDec(row, cols, "gt_kh_ky0"); // Đọc từ gt_kh_ky0
+
+        // === GT ĐIỀU CHỈNH ===
+        CurItem.Gt_kh_dc = ReadDec(row, cols, "gt_kh_ky"); // Đọc từ gt_kh_ky mới đúng
+    }
+
+    static string ReadStr(DataRow row, DataColumnCollection cols, string col)
+        => cols.Contains(col) && row[col] != DBNull.Value ? (row[col]?.ToString()?.Trim() ?? "") : "";
+    static int ReadInt(DataRow row, DataColumnCollection cols, string col)
+        => cols.Contains(col) && row[col] != DBNull.Value ? Convert.ToInt32(row[col]) : 0;
+    static decimal ReadDec(DataRow row, DataColumnCollection cols, string col)
+        => cols.Contains(col) && row[col] != DBNull.Value ? Convert.ToDecimal(row[col]) : 0;
+
+    /// <summary>
+    /// Khi GT điều chỉnh thay đổi, tính lại GT còn lại 2.
+    /// Công thức (giống WinForm txtgt_kh_dc_PreviewLostKeyboardFocus):
+    ///   gt_cl2 = gt_cl0 - gt_kh_dc + gt_kh_ky
+    /// </summary>
+    void OnGtKhDcChanged(decimal newValue)
+    {
+        CurItem.Gt_kh_dc = newValue;
+        // Chỉ tính toán lại khi người dùng thực sự gõ số mới
+        _gtCl2 = _gtCl0 - newValue + _gtKhKy0;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Lưu điều chỉnh — gọi Stored Procedure hoặc UPDATE trực tiếp.
+    /// UPDATE các cột: gt_kh_dc (giá trị điều chỉnh), gt_cl2 (GT còn lại 2), dien_giai, sua_kh
+    /// </summary>
+    async Task SaveEdit()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(CurItem.Ma_cc_me))
+            {
+                myStateMN.SetNewThongbao(Lap["Tool code is required!"]);
+                return;
+            }
+            string strMaCc = string.IsNullOrEmpty(CurItem.Ma_cc) ? CurItem.Ma_cc_me : CurItem.Ma_cc;
+            string strMaBp = string.IsNullOrEmpty(CurItem.Ma_bpcc) ? " " : CurItem.Ma_bpcc;
+            string strDg = string.IsNullOrEmpty(CurItem.Dien_giai) ? " " : CurItem.Dien_giai;
+
+            string safeMaCc = strMaCc.Replace("'", "''");
+            string safeMaBp = strMaBp.Replace("'", "''");
+            string safeDg = strDg.Replace("'", "''");
+
+            string sGtKhDc = CurItem.Gt_kh_dc.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            string sGtCl2 = _gtCl2.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            if (!string.IsNullOrEmpty(StoreUpdate))
+            {
+                // Tên tham số bây giờ map chuẩn 100% với file SP của bạn
+                string paramNames = "@Nam;@Ky;@ma_cc;@ma_bpcc;@Gt_kh_ky;@Gt_cl;@Dien_giai";
+                string paramValues = $"{CurItem.Nam};{CurItem.Ky};{strMaCc};{strMaBp};{sGtKhDc};{sGtCl2};{strDg}";
+
+                await myDb.LoadStoreProcedure(StoreUpdate, paramNames, paramValues);
+            }
+            else
+            {
+                // Update thủ công: Lưu vào gt_kh_ky và gt_cl đúng như SP
+                string sql = $@"UPDATE dbo.ctkhcc
+            SET gt_kh_ky = {sGtKhDc},
+                gt_cl = {sGtCl2},
+                dien_giai = N'{safeDg}',
+                sua_kh = 1
+            WHERE nam = {CurItem.Nam}
+              AND ky = {CurItem.Ky}
+              AND ma_cc = '{safeMaCc}'
+              AND ISNULL(ma_bpcc, '') = '{safeMaBp}'";
+
+                await myDb.ExecuteSqlQueryAsync(sql);
+            }
+
+            myStateMN.SetNewThongbao($"{Lap["Update successfully:"]} {CurItem.Ma_cc_me} - {Lap["Period"]} {CurItem.Ky}/{CurItem.Nam}");
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo(ParentPage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Error saving:"]} {ex.Message}");
+            StateHasChanged();
+        }
+    }
+}

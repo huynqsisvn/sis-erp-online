@@ -1,0 +1,68 @@
+﻿@page "/frmfabpts"
+@page "/frmfabpts/{menu_id}"
+@page "/frmfabpts/{menu_id}/{ma_bpts}"
+@inject Statemanagerment myStatemanagerment
+@inject NavigationManager navigation
+@inject IDbManager myDb
+@inject IJSRuntime JavacriptS
+@inject IStringLocalizer<FabptsComponent> Lap
+
+<DxPopup @bind-Visible="@PopVisible"
+         ShowFooter="false" ShowHeader="false"
+         CloseOnEscape="false"
+         CloseOnOutsideClick="false"
+         ShowCloseButton="false"
+         Width="auto"
+         MinWidth="650px"
+         MinHeight="200px"
+         MaxHeight="98vh"
+         AllowResize="true"
+         AllowDrag="true"
+         AllowDragByHeaderOnly="true">
+    <BodyTemplate>
+        <div class="row">
+            <EditFabpts Ma_ma="@ma_bpts" Menu_id="@menu_id" curActionTask="@curActionTask" ShowAdd="@ShowAdd" OnClose="ClickHandler"></EditFabpts>
+        </div>
+    </BodyTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public string menu_id { get; set; }
+    [Parameter] public string ma_bpts { get; set; }
+    [Parameter] public ActionTask curActionTask { get; set; } = ActionTask.None;
+    [Parameter] public bool ShowAdd { get; set; }
+
+    public bool PopVisible { get; set; } = true;
+    private string Pagetitle = "Danh mục bộ phận sử dụng";
+
+    protected override void OnInitialized()
+    {
+        if (curActionTask == ActionTask.None)
+        {
+            curActionTask = myStatemanagerment.GetCurrentActionTask();
+        }
+
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                Pagetitle = Lap["View department information"];
+                break;
+            case ActionTask.Edit:
+                Pagetitle = Lap["Edit department information"];
+                break;
+            case ActionTask.New:
+                Pagetitle = Lap["Add a new department"];
+                break;
+            default:
+                Pagetitle = Lap["View department information"];
+                break;
+        }
+    }
+
+    private void ClickHandler()
+    {
+        PopVisible = false;
+        OnClose.InvokeAsync();
+    }
+}

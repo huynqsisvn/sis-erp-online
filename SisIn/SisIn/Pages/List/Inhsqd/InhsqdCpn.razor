@@ -1,0 +1,265 @@
+﻿@page "/inhsqd"
+@page "/inhsqd/{Menu_id}"
+@inherits ListBaseComponent
+@inject HttpClient Http
+@using System.Data.OleDb
+@using System.Diagnostics;
+@using System.Data.SqlClient;
+@using SisLib.List
+@using Microsoft.Extensions.Localization
+@using DevExpress.Blazor
+
+@attribute [Authorize(Roles = "admin,inhsqd")]
+
+<div class="row mt-1" tabindex="0" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="60vw"
+              MinWidth="700px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible" List_ID="@sqlTableName" Ma_ma="@SqlTableKeyValue" Title="@Lap["Change Item code"]" Ten_item="@Ten_item" OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+  
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible" CurDmimex="@CurDmimex" OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    public DotNetObjectReference<InhsqdCpn> Pageobj;
+    private string ActiveComponentId = "oBrowse";
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+        if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowse"))
+        {
+            oBrowseHotKeyFunction(value);
+        }
+    }
+    void oBrowseHotKeyFunction(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Equals("F2"))
+            {
+
+            }
+            if (value.Equals("F3"))
+            {
+
+            }
+            if (value.Equals("F4"))
+            {
+
+            }
+            if (value.Equals("F5"))
+            {
+
+                StateHasChanged();
+            }
+            else if (value.Equals("F7"))
+            {
+                try
+                {
+
+
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            else if (value.Equals("F8"))
+            {
+
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+
+            }
+        }
+    }
+    private async Task SetActiveComponentIdAsync(string id)
+    {
+        try
+        {
+            ActiveComponentId = id ?? ActiveComponentId;
+            if (Pageobj != null)
+            {
+                await JavacriptS.InvokeVoidAsync("SetPageFModeObj", Pageobj, ActiveComponentId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SetActiveComponentIdAsync error: " + ex.Message);
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Pageobj = DotNetObjectReference.Create(this);
+            await SetActiveComponentIdAsync("oBrowse");
+            base.OnAfterRenderAsync(firstRender);
+        }
+    }
+    protected override void OnInitialized()
+    {
+        mPage = "inhsqd";
+        IsShowCopy = true;
+        IsShowImport = true;        
+        FrmType = typeof(List.Inhsqd.EditInhsqd);
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "ws_dm_04";
+        base.OnInitialized();
+    }
+    public override async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {            
+            string sqlcmd = $"Select Count(1) as sl from ct70 where ma_vt ='{rview["ma_vt"].ToString().Trim()}' AND dvt1 = N'{rview["dvt1"].ToString().Trim()}' AND Isnull(dvt1,'')<>''";
+            DataSet resultcf = await myDb.LoadDataset(sqlcmd);
+            if (resultcf.Tables.Count > 0)
+            {
+                int checkdel = int.Parse(resultcf.Tables[0].Rows[0][0].ToString());
+                if (checkdel > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["Unremoved data has been generated"] + " !");
+                    return;
+                }
+            }
+
+            MessageDl = String.Format(Lap["Do you want to delete :{0} ?"], SqlTableKeyValue);
+            ResultDl = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+            {
+                Text = MessageDl,
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["OK"],
+                CancelButtonText = Lap["Cancel"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger,
+            });
+            if (ResultDl == true)
+            {
+                await Dongy_xoa(rview,true);
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+    public async Task Dongy_xoa(DataRowView rview,bool status)
+    {
+        if (status)
+        {
+            string sql = "Delete " + sqlTableName + $" where ma_vt ='{rview["ma_vt"].ToString().Trim()}' AND dvt1 = N'{rview["dvt1"].ToString().Trim()}' AND Isnull(dvt1,'')<>''";
+            await myDb.ExecuteSqlQueryAsync(sql);
+            await Loaddata();
+            string ToastMessage = String.Format(Lap["Delete successfully : {0}"], rview["ma_vt"].ToString().Trim() + "-" +rview["dvt1"].ToString().Trim());
+            myStateMN.SetNewThongbao(ToastMessage);
+        }
+        MessageDl = "";
+    }
+
+    public void V_Sua1()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string[] strKeys = SqlTableKey.Split(";");            
+            bool hasAllKeys = true;
+            foreach (string key in strKeys)
+            {
+                if (!rview.DataView.Table.Columns.Contains(key))
+                {
+                    hasAllKeys = false;
+                    break;
+                }
+            }
+
+            if (!hasAllKeys)
+                return;
+            
+            List<string> keyValues = new List<string>();
+            foreach (string key in strKeys)
+            {
+                if (!String.IsNullOrEmpty(rview[key].ToString()))
+                {
+                    keyValues.Add(rview[key].ToString().Trim());
+                }
+            }
+
+            if (keyValues.Count == strKeys.Length)
+            {
+                SqlTableKeyValue = String.Join(";", keyValues);
+
+                if (editPage.ToUpper().StartsWith("FRM"))
+                    myNavi.NavigateTo(editPage + "/" + Menu_id + "/" + SqlTableKeyValue);
+                else
+                {
+                    Par.Clear();
+                    Par.Add("Ma_ma", (object)SqlTableKeyValue);
+                    Par.Add("Menu_id", (object)Menu_id);
+                    Par.Add("ShowAdd", (object)true);
+                    Par.Add("curActionTask", (object)ActionTask.Edit);
+                    Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                    IsShowFrm = true;
+                    StateHasChanged();
+                }
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+    
+}

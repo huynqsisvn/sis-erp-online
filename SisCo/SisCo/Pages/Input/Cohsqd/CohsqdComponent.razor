@@ -1,0 +1,400 @@
+@page "/cohsqd"
+@page "/cohsqd/{Menu_id}"
+@inherits ListBaseComponent
+@implements IAsyncDisposable
+@attribute [Authorize(Roles = "admin,cohsqd")]
+
+<div class="row my-1">
+    <div class="col"></div>
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 fw-bold">@Lap["Year"]</label>
+        <div>
+            <DxComboBox Data="@Years" @bind-Value="@CurrentYear" CssClass="p-0 m-0"></DxComboBox>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-1" @onkeydown="@OnoBrowseKeyDown" @onkeydown:preventDefault="true">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="60vw"
+              MinWidth="600px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IsShowTransferPopup)
+{
+    <DxPopup @bind-Visible="@IsShowTransferPopup"
+             CloseOnEscape="true"
+             Width="400px"
+             HeaderText="@Lap["Transfer conversion coefficient"]"
+             ShowFooter="true">
+        <BodyContentTemplate Context="popupContext">
+            <div class="p-3">
+                <DxFormLayout>
+                    <DxFormLayoutItem Caption="@Lap["From period"]" ColSpanMd="12">
+                        <DxSpinEdit @bind-Value="@TuKy" Min="1" Max="12" ShowSpinButtons="true" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="@Lap["To period"]" ColSpanMd="12">
+                        <DxSpinEdit @bind-Value="@SangKy" Min="1" Max="12" ShowSpinButtons="true" />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        </BodyContentTemplate>
+        <FooterContentTemplate>
+            <div class="d-flex justify-content-end">
+                <DxButton Text="@Lap["OK"]" RenderStyle="ButtonRenderStyle.Success" Click="@TransferCoefficient" CssClass="me-2" />
+                <DxButton Text="@Lap["Cancel"]" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => IsShowTransferPopup = false)" />
+            </div>
+        </FooterContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    private bool IsShowTransferPopup { get; set; } = false;
+    private int TuKy { get; set; } = 1;
+    private int SangKy { get; set; } = 1;
+    
+    public List<int> Years { get; set; } = new();
+    private int _currentYear = DateTime.Now.Year;
+    public int CurrentYear
+    {
+        get => _currentYear;
+        set
+        {
+            if (_currentYear == value) return;
+            _currentYear = value;
+            _ = OnYearChangedAsync();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        mPage = "cohsqd";
+        IsShowCopy = true;
+        IsShowImport = false;
+        FrmType = typeof(Input.Cohsqd.EditCohsqd);
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wo.gc.02";
+        Years = Enumerable.Range(DateTime.Now.Year - 20, 30).OrderByDescending(y => y).ToList();
+        base.OnInitialized();
+        SqlTableKey = "ma_sp";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            SqlTableKey = "ma_sp";
+            fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true, "F4"));
+                if (IsShowCopy) myStateMN.SetToolBar(new MyToolbar("Copy", true));
+                if (IsShowImport) myStateMN.SetToolBar(new MyToolbar("Import", true));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+                myStateMN.SetToolBar(new MyToolbar("Change", Is_doi_ma));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.AddToolBarButton("Button1", Lap["Transfer conversion coefficient"]);
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            await Loaddata();
+            await Language();
+        }
+    }
+
+    private async Task OnYearChangedAsync()
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        string sql = "Exec " + curCommand.Store_proc.Trim() + " " + CurrentYear.ToString();
+        DataSet dsList = await myDb.LoadDataset(sql);
+        TblData = dsList.Tables[0];       
+        if (TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+    }
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Moi();
+                break;
+            case ActionTask.Copy:
+                myStateMN.SetCurrentActionTask(ActionTask.Copy);
+                V_Copy();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Import:
+                V_Import();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+            case ActionTask.Button1:
+                ShowTransferDialog();
+                break;
+        }
+    }
+
+    private void ShowTransferDialog()
+    {
+        TuKy = 1;
+        SangKy = 2;
+        IsShowTransferPopup = true;
+        StateHasChanged();
+    }
+
+    private async Task TransferCoefficient()
+    {
+        if (TuKy < 1 || TuKy > 12 || SangKy < 1 || SangKy > 12)
+        {
+            myStateMN.SetNewThongbao(Lap["Invalid period value"]);
+            return;
+        }
+
+        if (TuKy == SangKy)
+        {
+            myStateMN.SetNewThongbao(Lap["From period and To period must be different"]);
+            return;
+        }
+
+        try
+        {
+            string fromField = TuKy < 10 ? $"he_so0{TuKy}" : $"he_so{TuKy}";
+            string toField = SangKy < 10 ? $"he_so0{SangKy}" : $"he_so{SangKy}";
+
+            string sql = $"UPDATE [cosxlt-dmhssp] SET {toField} = {fromField} WHERE nam = {CurrentYear}";
+            await myDb.ExecuteSqlQueryAsync(sql);
+
+            IsShowTransferPopup = false;
+            await Loaddata();
+            myStateMN.SetNewThongbao(Lap["Transfer completed successfully"]);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Operation error"]}: {ex.Message}");
+        }
+    }
+
+    public override void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string strkey = "ma_sp";
+            if (!rview.DataView.Table.Columns.Contains(strkey))
+                return;
+
+            if (!String.IsNullOrEmpty(rview[strkey].ToString()))
+            {
+                string keyValue = rview[strkey].ToString().Trim() + ";" + CurrentYear.ToString();
+                
+                if (editPage.ToUpper().StartsWith("FRM"))
+                    myNavi.NavigateTo(editPage + "/" + Menu_id + "/" + keyValue);
+                else
+                {
+                    Par.Clear();
+                    Par.Add("Nam", (object)CurrentYear);
+                    Par.Add("Ma_sp", (object)rview[strkey].ToString().Trim());
+                    Par.Add("Ma_sp0", (object)rview["ma_sp0"].ToString().Trim());
+                    Par.Add("Menu_id", (object)Menu_id);
+                    Par.Add("ShowAdd", (object)true);
+                    Par.Add("curActionTask", (object)ActionTask.View);
+                    Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                    IsShowFrm = true;
+                    StateHasChanged();
+                }
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public override void V_Sua()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string strkey = "ma_sp";
+            if (!rview.DataView.Table.Columns.Contains(strkey))
+                return;
+
+            if (!String.IsNullOrEmpty(rview[strkey].ToString()))
+            {
+                string keyValue = rview[strkey].ToString().Trim() + ";" + CurrentYear.ToString();
+                
+                if (editPage.ToUpper().StartsWith("FRM"))
+                    myNavi.NavigateTo(editPage + "/" + Menu_id + "/" + keyValue);
+                else
+                {
+                    Par.Clear();
+                    Par.Add("Nam", (object)CurrentYear);
+                    Par.Add("Ma_sp", (object)rview[strkey].ToString().Trim());
+                    Par.Add("Ma_sp0", (object)rview["ma_sp0"].ToString().Trim());
+                    Par.Add("Menu_id", (object)Menu_id);
+                    Par.Add("ShowAdd", (object)true);
+                    Par.Add("curActionTask", (object)ActionTask.Edit);
+                    Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                    IsShowFrm = true;
+                    StateHasChanged();
+                }
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public void V_Copy()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string strkey = "ma_sp";
+            if (!rview.DataView.Table.Columns.Contains(strkey))
+                return;
+
+            if (!String.IsNullOrEmpty(rview[strkey].ToString()))
+            {
+                string keyValue = rview[strkey].ToString().Trim() + ";" + CurrentYear.ToString();
+                
+                if (editPage.ToUpper().StartsWith("FRM"))
+                    myNavi.NavigateTo(editPage + "/" + Menu_id + "/" + keyValue);
+                else
+                {
+                    Par.Clear();
+                    Par.Add("Nam", (object)CurrentYear);
+                    Par.Add("Ma_sp", (object)rview[strkey].ToString().Trim());
+                    Par.Add("Ma_sp0", (object)rview["ma_sp0"].ToString().Trim());
+                    Par.Add("Menu_id", (object)Menu_id);
+                    Par.Add("ShowAdd", (object)true);
+                    Par.Add("curActionTask", (object)ActionTask.Copy);
+                    Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                    IsShowFrm = true;
+                    StateHasChanged();
+                }
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public virtual void V_Moi()
+    {
+        if (editPage.ToUpper().StartsWith("FRM"))
+            myNavi.NavigateTo(editPage + "/" + Menu_id + "/");
+        else
+        {
+            Par.Clear();
+            Par.Add("Nam", (object)CurrentYear);
+            Par.Add("Ma_sp", (object)"");
+            Par.Add("Ma_sp0", (object)"");
+            Par.Add("Menu_id", (object)Menu_id);
+            Par.Add("ShowAdd", (object)true);
+            Par.Add("curActionTask", (object)ActionTask.New);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+    }
+
+    public virtual async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            MessageDl = String.Format(Lap["Do you want to delete :{0} ?"], rview["ma_sp"].ToString().Trim());
+            ResultDl = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+            {
+                Text = MessageDl,
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["OK"],
+                CancelButtonText = Lap["Cancel"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger,
+            });
+            if (ResultDl == true)
+            {
+                Dongyxoa(true);
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+    public virtual async Task Dongyxoa(bool status)
+    {
+        if (status)
+        {
+            DataRowView rview = (DataRowView)SelectedItem;
+            string sql = "Delete FROM [cosxlt-dmhssp] where nam = " + CurrentYear.ToString().Trim() + " AND ma_sp ='" + rview["ma_sp"].ToString().Trim() + "' AND ma_sp0 ='" + rview["ma_sp0"].ToString().Trim() + "'";
+            await myDb.ExecuteSqlQueryAsync(sql);
+            await Loaddata();
+            string ToastMessage = String.Format(Lap["Delete successfully : {0}"], rview["ma_sp"].ToString().Trim() + "-" + rview["ma_sp0"].ToString().Trim());
+            myStateMN.SetNewThongbao(ToastMessage);
+        }
+        MessageDl = "";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        base.Dispose();
+    }
+}

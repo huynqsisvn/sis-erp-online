@@ -1,0 +1,204 @@
+@page "/changepassweb"
+@page "/changepassweb/{Menu_id}"
+@attribute [Authorize]
+@inject IDbManager myDb
+@inject Statemanagerment myStatemanagerment
+@inject NavigationManager navigation
+@inject XmlStringLocalizer Lap
+
+<style>
+    .cp-wrap {
+        display: flex;
+        justify-content: center;
+        padding-top: 4vh;
+    }
+
+    .cp-card {
+        width: 440px;
+        max-width: 95vw;
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+        padding: 24px 28px 28px;
+    }
+
+    .cp-title {
+        font-weight: 600;
+        font-size: 1.15rem;
+        color: #1f2a44;
+        text-align: center;
+        margin-bottom: 18px;
+    }
+
+    .cp-field {
+        margin-bottom: 14px;
+    }
+
+        .cp-field > label {
+            display: block;
+            font-size: 0.85rem;
+            color: #4b5563;
+            margin-bottom: 4px;
+        }
+
+    .cp-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .cp-msg-ok {
+        color: #198754;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    .cp-msg-err {
+        color: #dc3545;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+</style>
+
+<div class="cp-wrap">
+    <div class="cp-card">
+        <div class="cp-title">@Lap["Change password"]</div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="cp-msg-ok">@_message</div>
+        }
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="cp-msg-err">@_error</div>
+        }
+
+        <div class="cp-field">
+            <label>Mật khẩu hiện tại</label>
+            <DxTextBox @bind-Text="@_oldPass" Password="true" NullText="Nhập mật khẩu hiện tại" CssClass="w-100" />
+        </div>
+        <div class="cp-field">
+            <label>Mật khẩu mới</label>
+            <DxTextBox @bind-Text="@_newPass" Password="true" NullText="Nhập mật khẩu mới" CssClass="w-100" />
+        </div>
+        <div class="cp-field">
+            <label>Xác nhận mật khẩu mới</label>
+            <DxTextBox @bind-Text="@_confirmPass" Password="true" NullText="Nhập lại mật khẩu mới" CssClass="w-100" />
+        </div>
+
+        <div class="cp-actions">
+            <DxButton RenderStyle="ButtonRenderStyle.Primary" Text="Đổi mật khẩu" Click="@OnChangeAsync" CssClass="flex-fill" Enabled="@(!_busy)" />
+            <DxButton RenderStyle="ButtonRenderStyle.Secondary" Text="Hủy" Click="@OnCancel" CssClass="flex-fill" Enabled="@(!_busy)" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Menu_id { get; set; }
+
+    private string _oldPass = "";
+    private string _newPass = "";
+    private string _confirmPass = "";
+    private string _message = "";
+    private string _error = "";
+    private bool _busy = false;
+
+    private async Task OnChangeAsync()
+    {
+        _message = "";
+        _error = "";
+
+        Users curUser = myStatemanagerment.GetCurUser();
+        if (curUser == null || string.IsNullOrWhiteSpace(curUser.User_name))
+        {
+            _error = "Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại.";
+            navigation.NavigateTo("");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_oldPass) || string.IsNullOrWhiteSpace(_newPass) || string.IsNullOrWhiteSpace(_confirmPass))
+        {
+            _error = "Vui lòng nhập đầy đủ mật khẩu hiện tại, mật khẩu mới và xác nhận.";
+            return;
+        }
+        if (!_newPass.Equals(_confirmPass))
+        {
+            _error = "Mật khẩu mới và xác nhận không khớp.";
+            return;
+        }
+        if (_newPass.Length < 6)
+        {
+            _error = "Mật khẩu mới phải có ít nhất 6 ký tự.";
+            return;
+        }
+        if (_newPass.Equals(_oldPass))
+        {
+            _error = "Mật khẩu mới phải khác mật khẩu hiện tại.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            string userName = curUser.User_name.Trim();
+            string oldEnc = Enc.Encrypt(_oldPass);
+
+            // Xác định tài khoản thuộc bảng nào theo thứ tự như lúc đăng nhập: userinfo trước, rồi userinfo_web.
+            // Khớp mật khẩu hiện tại ở bảng nào thì đổi mật khẩu ở đúng bảng đó.
+            string targetTable = null;
+            if (await ExistsInTableAsync("userinfo", userName, oldEnc))
+            {
+                targetTable = "userinfo";
+            }
+            else if (await ExistsInTableAsync("userinfo_web", userName, oldEnc))
+            {
+                targetTable = "userinfo_web";
+            }
+
+            if (targetTable == null)
+            {
+                _error = "Mật khẩu hiện tại không đúng.";
+                return;
+            }
+
+            // Cập nhật mật khẩu mới (đã mã hóa) vào đúng bảng của tài khoản.
+            string newEnc = Enc.Encrypt(_newPass);
+            string safeUser = userName.Replace("'", "''");
+            string safeNew = newEnc.Replace("'", "''");
+            string updateSql = $"UPDATE {targetTable} SET password = '{safeNew}' WHERE user_name = '{safeUser}'";
+            await myDb.ExecuteSqlQueryAsync(updateSql);
+
+            _message = "Đổi mật khẩu thành công.";
+            _oldPass = "";
+            _newPass = "";
+            _confirmPass = "";
+        }
+        catch (Exception ex)
+        {
+            _error = "Không đổi được mật khẩu: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    // Kiểm tra user_name + mật khẩu (đã mã hóa) có tồn tại trong bảng chỉ định không. tableName là hằng nội bộ (userinfo / userinfo_web), không phải input người dùng.
+    private async Task<bool> ExistsInTableAsync(string tableName, string userName, string encPass)
+    {
+        string sql = $"SELECT 1 FROM {tableName} WHERE user_name = @user_name AND password = @password";
+        var p = new Dictionary<string, object>
+        {
+            ["@user_name"] = userName,
+            ["@password"] = encPass
+        };
+        DataSet ds = await myDb.LoadDataset(sql, p);
+        return ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0;
+    }
+
+    private void OnCancel()
+    {
+        navigation.NavigateTo("about");
+    }
+}

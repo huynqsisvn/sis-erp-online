@@ -1,0 +1,309 @@
+﻿@page "/fadcbp"
+@page "/fadcbp/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,fadcbp")]
+@using SisFa.Pages.Input.FADCBP
+@using DevExpress.Blazor
+@using System.Data
+
+<div class="d-flex mt-1 align-items-center gap-3">
+    <h6 class="mb-0">Mã tài sản:</h6>
+    <AutocompleteComponent Ma_dm="dmts" @bind-Value="@M_SO_THE_TS" SelectChanged="SoTheTs_Changed" CssClass="w-25" />
+</div>
+<hr style="margin:6px;padding:0px;height:1px;" />
+
+<div class="row mt-1" tabindex="0" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="25vw"
+              MinWidth="300px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@code {
+    private string _soTheTs;
+    public string M_SO_THE_TS
+    {
+        get { return _soTheTs; }
+        set
+        {
+            if (_soTheTs != value)
+            {
+                _soTheTs = value;
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        mPage = "fadcbp";
+        editPage = "frmfadcbp";
+        IsShowCopy = false;
+        IsShowImport = false;
+        sqlTableName = "ctbpts";
+        sqlTableView = "ctbpts";
+        SqlTableKey = "so_the_ts;nam;ky";
+        SqlItemName = "so_the_ts";
+        FrmType = typeof(Input.FADCBP.FrmFadcbp);
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wf.dc.01";
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true, "F4"));
+                myStateMN.SetToolBar(new MyToolbar("Copy", false));
+                myStateMN.SetToolBar(new MyToolbar("Import", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+                myStateMN.SetToolBar(new MyToolbar("Change", false));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", false));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            M_SO_THE_TS = "";
+            StateHasChanged();
+        }
+    }
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Them();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+        }
+    }
+
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            fbrowse = IsLangEn ? curCommand.Vbrowse2 : curCommand.Vbrowse1;
+            Page_size = int.Parse(myOption.GetOptionsValue("M_GRID_NROW").Trim());
+            editPage = "";
+        }
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        SelectedItem = null;
+
+        // Mac dinh luoi trong, chi query khi nguoi dung nhap ma tai san
+        if (string.IsNullOrWhiteSpace(M_SO_THE_TS))
+        {
+            TblData = null;
+            StateHasChanged();
+            return;
+        }
+
+        string soTheTsSafe = M_SO_THE_TS.Trim().Replace("'", "''");
+        string sql = $"SELECT ROW_NUMBER() OVER (ORDER BY nam, ky) AS stt, * FROM {sqlTableView} WHERE so_the_ts = '{soTheTsSafe}' ORDER BY nam, ky";
+        DataSet dsList = await myDb.LoadDataset(sql);
+        TblData = dsList?.Tables[0];
+
+        if (TblData != null && TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+        StateHasChanged();
+    }
+
+    void SoTheTs_Changed(ExpandoObject value)
+    {
+        Loaddata();
+    }
+
+    public virtual void V_Them()
+    {
+        // Bổ sung đoạn block này để chặn người dùng:
+        if (string.IsNullOrWhiteSpace(M_SO_THE_TS))
+        {
+            myStateMN.SetNewThongbao("Vui lòng chọn Mã tài sản trên thanh tìm kiếm trước khi thêm mới!");
+            return;
+        }
+
+        Par.Clear();
+        Par.Add("Ma_ma", (object)M_SO_THE_TS.Trim());
+        Par.Add("Menu_id", (object)Menu_id);
+        Par.Add("ShowAdd", (object)true);
+        Par.Add("curActionTask", (object)ActionTask.New);
+        Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Sua()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            if (rview["ts0"]?.ToString() == "1")
+            {
+                myStateMN.SetNewThongbao("Không thể sửa dòng dữ liệu gốc!");
+                return;
+            }
+
+            string compositeKey = rview["so_the_ts"].ToString().Trim() + ";" +
+                                  rview["nam"].ToString().Trim() + ";" +
+                                  rview["ky"].ToString().Trim();
+
+            Par.Clear();
+            Par.Add("Ma_ma", (object)compositeKey);
+            Par.Add("Menu_id", (object)Menu_id);
+            Par.Add("ShowAdd", (object)true);
+            Par.Add("curActionTask", (object)ActionTask.Edit);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+            myStateMN.SetNewThongbao("Chưa chọn dòng dữ liệu!");
+    }
+
+    public override void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string compositeKey = rview["so_the_ts"].ToString().Trim() + ";" +
+                                  rview["nam"].ToString().Trim() + ";" +
+                                  rview["ky"].ToString().Trim();
+
+            Par.Clear();
+            Par.Add("Ma_ma", (object)compositeKey);
+            Par.Add("Menu_id", (object)Menu_id);
+            Par.Add("ShowAdd", (object)true);
+            Par.Add("curActionTask", (object)ActionTask.View);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+            myStateMN.SetNewThongbao("Chưa chọn dòng dữ liệu!");
+    }
+
+    public override async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            if (rview["ts0"]?.ToString() == "1")
+            {
+                myStateMN.SetNewThongbao("Không thể xóa dòng dữ liệu gốc!");
+                return;
+            }
+
+            string soTheTs = rview["so_the_ts"].ToString().Trim();
+            string nam = rview["nam"].ToString().Trim();
+            string ky = rview["ky"].ToString().Trim();
+            string displayValue = $"{soTheTs} - Năm {nam}, Kỳ {ky}";
+
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = $"Bạn có muốn xóa [{displayValue}] không?",
+                Title = "Xác nhận xóa",
+                OkButtonText = "Có",
+                CancelButtonText = "Không",
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger
+            });
+
+            if (confirm)
+                await DeleteRecord(soTheTs, nam, ky);
+        }
+        else
+            myStateMN.SetNewThongbao("Chưa chọn dòng dữ liệu!");
+    }
+
+    private async Task DeleteRecord(string soTheTs, string nam, string ky)
+    {
+        try
+        {
+            var parameters = new Dictionary<string, object>
+            {
+                { "@so_the_ts", soTheTs },
+                { "@nam", int.Parse(nam) },
+                { "@ky", int.Parse(ky) }
+            };
+            await myDb.LoadDataset(
+                $"DELETE FROM {sqlTableName} WHERE so_the_ts = @so_the_ts AND nam = @nam AND ky = @ky",
+                parameters);
+            await Loaddata();
+            myStateMN.SetNewThongbao($"Xóa thành công: {soTheTs} - Năm {nam}, Kỳ {ky}");
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Xóa thất bại: " + ex.Message);
+        }
+    }
+
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        M_SO_THE_TS = "";
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+}
+

@@ -1,0 +1,78 @@
+﻿@inject NavigationManager navigation
+@inject HttpClient Http
+<div class="row">
+    <div id="overviewDemoDropZone" class="card custom-drop-zone bg-light rounded-3 w-100 m-0">
+        <div class="row">
+            <span class="drop-file-icon col-2"></span>
+            <span class="col-3">Kéo và thả tệp vào đây. <b class="m-2">hoặc</b>  </span>
+            <button id="overviewDemoSelectButton" class="btn border-primary btn-primary m-1 col">Chọn tệp</button>
+        </div>
+    </div>
+    <DxUpload Name="myFile" Visible="@UploadVisible" ExternalSelectButtonCssSelector="#overviewDemoSelectButton"
+              ExternalDropZoneCssSelector="#overviewDemoDropZone" MaxFileCount="5"
+              AllowMultiFileUpload="true" MaxFileSize="5242880" ExternalDropZoneDragOverCssClass="bg-light border-secondary text-dark"
+              UploadUrl="@GetUploadUrl(apidUrl)" SelectedFilesChanged="@SelectedFilesChanged" CssClass="w-100">
+    </DxUpload>
+    <DxButton Text="Lưu tệp" Click="@Uploadreportsfiles" RenderStyle="ButtonRenderStyle.Primary"></DxButton>
+</div>
+<MessageComponent Content="@Message" HideMessage="Hidemessage"></MessageComponent>
+@code {
+    [Parameter]
+    public string FileType { get; set; } = "image";
+    bool UploadVisible { get; set; } = false;
+    string saveUrl = "api/Upload/SaveFile";
+    string apidUrl = "api/Upload/UploadFiles";
+    string strUploadfile = "";
+    string Message = "";
+    string _curGUID = "";
+    void Hidemessage()
+    {
+        Message = "";
+        StateHasChanged();
+    }
+    async void Uploadreportsfiles()
+    {
+        string result = await SaveFiles();
+        if (!string.IsNullOrEmpty(result))
+        {
+            Message = "Upload file thành công.";          
+        }
+        else
+        {
+            Message = "Lỗi Upload file.";
+        }
+        StateHasChanged();
+    }
+    private async Task<string> SaveFiles()
+    {
+        string result = "";
+        if(string.IsNullOrEmpty(FileType))
+            FileType = "image";
+
+        saveUrl = FileType.ToLower().Equals("image") ? "api/Upload/SaveImagesFiles" : "api/Upload/SaveFiles";
+        if (!string.IsNullOrEmpty(strUploadfile))
+        {
+            Http.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/json");
+            string url = Path.Combine(GetUploadUrl(saveUrl), strUploadfile);
+            HttpResponseMessage ResponseMessage = Http.GetAsync(url).Result;
+            using (HttpContent Content = ResponseMessage.Content)
+            {
+                var data = await Content.ReadAsStringAsync();
+                result = data.ToString();
+            }
+        }      
+        return result;
+    }
+
+    protected void SelectedFilesChanged(IEnumerable<UploadFileInfo> files)
+    {
+        _curGUID = Guid.NewGuid().ToString();
+        UploadVisible = files.ToList().Count > 0;
+        strUploadfile = string.Join(",",files.Select(a => a.Name));
+        InvokeAsync(StateHasChanged);
+    }
+    protected string GetUploadUrl(string url)
+    {
+        return navigation.ToAbsoluteUri(url).AbsoluteUri;
+    }
+}

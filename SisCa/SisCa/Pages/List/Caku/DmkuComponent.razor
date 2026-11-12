@@ -1,0 +1,87 @@
+@page "/dmku"
+@page "/dmku/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,dmku")]
+
+<div class="row mt-1" tabindex="0">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxPopup @bind-Visible="@IsShowFrm"
+             CloseOnEscape="true" CloseOnOutsideClick="false" ShowCloseButton="false"
+              Width="80vw"
+              MinWidth="800px"
+              Scrollable="true"
+              MaxHeight="95vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible" List_ID="@sqlTableName" Ma_ma="@SqlTableKeyValue" Title="@Lap["Change contract code"]" Ten_item="@Ten_item" OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible" CurDmimex="@CurDmimex" OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {   
+    
+    protected override void OnInitialized()
+    {
+        mPage = "dmku";
+        sqlTableName = "dmku";
+        sqlTableView = "v_dmku";
+        SqlTableKey = "ma_ku";
+        
+        IsShowCopy = true;
+        IsShowImport = true;
+        
+        FrmType = typeof(SisCa.Pages.List.Caku.EditDmku);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wa.dm.02";
+
+        base.OnInitialized();
+    }
+}

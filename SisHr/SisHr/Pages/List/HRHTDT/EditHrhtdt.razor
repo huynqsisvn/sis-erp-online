@@ -1,0 +1,328 @@
+@inherits FrmListBaseComponent
+@using SisHr.Pages.List.HRHTDT
+
+<div class="popup-body-container w-100" style="overflow:auto;max-width:1200px;">
+    <FormList Title="@Title"
+              @bind-curActionTask="@curActionTask"
+              OnSave="@SaveDM"
+              OnEdit="@OnEdit"
+              OnCopy="@OnCopy"
+              OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmhtdt"
+                          ItemSizeMode="@Itemsizemode"
+                          CssClass="frm-header sis-form"
+                          onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                @* 1. Mã HTDT *@
+                <DxFormLayoutItem Caption="@Lap["Education type code"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox Id="ma_htdt_input"
+                                   @bind-Text="@CurDmhtdt.Ma_htdt"
+                                   maxlength="@tblLength["ma_htdt"]"
+                                   InputCssClass="uppercase"
+                                   Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 2. Tên HTDT *@
+                <DxFormLayoutItem Caption="@Lap["Education type name"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmhtdt.Ten_htdt"
+                                   maxlength="@tblLength["ten_htdt"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 3. Tên HTDT 2 *@
+                <DxFormLayoutItem Caption="@(Lap["Education type name"] + " 2")" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmhtdt.Ten_htdt2"
+                                   maxlength="@tblLength["ten_htdt2"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 4. Ghi chú *@
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxMemo @bind-Text="@CurDmhtdt.Ghi_chu"
+                                Rows="3"
+                                Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 5. Tr?ng thái *@
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmhtdt.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="" ColSpanMd="6">
+                    <Template>
+                        <span class="text-muted">@Lap["0 - No, 1 - Yes"]</span>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem ColSpanMd="12">
+                    <Template>
+                        <hr />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmhtdt CurDmhtdt;
+    private string menu_id = "wr.dm.23";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "DMHTDT";
+        SqlTableKey = "ma_htdt";
+        CheckSqlTableKey = "ma_htdt";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "hrhtdt" : ParentPage;
+        CurDmhtdt = new Dmhtdt();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    public override async Task PageLoad()
+    {
+        await base.PageLoad();
+        sqlTableName = "DMHTDT";
+        sqlTableView = "v_DMHTDT";
+        SqlTableKey = "ma_htdt";
+        CheckSqlTableKey = "ma_htdt";
+        tblLength = myDb.GetTableLength(sqlTableName);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    myStateMN.SetToolBar(new MyToolbar("save", false));
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditDM(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await CreateNewDM();
+                    break;
+                case ActionTask.Copy:
+                    await CreateCopyDM(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    break;
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_htdt_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string key)
+    {
+        CurDmhtdt = new Dmhtdt();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(key);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string key)
+    {
+        CurDmhtdt = new Dmhtdt();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(key);
+
+        int checkResult = await CheckDeleteListIdAsync(key);
+        if (checkResult <= 0)
+        {
+            AllowEditMa = false;
+        }
+
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(CurDmhtdt.Ma_htdt);
+    }
+
+    async Task SaveDM()
+    {
+        CurDmhtdt.Ma_htdt = CurDmhtdt.Ma_htdt?.ToUpper().Trim().Replace(" ", "") ?? "";
+        if (!CheckValid())
+            return;
+
+        SqlTableKeyValue = CurDmhtdt.Ma_htdt.ToUpper().Trim();
+        SqlTableKeyValueOld = (curActionTask == ActionTask.New ? "" : Ma_ma);
+        if (!CheckValidCode())
+            return;
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmhtdt.Date = DateTime.Now.Date;
+            CurDmhtdt.Date0 = DateTime.Now.Date;
+            CurDmhtdt.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmhtdt.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmhtdt.User_id = curUser.User_id;
+                CurDmhtdt.User_id0 = curUser.User_id;
+                CurDmhtdt.User_name = curUser.User_name;
+                CurDmhtdt.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmhtdt.Ma_htdt.Trim();
+            string check = "Select " + SqlTableKey + " from " + sqlTableName + " where " + CheckSqlTableKey + " = '" + CheckSqlTableKeyValue + "'";
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+                return;
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmhtdt>(CurDmhtdt, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmhtdt.Date = DateTime.Now.Date;
+            CurDmhtdt.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmhtdt.User_id = curUser.User_id;
+                CurDmhtdt.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmhtdt>(CurDmhtdt, sqlTableName, SqlTableKey, Ma_ma, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmhtdt.Ma_htdt))
+        {
+            myStateMN.SetNewThongbao(Lap["Education type code is required"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(CurDmhtdt.Ten_htdt))
+        {
+            myStateMN.SetNewThongbao(Lap["Education type name is required"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        return true;
+    }
+
+    async Task<int> CheckDeleteListIdAsync(string maHtdt)
+    {
+        int result = 0;
+        try
+        {
+            string sql = $"SET NOCOUNT ON; exec dbo.CheckDeleteListId 'DMHTDT', '{maHtdt}'";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                result = Convert.ToInt32(ds.Tables[0].Rows[0][0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("CheckDeleteListIdAsync error: " + ex.Message);
+        }
+        return result;
+    }
+
+    async Task LoadData(string key)
+    {
+        string sql = "Select * from " + sqlTableName + " where " + SqlTableKey + " = '" + key + "'";
+        DataSet dsTrans = await myDb.LoadDataset(sql);
+        if (dsTrans != null && dsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmhtdt> lsdetai = myDb.ConvertDataTable<Dmhtdt>(dsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+            {
+                CurDmhtdt = lsdetai[0];
+            }
+        }
+    }
+
+    async Task CreateNewDM()
+    {
+        CurDmhtdt = new Dmhtdt();
+        CurDmhtdt.Status = "1";
+        CurDmhtdt.Ma_htdt = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string key)
+    {
+        CurDmhtdt = new Dmhtdt();
+        await LoadData(key);
+        CurDmhtdt.Status = "1";
+        CurDmhtdt.Ma_htdt = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+}

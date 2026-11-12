@@ -1,0 +1,377 @@
+﻿@inherits FrmListBaseComponent
+@using SisHr.Pages.List.Hrbp
+@using System.Dynamic
+
+<div class="popup-body-container w-100" style="overflow:auto;max-width:1200px;">
+    <FormList Title="@Title"
+              @bind-curActionTask="@curActionTask"
+              OnSave="@SaveDM"
+              OnEdit="@OnEdit"
+              OnCopy="@OnCopy"
+              OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmbpns"
+                          ItemSizeMode="@Itemsizemode"
+                          CssClass="frm-header sis-form"
+                          onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                @* 1. Mã DVCS *@
+                <DxFormLayoutItem Caption="@Lap["Unit code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmbpns.Ma_dvcs" ReadOnly="true" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 2. Mã BPNS *@
+                <DxFormLayoutItem Caption="@Lap["HR department code"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox Id="ma_bpns_input"
+                                   @bind-Text="@CurDmbpns.Ma_bpns"
+                                   maxlength="@tblLength["ma_bpns"]"
+                                   InputCssClass="uppercase"
+                                   Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 3. Tên BPNS *@
+                <DxFormLayoutItem Caption="@Lap["HR department name"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmbpns.Ten_bpns"
+                                   maxlength="@tblLength["ten_bpns"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 4. Tên BPNS 2 *@
+                <DxFormLayoutItem Caption="@(Lap["HR department name"] + " 2")" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmbpns.Ten_bpns2"
+                                   maxlength="@tblLength["ten_bpns2"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 5. Ghi chú *@
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmbpns.Ghi_chu"
+                                Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* 6. Tr?ng thái *@
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmbpns.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmbpns CurDmbpns;
+    private string menu_id = "wr.dm.01";
+    private string TenDvcs = "";
+    private bool AllowEditDvcs = false;
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "DMBPNS";
+        SqlTableKey = "ma_bpns";
+        CheckSqlTableKey = "ma_bpns";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "hrbp" : ParentPage;
+        CurDmbpns = new Dmbpns();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Validate DVCS before opening form
+            if (!ValidateDvcsSelected())
+            {
+                HideVoucher();
+                return;
+            }
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    myStateMN.SetToolBar(new MyToolbar("save", false));
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditDM(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await CreateNewDM();
+                    break;
+                case ActionTask.Copy:
+                    await CreateCopyDM(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    break;
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_bpns_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    bool ValidateDvcsSelected()
+    {
+        string maDvcs = myStateMN.GetMa_Dvcs();
+        
+        // Check if DVCS is not selected or is "All"
+        if (string.IsNullOrEmpty(maDvcs) || maDvcs == "0" || maDvcs.ToLower() == "all")
+        {
+            myStateMN.SetNewThongbao(Lap["Please select a specific unit code!"] ?? "Vui lòng chọn mã đơn vị cụ thể!");
+            return false;
+        }
+        
+        return true;
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmbpns = new Dmbpns();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        AllowEditDvcs = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmbpns = new Dmbpns();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        AllowEditDvcs = false;
+        await LoadData(SqlTableKeyValue);
+
+        int checkResult = await CheckDeleteListIdAsync(SqlTableKeyValue);
+        if (checkResult <= 0)
+        {
+            AllowEditMa = false;
+        }
+
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditDvcs = false;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(CurDmbpns.Ma_bpns);
+    }
+
+    async Task SaveDM()
+    {
+        CurDmbpns.Ma_bpns = CurDmbpns.Ma_bpns?.ToUpper().Trim().Replace(" ", "") ?? "";
+        if (!CheckValid())
+            return;
+
+        SqlTableKeyValue = CurDmbpns.Ma_bpns.ToUpper().Trim();
+        SqlTableKeyValueOld = (curActionTask == ActionTask.New ? "" : Ma_ma);
+        if (!CheckValidCode())
+            return;
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmbpns.Date = DateTime.Now.Date;
+            CurDmbpns.Date0 = DateTime.Now.Date;
+            CurDmbpns.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmbpns.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmbpns.User_id = curUser.User_id;
+                CurDmbpns.User_id0 = curUser.User_id;
+                CurDmbpns.User_name = curUser.User_name;
+                CurDmbpns.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmbpns.Ma_bpns.Trim();
+            string check = "Select " + SqlTableKey + " from " + sqlTableName + " where " + CheckSqlTableKey + " = '" + CheckSqlTableKeyValue + "'";
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+                return;
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmbpns>(CurDmbpns, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmbpns.Date = DateTime.Now.Date;
+            CurDmbpns.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmbpns.User_id = curUser.User_id;
+                CurDmbpns.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmbpns>(CurDmbpns, sqlTableName, SqlTableKey, Ma_ma, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmbpns.Ma_bpns))
+        {
+            myStateMN.SetNewThongbao(Lap["HR department code is required"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(CurDmbpns.Ten_bpns))
+        {
+            myStateMN.SetNewThongbao(Lap["HR department name is required"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        return true;
+    }
+
+    async Task<int> CheckDeleteListIdAsync(string maBpns)
+    {
+        int result = 0;
+        try
+        {
+            string sql = $"SET NOCOUNT ON; exec dbo.CheckDeleteListId 'DMBPNS', '{maBpns}'";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                result = Convert.ToInt32(ds.Tables[0].Rows[0][0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("CheckDeleteListIdAsync error: " + ex.Message);
+        }
+        return result;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = "Select * from " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmbpns> lsdetai = myDb.ConvertDataTable<Dmbpns>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+            {
+                CurDmbpns = lsdetai[0];
+
+                if (!string.IsNullOrEmpty(CurDmbpns.Ma_dvcs))
+                {
+                    string sqlDvcs = $"Select ten_dvcs, ten_dvcs2 from dmdvcs where ma_dvcs = '{CurDmbpns.Ma_dvcs}'";
+                    DataSet dsDvcs = await myDb.LoadDataset(sqlDvcs);
+                    if (dsDvcs != null && dsDvcs.Tables[0].Rows.Count > 0)
+                    {
+                        TenDvcs = IsLangEn
+                            ? dsDvcs.Tables[0].Rows[0]["ten_dvcs2"]?.ToString() ?? ""
+                            : dsDvcs.Tables[0].Rows[0]["ten_dvcs"]?.ToString() ?? "";
+                    }
+                }
+            }
+        }
+    }
+
+    async Task CreateNewDM()
+    {
+        string maDvcs = myStateMN.GetMa_Dvcs();
+        
+        // Validate DVCS again in case state changed
+        if (string.IsNullOrEmpty(maDvcs) || maDvcs == "0" || maDvcs.ToLower() == "all")
+        {
+            myStateMN.SetNewThongbao(Lap["Please select a specific unit code!"] ?? "Vui lòng chọn mã đơn vị cụ thể!");
+            HideVoucher();
+            return;
+        }
+
+        CurDmbpns = new Dmbpns();
+        CurDmbpns.Status = "1";
+        CurDmbpns.Ma_bpns = GetNewSttDM();
+        CurDmbpns.Ma_dvcs = maDvcs;
+        AllowEditMode = true;
+        AllowEditMa = true;
+        AllowEditDvcs = false;
+
+        if (!string.IsNullOrEmpty(CurDmbpns.Ma_dvcs))
+        {
+            string sqlDvcs = $"Select ten_dvcs, ten_dvcs2 from dmdvcs where ma_dvcs = '{CurDmbpns.Ma_dvcs}'";
+            DataSet dsDvcs = await myDb.LoadDataset(sqlDvcs);
+            if (dsDvcs != null && dsDvcs.Tables[0].Rows.Count > 0)
+            {
+                TenDvcs = IsLangEn
+                    ? dsDvcs.Tables[0].Rows[0]["ten_dvcs2"]?.ToString() ?? ""
+                    : dsDvcs.Tables[0].Rows[0]["ten_dvcs"]?.ToString() ?? "";
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmbpns = new Dmbpns();
+        await LoadData(SqlTableKeyValue);
+        CurDmbpns.Status = "1";
+        CurDmbpns.Ma_bpns = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        AllowEditDvcs = false;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+}

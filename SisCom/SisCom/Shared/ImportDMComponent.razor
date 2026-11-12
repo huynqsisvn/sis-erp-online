@@ -1,0 +1,290 @@
+﻿@inject NavigationManager navigation
+@inject IWebHostEnvironment _hostingEnvironment
+@inject Statemanagerment myStatemanagerment
+@inject IDbManager myDb
+@using System.Data
+@inject HttpClient Http
+@using Microsoft.AspNetCore.Hosting
+@using System.Data.Odbc
+@using System.Text.RegularExpressions
+<DxFormLayout>
+    <DxFormLayoutItem Caption="Dữ liệu cần chuyển" ColSpanMd="12">
+        <label>@_CurDmImex.Ten</label>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem Caption="Bảng mã sữ liệu sử dụng" ColSpanMd="12">
+        <DxComboBox ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                    Data="@LSBangma"
+                    TextFieldName="Ten"
+                    ValueFieldName="Ma"
+                    AllowUserInput="true"
+                    FilteringMode="DataGridFilteringMode.Contains"
+                    @bind-Value="@_CurDmImex.Bang_ma">
+            <Columns>
+                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="Mã" Width="80px" />
+                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="Tên" />
+            </Columns>
+        </DxComboBox>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem Caption="Ghi đè mã đã có" ColSpanMd="12">
+        <DxComboBox ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                    Data="@LSStatus"
+                    TextFieldName="Ten"
+                    ValueFieldName="Ma"
+                    AllowUserInput="true"
+                    FilteringMode="DataGridFilteringMode.Contains"
+                    @bind-Value="@_CurDmImex.Overwrite">
+            <Columns>
+                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="Mã" Width="80px" />
+                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="Tên" />
+            </Columns>
+        </DxComboBox>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="12">
+        <div class="row mx-0 my-2 p-2 bg-white" style="border:solid 1px #cccc">
+
+            <div id="overviewDemoDropZone" class="card custom-drop-zone bg-light rounded-3 w-100 m-0">
+                <div class="row">
+                    <span class="drop-file-icon col-2"></span>
+                    <span class="col-3">Kéo và thả tệp excel vào đây. <b class="m-2">hoặc</b>  </span>
+                    <button id="overviewDemoSelectButton" class="btn border-primary btn-primary m-1 col">Chọn tệp excel</button>
+                </div>
+            </div>
+            <DxUpload Name="myFile" Visible="true" ExternalSelectButtonCssSelector="#overviewDemoSelectButton"
+                      ExternalDropZoneCssSelector="#overviewDemoDropZone"
+                      AllowMultiFileUpload="true" MaxFileSize="5242880" ExternalDropZoneDragOverCssClass="bg-light border-secondary text-dark"
+                      UploadUrl="@GetUploadUrl(apidUrl)" SelectedFilesChanged="@SelectedFilesChanged" CssClass="w-100">
+            </DxUpload>
+
+            <div class="row justify-content-around">
+                <div class="row justify-content-around">
+                    <DxButton CssClass="col-3" Click="@CloseForm" Text="Hủy" RenderStyle="ButtonRenderStyle.Danger"></DxButton>
+                    <DxButton CssClass="col-3" Click="@ReadExcelFile" Text="Lưu" RenderStyle="ButtonRenderStyle.Success"></DxButton>
+                    @if (_CurDmImex != null && !string.IsNullOrEmpty(_CurDmImex.Ex_mau))
+                    {
+                        <DxButton CssClass="col-3" Click="@GetTemplateFile" Text="Lấy tệp mẫu" RenderStyle="ButtonRenderStyle.Primary"></DxButton>
+                    }
+                </div>
+            </div>
+        </div>
+    </DxFormLayoutItem>
+</DxFormLayout>
+@code {
+    [Parameter]
+    public string Ma_imex { get; set; }
+    [Parameter]
+    public EventCallback<bool> HideForm { get; set; }
+    string sqlTableKey { get; set; }
+    string[] _columns;
+    string deleteUrl = "api/Upload/DeleteTmpFile";
+    string apidUrl = "api/Upload/UploadFile/";
+    string tmpFiledUrl = "";
+    string tmpFolder = "upload_tmp";
+    string strUploadfile = "";
+    string Message = "";
+    string Ex_mau = "";
+    string Ma_dvcs = ""; 
+    Dmimex _CurDmImex = new Dmimex();
+    List<Dmtk> LSStatus = new List<Dmtk>()
+    {
+     new Dmtk(){ Ma = "0", Ten="Không" },
+      new Dmtk(){ Ma = "1", Ten="Có" }
+   };
+    List<Dmtk> LSBangma = new List<Dmtk>()
+    {
+     new Dmtk(){ Ma = "1", Ten="Unicode" },
+      new Dmtk(){ Ma = "2", Ten="TCVN3" }
+   };
+
+    void Load_Page()
+    {
+        string sql = string.Format("Select * from dmimex where ma_imex = '{0}'", Ma_imex);
+        DataSet _ds = myDb.LoadDataSet(sql);
+        if (_ds.Tables.Count > 0)
+        {
+            if (_ds.Tables[0].Rows.Count > 0)
+            {
+                List<Dmimex> _lsimex = myDb.ConvertDataTable<Dmimex>(_ds.Tables[0]);
+                if (_lsimex != null && _lsimex.Count > 0)
+                {
+                    _CurDmImex = _lsimex[0];
+                }
+            }
+        }
+        _CurDmImex.Bang_ma = "1";
+        _CurDmImex.Overwrite = "0";
+    }
+    private string strKeyValue(string key, DataRow row)
+    {
+        string[] strArray = key.Split(';');
+        string str = string.Empty;
+        string empty = string.Empty;
+        for (int index1 = 0; index1 < ((IEnumerable<string>)strArray).Count<string>(); ++index1)
+        {
+            string index2 = strArray[index1];
+            str = index1 != ((IEnumerable<string>)strArray).Count<string>() - 1 ? str + row[index2].ToString() + ";" : str + string.Format("{0:yyyyMMdd}", (object)(DateTime)row[index2]);
+        }
+        return str;
+    }
+    string SqlJoinKeyValue(string key, string value)
+    {
+        string _sql = "";
+        string[] keys = key.Split(';');
+        string[] keyvls = value.Split(';');
+        if (keys.Length.Equals(keyvls.Length))
+        {
+            for (int x = 0; x < keys.Length; x++)
+            {
+                _sql += string.Format(" {0} = '{1}' and", keys[x], keyvls[x]);
+            }
+        }
+        return _sql.Length > 0 ? _sql.Substring(0, _sql.Length - 3) : "";
+    }
+    string CheckKeyValue(string key)
+    {
+        string _sql = "";
+        string[] keys = key.Split(';');
+        for (int x = 0; x < keys.Length; x++)
+        {
+            _sql += string.Format(" {0} IS NOT NULL and", keys[x]);
+        }
+        return _sql.Length > 0 ? _sql.Substring(0, _sql.Length - 3) : "";
+    }
+    void GetTemplateFile()
+    {
+        if (string.IsNullOrEmpty(_CurDmImex.Ex_mau))
+        {
+            myStatemanagerment.SetNewThongbao("Chưa khai báo danh mục");
+            return;
+        }
+        string _fname = _CurDmImex.Ex_mau.Trim();
+        if (!_fname.EndsWith(".xls") || !_fname.EndsWith(".xlsx"))
+        {
+            _fname += ".xls";
+        }
+        string path = Path.Combine(navigation.BaseUri, "uploads", _fname);
+        navigation.NavigateTo(path, true);
+        myStatemanagerment.SetNewThongbao(string.Format("Đã tải xuống tệp: {0}", _fname));
+    }
+    protected override void OnInitialized()
+    {
+        Ma_dvcs = myStatemanagerment.GetMa_Dvcs();
+        tmpFiledUrl = Path.Combine(_hostingEnvironment.WebRootPath, tmpFolder);
+        Load_Page();
+    }
+    protected string GetUploadUrl(string url)
+    {
+        return navigation.ToAbsoluteUri(url).AbsoluteUri;
+    }
+    protected void SelectedFilesChanged(IEnumerable<UploadFileInfo> files)
+    {
+        foreach (UploadFileInfo f in files)
+        {
+            strUploadfile = f.Name;
+        }
+    }
+    void CloseForm()
+    {
+        HideForm.InvokeAsync(false);
+    }
+    async void ReadExcelFile()
+    {
+        string _columns = string.Join(",", _CurDmImex.Vbrowse1.Split(';').ToList().Select(a => a.Split(':')[0]));
+        string _sql = string.Format("Select {0} from {1} where 1=0", _columns, _CurDmImex.Dbf_mau);
+        DataSet _dsTmp = myDb.LoadDataSet(_sql);
+        DataTable TblData = _dsTmp.Tables[0];
+        DataSet _Dataset = new DataSet();
+        if (!string.IsNullOrEmpty(strUploadfile) && (strUploadfile.EndsWith(".xls") || strUploadfile.EndsWith(".xlsx")))
+        {
+            tmpFiledUrl = Path.Combine(tmpFiledUrl, strUploadfile);
+            _Dataset = GetdatatableFromExcel();
+            string _sqldelete = string.Format("Delete from {0}", _CurDmImex.Dbf_mau.Trim());
+            await myDb.ExecuteSqlQueryAsync(_sqldelete);
+            foreach (DataRow row in _Dataset.Tables[0].Rows)
+            {
+                DataRow _rnew = TblData.NewRow();
+                foreach (string _col in _columns.Split(','))
+                {
+                    foreach (DataColumn col_name in _Dataset.Tables[0].Columns)
+                    {
+                        if (col_name.ToString().ToLower().Contains(_col))
+                        {
+                            _rnew[_col] = row[col_name.ToString()];
+                            break;
+                        }
+                    }
+                }
+                // _rnew["date"] = (object)DateTime.Now.Date;
+                // _rnew["date0"] = (object)DateTime.Now.Date;
+                // _rnew["time"] = (object)DateTime.Now.ToString("HH:mm:ss");
+                // _rnew["time0"] = (object)DateTime.Now.ToString("HH:mm:ss");
+                // _rnew["user_id"] = (object)1;
+                // _rnew["user_id0"] = (object)1;
+                await myDb.InsertData(_CurDmImex.Dbf_mau.Trim(), _rnew);
+            }
+            await DeleteAttachFiles(strUploadfile);
+        }
+        if (_Dataset != null && _Dataset.Tables[0].Rows.Count > 0)
+        {
+            string _exec = string.Format("Exec {0} '{1}', '{2}', '{3}', '{4}'", _CurDmImex.Postproc, _CurDmImex.Kt_trung, _CurDmImex.Kt_long, _CurDmImex.Overwrite, Ma_dvcs);
+            await myDb.ExecuteSqlQueryAsync(_exec);
+        }
+        await HideForm.InvokeAsync(true);
+    }
+    string CheckCharator(string value)
+    {
+        return Regex.Replace(value, @"(\s+|@|&|\\|\/|<|>|#|-|\(|\)|%|\.|,|;|:)", "_");
+    }
+    DataSet GetdatatableFromExcel()
+    {
+        DataSet _Dataset = new DataSet();
+        OdbcConnection oConn = null;
+        try
+        {
+            string strConnString = "Driver={Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)};Dbq=" + tmpFiledUrl + ";Extensions=xls/xlsx;Persist Security Info=False";
+            oConn = new OdbcConnection(strConnString);
+            oConn.Open();
+            if (oConn.State == ConnectionState.Open)
+            {
+                string _col = "*";
+                string[] _columns = _CurDmImex.Vbrowse1.Split(';').ToList().Select(a => a.Split(':')[0]).ToArray();
+                if (_columns.Length == 0)
+                {
+                    _col = "*";
+                }
+                else
+                {
+                    _col = string.Join(", ", _columns);
+                }
+                string _conditon = CheckKeyValue(_CurDmImex.Khoa);
+                string Sheet1 = oConn.GetSchema("Tables").Rows[0]["TABLE_NAME"] + "";
+                //  string sql = String.Format("Select {0} From [{1}] WHERE {2}", _col, Sheet1, _conditon);
+                string sql = String.Format("Select * From [{0}]", Sheet1);
+                OdbcCommand oComm = new OdbcCommand(sql, oConn);
+                OdbcDataAdapter oAdapter = new OdbcDataAdapter(oComm);
+                oAdapter.Fill(_Dataset);              
+            }
+        }
+        catch (IOException caught) { }
+        catch (OdbcException caught) { }
+        finally
+        {
+            if(oConn != null)
+                oConn.Close();
+        }
+        return _Dataset;
+    }
+
+    private async Task DeleteAttachFiles(string file_name)
+    {
+        if (!string.IsNullOrEmpty(file_name))
+        {
+            Http.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/json");
+            string url = Path.Combine(GetUploadUrl(deleteUrl), file_name);
+            HttpResponseMessage ResponseMessage = Http.GetAsync(url).Result;
+            using (HttpContent Content = ResponseMessage.Content)
+            {
+                await Content.ReadAsStringAsync();
+            }
+        }
+    }
+}

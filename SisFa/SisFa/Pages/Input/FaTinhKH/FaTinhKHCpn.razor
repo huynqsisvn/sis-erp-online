@@ -1,0 +1,280 @@
+﻿@page "/fatinhkh"
+@page "/fatinhkh/{Menu_id}"
+@inherits FaTinhKHBase
+@attribute [Authorize(Roles = "admin,fatinhkh")]
+@using SisFa.Pages.Input.FaTinhKH
+@using DevExpress.Blazor
+@using System.Data
+
+@* ================================================================
+   LƯỚI KẾT QUẢ TÍNH KHẤU HAO
+   ================================================================ *@
+<div class="row mt-1" tabindex="0" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@fbrowse"
+                        Page_size="@Page_size"
+                        SelectItem="CurItem"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@* ================================================================
+   POPUP FILTER / TÍNH KHẤU HAO
+   ================================================================ *@
+<DxPopup @ref="popFilter"
+         CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="560px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="Tính khấu hao tài sản cố định">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="d-flex justify-content-center align-items-center p-4">
+                <div class="spinner-border text-primary" role="status" style="width:4rem;height:4rem;border-width:3px;">
+                    <span class="sr-only">Đang tính khấu hao...</span>
+                </div>
+                <span class="ms-3 fs-6 text-primary">Đang thực hiện tính khấu hao, vui lòng chờ...</span>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1 pb-2">
+                <DxFormLayout CssClass="w-100" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                    @* --- NĂM --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Năm:" CaptionCssClass="fw-bold">
+                        <DxSpinEdit @bind-Value="@FilterNam"
+                                    DisplayFormat="####"
+                                    MinValue="2000"
+                                    MaxValue="2099" />
+                    </DxFormLayoutItem>
+
+                    @* --- TỪ KỲ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Từ kỳ (1-12):" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy1"
+                                                MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy1 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy1 >= 1 && FilterKy1 <= 12)
+                                {
+                                    <span class="badge  text-dark">
+                                        @(new DateTime(FilterNam, FilterKy1, 1).ToString("MM/yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- ĐẾN KỲ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Đến kỳ (1-12):" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy2"
+                                                MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy2 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy2 >= 1 && FilterKy2 <= 12)
+                                {
+                                    <span class="badge text-dark">
+                                        @(new DateTime(FilterNam, FilterKy2, 1).AddMonths(1).AddDays(-1).ToString("MM/yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- DANH SÁCH TÀI SẢN --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Danh sách tài sản:" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex gap-2">
+                                <DxTextBox Value="@FilterKeyTs"
+                                           ReadOnly="true"
+                                           CssClass="flex-grow-1"
+                                           NullText="(Tất cả tài sản)" />
+                                <DxButton Text="Chọn tài sản"
+                                          RenderStyle="ButtonRenderStyle.Secondary"
+                                          IconCssClass="fa fa-list"
+                                          Click="@OpenDmtsModal" />
+                                @if (!string.IsNullOrEmpty(FilterKeyTs))
+                                {
+                                    <DxButton Text=""
+                                              RenderStyle="ButtonRenderStyle.Danger"
+                                              IconCssClass="fa fa-times"
+                                              title="Xóa chọn tài sản"
+                                              Click="@ClearKeyTs" />
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+                @if (ShowModalDmts)
+                {
+                    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.45);">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header bg-primary text-white py-2">
+                                    <h6 class="modal-title mb-0">
+                                        <i class="fa fa-list me-2"></i>Chọn tài sản
+                                    </h6>
+                                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModalDmts"></button>
+                                </div>
+                                <div class="modal-body p-2">
+                                    <div class="mb-2 d-flex gap-2">
+                                        <DxTextBox @bind-Text="@DmtsSearch"
+                                                   NullText="Tìm mã/tên tài sản..."
+                                                   CssClass="flex-grow-1" />
+                                        <DxButton Text="Tìm"
+                                                  RenderStyle="ButtonRenderStyle.Primary"
+                                                  Click="@(_ => DoSearchDmts())" />
+                                        <DxButton Text="Chọn tất cả"
+                                                  RenderStyle="ButtonRenderStyle.Secondary"
+                                                  Click="@SelectAllDmts" />
+                                        <DxButton Text="Bỏ chọn"
+                                                  RenderStyle="ButtonRenderStyle.Danger"
+                                                  Click="@ClearDmtsSelection" />
+                                    </div>
+
+                                    @if (TblDmts == null)
+                                    {
+                                        <div class="text-center p-3 text-muted">Đang tải danh sách tài sản...</div>
+                                    }
+                                    else if (TblDmts.Rows.Count == 0)
+                                    {
+                                        <div class="alert alert-warning p-2 mb-0">Không có tài sản nào.</div>
+                                    }
+                                    else
+                                    {
+                                        <div style="max-height:380px; overflow-y:auto;">
+                                            <table class="table table-sm table-hover table-bordered mb-0">
+                                                <thead class="table-light sticky-top">
+                                                    <tr>
+                                                        <th style="width:42px;" class="text-center">
+                                                            <input type="checkbox"
+                                                                   checked="@IsAllDmtsChecked"
+                                                                   @onchange="@ToggleAllDmts" />
+                                                        </th>
+                                                        <th>Mã tài sản</th>
+                                                        <th>@(IsLangEn ? "Asset Name" : "Tên tài sản")</th>
+                                                        <th>Mã BPSD</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (DataRow row in TblDmts.Rows)
+                                                    {
+                                                        string maTs = row["so_the_ts"]?.ToString() ?? "";
+                                                        bool isChecked = SelectedDmts.Contains(maTs);
+                                                        <tr class="@(isChecked ? "table-primary" : "")"
+                                                            style="cursor:pointer;"
+                                                            @onclick="@(() => ToggleDmtsRow(maTs))">
+                                                            <td class="text-center" @onclick:stopPropagation>
+                                                                <input type="checkbox"
+                                                                       checked="@isChecked"
+                                                                       @onchange="@(() => ToggleDmtsRow(maTs))"
+                                                                       @onclick:stopPropagation />
+                                                            </td>
+                                                            <td>@maTs</td>
+                                                            <td>@(IsLangEn? row["ten_ts2"]?.ToString() : row["ten_ts"]?.ToString())</td>
+                                                            <td>@row["ma_bpts"]?.ToString()</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="text-muted small mt-1">
+                                            Đã chọn <strong>@SelectedDmts.Count</strong> / @TblDmts.Rows.Count tài sản
+                                        </div>
+                                    }
+                                </div>
+                                <div class="modal-footer py-2 gap-2">
+                                    <DxButton RenderStyle="ButtonRenderStyle.Success"
+                                              Text="Xác nhận"
+                                              IconCssClass="fa fa-check"
+                                              Click="@ConfirmDmtsSelection" />
+                                    <DxButton RenderStyle="ButtonRenderStyle.Secondary"
+                                              Text="Đóng"
+                                              Click="@CloseModalDmts" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* ================================================================
+   CONFIRM GHI ĐÈ DỮ LIỆU CŨ
+   ================================================================ *@
+
+                @if (ShowConfirmOverwrite)
+                {
+                    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+                        <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+                            <div class="modal-content border-warning">
+                                <div class="modal-header bg-warning py-2">
+                                    <h6 class="modal-title mb-0">
+                                        <i class="fa fa-exclamation-triangle me-2"></i>Cảnh báo ghi đè dữ liệu
+                                    </h6>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-1">
+                                        Đã có dữ liệu khấu hao kỳ <strong>@FilterKy1 - @FilterKy2 / @FilterNam</strong>.
+                                    </p>
+                                    <p class="mb-0 text-danger">
+                                        <i class="fa fa-exclamation-circle me-1"></i>
+                                        Bạn có muốn <strong>tính lại</strong> và ghi đè dữ liệu cũ không?
+                                    </p>
+                                </div>
+                                <div class="modal-footer py-2 gap-2">
+                                    <DxButton RenderStyle="ButtonRenderStyle.Danger"
+                                              Text="Có, tính lại"
+                                              IconCssClass="fa fa-calculator"
+                                              Click="@ExecuteTinhKH" />
+                                    <DxButton RenderStyle="ButtonRenderStyle.Secondary"
+                                              Text="Không, bỏ qua"
+                                              Click="@CancelOverwrite" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (FilterErrors.Any())
+                {
+                    <div class="alert alert-danger mt-2 p-2 mb-0">
+                        <ul class="mb-0 ps-3">
+                            @foreach (var err in FilterErrors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="d-flex justify-content-end gap-2 m-2">
+                <DxButton RenderStyle="ButtonRenderStyle.Success"
+                          Text="Thực hiện tính khấu hao"
+                          IconCssClass="fa fa-calculator"
+                          Click="@BtnTinhKH_Click" />
+                <DxButton RenderStyle="ButtonRenderStyle.Danger"
+                          Text="Đóng"
+                          Click="@CloseFilter" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@* ================================================================
+   MODAL CHỌN TÀI SẢN (Bootstrap Modal)
+   ================================================================ *@

@@ -1,0 +1,208 @@
+﻿@using SisData.Model
+
+@inject ILocalStorageService Localstore
+@inject Statemanagerment myStatemanagerment
+@inject IStringLocalizer<App> Lap
+
+@using System.Globalization
+
+<div class="col-al">
+    <img style="width:25px;height:25px;padding:4px;" src="./Images/erpEmail.png" />
+    <span class="icircle">@Slemail</span>
+
+    <img style="margin-left:10px;width:25px;height:25px;padding:4px;" src="./Images/erpAlert.png" />
+    <span class="icircle">@Slalter</span>
+</div>
+
+<div class="col-al">
+    <div class="dropdown">
+        <button class="dropbtn" id="dropdownMenuButton">    
+            <img src="@src" alt="@Lap["Language"]" width="18" height="15">
+        </button>
+
+        <div class="dropdown-content" aria-labelledby="dropdownMenuButton">
+            <a @onclick="SetLangVi">
+                <img src="./Images/Viflag.png"
+                     width="18" height="15"> Tiếng Việt
+            </a>        
+            <a @onclick="SetLangEn">
+                <img src="./Images/Enflag.png"
+                     width="18" height="15"> English
+            </a>       
+        </div>
+    </div>
+</div>
+<style>    
+
+    .dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropbtn{
+        width:100%;
+    }
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: #f9f9f9;
+        min-width: 160px;
+        box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+        z-index: 1;
+    }
+
+    .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+    .dropdown-content a:hover {
+        background-color: #f1f1f1
+    }
+
+    .dropdown:hover .dropdown-content {
+        display: block;
+    }
+
+    .dropdown:hover .dropbtn {
+        background-color: #3e8e41;
+    }
+
+    .form-sele {
+        font-size: 0.7em;
+        padding: .3125rem 1.5rem .3125rem 1rem;
+        background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+        background-repeat: no-repeat, repeat;
+        background-position: right 1rem center;
+        border-radius: .25rem;
+        -moz-appearance: none;
+        -webkit-appearance: none;
+        appearance: none;
+        border: 1px solid #d8e2ef;
+        color: #344040;
+        background-size: 10px 12px;
+        background-color: #fff;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.075);
+        outline: none;
+    }
+
+    .icircle {
+        display: inline-block;
+        border-radius: 50%;
+        background-color: gold;
+        color: orangered;
+        font-size: 0.7em;
+        width: 14px;
+        height: 14px;
+        text-align: center;
+        vertical-align: top;
+        margin-left:-2px;
+        animation-name: example;
+        animation-duration: 4s;
+        animation-iteration-count: infinite;
+    }
+
+    .col-al{
+        display: inline-block;
+        width:auto;         
+        border: 1px solid #CCCCFF;
+        border-radius:5px;
+        padding:2px;
+        box-shadow: 0 0 3px 0 #CCCCFF;
+        outline: none;
+    }
+
+    @@keyframes example {
+      from {background-color: lightskyblue;}
+      to {background-color: gold;}        
+}
+</style>
+
+@code {
+    private int Slalter { get; set; } = 8;
+    private int Slemail { get; set; } = 5;
+    private string UserLang = "Vi";
+    private bool IsLangEn = false;
+    private string src = @"./Images/Viflag.png";
+
+    bool _isMobileLayout;
+    bool IsMobileLayout
+    {
+        get => _isMobileLayout;
+        set
+        {
+            _isMobileLayout = value;
+        }
+    }
+
+    private Users CurUser = new Users(); 
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            UserLang = await Localstore.GetItemAsync<string>("userlang");
+            if (UserLang == "Vi")
+                src = @"./Images/Viflag.png";
+            else
+                src = @"./Images/Enflag.png";
+            StateHasChanged();
+        }
+    }
+
+    private async void SetLangVi()
+    {
+        src = @"./Images/Viflag.png";
+        await Localstore.SetItemAsync<string>("userlang", "Vi");
+        myStatemanagerment.SetNewLangvalue("Vi", true);
+        await Language();
+    }
+    private async void SetLangEn()
+    {
+        src = @"./Images/Enflag.png";
+        await Localstore.SetItemAsync<string>("userlang", "En");
+        myStatemanagerment.SetNewLangvalue("En", true);
+        await Language();
+    }
+    async Task Language()
+    {
+        try
+        {
+            UserLang = await Localstore.GetItemAsync<string>("userlang");
+            if (UserLang == null)
+            {
+                UserLang = "Vi";
+                await Localstore.SetItemAsync("userlang", UserLang);
+            }
+            if (UserLang.ToUpper().StartsWith("VI"))
+            {
+                CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("vi-VN");
+                CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("vi-VN");
+            }
+            else if (UserLang.ToUpper().StartsWith("EN"))
+            {
+                CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-us");
+                CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-us");
+            }
+
+            IsLangEn = false;
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+    public void Dispose()
+    {        
+    }
+}

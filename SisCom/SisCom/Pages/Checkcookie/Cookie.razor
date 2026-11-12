@@ -1,0 +1,39 @@
+﻿@page "/cookie"
+@page "/cookie/{menu_id}"
+@inject IJSRuntime JavacriptS
+@inject IJSRuntime JSRuntime
+@inject Statemanagerment myStatemanagerment
+
+
+<h3>Cookie</h3>
+<button type="button" class="btn btn-primary col-2 m-1" @onclick="SaveDM">Clear cookie</button>
+<button type="button" class="btn btn-primary col-2 m-1" @onclick="SaveDM2">Get cookie</button>
+
+@code {
+    [Parameter]
+    public string menu_id { get; set; } = "we.sm.24";
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
+    ClaimsPrincipal userCliams;
+    private string fbrowse = "";
+
+    async Task SaveDM()
+    {
+        await JSRuntime.InvokeVoidAsync("deleteCookie");
+        myStatemanagerment.SetNewThongbao("deleteCookie");
+
+    }
+    async Task SaveDM2()
+    {
+        await JSRuntime.InvokeVoidAsync("checkCookie");
+        myStatemanagerment.SetNewThongbao("checkCookie");
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            myStatemanagerment.SetToolBar(new MyToolbar("toolbar", false));
+        }
+    }
+
+}

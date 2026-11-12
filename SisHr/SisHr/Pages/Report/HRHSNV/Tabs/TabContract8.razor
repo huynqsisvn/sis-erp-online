@@ -1,0 +1,472 @@
+﻿@namespace SisHr.Pages.Report.HRHSNV.Tabs
+
+@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using SisCom.Model
+@using SisCom.Shared
+@using SisLib.Lib
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using System.Linq
+
+@* ===== 8. LABOR CONTRACT (Hợp đồng lao động) ===== *@
+<DxFormLayoutGroup id="section-8" Caption="@Lap["Labor contract"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="12">
+        <Template>
+            @if (AllowEditMode)
+            {
+                <div class="alert alert-info p-2 mb-2">
+                    <small><kbd>F4</kbd> để thêm dòng mới</small>
+                </div>
+            }
+
+            <div @ref="GridWrapperHopDong" id="grid-wrapper-hopdong" @onfocusout="OnGridHopDongLostFocus" @onfocusin="OnGridFocus" @onkeydown="GridHopDong_OnKeyDown" @onkeydown:stopPropagation="true" class="mt-2 mb-3">
+                <DxGrid @ref="GridHopDong"
+                        Data="@(CurRow.ListHopDong ?? new List<HopDongRow>())"
+                        SizeMode="SizeMode.Small"
+                        CssClass="w-100 grid-height-dynamic"
+                        AllowSelectRowByClick="true"
+                        KeyboardNavigationEnabled="true"
+                        @bind-SelectedDataItem="@SelectedHopDong"
+                        ValidationEnabled="false"
+                        EditMode="GridEditMode.EditRow"
+                        RowClick="@StartEditRow"
+                        SelectionMode="GridSelectionMode.Single"
+                        CustomizeEditModel="GridHopDong_CustomizeEditModel"
+                        EditModelSaving="GridHopDong_EditModelSaving"
+                        DataItemDeleting="GridHopDong_DataItemDeleting"
+                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                        EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                        ShowAllRows="true"
+                        TextWrapEnabled="false"
+                        AllowSort="false"
+                        HighlightRowOnHover="true"
+                        FooterDisplayMode="GridFooterDisplayMode.Always">
+                    <Columns>
+                        <DxGridCommandColumn Width="70px" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                            <CellDisplayTemplate Context="ctx">
+                                <div class="grid-cell-align-center">
+                                    <a class="text-danger fw-bold cursor-pointer" tabindex="-1"
+                                       @onclick="@(() => GridHopDong.ShowRowDeleteConfirmation(ctx.VisibleIndex))" title="Xóa dòng">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                </div>
+                            </CellDisplayTemplate>
+                            <CellEditTemplate Context="ctx">
+                            </CellEditTemplate>
+                        </DxGridCommandColumn>
+
+                        <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                        @* 1. Số hợp đồng *@
+                        <DxGridDataColumn FieldName="Ma_hdld" Caption="@Lap["Contract No."]" Width="130px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ma_hdld" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 2. Số Phụ lục hợp đồng *@
+                        <DxGridDataColumn FieldName="Ma_plhd" Caption="@Lap["Annex No."]" Width="130px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmplhd" @bind-Value="@item.Ma_plhd" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 3. Đại diện công ty (Chúng tôi, một bên là...) *@
+                        <DxGridDataColumn FieldName="Ma_ns_ct" Caption="@Lap["Employer Rep."]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmns" @bind-Value="@item.Ma_ns_ct" IsLangEn="@IsLangEn" 
+                                                           SelectChanged="@((ExpandoObject v) => OnMaNsCtChanged(item))" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 4. Quốc tịch (Chỉ đọc - tự động cập nhật) *@
+                        <DxGridDataColumn FieldName="Ma_quocgia" Caption="@Lap["Nationality"]" Width="120px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ma_quocgia" ReadOnly="true" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 5. Chức vụ (Đại diện công ty) *@
+                        <DxGridDataColumn FieldName="Ma_cv_ct" Caption="@Lap["Emp. Position"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@item.Ma_cv_ct" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 6. Loại hợp đồng *@
+                        <DxGridDataColumn FieldName="Ma_lhd" Caption="@Lap["Contract type"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmlhdong" @bind-Value="@item.Ma_lhd" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 7. Từ ngày *@
+                        <DxGridDataColumn FieldName="Tu_ngay" Caption="@Lap["From date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Tu_ngay" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 8. Đến ngày *@
+                        <DxGridDataColumn FieldName="Den_ngay" Caption="@Lap["To date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Den_ngay" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 9. Địa điểm làm việc *@
+                        <DxGridDataColumn FieldName="Dia_diem_lam_viec" Caption="@Lap["Work location"]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Dia_diem_lam_viec" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 10. Địa chỉ làm việc *@
+                        <DxGridDataColumn FieldName="Dia_chi_lam_viec" Caption="@Lap["Work address"]" Width="200px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Dia_chi_lam_viec" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 11. Chức vụ (Người lao động) *@
+                        <DxGridDataColumn FieldName="Ma_cv" Caption="@Lap["Position"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@item.Ma_cv" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 12. Yêu cầu 1 *@
+                        <DxGridDataColumn FieldName="Yeu_cau1" Caption="@Lap["Requirement 1"]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Yeu_cau1" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 13. Yêu cầu 2 *@
+                        <DxGridDataColumn FieldName="Yeu_cau2" Caption="@Lap["Requirement 2"]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Yeu_cau2" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 14. Thời gian làm việc *@
+                        <DxGridDataColumn FieldName="Thoi_gian_lv" Caption="@Lap["Working hours"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxSpinEdit @bind-Value="@item.Thoi_gian_lv" DisplayFormat="{0:n2}" ShowSpinButtons="false" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 15. Phương tiện đi lại *@
+                        <DxGridDataColumn FieldName="Phuong_tien" Caption="@Lap["Transportation"]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Phuong_tien" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 16. Mức lương *@
+                        <DxGridDataColumn FieldName="Muc_luong" Caption="@Lap["Salary"]" Width="130px" DisplayFormat="{0:n0}">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxSpinEdit @bind-Value="@item.Muc_luong" DisplayFormat="{0:n0}" ShowSpinButtons="false" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 17. Phụ cấp *@
+                        <DxGridDataColumn FieldName="Phu_cap" Caption="@Lap["Allowance"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Phu_cap" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 18. Ngày hiệu lực *@
+                        <DxGridDataColumn FieldName="Ngay_hl" Caption="@Lap["Effective date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Ngay_hl" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 19. Ngày ký hợp đồng *@
+                        <DxGridDataColumn FieldName="Ngay_hd" Caption="@Lap["Sign date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxDateEdit @bind-Date="@item.Ngay_hd" DisplayFormat="dd/MM/yyyy" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 20. Ghi chú *@
+                        <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"]" Width="200px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (HopDongRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ghi_chu" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+                    </Columns>
+                </DxGrid>
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+<style>
+    .grid-height-dynamic {
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .grid-cell-align-center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+@code {
+[Parameter] public HsnvDetailModel CurRow { get; set; }
+[Parameter] public bool AllowEditMode { get; set; }
+[Parameter] public bool IsLangEn { get; set; }
+[Parameter] public dynamic Lap { get; set; }
+[Parameter] public dynamic myDb { get; set; }
+
+[Inject] public IJSRuntime JS { get; set; }
+
+public DxGrid GridHopDong;
+private object SelectedHopDong;
+private ElementReference GridWrapperHopDong;
+private string LastFocusedGrid = "HOPDONG";
+
+void GridHopDong_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+{
+    if (e.IsNew)
+    {
+        var model = (HopDongRow)e.EditModel;
+        model.Stt = CurRow.ListHopDong.Count > 0 ? CurRow.ListHopDong.Max(a => a.Stt) + 1 : 1;
+        model.Ngay_hd = DateTime.Now.Date;
+        model.Ngay_hl = DateTime.Now.Date;
+        model.Status = "1";
+    }
+}
+
+async Task GridHopDong_EditModelSaving(GridEditModelSavingEventArgs e)
+{
+    var item = (HopDongRow)e.EditModel;
+
+    if (e.IsNew)
+    {
+        CurRow.ListHopDong.Add(item);
+
+        // Dọn dẹp dòng trống
+        if (CurRow.ListHopDong.Any(x => !string.IsNullOrEmpty(x.Ma_hdld) && x != item))
+        {
+            CurRow.ListHopDong.RemoveAll(x => string.IsNullOrEmpty(x.Ma_hdld) && x != item);
+        }
+
+        SelectedHopDong = item;
+    }
+    else
+    {
+        SelectedHopDong = item;
+    }
+
+    // Cập nhật STT
+    int stt = 1;
+    CurRow.ListHopDong.ForEach(x => x.Stt = stt++);
+
+    e.Cancel = false;
+    await InvokeAsync(StateHasChanged);
+}
+
+void GridHopDong_DataItemDeleting(GridDataItemDeletingEventArgs e)
+{
+    var item = (HopDongRow)e.DataItem;
+    CurRow.ListHopDong.Remove(item);
+
+    // Cập nhật lại số thứ tự sau khi xóa
+    int stt = 1;
+    foreach (var r in CurRow.ListHopDong)
+    {
+        r.Stt = stt++;
+    }
+
+    e.Cancel = true;
+    StateHasChanged();
+}
+
+private async Task GridHopDong_OnKeyDown(KeyboardEventArgs e)
+{
+    if (!AllowEditMode) return;
+    switch (e.Key)
+    {
+        case "Enter":
+            await SaveAndMoveNextRow();
+            break;
+        case "F4":
+            AddNewRow();
+            break;
+        case "F8":
+            if (SelectedHopDong != null) GridHopDong.ShowDataItemDeleteConfirmation(SelectedHopDong);
+            break;
+        case "Escape":
+            try { await GridHopDong.CancelEditAsync(); GridHopDong.ClearSelection(); } catch { }
+            break;
+    }
+}
+
+private async Task HandleSaveAndMoveNext(DxGrid grid, List<HopDongRow> list, object selectedItem, Func<Task> onAddAction)
+{
+    try
+    {
+        if (grid != null && grid.IsEditing())
+            await grid.SaveChangesAsync();
+
+        await Task.Delay(100);
+
+        // Luôn thêm dòng mới sau khi lưu
+        await onAddAction();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("HandleSaveAndMoveNext Error: " + ex.Message);
+    }
+}
+
+[JSInvokable]
+public async Task SaveAndMoveNextRow()
+{
+    try
+    {
+        await HandleSaveAndMoveNext(GridHopDong, CurRow.ListHopDong, SelectedHopDong, AddNewRowAsync);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("SaveAndMoveNextRow Error: " + ex.Message);
+    }
+}
+
+private async Task OnGridFocus()
+{
+    LastFocusedGrid = "HOPDONG";
+}
+
+private async Task AddNewRowAsync()
+{
+    if (AllowEditMode && GridHopDong != null)
+    {
+        if (GridHopDong.IsEditing())
+            await GridHopDong.SaveChangesAsync();
+        await GridHopDong.StartEditNewRowAsync();
+    }
+}
+
+private async void AddNewRow()
+{
+    await AddNewRowAsync();
+}
+
+private void StartEditRow()
+{
+    if (GridHopDong != null && SelectedHopDong != null && AllowEditMode)
+    {
+        if (GridHopDong.IsEditing())
+            _ = GridHopDong.SaveChangesAsync();
+        _ = GridHopDong.StartEditDataItemAsync(SelectedHopDong);
+    }
+}
+
+async void OnGridHopDongLostFocus(FocusEventArgs e)
+{
+    try
+    {
+        await Task.Delay(150);
+        bool inside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-hopdong");
+        if (!inside && GridHopDong != null && GridHopDong.IsEditing())
+        {
+            await GridHopDong.SaveChangesAsync();
+        }
+    }
+    catch { }
+}
+
+private void OnMaNsCtChanged(HopDongRow item)
+{
+    item.Ma_quocgia = "";
+    if (!string.IsNullOrWhiteSpace(item.Ma_ns_ct))
+    {
+        string safe = item.Ma_ns_ct.Trim().Replace("'", "''");
+        item.Ma_quocgia = myDb?.GetValue($"SELECT quoc_tich FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+    }
+    StateHasChanged();
+}
+}

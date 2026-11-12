@@ -1,0 +1,679 @@
+﻿@page "/fxbckhth4"
+@page "/fxbckhth4/{Menu_id}"
+@inherits RepoBaseComponent
+@attribute [Authorize(Roles = "admin,fxbckhth4")]
+@using SisFx.Pages.Report.FXBCKHTH4
+
+<div class="row" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="@oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@Fbrowse"
+                        SelectItem="@SelectedItem"
+                        RowStyleFunc="@GetRowStyle"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@* ================================================================
+   BỘ LỌC BÁO CÁO: BẢNG TỔNG HỢP CHI PHÍ CCDC - THEO NHIỀU CHỈ TIÊU
+   ================================================================ *@
+<DxPopup @ref="popFilter"
+         CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="560px"
+         Height="Auto"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="@Title">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="d-flex justify-content-center align-items-center p-4">
+                <div class="spinner-border text-primary" role="status" style="width:4rem;height:4rem;border-width:3px;">
+                    <span class="sr-only">@Lap["Filtering data..."]</span>
+                </div>
+                <span class="ms-3 fs-6 text-primary">@Lap["Loading data, please wait..."]</span>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1 pb-2">
+                <DxFormLayout CssClass="w-100" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                    @* --- NĂM --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Year:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <DxSpinEdit @bind-Value="@FilterNam" DisplayFormat="####" MinValue="1900" MaxValue="2079" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- TỪ KỲ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From period (1-12):"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy1" MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy1 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy1 >= 1 && FilterKy1 <= 12)
+                                {
+                                    <span class="badge text-dark">
+                                        @(new DateTime(FilterNam, FilterKy1, 1).ToString("MM/yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- ĐẾN KỲ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To period (1-12):"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy2" MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy2 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy2 >= 1 && FilterKy2 <= 12)
+                                {
+                                    <span class="badge text-dark">
+                                        @(new DateTime(FilterNam, FilterKy2, DateTime.DaysInMonth(FilterNam, FilterKy2)).ToString("MM/yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- CÁC TRƯỜNG TỔNG HỢP (CÓ THỂ CHỌN NHIỀU - CHUẨN WINFORM) --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@(IsLangEn ? "Summary criteria:" : "Tiêu chí tổng hợp:")" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%; position: relative;">
+                                <div id="combo-nhom-target" @onclick="() => IsDropdownOpen = !IsDropdownOpen" style="cursor: pointer;">
+                                    <DxTextBox Text="@GetSummaryText()" ReadOnly="true" CssClass="w-100" />
+                                    <i class="fa fa-caret-down" style="position: absolute; right: 10px; top: 10px; color: #6c757d;"></i>
+                                </div>
+
+                                <DxDropDown @bind-IsOpen="@IsDropdownOpen"
+                                            PositionTarget="#combo-nhom-target"
+                                            PositionMode="DropDownPositionMode.Bottom"
+                                            CloseMode="DropDownCloseMode.Close"
+                                            Width="380px">
+                                    <BodyTemplate Context="dropContext">
+                                        <DxListBox Data="@DanhSachNhom"
+                                                   @bind-Values="@NhomDuocChon"
+                                                   ValueFieldName="Value"
+                                                   TextFieldName="Text"
+                                                   ShowCheckboxes="true"
+                                                   SelectionMode="ListBoxSelectionMode.Multiple"
+                                                   Style="max-height: 250px; overflow-y: auto; white-space: nowrap;" />
+                                    </BodyTemplate>
+                                </DxDropDown>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- MẦU VND/NGOẠI TỆ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Currency type:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <DxTextBox Text="VND" ReadOnly="true" CssClass="w-100" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- CÁC ĐIỀU KIỆN LỌC NÂNG CAO --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Tool group:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="col p-0" Ma_dm="dmnhomcc" @bind-Value="@FilterNhCc" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Tool type:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="col p-0" Ma_dm="dmplcc" @bind-Value="@FilterLoaiCc" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Dep. using:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="col p-0" Ma_dm="dmbpts" @bind-Value="@FilterMaBpcc" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Alloc. acc:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="col p-0" Ma_dm="dmtk" @bind-Value="@FilterTkPb" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Expense account:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="col p-0" Ma_dm="dmtk" @bind-Value="@FilterTkCp" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Sub-group 1:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="col p-0" Ma_dm="dmnhcc1" @bind-Value="@FilterNhCc1" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Sub-group 2:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="col p-0" Ma_dm="dmnhcc2" @bind-Value="@FilterNhCc2" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Sub-group 3:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent CssClass="col p-0" Ma_dm="dmnhcc3" @bind-Value="@FilterNhCc3" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- CHECKBOX TÙY CHỌN --- *@
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <Template>
+                            <div class="d-flex flex-wrap gap-4 mt-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkThoiPb"
+                                           checked="@FilterThoiKhCk"
+                                           @onchange="@((ChangeEventArgs e) => { FilterThoiKhCk = e.Value is bool b && b; StateHasChanged(); })" />
+                                    <label class="form-check-label" for="chkThoiPb">
+                                        @Lap["Include tools stopped allocation"]
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkHetPb"
+                                           checked="@FilterHetKhCk"
+                                           @onchange="@((ChangeEventArgs e) => { FilterHetKhCk = e.Value is bool b && b; StateHasChanged(); })" />
+                                    <label class="form-check-label" for="chkHetPb">
+                                        @Lap["Include tools fully allocated"]
+                                    </label>
+                                </div>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+
+                @if (Errors.Any())
+                {
+                    <div class="alert alert-danger mt-3 p-2 mb-0">
+                        <ul class="mb-0 ps-3">
+                            @foreach (var err in Errors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="d-flex justify-content-end gap-2 m-2">
+                <DxButton RenderStyle="ButtonRenderStyle.Success"
+                          Text="@Lap["OK"]"
+                          IconCssClass="fa fa-check"
+                          Click="@ConfirmGridView_OnOk" />
+                <DxButton RenderStyle="ButtonRenderStyle.Danger"
+                          Text="@Lap["Cancel"]"
+                          IconCssClass="fa fa-times"
+                          Click="@BtnCancel" TabIndex="-1" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@if (ShowPrint)
+{
+    <DxPopup @ref="popPrint" CloseOnOutsideClick="false" CssClass="dxPopup" @bind-Visible="@ShowPrint"
+             Width="80%" Height="90%" ShowFooter="false" Context="windowContext" HeaderText="@Lap["Printer"]">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@LsData" Menu_id="@Menu_id.Replace('_', '.')"
+                                   OnBack="@(() => { ShowPrint = false; StateHasChanged(); })">
+            </ReportOptionComponent>
+        </BodyTemplate>
+    </DxPopup>
+}
+
+<style>
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+</style>
+
+@code {
+    // ===== Filter fields =====
+    private int FilterNam = DateTime.Now.Year;
+    private int FilterKy1 = 1;
+    private int FilterKy2 = 12;
+    
+    // Multiple summary criteria selection
+    private bool FilterNhomAll = true;
+    private bool FilterNhom1 = true;  // By tool type
+    private bool FilterNhom2 = true;  // By department using
+    private bool FilterNhom3 = true;  // By tool group
+    private bool FilterNhom4 = true;  // By expense account
+    private bool FilterNhom5 = true;  // By sub-group 1
+    private bool FilterNhom6 = true;  // By sub-group 2
+    private bool FilterNhom7 = true;  // By sub-group 3
+    
+    private string FilterMaDvcs = "";
+    private string FilterNhCc = "";
+    private string FilterLoaiCc = "";
+    private string FilterMaBpcc = "";
+    private string FilterTkPb = "";
+    private string FilterTkCp = "";
+    private string FilterNhCc1 = "";
+    private string FilterNhCc2 = "";
+    private string FilterNhCc3 = "";
+    private bool FilterThoiKhCk = false;
+    private bool FilterHetKhCk = false;
+
+    private List<string> Errors { get; set; } = new();
+    private List<FXBCKHTH4Model> LsData;
+    private bool ShowPrint = false;
+    private DxPopup popPrint;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "wf.xb.06";
+        base.OnInitialized();
+
+        FilterNam = myStateMN.GetStartDate().Year;
+        FilterKy1 = myStateMN.GetStartDate().Month;
+        FilterKy2 = myStateMN.GetEndDate().Month;
+
+        // GỌI Ở ĐÂY ĐỂ ĐẢM BẢO CÓ DATA TRƯỚC KHI VẼ GIAO DIỆN
+        InitDanhSachNhom();
+    }
+
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+        if (!string.IsNullOrEmpty(value) && value.Equals("F7"))
+        {
+            Print();
+            StateHasChanged();
+        }
+    }
+
+    private void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Print:
+                Print();
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+            await Language();
+    }
+
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+
+            if (curCommand != null)
+                Fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async void OnDvcsChanged(string ma_dvcs)
+    {
+        FilterMaDvcs = (ma_dvcs == "ALL" ? "" : ma_dvcs);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private void OnSelectAll(bool value)
+    {
+        FilterNhomAll = value;
+        FilterNhom1 = FilterNhom2 = FilterNhom3 = FilterNhom4 = value;
+        FilterNhom5 = FilterNhom6 = FilterNhom7 = value;
+        StateHasChanged();
+    }
+
+    private void UpdateNhomSelection()
+    {
+        FilterNhomAll = FilterNhom1 && FilterNhom2 && FilterNhom3 && FilterNhom4 && 
+                       FilterNhom5 && FilterNhom6 && FilterNhom7;
+        StateHasChanged();
+    }
+
+    private string GetNhomParam()
+    {
+        return NhomDuocChon != null && NhomDuocChon.Any()
+               ? string.Join(";", NhomDuocChon)
+               : "1;2;3;4;5;6;7";
+    }
+
+    private async void ConfirmGridView_OnOk()
+    {
+        if (!CheckValid()) return;
+        PopupVisible = false;
+
+        myStateMN.SetStartDate(new DateTime(FilterNam, FilterKy1, 1));
+        myStateMN.SetEndDate(new DateTime(FilterNam, FilterKy2, DateTime.DaysInMonth(FilterNam, FilterKy2)));
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool ok = true;
+        if (FilterNam < 1900 || FilterNam > 2079)
+        {
+            Errors.Add(Lap["Year is invalid (must be > 0)."]);
+            ok = false;
+        }
+        if (FilterKy1 < 1 || FilterKy1 > 12)
+        {
+            Errors.Add(Lap["From period must be 1 to 12."]);
+            ok = false;
+        }
+        if (FilterKy2 < 1 || FilterKy2 > 12)
+        {
+            Errors.Add(Lap["To period must be 1 to 12."]);
+            ok = false;
+        }
+        if (FilterKy1 > FilterKy2)
+        {
+            Errors.Add(Lap["From period cannot be greater than To period."]);
+            ok = false;
+        }
+        
+        // Check if at least one summary criteria is selected
+        if (NhomDuocChon == null || !NhomDuocChon.Any())
+        {
+            Errors.Add(Lap["Please select at least one summary criteria."]);
+            ok = false;
+        }
+        
+        StateHasChanged();
+        return ok;
+    }
+
+    async Task Loaddata()
+    {
+        try
+        {
+            ShowLoadding = true;
+            StateHasChanged();
+
+            if (curCommand != null)
+            {
+                string[] sFieldArrays = IsLangEn
+                    ? (Mau_bc != 0 ? curCommand.Ebrowse2?.Split("|") : curCommand.Ebrowse1?.Split("|"))
+                    : (Mau_bc != 0 ? curCommand.Vbrowse2?.Split("|") : curCommand.Vbrowse1?.Split("|"));
+
+                Fbrowse = sFieldArrays != null && sFieldArrays.Length > 0 ? sFieldArrays[0] : Fbrowse;
+            }
+
+            string thoiKhCk = FilterThoiKhCk ? "1" : "0";
+            string hetKhCk = FilterHetKhCk ? "1" : "0";
+            string condition = BuildCondition();
+            string nhom = GetNhomParam(); // Vẫn giữ nguyên kết quả "1;2;3"
+
+            // THAY ĐỔI Ở ĐÂY: Sử dụng Mảng (Array) thay vì gộp chuỗi (String)
+            string[] pNames = new string[] { "nam", "ky1", "ky2", "ma_bpcc", "tk_cp", "Nhom", "Thoi_kh_ck", "Het_kh_ck", "advance" };
+            object[] pValues = new object[] { FilterNam, FilterKy1, FilterKy2, FilterMaBpcc, FilterTkCp, nhom, thoiKhCk, hetKhCk, condition };
+
+            string store = curCommand?.Store_proc?.Split('|')[0] ?? "FXBCKHTH4";
+
+            // Gọi hàm truyền bằng mảng để tránh bị lỗi cắt chuỗi bằng dấu chấm phẩy
+            var ds = await myDb.LoadStoreProcedure(store, pNames, pValues);
+
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                TblData = ds.Tables[0].Copy();
+                TblData.TableName = "tbDetail";
+            }
+            else
+            {
+                TblData = new DataTable();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            myStateMN.SetNewThongbao(Lap["Error loading data:"] + " " + ex.Message);
+        }
+        finally
+        {
+            ShowLoadding = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string Esc(string s) => s?.Trim().Replace("'", "''") ?? "";
+
+    // @advance trong SP FXBCKHTH4 được truyền vào EXEC FXBCKHCC3 — nguồn dữ liệu ctdmcc.
+    // Chỉ được lọc theo các cột tồn tại trong view v_ctdmcc (ma_dvcs, nh_cc, loai_cc, ma_bpcc, tk_pb, nh_cc1/2/3).
+    // ma_bpcc và tk_cp đã có tham số SP riêng (@ma_bpcc, @tk_cp), không cần đưa vào advance.
+    private string BuildCondition()
+    {
+        var parts = new List<string> { "1=1" };
+
+        if (!string.IsNullOrWhiteSpace(FilterMaDvcs))
+            parts.Add($"ma_dvcs LIKE '{Esc(FilterMaDvcs)}%'");
+
+        if (!string.IsNullOrWhiteSpace(FilterNhCc))
+            parts.Add($"nh_cc LIKE '{Esc(FilterNhCc)}%'");
+
+        if (!string.IsNullOrWhiteSpace(FilterLoaiCc))
+            parts.Add($"loai_cc LIKE '{Esc(FilterLoaiCc)}%'");
+
+        if (!string.IsNullOrWhiteSpace(FilterTkPb))
+            parts.Add($"tk_pb LIKE '{Esc(FilterTkPb)}%'");
+
+        if (!string.IsNullOrWhiteSpace(FilterNhCc1))
+            parts.Add($"nh_cc1 LIKE '{Esc(FilterNhCc1)}%'");
+
+        if (!string.IsNullOrWhiteSpace(FilterNhCc2))
+            parts.Add($"nh_cc2 LIKE '{Esc(FilterNhCc2)}%'");
+
+        if (!string.IsNullOrWhiteSpace(FilterNhCc3))
+            parts.Add($"nh_cc3 LIKE '{Esc(FilterNhCc3)}%'");
+
+        return string.Join(" AND ", parts);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStateMN.GetCurUser();
+            FilterMaDvcs = myStateMN.GetMa_Dvcs();
+            FilterMaDvcs = (FilterMaDvcs == "ALL" ? "" : FilterMaDvcs);
+
+            await PageLoad();
+            await Language();
+            await Lap.LoadLocalizationAsync($"fx-{(IsLangEn ? "en" : "vi")}");
+
+            if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            PopupVisible = true;
+            StateHasChanged();
+        }
+        else
+        {
+            if (oBrowse != null)
+                await oBrowse.FocusGridAsync();
+        }
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+    string GetRowStyle(DataRowView row)
+    {
+        if (row.Row.Table.Columns.Contains("bold") && row["bold"]?.ToString()?.Trim() == "1")
+            return "bold-item";
+        return "";
+    }
+
+    public override async void ExportData(int type)
+    {
+        oBrowse?.ExPortGrid(type);
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+
+    public override async void Print()
+    {
+        if (TblData == null || TblData.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No data to print"]);
+            return;
+        }
+
+        LsData = new List<FXBCKHTH4Model>();
+        var rows = myDb.ConvertDataTable<FXBCKHTH4Row>(TblData);
+
+        decimal tNguyenGia = rows?.Sum(r => r.Nguyen_gia)   ?? 0m;
+        decimal tGtKhKy    = rows?.Sum(r => r.Gt_kh_ky)     ?? 0m;
+        decimal tGtDaKh    = rows?.Sum(r => r.Gt_da_kh)     ?? 0m;
+        decimal tGtDaKh1   = rows?.Sum(r => r.Gt_da_kh1)    ?? 0m;
+        decimal tGtCl      = rows?.Sum(r => r.Gt_cl)        ?? 0m;
+
+        var data = new FXBCKHTH4Model
+        {
+            Nam         = FilterNam,
+            Ky1         = FilterKy1,
+            Ky2         = FilterKy2,
+            Ma_dvcs     = FilterMaDvcs,
+            LoaiBC      = Mau_bc.ToString(),
+            T_nguyen_gia = tNguyenGia,
+            T_gt_kh_ky  = tGtKhKy,
+            T_gt_da_kh  = tGtDaKh,
+            T_gt_da_kh1 = tGtDaKh1,
+            T_gt_cl     = tGtCl,
+            LsData      = rows
+        };
+
+        LsData.Add(data);
+        ShowReport(LsData, typeof(FXBCKHTH4Model));
+    }
+    // Class để chứa dữ liệu thả xuống
+    public class NhomTieuChi
+    {
+        public string Value { get; set; }
+        public string Text { get; set; }
+    }
+
+    // Khai báo có new List luôn để TagBox không bao giờ bị dính null lúc mới load
+    private IEnumerable<NhomTieuChi> DanhSachNhom { get; set; } = new List<NhomTieuChi>();
+    private IEnumerable<string> NhomDuocChon { get; set; } = new List<string> { "1", "2", "3", "4", "5", "6", "7" };
+
+    // Hàm tạo danh sách hiển thị
+    private void InitDanhSachNhom()
+    {
+        DanhSachNhom = new List<NhomTieuChi>
+        {
+            new NhomTieuChi { Value = "1", Text = IsLangEn ? "By tool type" : "Theo loại cc" },
+            new NhomTieuChi { Value = "2", Text = IsLangEn ? "By department using" : "Theo bpsd" },
+            new NhomTieuChi { Value = "3", Text = IsLangEn ? "By tool group" : "Theo nhóm cc" },
+            new NhomTieuChi { Value = "4", Text = IsLangEn ? "By expense account" : "Theo tk cp" },
+            new NhomTieuChi { Value = "5", Text = IsLangEn ? "By sub-group 1" : "Theo nhóm cc 1" },
+            new NhomTieuChi { Value = "6", Text = IsLangEn ? "By sub-group 2" : "Theo nhóm cc 2" },
+            new NhomTieuChi { Value = "7", Text = IsLangEn ? "By sub-group 3" : "Theo nhóm cc 3" }
+        };
+    }
+    // Biến điều khiển ẩn hiện popup CheckComboBox
+    private bool IsDropdownOpen = false;
+
+    // Hàm tạo chuỗi hiển thị gọn gàng trên 1 dòng
+    private string GetSummaryText()
+    {
+        if (NhomDuocChon == null || !NhomDuocChon.Any() || DanhSachNhom == null || !DanhSachNhom.Any())
+            return IsLangEn ? "None selected" : "Chưa chọn";
+
+        // Nếu chọn đủ cả 7 cái thì hiện chữ Tất cả
+        if (NhomDuocChon.Count() == DanhSachNhom.Count())
+            return IsLangEn ? "All" : "Tất cả";
+
+        // Lấy Text của các mục được chọn và nối lại bằng dấu phẩy
+        var selectedTexts = DanhSachNhom
+            .Where(x => NhomDuocChon.Contains(x.Value))
+            .Select(x => x.Text);
+
+        return string.Join(", ", selectedTexts);
+    }
+    void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+}

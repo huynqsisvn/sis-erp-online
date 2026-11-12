@@ -1,0 +1,352 @@
+﻿@page "/glso2"
+@page "/glso2/{Menu_id}"
+
+@inject IDbManager myDb
+@inject NavigationManager navigation
+@inject Statemanagerment myStatemanagerment
+@inject ILocalStorageService Localstore
+@inject ICommandManager Commands
+@implements IDisposable
+@inject IJSRuntime JavacriptS
+@inject IOptionsManager options
+@inherits RepoBaseComponent
+
+@attribute [Authorize(Roles = "admin,glso2")]
+
+<div class="row" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="@_FrmBrowse" TblData="@TblData" SelectItem="@SelectItems" Fbrowse="@fbrowse" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="500px"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Tu_ngay" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idTu_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Den_ngay" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idDen_ngay" />
+                    </DxFormLayoutItem>
+                    
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["ID"]">
+                        <DxTextBox CssClass="col" @bind-Text="@Ma_kh" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idMa_kh" />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        }
+        
+    </BodyTemplate>
+
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {            
+             <div class="row justify-content-end align-content-end mt-2">
+                <DxButton Context="another_name6" CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@BtnSave" />
+                <DxButton Context="another_name7" CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>            
+        }
+    </FooterTemplate>
+</DxPopup>
+@if(ShowPrint)
+{
+<DxPopup @ref="popPrint" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@ShowPrint"
+         Width="80%" Height="90%"
+         ShowFooter="false" Context="windowContext"
+         HeaderText="@Lap["Printer"]">
+    <BodyTemplate>
+            <ReportOptionComponent LSItems="LsData" Menu_id="@Menu_id.Replace('_','.')" OnBack="@(()=>{ShowPrint=false;})"></ReportOptionComponent>
+    </BodyTemplate>    
+</DxPopup>
+}
+<style>
+    .popup-button-footer {
+        width: 100px; 
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+</style>
+@code {   
+   
+    bool ShowLoadding { get; set; } = false;
+    bool PopupVisible { get; set; } = false;
+    bool ShowPrint { get; set; } = false;
+
+    DxPopup popFilter { get; set; }
+    DxPopup popPrint { get; set; }
+    
+    public Users CurUser;
+    private string fbrowse = "";
+    private Command curCommand = new Command();
+    string _store_proc = "";
+
+    private DataTable TblData { get; set; }    
+    private string mPage = "Glso2";
+    FrmBrowseComponent _FrmBrowse{ get; set; }
+    private List<Glso2Model> LsData;
+
+    object SelectedDataItem { get; set; }
+    void SelectItems(object item)
+    {
+        SelectedDataItem = item;
+    }
+    public DotNetObjectReference<Glso2Cpn> Pageobj;
+    private string ActiveComponentId = "oBrowse";
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+        if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowse"))
+        {
+            oBrowseHotKeyFunction(value);
+        }
+    }
+    void oBrowseHotKeyFunction(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Equals("F2"))
+            {
+
+            }
+            if (value.Equals("F3"))
+            {
+
+            }
+            if (value.Equals("F4"))
+            {
+
+            }
+            if (value.Equals("F5"))
+            {
+
+            }
+            else if (value.Equals("F7"))
+            {
+                try
+                {
+                    Print();
+                    StateHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            else if (value.Equals("F8"))
+            {
+
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+
+            }
+        }
+    }
+    private async Task SetActiveComponentIdAsync(string id)
+    {
+        try
+        {
+            ActiveComponentId = id ?? ActiveComponentId;
+            if (Pageobj != null)
+            {
+                await JavacriptS.InvokeVoidAsync("SetPageFModeObj", Pageobj, ActiveComponentId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SetActiveComponentIdAsync error: " + ex.Message);
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "ws_bh_11";
+        curCommand = await Commands.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        Tu_ngay = myStatemanagerment.GetStartDate();
+        Den_ngay = myStatemanagerment.GetEndDate();
+
+        if (curCommand != null)
+        {
+            _store_proc = curCommand.Store_proc.Split('|')[0];
+            fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+        }
+
+    }
+    private void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Button1:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Print:
+                Print();
+                StateHasChanged();
+                break;
+            case ActionTask.Quit:
+                myStatemanagerment.SetCurrentActionTask(ActionTask.None);
+                ShowPrint = false;
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+    async void ExportData(int type)
+    {
+        _FrmBrowse.ExPortGrid(type);
+        myStatemanagerment.SetNewThongbao(Lap["Export successfully"].ToString());
+    }
+    public void Dispose()
+    {
+        myStatemanagerment.OnActionTaskChanged -= OnActionTaskchanged;
+        myStatemanagerment.OnLangguaChanged -= OnLangguachange;
+    }
+
+    private string UserLang { get; set; } = "";
+    private bool IsLangEn = false;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStatemanagerment.GetCurUser();            
+            if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+            {
+                myStatemanagerment.SetToolBar(new MyToolbar("toolbar", true));
+                myStatemanagerment.SetToolBar(new MyToolbar("Search", true));
+                myStatemanagerment.SetToolBar(new MyToolbar("Print", true));
+                //myStatemanagerment.AddToolBarButton("Button1", @Lap["Filter"]);
+                myStatemanagerment.SetToolBar(new MyToolbar("Export", true));              
+            }
+            else
+            {
+                myStatemanagerment.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStatemanagerment.OnActionTaskChanged += OnActionTaskchanged;
+            myStatemanagerment.OnLangguaChanged += OnLangguachange;
+            Pageobj = DotNetObjectReference.Create(this);
+            await SetActiveComponentIdAsync("oBrowse");
+            await Language();
+            await Loaddata();
+        }
+    }
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await Localstore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            if (curCommand != null)
+            {
+                fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+    #region "Tim kiem"
+    private DateTime Tu_ngay = DateTime.Now.Date;
+    private DateTime Den_ngay = DateTime.Now.Date;
+
+    private string Ma_kh = "";   
+
+    async void BtnSave()
+    {
+        ShowLoadding = true;
+        myStatemanagerment.SetStartDate((DateTime)Tu_ngay);
+        myStatemanagerment.SetEndDate((DateTime)Den_ngay);
+        await Loaddata();
+        ShowLoadding = false;
+        PopupVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+    void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+    async Task Loaddata()
+    {   
+        string Ma_dvcs = myStateMN.GetDvcs().Ma_dvcs.Trim();
+        string parram_name = "StartDate;EndDate;LoaiBC;bo_nkcd;Ma_dvcs";
+        string parram_value = "";
+        if (Tu_ngay != null)
+        {
+            parram_value = ((DateTime)Tu_ngay).ToString("yyyyMMdd");
+        }
+        if (Den_ngay != null)
+        {
+            parram_value += ";" + ((DateTime)Den_ngay).ToString("yyyyMMdd");
+        }
+        else
+        {
+            parram_value += ";";
+        } 
+        parram_value += ";1;0;";
+        DataSet ds = await myDb.LoadStoreProcedure(_store_proc, parram_name, parram_value);
+
+        TblData = ds.Tables[0].Copy();
+        //string modelstr = SisFunc.Converts.DataTable2Model(TblData, "Glso2");
+        StateHasChanged();
+    }
+
+    void Print()
+    {
+        LsData = new List<Glso2Model>();
+        Glso2Model _curModel = new Glso2Model();
+        List<Glso2> lst = myDb.ConvertDataTable<Glso2>(TblData);
+        _curModel.LsData = lst;
+        _curModel.Tu_ngay = this.Tu_ngay;
+        _curModel.Den_ngay = this.Den_ngay;
+        LsData.Add(_curModel);
+
+        ShowPrint = true;        
+    }
+    #endregion
+}

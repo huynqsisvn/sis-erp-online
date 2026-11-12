@@ -1,0 +1,51 @@
+﻿@inject IStringLocalizer<App> Lap
+
+@if (TblData != null && TblData.Rows.Count > 0)
+{
+    foreach (DataRow row in TblData.Rows)
+    {
+        <div class="noti-card">
+            <div class="noti-container">
+                <div class="row m-0 p-0">
+                    @if (!string.IsNullOrEmpty(row["img_link"].ToString()))
+                    {
+                        <div class="col-3">
+                            <img class="img_link" src="images\@row["img_link"].ToString()" alt="image">
+                        </div>
+                    }                  
+                    <div class="col">
+                        <h6>@row["tieu_de"].ToString()</h6>
+                        <p class="noti_noi_dung"> @Convert2MarkupString(row["noi_dung"].ToString())</p>
+                        <p class="noti_noi_dung"> @row["ghi_chu"].ToString()</p>
+                        @if (!string.IsNullOrEmpty(row["no_link"].ToString()))
+                        {
+                            <a class="no_link" href="@row["no_link"].ToString().Trim()" target="_blank">
+                                @row["no_link"].ToString().Trim()
+                           </a>
+                        }                     
+                    </div>
+                    <button class="col-1 btn btn oi oi-ban text-primary fs-4" @onclick="@(()=>{ NotificationReaded(row["NotificationID"].ToString());})"></button>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <h4 class="text-primary text-center">@Lap["No data"]</h4>
+}
+
+@code {
+    [Parameter]
+    public DataTable TblData { get; set; } = new DataTable();
+    [Parameter]
+    public EventCallback<string> Readed { get; set; }
+    void NotificationReaded(string nitiID)
+    {
+        Readed.InvokeAsync(nitiID);
+    }
+    public MarkupString Convert2MarkupString(string pText)
+    {        
+        return new MarkupString(String.IsNullOrEmpty(pText)?"":pText);
+    }
+}

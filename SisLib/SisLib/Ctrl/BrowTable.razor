@@ -1,0 +1,36 @@
+﻿@inject ILocalStorageService myLcStore
+@if(TblData != null)
+{
+    <div class="row">
+        <FrmBrowseComponent @ref="@oBrowse" TblData="@TblData" SelectItem="@SelectedItem" Fbrowse="@StrBrowse" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+}
+
+@code {
+    [Parameter] public DataTable TblData { get; set; }
+    [Parameter] public string StrBrowse { get; set; }
+    [Parameter] public string Title { get; set; } = "";    
+
+    public FrmBrowseComponent oBrowse;
+    public object CurItem { get; set; }
+    public bool IsLangEn = false;
+    public virtual void SelectedItem(object obj)
+    {
+        CurItem = obj;
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            string UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+    }
+}

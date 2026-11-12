@@ -1,0 +1,530 @@
+﻿@page "/hrbcdsnscty"
+@page "/hrbcdsnscty/{Menu_id}"
+@inherits RepoBaseComponent
+@attribute [Authorize(Roles = "admin,hrbcdsnscty")]
+@using SisHr.Pages.Report.HRBCDSNSCTY
+
+<div class="row" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="@oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@Fbrowse"
+                        SelectItem="@SelectedItem"
+                        RowStyleFunc="@GetRowStyle"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@* ================================================================
+   BỘ LỌC BÁO CÁO: DANH SÁCH NHÂN SỰ CÔNG TY
+   ================================================================ *@
+<DxPopup @ref="popFilter"
+         CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="560px"
+         Height="Auto"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="@Title">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="d-flex justify-content-center align-items-center p-4">
+                <div class="spinner-border text-primary" role="status" style="width:4rem;height:4rem;border-width:3px;">
+                    <span class="sr-only">@Lap["Filtering data..."]</span>
+                </div>
+                <span class="ms-3 fs-6 text-primary">@Lap["Loading data, please wait..."]</span>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1 pb-2">
+                <DxFormLayout CssClass="w-100" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                    @* --- LOẠI BÁO CÁO --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Report type:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <DxComboBox Data="@LstLoaiBC"
+                                            @bind-Value="@FilterLoaiBC"
+                                            ValueFieldName="Value"
+                                            TextFieldName="@(IsLangEn ? "Text2" : "Text")" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- TỪ NGÀY --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <DxDateEdit @bind-Date="@FilterTuNgay"
+                                            DisplayFormat="dd/MM/yyyy"
+                                            Enabled="@TuNgayEnabled" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- ĐẾN NGÀY --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <DxDateEdit @bind-Date="@FilterDenNgay"
+                                            DisplayFormat="dd/MM/yyyy" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- NHÂN VIÊN --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Employee:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent Ma_dm="dmns" @bind-Value="@FilterMaNs" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- PHÒNG BAN --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Department:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <AutocompleteComponent Ma_dm="dmbpns" @bind-Value="@FilterMaBpns" IsEnable="true" IsLangEn="@IsLangEn" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+
+                @if (Errors.Any())
+                {
+                    <div class="alert alert-danger mt-3 p-2 mb-0">
+                        <ul class="mb-0 ps-3">
+                            @foreach (var err in Errors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="d-flex justify-content-end gap-2 m-2">
+                <DxButton RenderStyle="ButtonRenderStyle.Success"
+                          Text="@Lap["OK"]"
+                          IconCssClass="fa fa-check"
+                          Click="@ConfirmGridView_OnOk" />
+                <DxButton RenderStyle="ButtonRenderStyle.Danger"
+                          Text="@Lap["Cancel"]"
+                          IconCssClass="fa fa-times"
+                          Click="@BtnCancel" TabIndex="-1" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@if (ShowPrint)
+{
+    <DxPopup @ref="popPrint" CloseOnOutsideClick="false" CssClass="dxPopup" @bind-Visible="@ShowPrint"
+             Width="80%" Height="90%" ShowFooter="false" Context="windowContext" HeaderText="@Lap["Printer"]">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@LsData" Menu_id="@Menu_id.Replace('_', '.')"
+                                   OnBack="@(() => { ShowPrint = false; StateHasChanged(); })">
+            </ReportOptionComponent>
+        </BodyTemplate>
+    </DxPopup>
+}
+
+<style>
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+</style>
+
+@code {
+    // ===== Filter fields =====
+    private DateTime FilterTuNgay = DateTime.Now.Date;
+    private DateTime FilterDenNgay = DateTime.Now.Date;
+    private string FilterLoaiBC = "1";
+    private string FilterMaNs = "";
+    private string FilterMaBpns = "";
+    private string FilterMaDvcs = "";
+    private bool TuNgayEnabled = true;
+
+    private List<string> Errors { get; set; } = new();
+    private List<HRBCDSNSCTYModel> LsData;
+    private bool ShowPrint = false;
+    private DxPopup popPrint;
+
+    private static readonly List<object> LstLoaiBC = new()
+    {
+        new { Value = "1", Text = "1 - Tất cả nhân viên",          Text2 = "1 - All employees" },
+        new { Value = "2", Text = "2 - Đang làm việc",             Text2 = "2 - Active employees" },
+        new { Value = "3", Text = "3 - Hợp đồng lao động",         Text2 = "3 - Labor contract" },
+        new { Value = "4", Text = "4 - Hợp đồng thử việc",         Text2 = "4 - Probation contract" },
+        new { Value = "5", Text = "5 - Nhân viên nghỉ việc",        Text2 = "5 - Resigned employees" },
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "wr.bc.02";
+        base.OnInitialized();
+
+        FilterTuNgay = myStateMN.GetStartDate().Date;
+        FilterDenNgay = myStateMN.GetEndDate().Date;
+    }
+
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+        if (!string.IsNullOrEmpty(value) && value.Equals("F7"))
+        {
+            Print();
+            StateHasChanged();
+        }
+    }
+
+    private void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Print:
+                Print();
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+            await Language();
+    }
+
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+
+            if (curCommand != null)
+                Fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async void OnDvcsChanged(string ma_dvcs)
+    {
+        FilterMaDvcs = (ma_dvcs == "ALL" ? "" : ma_dvcs);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private void OnLoaiBCChanged(string loaiBC)
+    {
+        FilterLoaiBC = loaiBC;
+        // Loại 3 và 4 chỉ cần đến ngày (từ ngày không cần thiết)
+        TuNgayEnabled = loaiBC != "3" && loaiBC != "4";
+        StateHasChanged();
+    }
+
+    private async void ConfirmGridView_OnOk()
+    {
+        if (!CheckValid()) return;
+        PopupVisible = false;
+
+        myStateMN.SetStartDate(FilterTuNgay);
+        myStateMN.SetEndDate(FilterDenNgay);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool ok = true;
+
+        // Loại 1, 2, 5 cần cả từ ngày và đến ngày
+        if (FilterLoaiBC == "1" || FilterLoaiBC == "2" || FilterLoaiBC == "5")
+        {
+            if (FilterTuNgay == default)
+            {
+                Errors.Add(Lap["From date is required."]);
+                ok = false;
+            }
+            if (FilterDenNgay == default)
+            {
+                Errors.Add(Lap["To date is required."]);
+                ok = false;
+            }
+        }
+        else
+        {
+            // Loại 3, 4 chỉ cần đến ngày
+            if (FilterDenNgay == default)
+            {
+                Errors.Add(Lap["To date is required."]);
+                ok = false;
+            }
+        }
+
+        StateHasChanged();
+        return ok;
+    }
+
+    async Task Loaddata()
+    {
+        try
+        {
+            ShowLoadding = true;
+            StateHasChanged();
+
+            if (curCommand != null)
+            {
+                string[] sFieldArrays = IsLangEn
+                    ? curCommand.Ebrowse1?.Split("|")
+                    : curCommand.Vbrowse1?.Split("|");
+
+                Fbrowse = sFieldArrays != null && sFieldArrays.Length > 0 ? sFieldArrays[0] : Fbrowse;
+            }
+
+            string filter = BuildFilter();
+            string sql = BuildSql(filter);
+
+            var ds = await myDb.LoadDataset(sql);
+
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                TblData = ds.Tables[0].Copy();
+                TblData.TableName = "tbDetail";
+            }
+            else
+            {
+                TblData = new DataTable();
+                TblData.TableName = "tbDetail";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            myStateMN.SetNewThongbao(Lap["Error loading data:"] + " " + ex.Message);
+            TblData = new DataTable();
+        }
+        finally
+        {
+            ShowLoadding = false;
+            StateHasChanged();
+        }
+    }
+
+    private string BuildSql(string filter)
+    {
+        string sql = $@"select dmns.* ,
+            dmbpns.ten_bpns,
+            dmbpns.ten_bpns2,
+            dmnvn.ngay_thoi_thuc_te,
+            dmlhdong.ten_lhdong,
+            dmgioitinh.ten_gioitinh,
+            dmvh.ten_vh,
+            dmbangcap.ten_bc,
+            dmhdld.ngay_hd,
+            dmhdld.ngay_hl,
+            dmhdld.den_ngay,
+            dmcv.ten_cv,
+            dmcd.ten_cd, 
+            ISNULL((select COUNT(DMVPNV.ma_ns) from DMVPNV where DMVPNV.ma_ns = dmns.ma_ns), 0) as Solanvipham,
+            v_qthl.bac_luong as bacluong,
+            IDENTITY(int,1,1) as stt into #tmpDMNS
+        from dmns 
+            left join dmnvn on dmns.ma_ns = dmnvn.ma_ns 
+            left join dmlhdong on dmns.ma_loai_hdong = dmlhdong.ma_lhdong 
+            left join dmbpns on dmns.ma_bpns = dmbpns.ma_bpns 
+            left join dmgioitinh on dmns.gioi_tinh = dmgioitinh.ma_gioitinh 
+            left join dmxnns on dmns.ma_ns = dmxnns.ma_ns 
+            left join v_qthl on dmns.ma_ns = v_qthl.ma_ns 
+            left join dmvh on dmns.ma_td_vanhoa = dmvh.ma_vh 
+            left join dmbangcap on dmns.ma_bangcap = dmbangcap.ma_bc 
+            left join dmhdld on dmns.ma_ns = dmhdld.ma_ns 
+            left join dmcv on dmns.ma_chucvu = dmcv.ma_cv 
+            left join dmcd on dmns.ma_chucdanh = dmcd.ma_cd 
+        where {filter};
+        select * from #tmpDMNS order by #tmpDMNS.stt";
+        
+        return sql;
+    }
+
+    private string BuildFilter()
+    {
+        string preFilter = " 1=1 ";
+
+        // Add condition based on loại báo cáo
+        if (FilterLoaiBC == "1")
+        {
+            // Tất cả nhân viên
+            preFilter += $" and dmns.ngay_vao between '{FilterTuNgay:yyyy-MM-dd}' and '{FilterDenNgay:yyyy-MM-dd}'";
+        }
+        else if (FilterLoaiBC == "2")
+        {
+            // Đang làm việc (không có ngày kết thúc)
+            preFilter += $" and dmns.ngay_vao between '{FilterTuNgay:yyyy-MM-dd}' and '{FilterDenNgay:yyyy-MM-dd}' and dmns.ma_ns not in (select ma_ns from dmnvn where ngay_thoi_thuc_te between '{FilterTuNgay:yyyy-MM-dd}' and '{FilterDenNgay:yyyy-MM-dd}')";
+        }
+        else if (FilterLoaiBC == "3")
+        {
+            // Hợp đồng lao động (trong kỳ này)
+            preFilter += $" and dmns.ma_ns in (select ma_ns from dmhdld where '{FilterDenNgay:yyyy-MM-dd}' between tu_ngay and den_ngay)";
+        }
+        else if (FilterLoaiBC == "4")
+        {
+            // Hợp đồng thử việc (trong kỳ này)
+            preFilter += $" and dmns.ma_ns in (select ma_ns from dmhdhv where '{FilterDenNgay:yyyy-MM-dd}' between tu_ngay and den_ngay)";
+        }
+        else if (FilterLoaiBC == "5")
+        {
+            // Nhân viên nghỉ việc
+            preFilter += $" and dmns.ma_ns in (select ma_ns from dmnvn where ngay_thoi_thuc_te between '{FilterTuNgay:yyyy-MM-dd}' and '{FilterDenNgay:yyyy-MM-dd}')";
+        }
+
+        // Add additional filters
+        if (!string.IsNullOrEmpty(FilterMaNs))
+        {
+            preFilter += $" and dmns.ma_ns like '{Esc(FilterMaNs)}%'";
+        }
+
+        if (!string.IsNullOrEmpty(FilterMaBpns))
+        {
+            preFilter += $" and dmns.ma_ns in (select ma_ns from v_dmns where ma_bpns like '{Esc(FilterMaBpns)}%')";
+        }
+
+        if (!string.IsNullOrEmpty(FilterMaDvcs))
+        {
+            preFilter += $" and dmns.ma_dvcs like '{Esc(FilterMaDvcs)}%'";
+        }
+
+        return preFilter;
+    }
+
+    private static string Esc(string s) => s?.Trim().Replace("'", "''") ?? "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                CurUser = myStateMN.GetCurUser();
+                FilterMaDvcs = myStateMN.GetMa_Dvcs();
+                FilterMaDvcs = (FilterMaDvcs == "ALL" ? "" : FilterMaDvcs);
+
+                await PageLoad();
+                await Language();
+                await Lap.LoadLocalizationAsync($"hr-{(IsLangEn ? "en" : "vi")}");
+
+                if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+                {
+                    myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                    myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+                    myStateMN.SetToolBar(new MyToolbar("Print", true));
+                    myStateMN.SetToolBar(new MyToolbar("Export", true));
+                }
+                else
+                {
+                    myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+                }
+
+                myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+                myStateMN.OnLangguaChanged += OnLangguachange;
+                myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+                PopupVisible = true;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnAfterRenderAsync: {ex.Message}");
+                myStateMN.SetNewThongbao($"Error: {ex.Message}");
+            }
+        }
+        else
+        {
+            if (oBrowse != null)
+                await oBrowse.FocusGridAsync();
+        }
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+    string GetRowStyle(DataRowView row)
+    {
+        if (row.Row.Table.Columns.Contains("bold") && row["bold"]?.ToString()?.Trim() == "1")
+            return "bold-item";
+        return "";
+    }
+
+    public override async void ExportData(int type)
+    {
+        oBrowse?.ExPortGrid(type);
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+
+    public override async void Print()
+    {
+        if (TblData == null || TblData.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No data to print"]);
+            return;
+        }
+
+        LsData = new List<HRBCDSNSCTYModel>();
+        var rows = myDb.ConvertDataTable<HRBCDSNSCTYRow>(TblData);
+
+        var data = new HRBCDSNSCTYModel
+        {
+            TuNgay  = FilterTuNgay,
+            DenNgay = FilterDenNgay,
+            Ma_dvcs = FilterMaDvcs,
+            LoaiBC  = FilterLoaiBC,
+            LsData  = rows
+        };
+
+        LsData.Add(data);
+        ShowReport(LsData, typeof(HRBCDSNSCTYModel));
+    }
+
+    void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+}

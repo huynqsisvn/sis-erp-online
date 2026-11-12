@@ -1,0 +1,1398 @@
+﻿@page "/glthuebk3tt119"
+@page "/glthuebk3tt119/{Menu_id}"
+@inherits RepoBaseComponent
+@inject IJSRuntime JS
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using System.Text
+@using ClosedXML.Excel
+@attribute [Authorize(Roles = "admin,glthuebk3tt119")]
+
+@if (!IsDetail)
+{
+    <div class="row key-container" tabindex="0" @onkeydown="OnKeyDown" @onkeydown:preventDefault="true">
+        <FrmBrowseComponent @ref="@oBrowse"
+                            TblData="@TblData"
+                            Fbrowse="@Fbrowse"
+                            SelectItem="@SelectedItem"
+                            RowStyleFunc="@GetRowStyle"
+                            CustomSummaryTextFormatter="@FormatSummaryText"
+                            IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+}
+
+
+
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="500px"
+         Height="Auto"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="@Title">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 4rem; height:4rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <DxFormLayout CssClass="w-100 p-3">
+                <DxFormLayoutItem Caption="@Lap["Năm"]" ColSpanMd="12">
+                    <DxSpinEdit TValue="int?"
+                                @bind-Value="Nam"
+                                @onblur="HandleYearLostFocus"
+                                Min="1900"
+                                Max="2078"  
+                                ShowSpinButtons="false" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Từ tháng"]">
+                    <DxSpinEdit TValue="int?"
+                                @bind-Value="ThangTu"
+                                @bind-Value:after="OnThangTuChanged"
+                                Min="1" Max="12"
+                                ShowSpinButtons="false" />
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Đến tháng"]">
+                    <DxSpinEdit TValue="int?"
+                                @bind-Value="ThangDen"
+                                @bind-Value:after="OnThangDenChanged"
+                                Min="1" Max="12"
+                                ShowSpinButtons="false" />
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date"]">
+                    <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                InputId="idTu_Ngay" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date"]">
+                    <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                InputId="idDen_ngay" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Mã nhóm hđ TT119 (F11)"]">
+                    <DxTextBox @bind-Text="Ma_tc" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Sắp xếp số liệu"]">
+                    <DxComboBox Data="@StatusList1" @bind-Value="Nhom_ct" ValueFieldName="Value" TextFieldName="Text" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Mẫu báo cáo"]">
+                    <DxComboBox Data="@LstMauBC" @bind-Value="Mau_bc" ValueFieldName="Value" TextFieldName="Text" />
+                </DxFormLayoutItem>
+            </DxFormLayout>
+
+            @if (Errors.Any())
+            {
+                <div class="mt-2 alert alert-danger p-2 mx-3">
+                    <ul class="mb-0">
+                        @foreach (var err in Errors)
+                        {
+                            <li>@err</li>
+                        }
+                    </ul>
+                </div>
+            }
+        }
+    </BodyTemplate>
+
+    <FooterTemplate Context="footerContext">
+        @if (!ShowLoadding)
+        {
+            <div class="row m-0 justify-content-end p-2">
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@ConfirmGridView_OnOk" />
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+<DxPopup @bind-Visible="@ShowXmlPopup"
+         HeaderText="Xuất XML"
+         Width="600px"
+         Height="200px"
+         ShowFooter="true"
+         CloseOnOutsideClick="false">
+    <BodyTemplate>
+        <div class="p-3">
+            <div class="row mb-3">
+                <div class="col-4 d-flex align-items-center">
+                    <label class="fw-bold">Tên file gợi ý:</label>
+                </div>
+                <div class="col-8">
+                    <DxTextBox Text="@DisplayFileName" ReadOnly="true" />
+                </div>
+            </div> 
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="d-flex justify-content-end p-2 gap-2">
+            <DxButton Text="Xuất XML"
+                      RenderStyle="ButtonRenderStyle.Success"
+                      Click="@ExecuteExportXml" />
+            <DxButton Text="Hủy"
+                      RenderStyle="ButtonRenderStyle.Danger"
+                      Click="@(() => ShowXmlPopup = false)" />
+        </div>
+    </FooterTemplate>
+</DxPopup>
+
+<DxPopup @ref="popPrint" CloseOnOutsideClick="false" CssClass="dxPopup" @bind-Visible="@ShowPrint" Width="80%" Height="90%" ShowFooter="false" Context="windowContext" HeaderText="@Lap["Printer"]">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@LsData" Menu_id="@Menu_id.Replace('_', '.')" OnBack="@(() => { ShowPrint = false; StateHasChanged(); })"></ReportOptionComponent>
+        </BodyTemplate>
+</DxPopup>
+
+<script>
+    window.downloadFile = (fileName, base64Content) => {
+        const link = document.createElement('a');
+        link.href = 'data:application/octet-stream;base64,' + base64Content;
+        link.download = fileName;
+        link.click();
+    };
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'F5' || e.code === 'F5') {
+            DotNet.invokeMethodAsync('YourProjectName', 'TriggerF5')
+                .then(() => {
+                    e.preventDefault();
+                });
+        }
+    });
+</script>
+<style>
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+
+    .dxbl-text-editor-input {
+        text-align: right !important;
+    }
+
+    .tb-icon-btntoolbar1 {
+        width: 24px;
+        height: 24px;
+        background-image: url('.\\Images\\detail.png');
+    }
+
+    .grid-frm-height {
+        height: 45vh;
+    }
+
+    .grid-frmct-height {
+        height: 40vh;
+    }
+    .tb-icon-btntoolbar2 {
+        width: 24px;
+        height: 24px;
+        background-image: url('.\\Images\\detail.png');
+    }
+
+    .dxbl-grid-footer td {
+        white-space: pre-line;
+        line-height: 1.4em;
+    }
+</style>
+
+@code {
+    public DataTable TblDmtk { get; set; }
+    public FrmBrowseComponent oBrowseCT;
+    private DataSet dsGlcd;
+    private DateTime Tu_ngay = DateTime.Now.Date;
+    private DateTime Den_ngay = DateTime.Now.Date;
+    private string Ma_tc = "1, 2, 3";
+    private bool ShowXmlPopup { get; set; } = false;
+    string ExportFileName = "";
+    private int Nhom_ct = 1;
+    private string TxtPs = "1";
+    private string MainXmlFileName = "";     
+    private string PlXmlFileName = "";      
+    private string MaCQTQL = "";
+    private string K_XML = "";
+    // key để update
+    public string ma_so { get; set; }
+    public int stt { get; set; }
+    private string Ma_bc = "";
+    private string Tk = " ";
+    IList<ReportStyle> ReportTemplate = new List<ReportStyle>();
+    private List<string> Errors { get; set; } = new();
+    private bool AllowEditMode = true;
+    private List<Glthuebk3tt119Model> LsData;
+    private List<object> StatusPsLK;
+    string LoaiToKhai = "Q"; 
+    int? Quy;
+    int? ThangTu;
+    int Thang = DateTime.Now.Month;
+    int? ThangDen;
+    int? Nam = DateTime.Now.Year;
+    private bool ShowEditForm = false;
+    public bool IsDetail { get; set; } = false;
+    public bool IsDetailSum { get; set; } = false;
+    public bool IsDetailSumCT { get; set; } = false;
+    public DataTable TblDataCT;
+    public DataTable TblData2;
+    public DataTable TblDataSoDu;
+    public DataTable TblDataSoDu2;
+    private string MST = "";
+    private string VersionHTKK = "4.9.9"; 
+    private bool pl101 = false;
+    private bool pl142 = false;
+    private int Nam2 => Nam ?? DateTime.Now.Year;
+    private DataTable TblPL43;
+    private DataTable TblPL142_PN;
+    private DataTable TblPL142_SO;
+    private object CurItemCT { get; set; }
+    private decimal TongPsNo { get; set; } = 0m;
+    private decimal TongPsCo { get; set; } = 0m;
+    private object CurItem { get; set; }
+    private decimal TongPsNoNt { get; set; } = 0m;
+    private decimal TongPsCoNt { get; set; } = 0m;
+    public string FbrowseCT = "";
+    public string Tk_du = "";
+    public string sFieldArrays;
+    int PsStatus = 1; // 0 = Không, 1 = Có
+    private string DisplayFileName => SuggestedFileName;
+
+    private string SuggestedFileName
+    {
+        get
+        {
+            if (Nam == null) return "01_2_GTGT.xml";
+
+            int year = Nam.Value;
+            string ky;
+
+            // Nếu từ tháng = đến tháng → kê khai tháng
+            if (ThangTu != null && ThangDen != null && ThangTu == ThangDen)
+            {
+                ky = ThangTu.Value.ToString("00");
+            }
+            else
+            {
+                // Kê khai quý → xác định quý theo tháng kết thúc
+                int endMonth = ThangDen ?? DateTime.Now.Month;
+                ky = endMonth switch
+                {
+                    3 => "Q01",
+                    6 => "Q02",
+                    9 => "Q03",
+                    12 => "Q04",
+                    _ => "Q04"
+                };
+            }
+
+            return $"01_2_GTGT_{ky}{year}.xml";
+        }
+    }
+    private List<object> StatusList1 = new()
+    {
+        new { Value = "1", Text = "Theo (MST, Ngày hđ, Số hđ)" },
+        new { Value = "2", Text = "Theo (Ngày hđ, MST, Số hđ)" },
+        new { Value = "3", Text = "Theo (Mã c.từ, MST, Ngày c.từ, Số c.từ)" },
+        new { Value = "4", Text = "Theo (Mã c.từ, Ngày c.từ, MST, Số c.từ)" },
+    };
+    List<PsOption> PsOptions = new()
+{
+    new PsOption { Value = 0, Text = "0 - Không" },
+    new PsOption { Value = 1, Text = "1 - Có" }
+};
+
+    class PsOption
+    {
+        public int Value { get; set; }
+        public string Text { get; set; }
+    }
+
+    private DataRowView _editingRow;
+    
+    public void SelectedItem(object obj)
+    {
+        CurItem = obj;
+
+        if (obj is DataRowView row &&
+            row.Row.Table.Columns.Contains("in_ck"))
+        {
+            int cur = row["tag"] == DBNull.Value ? 0 : Convert.ToInt32(row["tag"]);
+            row["tag"] = cur == 1 ? 0 : 1;
+        }
+
+        StateHasChanged();
+    }
+    private void OnThangTuChanged()
+    {
+        if (ThangTu == null || Nam == null) return;
+
+        Ngay_ct1 = new DateTime(Nam.Value, ThangTu.Value, 1);
+
+        if (ThangDen == null || ThangDen < ThangTu)
+        {
+            ThangDen = ThangTu;
+            Ngay_ct2 = new DateTime(
+                Nam.Value,
+                ThangDen.Value,
+                DateTime.DaysInMonth(Nam.Value, ThangDen.Value));
+        }
+    }
+
+    private void OnThangDenChanged()
+    {
+        if (Nam == null || ThangDen == null)
+            return;
+
+        if (ThangDen < 1 || ThangDen > 12)
+            return;
+
+        Ngay_ct2 = new DateTime(
+            Nam.Value,
+            ThangDen.Value,
+            DateTime.DaysInMonth(Nam.Value, ThangDen.Value));
+
+        if (ThangTu != null && ThangDen < ThangTu)
+        {
+            ThangTu = ThangDen;
+            Ngay_ct1 = new DateTime(Nam.Value, ThangTu.Value, 1);
+        }
+    }
+
+    private void OpenExportXmlPopup()
+    {
+        ShowXmlPopup = true;
+        StateHasChanged();
+    }
+
+    private async Task ExecuteExportXml()
+    {
+        try
+        {
+            DataTable data = TblData; 
+            if (data == null || data.Rows.Count == 0)
+            {
+                myStateMN.SetNewThongbao("Không có dữ liệu để xuất XML.");
+                return;
+            }
+
+            string xmlContent = GenerateBangKeXml(data);
+            string fileName = SuggestedFileName;
+
+            await JS.InvokeVoidAsync("downloadFile", fileName,
+                Convert.ToBase64String(Encoding.UTF8.GetBytes(xmlContent)));
+
+            myStateMN.SetNewThongbao("Chương trình đã thực hiện xong!\nXuất XML bảng kê thành công.");
+
+            ShowXmlPopup = false;
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Lỗi xuất XML: " + ex.Message);
+        }
+    }
+
+    
+    private class HtkkRow
+    {
+        public string ma_so_hd { get; set; } = "";
+        public string kh_mau_hd { get; set; } = "";
+        public string so_seri0 { get; set; } = "";
+        public string so_ct0 { get; set; } = "";
+        public object ngay_ct0 { get; set; }
+        public string ten_kh { get; set; } = "";
+        public string ma_so_thue { get; set; } = "";
+        public string ten_vt { get; set; } = "";
+        public object t_tien { get; set; }
+        public object thue_suat { get; set; }
+        public object t_thue { get; set; }
+        public string ghi_chu { get; set; } = "";
+    }
+
+    private string GenerateBangKeXml(DataTable data)
+    {
+        var lines = new List<string>();
+        lines.Add("<!-- edited with XML Spy v4.1 U[](http://www.xmlspy.com) by CMCSoft-->");
+        lines.Add("<!DOCTYPE Sections SYSTEM \"..\\..\\InterfaceTemplates\\Schema.dtd\">");
+        lines.Add("<Sections Version=\"321\">");
+
+        int stt = 7;
+        string M_IP_TIEN = "#"; // Format tiền giống WinForms
+        string[] groups = { "1", "3", "2", "4", "5" }; // Thứ tự cố định giống WinForms
+
+        foreach (string ma_ms in groups)
+        {
+            if (lines.Count > 3) 
+                stt += 4;
+
+            var list = data.AsEnumerable()
+                .Where(r => r["ma_ms"]?.ToString().Trim() == ma_ms &&
+                            (r["bold"] == DBNull.Value || r["bold"].ToString().Trim() == "0"))
+                .Select(r => new HtkkRow
+                {
+                    ma_so_hd = r["loai_hd_thue"]?.ToString() ?? "",
+                    kh_mau_hd = r["kh_mau_hd"]?.ToString() ?? "",
+                    so_seri0 = r["so_seri0"]?.ToString() ?? "",
+                    so_ct0 = r["so_ct0"]?.ToString() ?? "",
+                    ngay_ct0 = r["ngay_ct0"],
+                    ten_kh = r["ten_kh"]?.ToString() ?? "",
+                    ma_so_thue = r["ma_so_thue"]?.ToString() ?? "",
+                    ten_vt = r["ten_vt"]?.ToString() ?? "",
+                    t_tien = r["t_tien"],
+                    thue_suat = r["thue_suat"],
+                    t_thue = r["t_thue"],
+                    ghi_chu = r["ghi_chu"]?.ToString() ?? ""
+                })
+                .ToList();
+
+            // Logic giống hệt WinForms
+            if (ma_ms == "1" || ma_ms == "2")
+            {
+                if (list.Count == 0)
+                {
+                    WriteEmptySection(ref stt, lines, M_IP_TIEN);
+                }
+                else
+                {
+                    WriteDataSection(ref stt, lines, list, M_IP_TIEN);
+                }
+            }
+            else
+            {
+                if (list.Count == 0)
+                {
+                    WriteEmptySection(ref stt, lines, M_IP_TIEN);
+                }
+                else
+                {
+                    WriteDataSection(ref stt, lines, list, M_IP_TIEN);
+                }
+            }
+        }
+
+ 
+        decimal tongTien = SumColumn(data, "t_tien");
+        decimal tongThue = SumColumn(data, "t_thue");
+
+        string strTongTien = tongTien == 0 ? "0" : tongTien.ToString(M_IP_TIEN);
+        string strTongThue = tongThue == 0 ? "0" : tongThue.ToString(M_IP_TIEN);
+
+        int sumRow = stt + 13;
+
+        lines.Add("<Section Dynamic=\"0\" MaxRows=\"0\">");
+        lines.Add("<Cells>");
+        lines.Add($"<Cell CellID=\"K_{sumRow}\" CellID2=\"AF_{sumRow + 6}\" Encode=\"1\" Value=\"{strTongTien}\"/>");
+        lines.Add($"<Cell CellID=\"K_{sumRow + 1}\" CellID2=\"AF_{sumRow + 8}\" Encode=\"1\" Value=\"{strTongThue}\"/>");
+        lines.Add("</Cells>");
+        lines.Add("</Section>");
+
+        lines.Add("</Sections>");
+
+        return string.Join("\r\n", lines);
+    }
+
+    private void WriteDataSection(ref int stt, List<string> lines, List<HtkkRow> list, string M_IP_TIEN)
+    {
+        lines.Add("<Section Dynamic=\"1\" MaxRows=\"0\">");
+        bool isFirst = true;
+
+        foreach (var item in list)
+        {
+            lines.Add("<Cells>");
+            stt++;
+
+            string firstAttr = isFirst ? " FirstCell=\"0\"" : " FirstCell=\"1\"";
+            isFirst = false;
+
+            lines.Add($"<Cell CellID=\"C_{stt}\" CellID2=\"AU_{stt + 10}\" Encode=\"0\" Receive=\"1\" Value=\"{EscapeXml(item.ma_so_hd)}\" StatusID=\"0001\"{firstAttr}/>");
+
+            lines.Add(GetValue(stt, item.kh_mau_hd, 0, "", "D", "C"));
+            lines.Add(GetValue(stt, item.so_seri0, 0, "", "E", "E"));
+            lines.Add(GetValue(stt, item.so_ct0, 0, "", "F", "G"));
+            lines.Add(GetValue(stt, item.ngay_ct0, 3, "", "G", "M"));
+            lines.Add(GetValue(stt, item.ten_kh, 0, "", "H", "R"));
+            lines.Add(GetValue(stt, item.ma_so_thue, 0, "", "I", "X"));
+            lines.Add(GetValue(stt, item.ten_vt, 0, "", "J", "AB"));
+            lines.Add(GetValue(stt, item.t_tien, 1, M_IP_TIEN, "K", "AF"));
+            lines.Add(GetValue(stt, item.thue_suat, 2, M_IP_TIEN, "L", "AJ")); // Thuế suất
+            lines.Add(GetValue(stt, item.t_thue, 1, M_IP_TIEN, "M", "AN"));
+            lines.Add(GetValue(stt, item.ghi_chu, 0, "", "N", "AR"));
+
+            lines.Add("</Cells>");
+        }
+
+        lines.Add("</Section>");
+    }
+
+    private void WriteEmptySection(ref int stt, List<string> lines, string M_IP_TIEN)
+    {
+        lines.Add("<Section Dynamic=\"1\" MaxRows=\"0\">");
+        lines.Add("<Cells>");
+        stt++;
+
+        lines.Add($"<Cell CellID=\"C_{stt}\" CellID2=\"AU_{stt + 10}\" FirstCell=\"0\" Encode=\"0\" Receive=\"1\" Value=\"\" StatusID=\"0001\"/>");
+
+        lines.Add(GetValue(stt, "", 0, "", "D", "C"));
+        lines.Add(GetValue(stt, "", 0, "", "E", "E"));
+        lines.Add(GetValue(stt, "", 0, "", "F", "G"));
+        lines.Add(GetValue(stt, "", 3, "", "G", "M")); // ngày trống
+        lines.Add(GetValue(stt, "", 0, "", "H", "R"));
+        lines.Add(GetValue(stt, "", 0, "", "I", "X"));
+        lines.Add(GetValue(stt, "", 0, "", "J", "AB"));
+        lines.Add(GetValue(stt, 0, 1, M_IP_TIEN, "K", "AF"));
+        lines.Add(GetValue(stt, 0, 2, M_IP_TIEN, "L", "AJ")); // thuế suất = 0
+        lines.Add(GetValue(stt, 0, 1, M_IP_TIEN, "M", "AN"));
+        lines.Add(GetValue(stt, "", 0, "", "N", "AR"));
+
+        lines.Add("</Cells>");
+        lines.Add("</Section>");
+    }
+
+    private string GetValue(int stt, object value, int type, string M_IP_TIEN, string cell, string cell2)
+    {
+        string baseStart = $"<Cell CellID=\"{cell}_{stt}\" CellID2=\"{cell2}_{stt + 10}\" Encode=\"1\" Receive=\"1\" Value=\"";
+        string baseEnd = "\" StatusID=\"0001\"/>";
+        string val = "";
+
+        switch (type)
+        {
+            case 0: // 
+                val = EscapeXml(value?.ToString().Trim() ?? "");
+                break;
+            case 1: // số tiền
+            case 2: // thuế suất
+                if (value == null || value is DBNull || string.IsNullOrEmpty(value.ToString()))
+                    val = "0";
+                else
+                {
+                    decimal num = Convert.ToDecimal(value);
+                    val = num == 0 ? "0" : num.ToString(M_IP_TIEN);
+                }
+                break;
+            case 3: // ngày
+                if (value is DateTime dt)
+                    val = dt.ToString("dd/MM/yyyy");
+                else
+                    val = "";
+                break;
+        }
+
+        return baseStart + val + baseEnd;
+    }
+
+    private decimal SumColumn(DataTable data, string columnName)
+    {
+        return data.AsEnumerable()
+            .Sum(r => r.Field<decimal?>(columnName) ?? 0m);
+    }
+
+    private string EscapeXml(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return "";
+        return input
+            .Replace("&", "&amp;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;")
+            .Replace("\"", "&quot;")
+            .Replace("'", "&apos;");
+    }
+    private void WriteEmptySectionRow(ref int stt, List<string> lines, string formatTien = "#")
+    {
+        lines.Add("<Section Dynamic=\"1\" MaxRows=\"0\">");
+        lines.Add("<Cells>");
+        stt++; 
+
+        lines.Add($"<Cell CellID=\"C_{stt}\" CellID2=\"AU_{stt + 10}\" FirstCell=\"0\" Encode=\"0\" Receive=\"1\" Value=\"\" StatusID=\"0001\"/>");
+        lines.Add(GetValue(stt, "", 0, formatTien, "D", "C"));
+        lines.Add(GetValue(stt, "", 0, formatTien, "E", "E"));
+        lines.Add(GetValue(stt, "", 0, formatTien, "F", "G"));
+        lines.Add(GetValue(stt, "", 3, formatTien, "G", "M"));
+        lines.Add(GetValue(stt, "", 0, formatTien, "H", "R"));
+        lines.Add(GetValue(stt, "", 0, formatTien, "I", "X"));
+        lines.Add(GetValue(stt, "", 0, formatTien, "J", "AB"));
+        lines.Add(GetValue(stt, 0, 1, formatTien, "K", "AF"));
+        lines.Add(GetValue(stt, 0, 1, formatTien, "M", "AN"));
+        lines.Add(GetValue(stt, "", 0, formatTien, "N", "AR"));
+
+        lines.Add("</Cells>");
+        lines.Add("</Section>");
+    }
+
+    private void WriteEmptySectionRow(ref int stt, List<string> lines)
+    {
+        lines.Add("<Cells>");
+        stt++;
+
+        lines.Add($"<Cell CellID=\"C_{stt}\" CellID2=\"AU_{stt + 10}\" FirstCell=\"0\" Encode=\"0\" Receive=\"1\" Value=\"\" StatusID=\"0001\"/>");
+        lines.Add(GetCell(stt, "", 0, "D", "C"));
+        lines.Add(GetCell(stt, "", 0, "E", "E"));
+        lines.Add(GetCell(stt, "", 0, "F", "G"));
+        lines.Add(GetCell(stt, "", 3, "G", "M"));
+        lines.Add(GetCell(stt, "", 0, "H", "R"));
+        lines.Add(GetCell(stt, "", 0, "I", "X"));
+        lines.Add(GetCell(stt, "", 0, "J", "AB"));
+        lines.Add(GetCell(stt, 0, 1, "K", "AF"));
+        lines.Add(GetCell(stt, 0, 1, "M", "AN"));
+        lines.Add(GetCell(stt, "", 0, "N", "AR"));
+
+        lines.Add("</Cells>");
+    }
+
+    private string GetCell(int stt, object value, int type, string col1, string col2)
+    {
+        string val = "";
+        switch (type)
+        {
+            case 0: // text
+                val = EscapeXml(value?.ToString().Trim() ?? "");
+                break;
+            case 1: // số
+                if (value == null || value == DBNull.Value || string.IsNullOrEmpty(value.ToString()))
+                    val = "0";
+                else
+                    val = Math.Round(Convert.ToDecimal(value), 0).ToString("0");
+                break;
+            case 3: // ngày
+                if (value is DateTime dt)
+                    val = dt.ToString("dd/MM/yyyy");
+                else
+                    val = "";
+                break;
+        }
+
+        return $"<Cell CellID=\"{col1}_{stt}\" CellID2=\"{col2}_{stt + 10}\" Encode=\"1\" Receive=\"1\" Value=\"{val}\" StatusID=\"0001\"/>";
+    }
+
+
+    private async Task OnEditClose()
+    {
+        ShowEditForm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+    private void OnQuyChanged(int? value)
+    {
+        Quy = value;
+
+        if (!Quy.HasValue)
+            return;
+
+        switch (Quy.Value)
+        {
+            case 1:
+                ThangTu = 1;
+                ThangDen = 3;
+                break;
+            case 2:
+                ThangTu = 4;
+                ThangDen = 6;
+                break;
+            case 3:
+                ThangTu = 7;
+                ThangDen = 9;
+                break;
+            case 4:
+                ThangTu = 10;
+                ThangDen = 12;
+                break;
+        }
+
+        StateHasChanged();
+    }
+
+    string MaDvcs;
+    private void HandleYearLostFocus()
+    {
+        if (Nam == null) return;
+
+        if (ThangTu != null)
+            Ngay_ct1 = new DateTime(Nam.Value, ThangTu.Value, 1);
+
+        if (ThangDen != null)
+            Ngay_ct2 = new DateTime(
+                Nam.Value,
+                ThangDen.Value,
+                DateTime.DaysInMonth(Nam.Value, ThangDen.Value));
+        if (!Nam.HasValue || Nam == 0 || Nam < 1900 || Nam > 2078)
+        {
+            Nam = DateTime.Now.Year;
+        }
+        UpdatePeriods();
+    }
+
+    private void UpdatePeriods()
+    {
+    }
+    public class FilterItem
+    {
+        public string Value { get; set; }
+        public string Text { get; set; }
+    }
+
+    public class QuarterItem
+    {
+        public int Value { get; set; }
+        public string Text { get; set; }
+    }
+
+    private List<object> LoaiToKhaiData = new()
+    {
+        new { Value = "Q", Text = "Tờ khai quý" },
+        new { Value = "T", Text = "Tờ khai tháng" },
+    };
+    private List<object> DanhSachQuy = new()
+    {
+        new { Value = 1, Text = "Quý 1" },
+        new { Value = 2, Text = "Quý 2" },
+        new { Value = 3, Text = "Quý 3" },
+        new { Value = 4, Text = "Quý 4" }
+    };
+
+    public void SelectItemCT(object obj)
+    {
+        CurItemCT = obj;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "wg.gb.08";
+        base.OnInitialized();
+
+        Tu_ngay = myStateMN.GetStartDate();
+        Den_ngay = myStateMN.GetEndDate();
+        StatusPsLK = new()
+        {
+            new { Value = 0, Text = Lap["No"] },
+            new { Value = 1, Text = Lap["Yes"] }
+
+        };
+    }
+
+
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e is null) return;
+        if (string.Equals(e.Key, "F5", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F5", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                oBrowse_F5();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        if (string.Equals(e.Key, "F5", StringComparison.OrdinalIgnoreCase) && e.CtrlKey)
+        {
+            try
+            {
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        if (string.Equals(e.Key, "F", StringComparison.OrdinalIgnoreCase) && e.CtrlKey)
+        {
+            try
+            {
+                PopupVisible = true;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+    private async Task OnKeyDownCT(KeyboardEventArgs e)
+    {
+        if (e is null) return;
+        if (string.Equals(e.Key, "Escape", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(e.Key, "Esc", StringComparison.OrdinalIgnoreCase))
+        {
+            HideDetail();
+        }
+    }
+
+    private async void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {   
+            case ActionTask.Button1: 
+                OpenExportXmlPopup();
+                break;
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Button2:
+                oBrowse_F5();
+                StateHasChanged();
+                break;
+            case ActionTask.Print:
+                Print();
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+            case ActionTask.Quit:
+                HideDetail();
+                StateHasChanged();
+                break;
+        }
+    }
+    public void HideDetail()
+    {
+        IsDetail = false;
+        IsDetailSum = false;
+        IsDetailSumCT = false;
+
+        ShowToolBar();
+
+        StateHasChanged();
+    }
+    public override async Task ShowToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+        myStateMN.AddOrderToolBarButton("Button1", Lap["Xuất XML"] + "-F4", 1);
+        myStateMN.AddOrderToolBarButton("Button2", Lap["Xuất HTKK"] + "-F5", 1);
+        myStateMN.SetToolBar(new MyToolbar("Search", true));
+        myStateMN.SetToolBar(new MyToolbar("Print", true));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+    }
+    public async Task ShowDetailToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.SetToolBar(new MyToolbar("Quit", true));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+    }
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+            await Language();
+    }
+
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+
+            if (curCommand != null)
+                Fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async void ConfirmGridView_OnOk()
+    {
+        if (!CheckValid()) return;
+        PopupVisible = false;
+
+        myStateMN.SetStartDate(Tu_ngay);
+        myStateMN.SetEndDate(Den_ngay);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool ok = true;
+        if (Tu_ngay == default)
+        {
+            Errors.Add("Ngày lọc chứng từ không hợp lệ!");
+            ok = false;
+        }
+        if (Den_ngay == default)
+        {
+            Errors.Add("Ngày lọc chứng từ không hợp lệ!");
+            ok = false;
+        }
+        if (Tu_ngay > Den_ngay)
+        {
+            Errors.Add("Ngày lọc chứng từ không hợp lệ!");
+            ok = false;
+        }
+        StateHasChanged();
+        return ok;
+    }
+    async Task Loaddata()
+    {
+        try
+        {
+            if (curCommand != null)
+            {
+                sFieldArrays = !IsLangEn
+                    ? (Mau_bc != 0 ? curCommand.Vbrowse2 : curCommand.Vbrowse1)
+                    : (Mau_bc != 0 ? curCommand.Ebrowse2 : curCommand.Ebrowse1);
+
+                if (!string.IsNullOrEmpty(sFieldArrays))
+                    Fbrowse = sFieldArrays;
+            }
+
+            string maDvcs = myStateMN.GetDvcs().Ma_dvcs?.Trim();
+            maDvcs = (string.IsNullOrEmpty(maDvcs) || maDvcs == "ALL") ? "" : maDvcs;
+
+            string condition = " and 1=1 ";
+            if (!string.IsNullOrEmpty(maDvcs))
+                condition += $" and ma_dvcs like '{maDvcs}%'";
+
+            string paramName =
+                "@StartDate;@EndDate;@Nhom_ct;@Ma_tc;@Condition;@Order";
+
+            string paramValue =
+                $"{Ngay_ct1:yyyyMMdd};" +
+                $"{Ngay_ct2:yyyyMMdd};" +
+                $"{Nhom_ct};" +
+                $"{Ma_tc?.Trim()};" +
+                $"{condition};" +
+                $"{Nhom_ct}";
+
+            var ds = await myDb.LoadStoreProcedure(
+                curCommand.Store_proc,
+                paramName,
+                paramValue
+            );
+
+            dsGlcd = new DataSet();
+
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                ds.Tables[0].TableName = "tbTongCong";
+                ds.Tables[1].TableName = "tbDetail";
+                ds.Tables[2].TableName = "tbHTKK";
+
+                TblData = ds.Tables["tbDetail"];
+                dsGlcd = ds;
+            }
+            else
+            {
+                TblData = new DataTable();
+            }
+
+            if (TblData.Rows.Count > 0)
+            {
+                TongPsNo = TblData.Columns.Contains("t_tien")
+                    ? Convert.ToDecimal(TblData.Compute("SUM(t_tien)", ""))
+                    : 0m;
+
+                TongPsCo = TblData.Columns.Contains("t_thue")
+                    ? Convert.ToDecimal(TblData.Compute("SUM(t_thue)", ""))
+                    : 0m;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error Loaddata Glthuebk3TT119: " + ex);
+        }
+    }
+
+
+
+
+    async void OnDvcsChanged(string ma_dvcs)
+    {
+        Ma_dvcs = ma_dvcs;
+        Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStateMN.GetCurUser();
+            Ma_dvcs = myStateMN.GetMa_Dvcs(); Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+            await PageLoad();
+            await LoadTemplate();
+            await Language();
+            await JS.InvokeVoidAsync("eval",
+             "setTimeout(() => { const el = document.querySelector('.key-container'); if (el) el.focus(); }, 200);");
+
+            if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.AddOrderToolBarButton("Button1", Lap["Xuất XML"] + "-F4", 1);
+                myStateMN.AddOrderToolBarButton("Button2", Lap["Excel HTKK"] + "-F5", 1);
+                myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+                myStateMN.SetToolBar(new MyToolbar("Print", true));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+            await Loaddata();
+            StateHasChanged();
+            await JS.InvokeVoidAsync("eval", "document.querySelector('div.row[tabindex=\"0\"]').focus()");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("eval",
+            "const el = document.querySelector('.key-container'); if (el) el.focus();");
+
+            if (IsDetail)
+            {
+                await oBrowseCT.FocusGridAsync();
+            }
+            else
+            {
+                await oBrowse.FocusGridAsync();
+            }
+        }
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+
+    void Print()
+    {
+        LsData = new List<Glthuebk3tt119Model>();
+
+        Glthuebk3tt119Model model = new Glthuebk3tt119Model
+        {
+            Startdate = Tu_ngay,
+            Enddate = Den_ngay,
+            Ma_dvcs = Ma_dvcs,
+
+
+            LsData = TblData != null ? myDb.ConvertDataTable<Glthuebk3tt119>(TblData) : new List<Glthuebk3tt119>(),
+        };
+
+        LsData.Add(model);
+        ShowPrint = true;
+    }
+    private static void SetCellValue(IXLCell cell, object value)
+    {
+        if (value == null || value == DBNull.Value)
+        {
+            cell.Clear();
+            return;
+        }
+
+        if (value is decimal dec)
+        {
+            cell.SetValue(dec);
+            cell.Style.NumberFormat.Format = "#,##0";
+        }
+        else if (value is double dbl)
+        {
+            cell.SetValue(dbl);
+            cell.Style.NumberFormat.Format = "#,##0";
+        }
+        else if (value is int i)
+        {
+            cell.SetValue(i);
+        }
+        else if (value is DateTime dt)
+        {
+            cell.SetValue(dt);
+            cell.Style.DateFormat.Format = "dd/MM/yyyy";
+        }
+        else
+        {
+            cell.SetValue(value.ToString().Trim());
+        }
+    }
+
+    private async Task oBrowse_F5()
+    {
+        if (TblData == null || TblData.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao("Không có dữ liệu để xuất Excel HTKK.");
+            return;
+        }
+
+        try
+        {
+            string templateFileName = "Glthuebk3tt119.xlsx";
+            Uri uri = Navigation.ToAbsoluteUri($"EX_mau/{templateFileName}");
+            byte[] templateBytes = await Http.GetByteArrayAsync(uri.ToString());
+
+            using var ms = new MemoryStream(templateBytes);
+            using var workbook = new ClosedXML.Excel.XLWorkbook(ms);
+            var ws = workbook.Worksheet(1);
+            ws.Column(3).Hide();
+            ws.Column(4).Hide();
+            ws.Column(9).Hide();
+            ws.Column(11).Hide();
+
+            int startRow = 17;
+
+            for (int i = 0; i < TblData.Rows.Count; i++)
+            {
+                DataRow row = TblData.Rows[i];
+                int excelRow = startRow + i;
+
+                SetCellValue(ws.Cell(excelRow, 2), row[0]);
+                SetCellValue(ws.Cell(excelRow, 3), row[1]);
+                SetCellValue(ws.Cell(excelRow, 4), row[2]);
+                SetCellValue(ws.Cell(excelRow, 5), row[3]);
+                SetCellValue(ws.Cell(excelRow, 6), row[4]);
+                SetCellValue(ws.Cell(excelRow, 7), row[5]);
+                SetCellValue(ws.Cell(excelRow, 8), row[6]);
+                SetCellValue(ws.Cell(excelRow, 9), row[7]);
+                SetCellValue(ws.Cell(excelRow, 10), row[8]);
+                SetCellValue(ws.Cell(excelRow, 11), row[9]);
+                SetCellValue(ws.Cell(excelRow, 12), row[10]);
+                SetCellValue(ws.Cell(excelRow, 13), row[11]);
+
+                if (row.Table.Columns.Count > 16 &&
+                    row[16]?.ToString()?.Trim() == "1")
+                {
+                    ws.Row(excelRow).Hide();
+                }
+            }
+
+            using var outStream = new MemoryStream();
+            workbook.SaveAs(outStream);
+
+            string base64 = Convert.ToBase64String(outStream.ToArray());
+            string fileName = $"GLTHUEBK3TT119_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+
+            await JS.InvokeVoidAsync("downloadFile", fileName, base64);
+            myStateMN.SetNewThongbao("Xuất Excel HTKK thành công (chuẩn WinForms).");
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Lỗi xuất Excel HTKK: " + ex.Message);
+        }
+    }
+
+
+
+    private void GhiDongChiTiet(ClosedXML.Excel.IXLWorksheet ws, int row, DataRow r)
+    {
+        object[] values = new object[]
+        {
+        r["stt"] ?? "",
+        r["kh_mau_hd"] ?? "",
+        r["so_seri"] ?? "",
+        r["so_ct0"] ?? "",
+        r["ngay_ct0"] is DateTime dt ? dt.ToString("dd/MM/yyyy") : "  /  /    ",
+        r["ten_kh"] ?? "",
+        r["ma_so_thue"] ?? "",
+        r["ten_vt"] ?? "",
+        r["t_tien2"] ?? 0m,
+        r["t_thue"] ?? 0m,
+        r["ghi_chu"] ?? ""
+        };
+
+        for (int i = 0; i < values.Length; i++)
+        {
+            var cell = ws.Cell(row, i + 2); 
+            if (values[i] is decimal || values[i] is double || values[i] is int || values[i] is long)
+            {
+                cell.Value = Convert.ToDecimal(values[i]);
+                cell.Style.NumberFormat.Format = "#,##0";
+            }
+            else
+            {
+                cell.Value = values[i]?.ToString() ?? "";
+            }
+        }
+    }
+
+    private void GhiDongTong(ClosedXML.Excel.IXLWorksheet ws, int row, decimal tien, decimal thue)
+    {
+        ws.Cell(row, 2).Value = "Tổng";
+        ws.Cell(row, 10).Value = tien;
+        ws.Cell(row, 11).Value = thue;
+        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0";
+        ws.Cell(row, 11).Style.NumberFormat.Format = "#,##0";
+    }
+
+    private void CongTong(DataRow r, ref decimal tongTien, ref decimal tongThue)
+    {
+        if (r["t_tien2"] != DBNull.Value) tongTien += Convert.ToDecimal(r["t_tien2"]);
+        if (r["t_thue"] != DBNull.Value) tongThue += Convert.ToDecimal(r["t_thue"]);
+    }
+
+    public override async void ExportData(int type)
+    {
+        if (IsDetail)
+        {
+            oBrowseCT.ExPortGrid(type);
+        }
+        else
+        {
+            oBrowse.ExPortGrid(type);
+        }
+
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+    async Task LoadTemplate()
+    {
+        try
+        {
+            ReportTemplate.Clear();
+            ReportTemplate.Add(new ReportStyle() { Label = Lap["No"], Value = -1, File_mau = "", Ma_maubc = "", Nh_bc = "", Tt_qd = "" });
+            DataSet ds = await GetMauBC("Glthuebk3tt119");
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                int index = 0;
+                foreach (DataRow row in ds.Tables[0].Rows)
+                {
+                    ReportTemplate.Add(new ReportStyle() { Label = row["ten_maubc"].ToString(), Value = index, File_mau = row["file_maubc"].ToString().Trim(), Ma_maubc = row["ma_maubc"].ToString(), Nh_bc = row["nh_bc"].ToString().Trim(), Tt_qd = row["tt_qd"].ToString() });
+                    index++;
+                }
+            }
+            else
+            {
+                ReportTemplate.Add(new ReportStyle() { Label = "", Value = 0 });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task<DataSet> GetMauBC(string ma_maubc)
+    {
+        string[] strArray = myOption.GetOptionsValue("M_MAU_TT_QD").ToString().Split(';');
+        string str = "1=1";
+        if (strArray.Length > 1)
+            str = !(strArray[1].Trim() == "2") ? string.Format("(nh_dh={0} OR isnull(nh_dh,'')='') AND (mau_ttqd like '{1}' OR isnull(mau_ttqd,'')='')", (object)strArray[1].Trim(), (object)strArray[0].Trim()) : string.Format("(nh_dh={0} OR isnull(nh_dh,'')='') AND (mau_ttqd like '{1}' OR isnull(mau_ttqd,'')='')", (object)strArray[1].Trim(), (object)strArray[0].Trim());
+        string cmdText = string.Format("SELECT file_maubc, ten_maubc, ten_maubc2, tt_qd, nh_bc, ma_maubc, [default] FROM {0} WHERE ma_maubc = '{1}' AND {2} ORDER BY [order]", (object)"dmmaubc", (object)ma_maubc, (object)str);
+        DataSet ds = await myDb.LoadDataset(cmdText);
+        return ds;
+    }
+    public string RemoveUnwantedColumns(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return input;
+
+        // danh sách prefix cần loại bỏ
+        string[] prefixes = new[]
+        {
+        "lk_", "ps_no1", "ps_co1", "no_dn", "co_dn", "ps_no_nt1", "ps_co_nt1"
+    };
+
+        // tách các nhóm cột theo ký tự '|'
+        var groups = input.Split('|');
+
+        for (int g = 0; g < groups.Length; g++)
+        {
+            var cols = groups[g].Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+            var filteredCols = cols.Where(col =>
+            {
+                var fieldName = col.Split(':')[0].Trim();
+                return !prefixes.Any(p => fieldName.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+            });
+
+            groups[g] = string.Join(";", filteredCols);
+        }
+
+        return string.Join("|", groups);
+    }
+    void oBrowse_CustomSummary(GridCustomSummaryEventArgs e)
+    {
+        switch (e.SummaryStage)
+        {
+            case GridCustomSummaryStage.Start:
+                e.TotalValue = 0m;
+                break;
+            case GridCustomSummaryStage.Calculate:
+                if (e.Grid.IsDataItemSelected(e.DataItem))
+                    e.TotalValue = (decimal)e.TotalValue + (decimal)e.GetRowValue("ps_no");
+                break;
+        }
+    }
+    string GetOpt(string name) => myOption.GetOptionsValue(name) ?? "";
+    string GetOptInt(string name)
+    {
+        string f = GetOpt(name).ToString();
+        if (GetOpt("M_KIEU_SO_AM").ToString().Equals("2"))
+            f = NormalizeOptionNegativeFormat(f);
+        return "{0:" + f + "}";
+    }
+    string NormalizeOptionNegativeFormat(string s)
+    {
+        if (s == null) return s;
+        var parts = s.Split(';');
+        if (parts.Length > 1 && parts[1].StartsWith("-"))
+        {
+            parts[1] = "(" + parts[1].Substring(1).Trim() + ")";
+            return string.Join(";", parts);
+        }
+        return s;
+    }
+    string GetRowStyle(DataRowView row)
+    {
+        if (row.Row.Table.Columns.Contains("Bold") && row["Bold"].ToString().Trim() == "1")
+        {
+            return "bold-item";
+        }
+        return "";
+    }
+    string FormatSummaryText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        switch (e.Item.Name)
+        {
+            case "ngay_ct0":
+                return Lap["Summary"];
+        }
+        return null;
+
+    }
+
+    void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+
+    private string StartupTitle(Command cmd)
+    {
+        if (cmd == null) return "Glthuebk3tt119";
+        return IsLangEn ? (cmd.Bar2 ?? cmd.Bar) : (cmd.Bar ?? cmd.Bar2);
+    }
+
+    class ReportStyle
+    {
+        public string Label { get; set; }
+        public int Value { get; set; }
+        public string File_mau { get; set; }
+        public string Ma_maubc { get; set; }
+        public string Nh_bc { get; set; }
+        public string Tt_qd { get; set; }
+    }
+}

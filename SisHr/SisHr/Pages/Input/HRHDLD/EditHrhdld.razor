@@ -1,0 +1,584 @@
+﻿@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRHDLD
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveHdld" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                @* --- SỐ HỢP ĐỒNG --- *@
+                <DxFormLayoutItem Caption="@Lap["Contract number"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="ma_hdld_input" @bind-Text="@CurHdld.Ma_hdld" maxlength="@(tblLength.ContainsKey("ma_hdld") ? tblLength["ma_hdld"] : 50)" Enabled="@AllowEditMa" CharacterCasing="CharacterCasing.Upper" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- SỐ PHỤ LỤC HĐ --- *@
+                <DxFormLayoutItem Caption="@Lap["Appendix number"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_plhd_input" Ma_dm="dmplhd" Filter="status = 1" @bind-Value="@CurHdld.Ma_plhd" IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["We one side is"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_ct_input" Ma_dm="dmns" Filter="status = 1" @bind-Value="@CurHdld.Ma_ns_ct" IsEnable="@AllowEditMode" SelectChanged="Ma_ns_ct_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Nationality"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Quoc_tich" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- CHỨC VỤ CÔNG TY --- *@
+                <DxFormLayoutItem Caption="@Lap["Position company"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_cv_ct_input" Ma_dm="dmcv" Filter="status = 1" @bind-Value="@CurHdld.Ma_cv_ct" IsEnable="@AllowEditMode" SelectChanged="Ma_cv_ct_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <Separator Margin="5" />
+
+                @* --- NHÂN VIÊN --- *@
+                <DxFormLayoutItem Caption="@Lap["Employee name"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" Filter="status = 1" @bind-Value="@CurHdld.Ma_ns" IsEnable="@AllowEditMode" SelectChanged="Ma_ns_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- QUỐC TỊCH --- *@
+                <DxFormLayoutItem Caption="@Lap["Nationality"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Ma_quocgia" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Birth date"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Ngay_sinh" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- ĐỊA CHỈ --- *@
+                <DxFormLayoutItem Caption="@Lap["Address"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Dia_chi" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- SỐ CMND --- *@
+                <DxFormLayoutItem Caption="@Lap["ID number"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Cmnd" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NGÀY CẤP CMND --- *@
+                <DxFormLayoutItem Caption="@Lap["ID issued date"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Ngay_cmnd" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NƠI CẤP CMND --- *@
+                <DxFormLayoutItem Caption="@Lap["ID issued place"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Nc_cmnd" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- LOẠI HỢP ĐỒNG LAO ĐỘNG --- *@
+                <DxFormLayoutItem Caption="@Lap["Contract type"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_lhd_input" Ma_dm="dmlhdong" Filter="status = 1" @bind-Value="@CurHdld.Ma_lhd" IsEnable="@AllowEditMode" SelectChanged="Ma_lhd_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Contract name"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Ten_lhd" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- TỪ NGÀY / ĐẾN NGÀY --- *@
+                <DxFormLayoutItem Caption="@Lap["From date"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxDateEdit Id="tu_ngay_input" Enabled="@AllowEditMode" @bind-Date="@CurHdld.Tu_ngay" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["To date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit Id="den_ngay_input" Enabled="@AllowEditMode" @bind-Date="@CurHdld.Den_ngay" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- ĐỊA ĐIỂM LÀM VIỆC --- *@
+                <DxFormLayoutItem Caption="@Lap["Work location"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Dia_diem_lam_viec" maxlength="@(tblLength.ContainsKey("dia_diem_lam_viec") ? tblLength["dia_diem_lam_viec"] : 500)" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- ĐỊA CHỈ LÀM VIỆC --- *@
+                <DxFormLayoutItem Caption="@Lap["Work address"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Dia_chi_lam_viec" maxlength="@(tblLength.ContainsKey("dia_chi_lam_viec") ? tblLength["dia_chi_lam_viec"] : 500)" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- MÃ CHỨC VỤ --- *@
+                <DxFormLayoutItem Caption="@Lap["Position code"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_cv_input" Ma_dm="dmcv" Filter="status = 1" @bind-Value="@CurHdld.Ma_cv" IsEnable="@AllowEditMode" SelectChanged="Ma_cv_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Position name"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Ten_cv" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- YÊU CẦU 1 --- *@
+                <DxFormLayoutItem Caption="@Lap["Requirement 1"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Yeu_cau1" maxlength="@(tblLength.ContainsKey("yeu_cau1") ? tblLength["yeu_cau1"] : 500)" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- YÊU CẦU 2 --- *@
+                <DxFormLayoutItem Caption="@Lap["Requirement 2"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Yeu_cau2" maxlength="@(tblLength.ContainsKey("yeu_cau2") ? tblLength["yeu_cau2"] : 500)" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- THỜI GIAN LÀM VIỆC --- *@
+                <DxFormLayoutItem Caption="@Lap["Work hours"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <div class="d-flex align-items-center gap-2">
+                            <DxSpinEdit Id="thoi_gian_lv_input" Enabled="@AllowEditMode" Value="@(CurHdld.Thoi_gian_lv ?? 0)"
+                                ValueChanged="@((int v) => { CurHdld.Thoi_gian_lv = v; StateHasChanged(); })" DisplayFormat="0" Style="width: 150px;" />
+                            <span>@Lap["hours/day"]</span>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- CÔNG CỤ ĐƯỢC CẤP --- *@
+                <DxFormLayoutItem Caption="@Lap["Tools provided"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Duoc_cap_nhung_phuong_tien" maxlength="@(tblLength.ContainsKey("duoc_cap_nhung_phuong_tien") ? tblLength["duoc_cap_nhung_phuong_tien"] : 500)" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- PHƯƠNG TIỆN --- *@
+                <DxFormLayoutItem Caption="@Lap["Transportation"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Phuong_tien" maxlength="@(tblLength.ContainsKey("phuong_tien") ? tblLength["phuong_tien"] : 500)" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- MỨC LƯƠNG --- *@
+                <DxFormLayoutItem Caption="@Lap["Salary"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit Id="muc_luong_input" Enabled="@AllowEditMode" Value="@(CurHdld.Muc_luong ?? 0)"
+                            ValueChanged="@((int v) => { CurHdld.Muc_luong = v; StateHasChanged(); })" DisplayFormat="N0" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- PHỤ CẤP --- *@
+                <DxFormLayoutItem Caption="@Lap["Allowance"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHdld.Phu_cap" maxlength="@(tblLength.ContainsKey("phu_cap") ? tblLength["phu_cap"] : 500)" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NGÀY HIỆU LỰC --- *@
+                <DxFormLayoutItem Caption="@Lap["Effective date"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxDateEdit Id="ngay_hl_input" Enabled="@AllowEditMode" @bind-Date="@CurHdld.Ngay_hl" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NGÀY HỢP ĐỒNG --- *@
+                <DxFormLayoutItem Caption="@Lap["Contract date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit Id="ngay_hd_input" Enabled="@AllowEditMode" @bind-Date="@CurHdld.Ngay_hd" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Hdld CurHdld;
+    private string menu_id = "wr.ct.05";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName  = "dmhdld";
+        sqlTableView  = "v_dmhdld";
+        SqlTableKey   = "ma_hdld";
+        CheckSqlTableKey = "ma_hdld";
+        ParentPage    = string.IsNullOrEmpty(ParentPage) ? "HRHDLD" : ParentPage;
+        CurHdld       = new Hdld();
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord();
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_hdld_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task ViewRecord(string key)
+    {
+        CurHdld = new Hdld();
+        AllowEditMode = false;
+        AllowEditMa   = false;
+        await LoadData(key);
+    }
+
+    async Task EditRecord(string key)
+    {
+        CurHdld = new Hdld();
+        AllowEditMode = true;
+        AllowEditMa   = false;
+        await LoadData(key);
+    }
+
+    async Task NewRecord()
+    {
+        CurHdld = new Hdld();
+        CurHdld.Status       = 1;
+        CurHdld.Tu_ngay      = DateTime.Now.Date;
+        CurHdld.Den_ngay     = null;
+        CurHdld.Ngay_hl      = DateTime.Now.Date;
+        CurHdld.Ngay_hd      = DateTime.Now.Date;
+        CurHdld.Thoi_gian_lv = 0;
+        CurHdld.Muc_luong    = 0;
+        AllowEditMode = true;
+        AllowEditMa   = true;
+        StateHasChanged();
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {SqlTableKey} = @{SqlTableKey}";
+            DataSet ds = await myDb.LoadDataset(sql, SqlTableKey, key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                List<Hdld> list = myDb.ConvertDataTable<Hdld>(ds.Tables[0]);
+                if (list != null && list.Count > 0)
+                {
+                    CurHdld = list[0];
+                    LoadLookupNames();
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data load error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void LoadLookupNames()
+    {
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_ns_ct))
+        {
+            string safe = CurHdld.Ma_ns_ct.Trim().Replace("'", "''");
+            CurHdld.Ten_ns_ct = myDb.GetValue($"SELECT ten_ns FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Quoc_tich = myDb.GetValue($"SELECT quoc_tich FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+        }
+
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_cv_ct))
+        {
+            string safe = CurHdld.Ma_cv_ct.Trim().Replace("'", "''");
+            CurHdld.Ten_cv_ct = myDb.GetValue($"SELECT ten_cv FROM dmcv WHERE ma_cv = '{safe}'")?.ToString() ?? "";
+        }
+
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_ns))
+        {
+            string safe = CurHdld.Ma_ns.Trim().Replace("'", "''");
+            CurHdld.Ten_ns    = myDb.GetValue($"SELECT ten_ns FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Ngay_sinh = myDb.GetValue($"SELECT ngay_sinh FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Dia_chi   = myDb.GetValue($"SELECT dia_chi FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Cmnd      = myDb.GetValue($"SELECT cmnd FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Ngay_cmnd = myDb.GetValue($"SELECT ngay_cmnd FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Nc_cmnd   = myDb.GetValue($"SELECT nc_cmnd FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Ma_quocgia = myDb.GetValue($"SELECT quoc_tich FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+        }
+
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_lhd))
+        {
+            string safe = CurHdld.Ma_lhd.Trim().Replace("'", "''");
+            CurHdld.Ten_lhd = myDb.GetValue($"SELECT ten_lhdong FROM dmlhdong WHERE ma_lhdong = '{safe}'")?.ToString() ?? "";
+        }
+
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_cv))
+        {
+            string safe = CurHdld.Ma_cv.Trim().Replace("'", "''");
+            CurHdld.Ten_cv = myDb.GetValue($"SELECT ten_cv FROM dmcv WHERE ma_cv = '{safe}'")?.ToString() ?? "";
+        }
+    }
+
+    void Ma_ns_ct_Changed(ExpandoObject value)
+    {
+        CurHdld.Ten_ns_ct = string.Empty;
+        CurHdld.Quoc_tich = string.Empty;
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_ns_ct))
+        {
+            string safe = CurHdld.Ma_ns_ct.Trim().Replace("'", "''");
+            CurHdld.Ten_ns_ct = myDb.GetValue($"SELECT ten_ns FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Quoc_tich = myDb.GetValue($"SELECT quoc_tich FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+        }
+        StateHasChanged();
+    }
+
+    void Ma_cv_ct_Changed(ExpandoObject value)
+    {
+        CurHdld.Ten_cv_ct = string.Empty;
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_cv_ct))
+        {
+            string safe = CurHdld.Ma_cv_ct.Trim().Replace("'", "''");
+            CurHdld.Ten_cv_ct = myDb.GetValue($"SELECT ten_cv FROM dmcv WHERE ma_cv = '{safe}'")?.ToString() ?? "";
+        }
+        StateHasChanged();
+    }
+
+    void Ma_ns_Changed(ExpandoObject value)
+    {
+        CurHdld.Ten_ns     = string.Empty;
+        CurHdld.Ngay_sinh  = string.Empty;
+        CurHdld.Dia_chi    = string.Empty;
+        CurHdld.Cmnd       = string.Empty;
+        CurHdld.Ngay_cmnd  = string.Empty;
+        CurHdld.Nc_cmnd    = string.Empty;
+        CurHdld.Ma_quocgia = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_ns))
+        {
+            string safe = CurHdld.Ma_ns.Trim().Replace("'", "''");
+            CurHdld.Ten_ns    = myDb.GetValue($"SELECT ten_ns FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Ngay_sinh = myDb.GetValue($"SELECT ngay_sinh FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Dia_chi   = myDb.GetValue($"SELECT dia_chi FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Cmnd      = myDb.GetValue($"SELECT cmnd FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Ngay_cmnd = myDb.GetValue($"SELECT ngay_cmnd FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Nc_cmnd   = myDb.GetValue($"SELECT nc_cmnd FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+            CurHdld.Ma_quocgia = myDb.GetValue($"SELECT quoc_tich FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+        }
+        StateHasChanged();
+    }
+
+    void Ma_cv_Changed(ExpandoObject value)
+    {
+        CurHdld.Ten_cv = string.Empty;
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_cv))
+        {
+            string safe = CurHdld.Ma_cv.Trim().Replace("'", "''");
+            CurHdld.Ten_cv = myDb.GetValue($"SELECT ten_cv FROM dmcv WHERE ma_cv = '{safe}'")?.ToString() ?? "";
+        }
+        StateHasChanged();
+    }
+
+    void Ma_lhd_Changed(ExpandoObject value)
+    {
+        CurHdld.Ten_lhd = string.Empty;
+        if (!string.IsNullOrWhiteSpace(CurHdld.Ma_lhd))
+        {
+            string safe = CurHdld.Ma_lhd.Trim().Replace("'", "''");
+            CurHdld.Ten_lhd = myDb.GetValue($"SELECT ten_lhdong FROM dmlhdong WHERE ma_lhdong = '{safe}'")?.ToString() ?? "";
+        }
+        StateHasChanged();
+    }
+
+    async Task SaveHdld()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            // Normalize empty values
+            CurHdld.Yeu_cau1                    = CurHdld.Yeu_cau1 ?? "";
+            CurHdld.Yeu_cau2                    = CurHdld.Yeu_cau2 ?? "";
+            CurHdld.Dia_diem_lam_viec           = CurHdld.Dia_diem_lam_viec ?? "";
+            CurHdld.Dia_chi_lam_viec            = CurHdld.Dia_chi_lam_viec ?? "";
+            CurHdld.Duoc_cap_nhung_phuong_tien  = CurHdld.Duoc_cap_nhung_phuong_tien ?? "";
+            CurHdld.Phuong_tien                 = CurHdld.Phuong_tien ?? "";
+            CurHdld.Phu_cap                     = CurHdld.Phu_cap ?? "";
+            
+            // Nếu ma_plhd để trống, gán string rỗng (NOT NULL)
+            CurHdld.Ma_plhd                     = CurHdld.Ma_plhd ?? "";
+
+            if (curActionTask == ActionTask.New)
+            {
+                string safe_ma  = CurHdld.Ma_hdld.Trim().Replace("'", "''");
+                string sqlCheck = $"SELECT COUNT(1) FROM {sqlTableName} WHERE ma_hdld='{safe_ma}'";
+                DataTable dtChk = myDb.GetTable(sqlCheck);
+                if (dtChk != null && dtChk.Rows.Count > 0 && Convert.ToInt32(dtChk.Rows[0][0]) > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["Labor contract number already exists"] + "!");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_hdld_input')?.focus()");
+                    return;
+                }
+
+                DateTime now = DateTime.Now;
+                CurHdld.Date0     = now.Date;
+                CurHdld.Time0     = now.ToString("HH:mm:ss");
+                CurHdld.Date      = now.Date;
+                CurHdld.Time      = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHdld.User_id0   = curUser.User_id;
+                    CurHdld.User_name0 = curUser.User_name;
+                    CurHdld.User_id    = curUser.User_id;
+                    CurHdld.User_name  = curUser.User_name;
+                }
+
+                await myDb.InsertOneRow<Hdld>(CurHdld, sqlTableName);
+                myStateMN.SetNewThongbao($"{Lap["Successfully added new"]}: {CurHdld.Ma_hdld}");
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                DateTime now = DateTime.Now;
+                CurHdld.Date  = now.Date;
+                CurHdld.Time  = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHdld.User_id   = curUser.User_id;
+                    CurHdld.User_name = curUser.User_name;
+                }
+
+                string safeMa    = Ma_ma.Trim().Replace("'", "''");
+                string whereClause = "ma_hdld = '" + safeMa + "'";
+                await myDb.UpdateOneRow1<Hdld>(CurHdld, sqlTableName, "", whereClause);
+                myStateMN.SetNewThongbao($"{Lap["Edit successfully"]}: {CurHdld.Ma_hdld}");
+            }
+
+            if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo(ParentPage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed"]}: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrWhiteSpace(CurHdld.Ma_hdld))
+        {
+            myStateMN.SetNewThongbao(Lap["Labor contract number is required"] + "!");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(CurHdld.Ma_ns_ct))
+        {
+            myStateMN.SetNewThongbao(Lap["Company representative is required"] + "!");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(CurHdld.Ma_ns))
+        {
+            myStateMN.SetNewThongbao(Lap["Employee is required"] + "!");
+            return false;
+        }
+
+        if (CurHdld.Tu_ngay == null)
+        {
+            myStateMN.SetNewThongbao(Lap["From date is required"] + "!");
+            return false;
+        }
+
+        if (CurHdld.Den_ngay.HasValue && CurHdld.Tu_ngay > CurHdld.Den_ngay)
+        {
+            myStateMN.SetNewThongbao(Lap["From date must be less than or equal to To date"] + "!");
+            return false;
+        }
+
+        if (CurHdld.Ngay_hl == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Effective date is required"] + "!");
+            return false;
+        }
+
+        if (CurHdld.Ngay_hd == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Contract date is required"] + "!");
+            return false;
+        }
+
+        if (CurHdld.Ngay_hl < CurHdld.Ngay_hd)
+        {
+            myStateMN.SetNewThongbao(Lap["Effective date must be greater than or equal to Contract date"] + "!");
+            return false;
+        }
+
+        // Note: ma_plhd (Phụ lục hợp đồng) không bắt buộc - có thể để trống
+        // Nếu để trống, sẽ gán string rỗng thay vì NULL khi save
+
+        return true;
+    }
+}

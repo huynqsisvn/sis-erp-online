@@ -1,0 +1,107 @@
+@page "/dmnt"
+@page "/dmnt/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,dmnt")]
+
+<div class="row mt-1" tabindex="0">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="60vw"
+              MinWidth="600px"
+              Scrollable="true"
+              MaxHeight="95vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible" List_ID="@sqlTableName" Ma_ma="@SqlTableKeyValue" Title="@Lap["Change currency code"]" Ten_item="@Ten_item" OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible" CurDmimex="@CurDmimex" OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        mPage = "dmnt";
+        sqlTableName = "dmnt";
+        sqlTableView = "v_dmnt";
+        SqlTableKey = "ma_nt";
+        
+        IsShowCopy = true;
+        IsShowImport = true;
+        
+        FrmType = typeof(SisCa.Pages.List.Cant.EditDmnt);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wa.dm.01";
+
+        base.OnInitialized();
+    }
+    public override void ChangeID()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string M_MA_NT0 = myOption.GetOptionsValue("M_MA_NT0").Trim();
+            if (rview[SqlTableKey.Split(";").LastOrDefault()].ToString().Trim() == M_MA_NT0)
+            {
+                myStateMN.SetNewThongbao(Lap["Cannot change the default currency code"]);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(rview[SqlTableKey.Split(";").LastOrDefault()].ToString()))
+                SqlTableKeyValue = rview[SqlTableKey.Split(";").LastOrDefault()].ToString().Trim();
+            if (!String.IsNullOrEmpty(SqlItemName) && rview.Row.Table.Columns.Contains(SqlItemName))
+                Ten_item = IsLangEn ? rview[SqlItemName.Trim() + "2"].ToString().Trim() : rview[SqlItemName].ToString().Trim();
+
+            IDVisible = true;
+            StateHasChanged();
+        }
+    }
+}

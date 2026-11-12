@@ -1,0 +1,277 @@
+﻿@using System.Data
+@inject XmlStringLocalizer Lap
+@inject IDbManager myDb
+@inject Statemanagerment myStateMN
+@inject IOptionsManager Options
+
+<DxPopup @bind-Visible="@IsVisible"
+         HeaderText="@Title"
+         Width="600px"
+         Height="auto"
+         ShowCloseButton="false" 
+         ShowFooter="true"
+         CloseOnEscape="false"
+         AllowResize="false">
+    <BodyContentTemplate Context="bodyContext">
+        <DxFormLayout CssClass="dialog-content">
+            <DxFormLayoutItem Caption="@Lap["Field"]" ColSpanMd="12">
+                <Template>
+                    <DxComboBox Data="@FieldOptions"
+                                Value="@SelectedField"
+                                TextFieldName="Label"
+                                ValueFieldName="Value"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                ValueChanged="@((string newValue) => OnFieldChanged(newValue))">
+                    </DxComboBox>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["New value"]" ColSpanMd="12">
+                <Template>
+                    <AutocompleteComponent Id="new_value_input" 
+                                          Ma_dm="@ListId" 
+                                          @bind-Value="@NewValue" 
+                                          SelectChanged="@OnNewValueChanged"
+                                          IsLangEn="@IsLangEn" />
+                </Template>
+            </DxFormLayoutItem>
+
+            @if (ShowDvt1)
+            {
+                <DxFormLayoutItem Caption="@Lap["Unit"]" ColSpanMd="12">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmvtdvt" 
+                                             Filter="@(String.Format(" ma_vt = '{0}'", NewValue?.Trim() ?? ""))" 
+                                             @bind-Value="@Dvt1" 
+                                             SelectChanged="@OnDvt1Changed"
+                                             IsEnable="@(!string.IsNullOrWhiteSpace(NewValue))" 
+                                             IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Conversion factor"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox Text="@(HeSo?.ToString(M_IP_SL) ?? "")" ReadOnly="true" />
+                    </Template>
+                </DxFormLayoutItem>
+            }
+        </DxFormLayout>
+    </BodyContentTemplate>
+    <FooterContentTemplate>
+        <DxButton Text="@Lap["OK"]" 
+                  RenderStyle="ButtonRenderStyle.Primary" 
+                  Click="@OnOkClick"
+                  CssClass="me-2" />
+        <DxButton Text="@Lap["Cancel"]" 
+                  RenderStyle="ButtonRenderStyle.Secondary" 
+                  Click="@OnCancelClick" />
+    </FooterContentTemplate>
+</DxPopup>
+
+<style>
+    .dialog-content {
+        padding: 20px;
+    }
+</style>
+
+@code {
+    private bool IsVisible = false;
+    private string Title = "";
+    private TaskCompletionSource<Dictionary<string, object>> DialogResult;
+
+    private string SelectedField { get; set; } = "ma_kh";
+    private string NewValue { get; set; } = "";
+    private string Dvt1 { get; set; } = "";
+    private decimal? HeSo { get; set; } = null;
+    private string ListId { get; set; } = "dmkh";
+    private bool ShowDvt1 { get; set; } = false;
+    private bool IsLangEn { get; set; } = false;
+    private string M_IP_SL = "";
+
+    private List<FieldOption> FieldOptions { get; set; } = new List<FieldOption>();
+
+    public class FieldOption
+    {
+        public string Value { get; set; }
+        public string Label { get; set; }
+    }
+
+    public async Task<Dictionary<string, object>> ShowAsync(Dictionary<string, object> parameters)
+    {
+        SelectedField = parameters.ContainsKey("Field") ? parameters["Field"]?.ToString() ?? "ma_kh" : "ma_kh";
+        IsLangEn = parameters.ContainsKey("IsLangEn") && (bool)parameters["IsLangEn"];
+
+        // Load format from Options
+        M_IP_SL = Options.GetOptionsValue("M_IP_SL");
+
+        Title = IsLangEn ? "Update Value" : "Cập nhật giá trị";
+
+        // Initialize field options
+        FieldOptions = new List<FieldOption>
+        {
+            new FieldOption { Value = "ma_kh", Label = IsLangEn ? "Customer Code" : "Mã khách hàng" },
+            new FieldOption { Value = "ma_vt", Label = IsLangEn ? "Product Code" : "Mã vật tư" }
+        };
+
+        // Set initial field properties
+        UpdateFieldProperties(SelectedField);
+
+        DialogResult = new TaskCompletionSource<Dictionary<string, object>>();
+        IsVisible = true;
+        StateHasChanged();
+
+        return await DialogResult.Task;
+    }
+
+    private void OnFieldChanged(string newField)
+    {
+        SelectedField = newField;
+        UpdateFieldProperties(newField);
+        NewValue = "";
+        Dvt1 = "";
+        HeSo = null;
+        StateHasChanged();
+    }
+
+    private void UpdateFieldProperties(string field)
+    {
+        if (field == "ma_kh")
+        {
+            ListId = "dmkh";
+            ShowDvt1 = false;
+            Title = IsLangEn ? "Update Customer Code" : "Cập nhật mã khách hàng";
+        }
+        else if (field == "ma_vt")
+        {
+            ListId = "dmvt";
+            ShowDvt1 = true;
+            Title = IsLangEn ? "Update Product Code" : "Cập nhật mã vật tư";
+        }
+    }
+
+    private async Task OnNewValueChanged(ExpandoObject value)
+    {
+        if (value == null || SelectedField != "ma_vt")
+            return;
+
+        try
+        {
+            // Reset values
+            Dvt1 = "";
+            HeSo = null;
+            
+            // Load default unit from dmvt
+            string sql = $"SELECT dvt FROM dmvt WHERE ma_vt = '{NewValue.Trim()}'";
+            var ds = await myDb.LoadDataset(sql, null);
+
+            if (ds?.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var row = ds.Tables[0].Rows[0];
+                Dvt1 = row["dvt"]?.ToString() ?? "";
+                
+                // Load he_so from dmhsqd if dvt1 exists
+                if (!string.IsNullOrWhiteSpace(Dvt1))
+                {
+                    await LoadHeSo();
+                }
+                
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Dvt1 = "";
+            HeSo = null;
+        }
+    }
+
+    private async Task OnDvt1Changed(ExpandoObject value)
+    {
+        if (value == null)
+            return;
+
+        await LoadHeSo();
+        StateHasChanged();
+    }
+
+    private async Task LoadHeSo()
+    {
+        if (string.IsNullOrWhiteSpace(NewValue) || string.IsNullOrWhiteSpace(Dvt1))
+        {
+            HeSo = null;
+            return;
+        }
+
+        try
+        {
+            string sql = $"SELECT hs_qd FROM dmhsqd WHERE ma_vt = '{NewValue.Trim()}' AND dvt1 = N'{Dvt1.Trim()}'";
+            object ds = myDb.GetValue(sql);
+
+            if (ds != null)
+            {                
+                if (ds != DBNull.Value)
+                {
+                    HeSo = Convert.ToDecimal(ds);
+                }
+                else
+                {
+                    HeSo = 1m;
+                }
+            }
+            else
+            {
+                HeSo = 1m;
+            }
+        }
+        catch (Exception ex)
+        {
+            HeSo = 1m;
+        }
+    }
+
+    private void OnOkClick()
+    {
+        if (!ValidateInputs())
+            return;
+
+        var result = new Dictionary<string, object>
+        {
+            { "IsOk", true },
+            { "Field", SelectedField },
+            { "NewValue", NewValue },
+            { "Dvt1", Dvt1 },
+            { "HeSo", HeSo ?? 1m }
+        };
+
+        IsVisible = false;
+        DialogResult?.TrySetResult(result);
+    }
+
+    private void OnCancelClick()
+    {
+        var result = new Dictionary<string, object>
+        {
+            { "IsOk", false }
+        };
+
+        IsVisible = false;
+        DialogResult?.TrySetResult(result);
+    }
+
+    private bool ValidateInputs()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedField))
+        {
+            myStateMN?.SetNewThongbao(IsLangEn ? "Please select a field" : "Vui lòng chọn trường");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(NewValue))
+        {
+            myStateMN?.SetNewThongbao(IsLangEn ? "Please enter new value" : "Vui lòng nhập giá trị mới");
+            return false;
+        }
+
+        return true;
+    }
+}

@@ -1,0 +1,419 @@
+﻿@inherits FrmListBaseComponent
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmku" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <DxFormLayoutItem Caption="@Lap["Loan contract code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="ma_ku_input" @bind-Text="@CurDmku.Ma_ku" Enabled="@AllowEditMa" InputCssClass="uppercase" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Reference code"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmku.Ma_tra_cuu" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Loan contract date"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurDmku.Ngay_ku" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Contract number"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmku.So_ku" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Contract name"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmku.Ten_ku" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@(Lap["Contract name"] + " 2")" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmku.Ten_ku2"  Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Parent contract code"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ku_me_input" Ma_dm="dmku" @bind-Value="@CurDmku.Ma_ku_me" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Lender"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Id="ma_kh_input" Ma_dm="dmkh" @bind-Value="@CurDmku.Ma_kh" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>               
+                <DxFormLayoutItem Caption="@Lap["Loan date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurDmku.Ngay_ku1" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Number of loan days"]" ColSpanMd="6">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurDmku.Sn_vay" MinValue="0" MaxValue="999999" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Include repayment calculation"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSTinhTra"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@TinhTraValue">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Maturity date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurDmku.Ngay_ku2" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Payer account"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Id="tk_input" Ma_dm="dmtk" @bind-Value="@CurDmku.Tk" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Currency"]" ColSpanMd="4" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_nt_input" Ma_dm="dmnt" @bind-Value="@CurDmku.Ma_nt" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Loan amount"]" ColSpanMd="4" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurDmku.Tien_nt0" DisplayFormat="@M_IP_TIEN" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@(Lap["Monthly interest rate"] + " (%)")" ColSpanMd="4" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurDmku.Lai_suat1" DisplayFormat="@M_IP_SL" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@(Lap["Overdue interest rate"] + " (%)")" ColSpanMd="4">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurDmku.Lai_suat2" DisplayFormat="@M_IP_SL" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutGroup Caption="" ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box" ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start" AnimationType="LayoutAnimationType.Slide">
+                    <DxFormLayoutItem Caption="@Lap["Project code"]" ColSpanMd="6">
+                        <Template>
+                            <AutocompleteComponent Id="ma_vv_input" Ma_dm="dmvv" @bind-Value="@CurDmku.Ma_vv" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="@Lap["Purchase orders"]" ColSpanMd="6">
+                        <Template>
+                            <AutocompleteComponent Id="ma_hdm_input" Ma_dm="dmhdm" @bind-Value="@CurDmku.Ma_hdm" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="@Lap["Sales orders"]" ColSpanMd="6">
+                        <Template>
+                            <AutocompleteComponent Id="ma_hd_input" Ma_dm="dmhdb" @bind-Value="@CurDmku.Ma_hd" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayoutGroup>
+
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12">
+                    <Template>
+                        <DxMemo @bind-Text="@CurDmku.Ghi_chu" Enabled="@AllowEditMode" Rows="1" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmku.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmku CurDmku;
+    private string menu_id = "wa.dm.02";
+    private string M_IP_TIEN = "";
+    private string M_IP_TIEN_NT = "";
+    private string M_IP_SL = "";
+
+    private List<Dmtk> LSTinhTra = new List<Dmtk>();
+    private string TinhTraValue
+    {
+        get => CurDmku?.Tinh_tra?.ToString() ?? "0";
+        set => CurDmku.Tinh_tra = int.TryParse(value, out int result) ? result : 0;
+    }
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmku";
+        sqlTableView = "v_dmku";
+        SqlTableKey = "ma_ku";
+        CheckSqlTableKey = "ma_ku";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "dmku" : ParentPage;
+        CurDmku = new Dmku();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        LSTinhTra = new List<Dmtk>
+        {
+            new Dmtk { Ma = "0", Ten = Lap["Yes"] },
+            new Dmtk { Ma = "1", Ten = Lap["No"] }
+        };
+        M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN").Trim();
+        M_IP_TIEN_NT = myOption.GetOptionsValue("M_IP_TIEN_NT").Trim();
+        M_IP_SL = myOption.GetOptionsValue("M_IP_SL").Trim();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await EditDM(Ma_ma);
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        await CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        await CreateCopyDM(Ma_ma);
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        break;
+                    }
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ku_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmku = new Dmku();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmku = new Dmku();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(Ma_ma);
+    }
+
+    async Task SaveDM()
+    {
+        if (curActionTask == ActionTask.New)
+            if (!CheckValidCode())
+                return;
+
+        if (!CheckValid())
+            return;
+
+        CurDmku.Ma_ku = CurDmku.Ma_ku.ToUpper().Trim();
+        SqlTableKeyValue = CurDmku.Ma_ku;
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmku.Date = DateTime.Now.Date;
+            CurDmku.Date0 = DateTime.Now.Date;
+            CurDmku.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmku.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmku.User_id = curUser.User_id;
+                CurDmku.User_id0 = curUser.User_id;
+                CurDmku.User_name = curUser.User_name;
+                CurDmku.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmku.Ma_ku.Trim();
+            string[] strKey = CheckSqlTableKey.Split(';');
+            string[] strKeyValue = CheckSqlTableKeyValue.Split(';');
+            string condition = "";
+            if (strKey.Length > 0)
+            {
+                for (int x = 0; x < strKey.Length; x++)
+                {
+                    condition += strKey[x] + " = N'" + strKeyValue[x].ToUpper() + "' and ";
+                }
+                if (!string.IsNullOrEmpty(condition))
+                    condition = condition.Substring(0, condition.Length - 4);
+            }
+            string check = "Select " + strKey[0] + " from " + sqlTableName + " where " + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+            }
+            else
+            {
+                CurDmku.Search = $"{CurDmku.Ma_ku} {CurDmku.Ten_ku} {CurDmku.Ten_ku2}";
+                await myDb.InsertOneRow<Dmku>(CurDmku, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmku.Date = DateTime.Now.Date;
+            CurDmku.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmku.User_id = curUser.User_id;
+                CurDmku.User_name = curUser.User_name;
+            }
+
+            CurDmku.Search = $"{CurDmku.Ma_ku} {CurDmku.Ten_ku} {CurDmku.Ten_ku2}";
+            await myDb.UpdateOneRow<Dmku>(CurDmku, sqlTableName, SqlTableKey, Ma_ma);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        // Đóng Form nhập
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmku.Ma_ku))
+        {
+            myStateMN.SetNewThongbao(Lap["Contract code is required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurDmku.Ten_ku))
+        {
+            myStateMN.SetNewThongbao(Lap["Contract name is required"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = $"Select * from {sqlTableView} where {SqlTableKey} = '{SqlTableKeyValue}'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmku> lsdetai = myDb.ConvertDataTable<Dmku>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+            {
+                CurDmku = lsdetai[0];                
+            }
+        }
+    }
+
+    public async Task CreateNewDM()
+    {
+        CurDmku = new Dmku();
+        CurDmku.Status = "1";
+        CurDmku.Loai_ku = "1";
+        CurDmku.Tinh_tra = 1;
+        CurDmku.Ngay_ku = DateTime.Now.Date;
+        CurDmku.Ngay_ku1 = DateTime.Now.Date;
+        CurDmku.Sn_vay = 90;
+        CurDmku.Lai_suat1 = 4.00m;
+        CurDmku.Lai_suat2 = 0.00m;
+        CurDmku.Ma_nt = "VND";
+        CurDmku.Tk = "341";
+        
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmku = new Dmku();
+        await LoadData(SqlTableKeyValue);
+
+        CurDmku.Status = "1";
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }    
+}

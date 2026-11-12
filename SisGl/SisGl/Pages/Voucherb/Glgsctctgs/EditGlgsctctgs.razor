@@ -1,0 +1,310 @@
+﻿@inherits FrmListBaseComponent
+@inject IDialogService myDlSvc
+
+<div class="d-flex flex-column" style="min-height:500px;">
+    <div class="d-flex align-items-center gap-2 p-2 border-bottom bg-light">
+        <span class="fw-bold">@Title</span>
+    </div>
+
+    <div class="d-flex gap-2 p-2 border-bottom">
+        @if (curActionTask != ActionTask.View)
+        {
+            <DxButton RenderStyle="ButtonRenderStyle.Primary"
+                      Text="@Lap["Registry"]"
+                      IconCssClass="oi oi-check"
+                      Click="@OnDangKy" />
+            <DxButton RenderStyle="ButtonRenderStyle.Danger"
+                      Text="@Lap["Delete registry"]"
+                      IconCssClass="oi oi-trash"
+                      Click="@OnXoaDangKy" />
+        }
+        <DxButton RenderStyle="ButtonRenderStyle.Secondary"
+                  Text="@Lap["Export"]"
+                  IconCssClass="oi oi-data-transfer-download"
+                  Click="@OnExport" />
+        <DxButton RenderStyle="ButtonRenderStyle.Light"
+                  Text="@Lap["Close"]"
+                  IconCssClass="oi oi-x"
+                  Click="@HideForm" />
+    </div>
+
+    @if (ShowLoadding)
+    {
+        <div class="d-flex justify-content-center align-items-center p-4">
+            <div class="spinner-border text-primary" role="status" style="width:3rem;height:3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="flex-grow-1 overflow-auto">
+            <FrmBrowse3Component @ref="oBrowseDetail"
+                                 TblData="@TblDetail"
+                                 Fbrowse="@FbrowseDetail"
+                                 Page_size="50"
+                                 SelectCol="tag"
+                                 IsLangEn="@IsLangEn" />
+        </div>
+        <div class="p-2 border-top bg-light text-end fw-bold">
+            @Lap["Summary"]: @TotalTien.ToString("N0")
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public DateTime NgayCt1 { get; set; } = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    [Parameter] public DateTime NgayCt2 { get; set; } = new DateTime(DateTime.Now.Year, DateTime.Now.Month,
+        DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month));
+    [Parameter] public string SttCtgsList { get; set; } = "";
+
+    private FrmBrowse3Component oBrowseDetail;
+    private DataTable TblDetail { get; set; }
+    private bool ShowLoadding = false;
+    private decimal TotalTien = 0;
+
+    private string Title => curActionTask == ActionTask.View
+        ? Lap["View registry journal voucher"]
+        : curActionTask == ActionTask.Edit
+            ? Lap["Edit registry journal voucher"]
+            : Lap["Registry journal voucher"];
+
+    private string FbrowseDetail =>
+        IsLangEn
+        ? "stt:60:h=No;ngay_ct:100:h=Voucher date:D;so_ct:130:h=Voucher no:LINKCT;ma_kh:120:h=Customer code;ten_kh:250:h=Customer name;dien_giai:280:h=Description;tk:100:h=Account;ps_no:120:h=Debit:N0:I0;ps_co:120:h=Credit:N0:I0;ngay_lo:100:h=GL date:D;so_lo:130:h=Journal entry no;stt_ctgs:120:h=CTGS no"
+        : "stt:60:h=Stt;ngay_ct:100:h=Ngày c.từ:D;so_ct:130:h=Số c.từ:LINKCT;ma_kh:120:h=Mã khách;ten_kh:250:h=Tên khách;dien_giai:280:h=Diễn giải;tk:100:h=Tk;ps_no:120:h=Nợ:N0:I0;ps_co:120:h=Có:N0:I0;ngay_lo:100:h=Ngày lo:D;so_lo:130:h=Số lo;stt_ctgs:120:h=Số ctgs";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "ctgs";
+        SqlTableKey = "stt_ctgs";
+        ParentPage = "glgsctctgs";
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+        await LoadDetailData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    async Task LoadDetailData()
+    {
+        if (string.IsNullOrEmpty(SttCtgsList)) return;
+
+        ShowLoadding = true;
+        StateHasChanged();
+
+        try
+        {
+            string sql = $"EXEC Glgsctctgs_Sua @Stt_ctgs = '{SttCtgsList}'";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                TblDetail = myDb.SetNoneReadOnlyDataTable(ds.Tables[0]);
+                TotalTien = TblDetail.AsEnumerable()
+                    .Sum(r => r["ps_no"] is DBNull ? 0m : Convert.ToDecimal(r["ps_no"]));
+            }
+            else
+            {
+                TblDetail = new DataTable();
+                TotalTien = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi tải dữ liệu: {ex.Message}");
+        }
+        finally
+        {
+            ShowLoadding = false;
+            StateHasChanged();
+        }
+    }
+
+    async Task OnDangKy()
+    {
+        string entries = await GetSelectedEntries();
+        if (entries == null) return;
+
+        try
+        {
+            var sql = new System.Text.StringBuilder();
+            string[] sttCtgsArr = SttCtgsList.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            string ctgsInList = "'" + string.Join("','", sttCtgsArr.Select(s => s.Trim())) + "'";
+            string ctgsSql = $"SELECT stt_ctgs, ngay_lo, so_lo FROM ctgs WHERE stt_ctgs IN ({ctgsInList})";
+            DataSet dsCtgs = await myDb.LoadDataset(ctgsSql);
+            DataTable tblCtgs = dsCtgs?.Tables.Count > 0 ? dsCtgs.Tables[0] : new DataTable();
+
+            foreach (string sttCtgs in sttCtgsArr)
+            {
+                string sc = sttCtgs.Trim();
+                DataRow[] ctgsRows = tblCtgs.Select($"stt_ctgs = '{sc}'");
+                if (ctgsRows.Length == 0) continue;
+
+                string ngayLo = ctgsRows[0]["ngay_lo"] is DBNull
+                    ? DateTime.Now.ToString("yyyyMMdd")
+                    : Convert.ToDateTime(ctgsRows[0]["ngay_lo"]).ToString("yyyyMMdd");
+                string soLo = ctgsRows[0]["so_lo"]?.ToString() ?? "";
+
+                // Lấy danh sách id của entries thuộc ctgs này
+                string entriesForCtgs = GetEntriesForCtgs(entries, sc);
+                if (string.IsNullOrEmpty(entriesForCtgs)) continue;
+
+                sql.AppendLine($"UPDATE ct00 SET ngay_lo = NULL, so_lo = '', stt_ctgs = '' WHERE stt_ctgs = '{sc}'");
+                sql.AppendLine($"UPDATE ct00 SET ngay_lo = '{ngayLo}', so_lo = '{soLo}', stt_ctgs = '{sc}' WHERE id IN ('{entriesForCtgs.Replace(",", "','")}')");
+            }
+
+            if (sql.Length > 0)
+                await myDb.ExecuteSqlQueryAsync(sql.ToString());
+
+            myStateMN.SetNewThongbao(Lap["Registry completed"]);
+            await LoadDetailData();
+
+            // if (ShowAdd == true)
+            //     await OnClose.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed: {ex.Message}"]}: {ex.Message}");
+        }
+    }
+
+    // Lọc các id trong entries thuộc về một stt_ctgs cụ thể dựa trên TblDetail
+    string GetEntriesForCtgs(string allEntries, string sttCtgs)
+    {
+        if (TblDetail == null || string.IsNullOrEmpty(allEntries)) return allEntries;
+
+        var allIds = new HashSet<string>(allEntries.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
+        var ids = TblDetail.AsEnumerable()
+            .Where(r => (r["stt_ctgs"]?.ToString().Trim() == sttCtgs || string.IsNullOrEmpty(r["stt_ctgs"]?.ToString().Trim()))
+                     && allIds.Contains(r["id"]?.ToString().Trim() ?? ""))
+            .Select(r => r["id"].ToString().Trim())
+            .Distinct()
+            .ToArray();
+
+        return ids.Length > 0 ? string.Join(",", ids) : string.Empty;
+    }
+
+    async Task<string> GetSelectedEntries()
+    {
+        DataRow[] checkedRows = GetCheckedDetailRows();
+        if (checkedRows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["Please select at least one CTGS"]);
+            return null;
+        }
+
+        string sttRecList = string.Join(",", checkedRows.Select(r => r["stt_rec"].ToString().Trim()));
+        string inList = "'" + sttRecList.Replace(",", "','") + "'";
+
+        string sql = $@"SELECT id, stt_rec, stt_rec0, tk, tk_du,
+                ISNULL(ma_vv, '') AS ma_vv, ma_kh, ma_phi, nh_dk,
+                ISNULL(ma_bpht, '') AS ma_bpht, ps_co
+            FROM ct00
+            WHERE ngay_ct >= '{NgayCt1:yyyyMMdd}'
+              AND ngay_ct <= '{NgayCt2:yyyyMMdd}'
+              AND stt_rec IN ({inList})";
+
+        DataTable table = new DataTable();
+        DataSet ds = await myDb.LoadDataset(sql);
+        if (ds != null && ds.Tables.Count > 0)
+            table = ds.Tables[0];
+
+        var cultureInfo = new System.Globalization.CultureInfo("en-us");
+        cultureInfo.NumberFormat.NumberDecimalSeparator = ".";
+        cultureInfo.NumberFormat.NumberGroupSeparator = "";
+
+        var idList = new System.Text.StringBuilder();
+        for (int i = 0; i < checkedRows.Length; i++)
+        {
+            DataRow row = checkedRows[i];
+            idList.Append(",").Append(row["id"]);
+
+            if (table.Rows.Count > 0)
+            {
+                decimal psNo = row["ps_no"] is DBNull ? 0m : Convert.ToDecimal(row["ps_no"]);
+                string filter = string.Format(
+                    "stt_rec = '{0}' AND stt_rec0 = '{1}' AND tk = '{2}' AND tk_du = '{3}' AND nh_dk = '{4}' AND ps_co = {5} AND ma_vv = '{6}' AND ma_bpht = '{7}'",
+                    row["stt_rec"].ToString().Trim(),
+                    row["stt_rec0"].ToString().Trim(),
+                    row["tk_du"].ToString().Trim(),
+                    row["tk"].ToString().Trim(),
+                    row["nh_dk"],
+                    psNo.ToString(cultureInfo),
+                    row["ma_vv"].ToString().Trim(),
+                    row["ma_bpht"].ToString().Trim());
+
+                DataRow[] matched = table.Select(filter);
+                foreach (DataRow m in matched)
+                    idList.Append(",").Append(m["id"]);
+            }
+        }
+
+        return idList.Length > 0 ? idList.ToString().Substring(1) : null;
+    }
+
+    async Task OnXoaDangKy()
+    {
+        if (string.IsNullOrEmpty(SttCtgsList))
+        {
+            myStateMN.SetNewThongbao(Lap["Please select at least one CTGS"]);
+            return;
+        }
+
+        bool? result = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+        {
+            Text = Lap["Do you want to delete registry?"],
+            Title = Lap["Confirm deletion of list"],
+            OkButtonText = Lap["OK"],
+            CancelButtonText = Lap["Cancel"],
+            ShowIcon = true,
+            ShowCloseButton = false,
+            RenderStyle = MessageBoxRenderStyle.Danger,
+        });
+
+        if (result != true) return;
+
+        try
+        {
+            string inList = "'" + SttCtgsList.Replace(",", "','") + "'";
+            // Xóa đăng ký: cập nhật ct00 - xóa thông tin stt_ctgs
+            string sql = $"UPDATE ct00 SET ngay_lo = NULL, so_lo = '', stt_ctgs = '' WHERE stt_ctgs IN ({inList})";
+            await myDb.ExecuteSqlQueryAsync(sql);
+
+            myStateMN.SetNewThongbao(Lap["Delete registry completed"]);
+            await LoadDetailData();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed: {ex.Message}"]}: {ex.Message}");
+        }
+    }
+
+    void OnExport()
+    {
+        oBrowseDetail?.ExPortGrid(1);
+    }
+
+    DataRow[] GetCheckedDetailRows()
+    {
+        if (TblDetail == null) return Array.Empty<DataRow>();
+        return TblDetail.Select("tag=true");
+    }
+
+    void HideForm()
+    {
+        if (DxWindowmodel != null)
+            myModal.CloseModal(DxWindowmodel);
+
+        if (ShowAdd == true)
+            OnClose.InvokeAsync();
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+}

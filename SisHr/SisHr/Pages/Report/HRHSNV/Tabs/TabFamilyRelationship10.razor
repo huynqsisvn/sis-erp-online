@@ -1,0 +1,439 @@
+﻿@namespace SisHr.Pages.Report.HRHSNV.Tabs
+
+@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using SisCom.Model
+@using SisCom.Shared
+@using SisLib.Lib
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using System.Linq
+
+@* ===== 10. FAMILY RELATIONSHIP (Quan hệ gia đình / Thành phần gia đình) ===== *@
+<DxFormLayoutGroup id="section-10" Caption="@Lap["Family relationship"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="12">
+        <Template>
+            @if (AllowEditMode)
+            {
+                <div class="alert alert-info p-2 mb-2">
+                    <small><kbd>F4</kbd> để thêm dòng mới</small>
+                </div>
+            }
+            <div @ref="GridWrapperQhgd" id="grid-wrapper-qhgd" @onfocusout="OnGridQhgdLostFocus" @onfocusin="OnGridFocus" @onkeydown="GridQhgd_OnKeyDown" @onkeydown:stopPropagation="true" class="mt-2 mb-3">
+                <DxGrid @ref="GridQhgd"
+                        Data="@(CurRow.ListQhgd ?? new List<QhgdRow>())"
+                        SizeMode="SizeMode.Small"
+                        CssClass="w-100 grid-height-dynamic"
+                        AllowSelectRowByClick="true"
+                        KeyboardNavigationEnabled="true"
+                        @bind-SelectedDataItem="@SelectedQhgd"
+                        ValidationEnabled="false"
+                        EditMode="GridEditMode.EditRow"
+                        RowClick="@StartEditRow"
+                        SelectionMode="GridSelectionMode.Single"
+                        CustomizeEditModel="GridQhgd_CustomizeEditModel"
+                        EditModelSaving="GridQhgd_EditModelSaving"
+                        DataItemDeleting="GridQhgd_DataItemDeleting"
+                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                        EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                        ShowAllRows="true"
+                        TextWrapEnabled="false"
+                        AllowSort="false"
+                        HighlightRowOnHover="true"
+                        FooterDisplayMode="GridFooterDisplayMode.Always">
+                    <Columns>
+                        <DxGridCommandColumn Width="70px" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                            <CellDisplayTemplate Context="ctx">
+                                <div class="grid-cell-align-center">
+                                    <a class="text-danger fw-bold cursor-pointer" tabindex="-1"
+                                       @onclick="@(() => GridQhgd.ShowRowDeleteConfirmation(ctx.VisibleIndex))" title="Xóa dòng">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                </div>
+                            </CellDisplayTemplate>
+                            <CellEditTemplate Context="ctx">
+                            </CellEditTemplate>
+                        </DxGridCommandColumn>
+
+                        <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                        @* 1. Mã quan hệ gia đình (dmqhgd) *@
+                        <DxGridDataColumn FieldName="Ma_qhgd" Caption="@Lap["Relationship code"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmqhgd" @bind-Value="@item.Ma_qhgd" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 2. Họ và tên *@
+                        <DxGridDataColumn FieldName="Ten_tpgd" Caption="@Lap["Full name"]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ten_tpgd" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 3. Họ và tên 2 *@
+                        <DxGridDataColumn FieldName="Ten_tpgd2" Caption="@Lap["Full name 2"]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ten_tpgd2" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 4. Giới tính (dmgioitinh) *@
+                        <DxGridDataColumn FieldName="Ma_gioitinh" Caption="@Lap["Gender"]" Width="120px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <div class="input-group input-group-sm">
+                                    <AutocompleteComponent Ma_dm="dmgioitinh" @bind-Value="@item.Ma_gioitinh" IsLangEn="@IsLangEn" />
+                                </div>
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 5. Năm sinh *@
+                        <DxGridDataColumn FieldName="Nam_sinh" Caption="@Lap["Birth year"]" Width="100px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Nam_sinh" MaxLength="4" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 6. CMND *@
+                        <DxGridDataColumn FieldName="Cmnd" Caption="@Lap["ID Card"]" Width="130px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Cmnd" MaxLength="16" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 7. MST Cá nhân *@
+                        <DxGridDataColumn FieldName="Ma_so_thue" Caption="@Lap["Tax code"]" Width="130px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ma_so_thue" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 8. Người phụ thuộc (0/1) *@
+                        <DxGridDataColumn FieldName="Nguoi_phu_thuoc" Caption="@Lap["Dependent"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxComboBox Data="@DependentList"
+                                            @bind-Value="item.Nguoi_phu_thuoc"
+                                            TextFieldName="Text"
+                                            ValueFieldName="Value" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 9. Nghề nghiệp *@
+                        <DxGridDataColumn FieldName="Nghe_nghiep" Caption="@Lap["Occupation"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Nghe_nghiep" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 10. Nơi làm việc *@
+                        <DxGridDataColumn FieldName="Noi_lam_viec" Caption="@Lap["Workplace"]" Width="180px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Noi_lam_viec" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 11. Chỗ ở hiện nay *@
+                        <DxGridDataColumn FieldName="Cho_o_hien_nay" Caption="@Lap["Current residence"]" Width="200px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Cho_o_hien_nay" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 12. Trình độ chính trị *@
+                        <DxGridDataColumn FieldName="Trinh_do_chinh_tri" Caption="@Lap["Political theory level"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Trinh_do_chinh_tri" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 13. Trước cách mạng *@
+                        <DxGridDataColumn FieldName="Truoc_cach_mang" Caption="@Lap["Before revolution"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Truoc_cach_mang" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 14. Trong cách mạng *@
+                        <DxGridDataColumn FieldName="Trong_cach_mang" Caption="@Lap["During revolution"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Trong_cach_mang" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 15. Sau cách mạng *@
+                        <DxGridDataColumn FieldName="Sau_cach_mang" Caption="@Lap["After revolution"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Sau_cach_mang" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 16. Ghi chú *@
+                        <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"]" Width="200px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxTextBox @bind-Text="@item.Ghi_chu" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        @* 17. Trạng thái (0/1) *@
+                        <DxGridDataColumn FieldName="Status" Caption="@Lap["Status"]" Width="150px">
+                            <CellEditTemplate Context="ctx">
+                                @{
+                                    var item = (QhgdRow)ctx.EditModel;
+                                }
+                                <DxComboBox Data="@StatusList"
+                                            @bind-Value="item.Status"
+                                            TextFieldName="Text"
+                                            ValueFieldName="Value" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+                    </Columns>
+                </DxGrid>
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+<style>
+    .grid-height-dynamic {
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .grid-cell-align-center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+@code {
+    [Parameter] public HsnvDetailModel CurRow { get; set; }
+    [Parameter] public bool AllowEditMode { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public dynamic Lap { get; set; }
+
+    [Inject] public IJSRuntime JS { get; set; }
+
+    public DxGrid GridQhgd;
+    private object SelectedQhgd;
+    private ElementReference GridWrapperQhgd;
+    private string LastFocusedGrid = "QHGD";
+
+    private List<StatusItem> StatusList = new() {
+        new StatusItem { Value = "1", Text = "1 - Sử dụng" },
+        new StatusItem { Value = "0", Text = "0 - Không sử dụng" }
+    };
+
+    private List<StatusItem> DependentList = new() {
+        new StatusItem { Value = "1", Text = "1 - Phụ thuộc" },
+        new StatusItem { Value = "0", Text = "0 - Không phụ thuộc" }
+    };
+
+    public class StatusItem { public string Value { get; set; } public string Text { get; set; } }
+
+    void GridQhgd_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var model = (QhgdRow)e.EditModel;
+            model.Stt = CurRow.ListQhgd.Count > 0 ? CurRow.ListQhgd.Max(a => a.Stt) + 1 : 1;
+            model.Status = "1";
+            model.Nguoi_phu_thuoc = "0";
+        }
+    }
+
+    async Task GridQhgd_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var item = (QhgdRow)e.EditModel;
+
+        if (e.IsNew)
+        {
+            CurRow.ListQhgd.Add(item);
+
+            // Dọn dẹp dòng trống
+            if (CurRow.ListQhgd.Any(x => !string.IsNullOrEmpty(x.Ten_tpgd) && x != item))
+            {
+                CurRow.ListQhgd.RemoveAll(x => string.IsNullOrEmpty(x.Ten_tpgd) && x != item);
+            }
+
+            SelectedQhgd = item;
+        }
+        else
+        {
+            SelectedQhgd = item;
+        }
+
+        // Cập nhật STT
+        int stt = 1;
+        CurRow.ListQhgd.ForEach(x => x.Stt = stt++);
+
+        e.Cancel = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void GridQhgd_DataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var item = (QhgdRow)e.DataItem;
+        CurRow.ListQhgd.Remove(item);
+
+        // Cập nhật lại số thứ tự sau khi xóa
+        int stt = 1;
+        foreach (var r in CurRow.ListQhgd)
+        {
+            r.Stt = stt++;
+        }
+
+        e.Cancel = true;
+        StateHasChanged();
+    }
+
+    private async Task GridQhgd_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await SaveAndMoveNextRow();
+                break;
+            case "F4":
+                AddNewRow();
+                break;
+            case "F8":
+                if (SelectedQhgd != null) GridQhgd.ShowDataItemDeleteConfirmation(SelectedQhgd);
+                break;
+            case "Escape":
+                try { await GridQhgd.CancelEditAsync(); GridQhgd.ClearSelection(); } catch { }
+                break;
+        }
+    }
+
+    private async Task HandleSaveAndMoveNext(DxGrid grid, List<QhgdRow> list, object selectedItem, Func<Task> onAddAction)
+    {
+        try
+        {
+            if (grid != null && grid.IsEditing())
+                await grid.SaveChangesAsync();
+
+            await Task.Delay(100);
+
+            // Luôn thêm dòng mới sau khi lưu
+            await onAddAction();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("HandleSaveAndMoveNext Error: " + ex.Message);
+        }
+    }
+
+    [JSInvokable]
+    public async Task SaveAndMoveNextRow()
+    {
+        try
+        {
+            await HandleSaveAndMoveNext(GridQhgd, CurRow.ListQhgd, SelectedQhgd, AddNewRowAsync);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SaveAndMoveNextRow Error: " + ex.Message);
+        }
+    }
+
+    private async Task OnGridFocus()
+    {
+        LastFocusedGrid = "QHGD";
+    }
+
+    private async Task AddNewRowAsync()
+    {
+        if (AllowEditMode && GridQhgd != null)
+        {
+            if (GridQhgd.IsEditing())
+                await GridQhgd.SaveChangesAsync();
+            await GridQhgd.StartEditNewRowAsync();
+        }
+    }
+
+    private async void AddNewRow()
+    {
+        await AddNewRowAsync();
+    }
+
+    private void StartEditRow()
+    {
+        if (GridQhgd != null && SelectedQhgd != null && AllowEditMode)
+        {
+            if (GridQhgd.IsEditing())
+                _ = GridQhgd.SaveChangesAsync();
+            _ = GridQhgd.StartEditDataItemAsync(SelectedQhgd);
+        }
+    }
+
+    async void OnGridQhgdLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            await Task.Delay(150);
+            bool inside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-qhgd");
+            if (!inside && GridQhgd != null && GridQhgd.IsEditing())
+            {
+                await GridQhgd.SaveChangesAsync();
+            }
+        }
+        catch { }
+    }
+}

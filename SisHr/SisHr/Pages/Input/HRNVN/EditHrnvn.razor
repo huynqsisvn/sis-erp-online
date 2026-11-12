@@ -1,0 +1,346 @@
+@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRNVN
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveHrnvn" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                @* --- EMPLOYEE CODE --- *@
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" Filter="status = 1" @bind-Value="@CurHrnvn.Ma_ns"
+                                               IsEnable="@AllowEditMa" SelectChanged="Ma_ns_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- EMPLOYEE NAME (display only) --- *@
+                <DxFormLayoutItem Caption="@Lap["Employee name"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox Text="@tenNs" ReadOnly="true" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- APPLICATION DATE --- *@
+                <DxFormLayoutItem Caption="@Lap["Application date"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_lam_don_input" Enabled="@AllowEditMode" @bind-Date="@CurHrnvn.Ngay_lam_don" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- RESIGNATION DATE --- *@
+                <DxFormLayoutItem Caption="@Lap["Resignation date"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_thoi_viec_input" Enabled="@AllowEditMode" @bind-Date="@CurHrnvn.Ngay_thoi_viec" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- ACTUAL LEAVE DATE --- *@
+                <DxFormLayoutItem Caption="@Lap["Actual leave date"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_thoi_thuc_te_input" Enabled="@AllowEditMode" @bind-Date="@CurHrnvn.Ngay_thoi_thuc_te" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- ALLOWANCE --- *@
+                <DxFormLayoutItem Caption="@Lap["Severance allowance"]" ColSpanMd="12">
+                    <Template>
+                        <div class="d-flex align-items-center gap-2">
+                            <DxSpinEdit Id="tro_cap_input" Enabled="@AllowEditMode"
+                                        Value="@(CurHrnvn.Tro_cap ?? 0)"
+                                        ValueChanged="@((decimal v) => { CurHrnvn.Tro_cap = v; StateHasChanged(); })"
+                                        MinValue="0" MaxValue="1" Increment="1" DisplayFormat="N0" />
+                            <span class="text-muted small">@Lap["0 - No allowance, 1 - Allowance"]</span>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- SOCIAL INSURANCE BOOK CLOSING DATE --- *@
+                <DxFormLayoutItem Caption="@Lap["SI book closing date"]" ColSpanMd="12">
+                    <Template>
+                        <DxDateEdit Id="ngay_chot_so_input" Enabled="@AllowEditMode" @bind-Date="@CurHrnvn.Ngay_chot_so" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- SOCIAL INSURANCE BOOK RETURN DATE --- *@
+                <DxFormLayoutItem Caption="@Lap["SI book return date"]" ColSpanMd="12">
+                    <Template>
+                        <DxDateEdit Id="ngay_tra_so_input" Enabled="@AllowEditMode" @bind-Date="@CurHrnvn.Ngay_tra_so" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- CONTRACT TERMINATION DECISION --- *@
+                <DxFormLayoutItem Caption="@Lap["Contract termination decision"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrnvn.Quyet_dinh_cham_dut_hd"
+                                   maxlength="@(tblLength.ContainsKey("quyet_dinh_cham_dut_hd") ? tblLength["quyet_dinh_cham_dut_hd"] : 200)"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- SEVERANCE DECISION --- *@
+                <DxFormLayoutItem Caption="@Lap["Severance decision"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrnvn.Quyet_dinh_tro_cap"
+                                   maxlength="@(tblLength.ContainsKey("quyet_dinh_tro_cap") ? tblLength["quyet_dinh_tro_cap"] : 200)"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- STATUS --- *@
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12">
+                    <Template>
+                        <div class="d-flex align-items-center gap-2">
+                            <DxSpinEdit Id="status_input" Enabled="@AllowEditMode"
+                                        Value="@(CurHrnvn.Status ?? 1)"
+                                        ValueChanged="@((int v) => { CurHrnvn.Status = v; StateHasChanged(); })"
+                                        MinValue="0" MaxValue="1" Increment="1" DisplayFormat="N0" />
+                            <span class="text-muted small">@Lap["0 - Not in use, 1 - In use"]</span>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Hrnvn CurHrnvn;
+    private string tenNs = "";
+    private string menu_id = "wr.ct.16";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName     = "dmnvn";
+        sqlTableView     = "v_dmnvn";
+        SqlTableKey      = "ma_ns";
+        CheckSqlTableKey = "ma_ns";
+        ParentPage       = string.IsNullOrEmpty(ParentPage) ? "HRNVN" : ParentPage;
+        CurHrnvn         = new Hrnvn();
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord();
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task ViewRecord(string key)
+    {
+        CurHrnvn      = new Hrnvn();
+        AllowEditMode = false;
+        AllowEditMa   = false;
+        await LoadData(key);
+    }
+
+    async Task EditRecord(string key)
+    {
+        CurHrnvn      = new Hrnvn();
+        AllowEditMode = true;
+        AllowEditMa   = false;
+        await LoadData(key);
+    }
+
+    async Task NewRecord()
+    {
+        CurHrnvn                   = new Hrnvn();
+        CurHrnvn.Status            = 1;
+        CurHrnvn.Tro_cap           = 0;
+        CurHrnvn.Ngay_lam_don      = DateTime.Now.Date;
+        CurHrnvn.Ngay_thoi_viec    = DateTime.Now.Date;
+        CurHrnvn.Ngay_thoi_thuc_te = DateTime.Now.Date;
+        AllowEditMode              = true;
+        AllowEditMa                = true;
+        tenNs                      = "";
+        StateHasChanged();
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {SqlTableKey} = @{SqlTableKey}";
+            DataSet ds = await myDb.LoadDataset(sql, SqlTableKey, key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                List<Hrnvn> list = myDb.ConvertDataTable<Hrnvn>(ds.Tables[0]);
+                if (list != null && list.Count > 0)
+                {
+                    CurHrnvn = list[0];
+                    tenNs    = IsLangEn ? (CurHrnvn.Ten_ns2 ?? CurHrnvn.Ten_ns ?? "") : (CurHrnvn.Ten_ns ?? "");
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data load error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Ma_ns_Changed(ExpandoObject value)
+    {
+        if (value != null)
+        {
+            var dict = (IDictionary<string, object>)value;
+            if (IsLangEn)
+                tenNs = dict.ContainsKey("ten_ns2") ? dict["ten_ns2"]?.ToString() ?? "" : (dict.ContainsKey("ten_ns") ? dict["ten_ns"]?.ToString() ?? "" : "");
+            else
+                tenNs = dict.ContainsKey("ten_ns") ? dict["ten_ns"]?.ToString() ?? "" : "";
+        }
+        else
+        {
+            tenNs = "";
+        }
+        StateHasChanged();
+    }
+
+    async Task SaveHrnvn()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            CurHrnvn.Quyet_dinh_cham_dut_hd = CurHrnvn.Quyet_dinh_cham_dut_hd ?? "";
+            CurHrnvn.Quyet_dinh_tro_cap      = CurHrnvn.Quyet_dinh_tro_cap ?? "";
+
+            if (curActionTask == ActionTask.New)
+            {
+                string safe_ma  = CurHrnvn.Ma_ns.Trim().Replace("'", "''");
+                string sqlCheck = $"SELECT COUNT(1) FROM {sqlTableName} WHERE ma_ns='{safe_ma}'";
+                DataTable dtChk = myDb.GetTable(sqlCheck);
+                if (dtChk != null && dtChk.Rows.Count > 0 && Convert.ToInt32(dtChk.Rows[0][0]) > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["Employee resignation record already exists"] + "!");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                    return;
+                }
+
+                DateTime now = DateTime.Now;
+                CurHrnvn.Date0     = now.Date;
+                CurHrnvn.Time0     = now.ToString("HH:mm:ss");
+                CurHrnvn.Date      = now.Date;
+                CurHrnvn.Time      = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrnvn.User_id0   = curUser.User_id;
+                    CurHrnvn.User_name0 = curUser.User_name;
+                    CurHrnvn.User_id    = curUser.User_id;
+                    CurHrnvn.User_name  = curUser.User_name;
+                }
+
+                await myDb.InsertOneRow<Hrnvn>(CurHrnvn, sqlTableName);
+                myStateMN.SetNewThongbao($"{Lap["Successfully added new"]}: {CurHrnvn.Ma_ns}");
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                DateTime now = DateTime.Now;
+                CurHrnvn.Date  = now.Date;
+                CurHrnvn.Time  = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrnvn.User_id   = curUser.User_id;
+                    CurHrnvn.User_name = curUser.User_name;
+                }
+
+                string safeMa      = Ma_ma.Trim().Replace("'", "''");
+                string whereClause = $"ma_ns = '{safeMa}'";
+                await myDb.UpdateOneRow1<Hrnvn>(CurHrnvn, sqlTableName, "", whereClause);
+                myStateMN.SetNewThongbao($"{Lap["Edit successfully"]}: {CurHrnvn.Ma_ns}");
+            }
+
+            if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo(ParentPage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed"]}: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrWhiteSpace(CurHrnvn.Ma_ns))
+        {
+            myStateMN.SetNewThongbao(Lap["Employee code is required"] + "!");
+            return false;
+        }
+
+        if (CurHrnvn.Ngay_lam_don == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Application date is required"] + "!");
+            return false;
+        }
+
+        if (CurHrnvn.Ngay_thoi_viec == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Resignation date is required"] + "!");
+            return false;
+        }
+
+        if (CurHrnvn.Ngay_thoi_thuc_te == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Actual leave date is required"] + "!");
+            return false;
+        }
+
+        return true;
+    }
+}

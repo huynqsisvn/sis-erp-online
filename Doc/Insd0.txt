@@ -1,0 +1,33 @@
+Thêm mới chức năng : Vào số tồn kho ban đầu
+- Menu_id = 'wi.sd.01', Page ='insd0'
+- Thư mục : \SisIn\SisIn\Pages\Opening\Insd0\
+- Các Component kế thừa như các danh mục khác. Xem chức năng Vào số dư ban đầu của các phân xưởng : \SisCo\SisCo\Pages\Opening\Copxsd0\
+- Form thêm mới như ảnh
+- Tham khảo chức năng đã làm trên wpf ở project INSD0, không build lại project INSD0
+- Ko cần viết file .md nhiều, không viết file .sql, chỉ cần 1 README.md ở dạng đơn giản
+- Model ở dạng đơn giản, không có Requirement, length.
+- Bảng dữ liệu đã có, không cần tạo các query liên quan SQL server: 
+
+CREATE TABLE [dbo].[cdvtvv](
+	[nam] [dbo].[udt_nam] NULL,
+	[ma_kho] [dbo].[udt_ma_kho] NULL,
+	[ma_vt] [dbo].[udt_ma_vt] NULL,
+	[ma_vv] [dbo].[udt_ma_vv] NULL,
+	[ton00] [dbo].[udt_so_luong] NULL,
+	[du00] [dbo].[udt_tien] NULL,
+	[du_nt00] [dbo].[udt_tien_nt] NULL,
+	[date] [dbo].[udt_ngay_ct] NULL,
+	[time] [dbo].[udt_time] NULL,
+	[user_id] [dbo].[udt_user_id] NULL,
+	[date0] [dbo].[udt_ngay_ct] NULL,
+	[time0] [dbo].[udt_time] NULL,
+	[user_id0] [dbo].[udt_user_id] NULL,
+	[status] [char](1) NULL,
+	[ma_lo] [dbo].[udt_ma_lo] NULL
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[cdvtvv] ADD  CONSTRAINT [DF_cdvtvv_ma_vv]  DEFAULT ('') FOR [ma_vv]
+GO
+
+

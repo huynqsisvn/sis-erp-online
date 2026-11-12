@@ -1,0 +1,240 @@
+﻿@page "/glsdkc"
+@page "/glsdkc/{Menu_id}"
+@using DevExpress.Blazor
+@using Microsoft.JSInterop
+@attribute [Authorize(Roles = "admin,glsdkc")]
+
+@inject IJSRuntime JS
+@inject Statemanagerment myStateMN
+@inject ISysVarManager mySysvar
+@inject IDbManager myDb
+@inject ICommandManager myCommand
+@inject ILocalStorageService myLcStore
+@inject XmlStringLocalizer Lap
+@inject IDialogService myDlSvc
+
+<DxPopup Visible="true" ShowCloseButton="false" Modal="true" Width="600" HeaderText="@Title"
+         CloseOnOutsideClick="false" CloseOnEscape="false" ShowFooter="true" CssClass="sas-popup">
+    <ChildContent>
+        <DxFormLayout SizeMode="SizeMode.Medium" CssClass="frm-header">
+            <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box my-2">
+                <DxFormLayoutItem Caption="@Lap["Transfer from year"]" ColSpanMd="6">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@Model.Year" MinValue="1900" MaxValue="2079" Enabled="@IsEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["To year"]" ColSpanMd="6">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@Model.Year2" MinValue="1900" MaxValue="2079" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Previous year profit acct"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Id="Tk_ll_nt_input" Ma_dm="dmtk" @bind-Value="@Model.Tk1" IsEnable="@IsEditMode"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Current year profit acct"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Id="Tk_ll_nn_input" Ma_dm="dmtk" @bind-Value="@Model.Tk2" IsEnable="@IsEditMode"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayoutGroup>
+        </DxFormLayout>
+        <div class="popup-body">
+            @if (!string.IsNullOrEmpty(ValidationMessage))
+            {
+                <div class="text-danger mt-2">@ValidationMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(InfoMessage))
+            {
+                <div class="text-info mt-2">@InfoMessage</div>
+            }
+        </div>
+    </ChildContent>
+    <FooterContentTemplate>
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Primary" Text="@Lap["OK"]" Click="@OnOkClicked" />
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@(() => Back())" />
+    </FooterContentTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public string Menu_id { get; set; } = "wg.kc.01";
+    [Parameter] public bool pVisible { get; set; }
+
+    public string Title = "";
+    public GlsdkcModel Model = new GlsdkcModel();
+    public Command curCommand = new Command();
+    private bool IsEditMode = false;
+    private string ValidationMessage = "";
+    private string InfoMessage = "";
+    public bool IsLangEn = false;
+    public string UserLang = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+            if (curCommand != null)
+            {
+                Title = !IsLangEn ? curCommand.Bar : curCommand.Bar2;
+            }
+            Model.Year = DateTime.Now.Year - 1;
+            string[] paramTk1 = curCommand.Parameter.Trim().Split(";");
+            Model.Tk1 = paramTk1.Length > 0 ? myDb.GetValue($"Select top 1 tk from dmtk where tk like '{paramTk1[0]}%' order by tk").ToString() : "";
+            Model.Tk2 = paramTk1.Length > 0 ? myDb.GetValue($"Select top 1 tk from dmtk where tk like '{paramTk1[1]}%' order by tk").ToString() : "";
+            IsEditMode = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnOkClicked()
+    {
+        ValidationMessage = "";
+        InfoMessage = "";
+
+        if (Model.Year < 1900 || Model.Year > 2079)
+        {
+            ValidationMessage = Lap["Invalid year"];
+            return;
+        }
+        DateTime t = SisLib.Ctrl.NgayTC.StartOfPeriod(mySysvar,Model.Year,1);
+        DateTime tms = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KY1"));
+        DateTime tks = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KS"));
+        if (t < tms)
+        {
+            myStateMN.SetNewThongbao(Lap["Transfer year must be greater than or equal to opening year"] + " !");
+            ValidationMessage += Lap["Transfer year must be greater than or equal to opening year"] + " !";
+            return;
+        }
+        else if (t < tks)
+        {
+            ValidationMessage += Lap["Transfer year must be greater than or equal to closing year"] + " !";
+            myStateMN.SetNewThongbao(Lap["Transfer year must be greater than or equal to closing year"] + " !");
+            return;
+        }
+
+        int nextYear = Model.Year + 1;
+        string sqlCdkh = $"SELECT 1 FROM cdkh WHERE nam = {nextYear}";
+        var dtCdkh = myDb.GetTable(sqlCdkh);
+
+        bool runCdkh = true;
+        if (dtCdkh != null && dtCdkh.Rows.Count > 0)
+        {            
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = Lap["Re-run opening balance transfer for customers"] + " ?",
+                Title = Lap["Confirm"],
+                OkButtonText = Lap["Yes"],
+                CancelButtonText = Lap["No"],
+                ShowIcon = true,
+                RenderStyle = MessageBoxRenderStyle.Warning
+            });
+            if (!confirm)
+            {
+                runCdkh = false;
+            }
+        }
+
+        if (runCdkh)
+        {
+            await ExecuteStoreProc(nextYear, "KH", Model.Tk1, Model.Tk2);
+        }
+
+        string sqlCdtk = $"SELECT 1 FROM cdtk WHERE nam = {nextYear}";
+        var dtCdtk = myDb.GetTable(sqlCdtk);
+
+        bool runCdtk = true;
+        if (dtCdtk != null && dtCdtk.Rows.Count > 0)
+        {
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = Lap["Re-run opening balance transfer for accounts"] + " ?",
+                Title = Lap["Confirm"],
+                OkButtonText = Lap["Yes"],
+                CancelButtonText = Lap["No"],
+                ShowIcon = true,
+                RenderStyle = MessageBoxRenderStyle.Warning
+            });
+            if (!confirm)
+            {                
+                return;
+            }
+        }
+
+        if (runCdtk)
+        {
+            await ExecuteStoreProc(nextYear, "TK", Model.Tk1, Model.Tk2);
+        }
+
+        InfoMessage = Lap["Operation completed"] + " !";
+        myStateMN.SetNewThongbao(InfoMessage);
+        StateHasChanged();
+    }    
+
+    private async Task Back()
+    {
+        await JS.InvokeVoidAsync("goBack");
+    }
+
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async Task ExecuteStoreProc(int year, string type, string tk1, string tk2)
+    {        
+        string storeProc = curCommand?.Store_proc;
+        if (string.IsNullOrEmpty(storeProc))
+        {
+            ValidationMessage = Lap["No stored procedure defined!"];
+            return;
+        }
+        foreach (var proc in storeProc.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string sql = $"EXEC {proc.Trim()} @Year, @Type, @Tk1, @Tk2";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@Year", year },
+                { "@Type", type },
+                { "@Tk1", tk1 ?? "" },
+                { "@Tk2", tk2 ?? "" }
+            };
+            await myDb.LoadDataset(sql, parameters);
+        }
+    }
+
+    public class GlsdkcModel
+    {
+        private int _year;
+        public int Year
+        {
+            get => _year;
+            set
+            {
+                _year = value;
+                Year2 = _year + 1;
+            }
+        }
+        public int Year2 { get; set; }
+        public string Tk1 { get; set; }
+        public string Tk2 { get; set; }
+    }
+}

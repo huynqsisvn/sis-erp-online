@@ -1,0 +1,929 @@
+﻿@inherits TranBaseComponent
+@using SisFa.Pages.Input.Fahsbpts
+@using System.Data
+@using DevExpress.Blazor
+
+<div class="m-0 p-0 w-100 frm-fahsbpts" data-spy="scroll" style="overflow:auto;">
+<FormList Title="@Pagetitle"
+          @bind-curActionTask="@curActionTask"
+          OnSave="@OnSave" OnCancel="@OnCancel">
+
+            <div class="row m-1 mt-2 me-2">
+                <div class="frm-fahsbpts-container">
+                    <DxFormLayout SizeMode="@Itemsizemode" CssClass="frm-header"
+                                  onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                        <DxFormLayoutGroup ColSpanMd="12" Caption="@Lap["Infomation"]"
+                                           Decoration="FormLayoutGroupDecoration.Card"
+                                           CssClass="dx-total-box"
+                                           ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                                           AnimationType="LayoutAnimationType.Slide">
+
+                            <DxFormLayoutItem Caption="@Lap["Asset code"]" ColSpanMd="6">
+                                <Template>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <!--
+                                            WinForm: txtma_dvcs l�m filter cho dmts theo ??n v? c? s?
+                                        -->
+                                        <AutocompleteComponent Id="so_the_ts_input"
+                                                               Ma_dm="dmts"
+                                                               Filter="@MaDvcsFilter"
+                                                               @bind-Value="@CurPh.So_the_ts"
+                                                               SelectChanged="OnAutoCompleteTsChanged"
+                                                               IsEnable="@AllowEditMode"
+                                                               IsLangEn="@IsLangEn">
+                                        </AutocompleteComponent>
+                                        <span class="text-muted small">@CurPh.Ten_ts</span>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem Caption="@Lap["Allocation code"]" ColSpanMd="6">
+                                <Template>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <!--
+                                            WinForm: txtma_bpts.Filter = "ma_bpts IN (SELECT ma_bpts FROM ctbpts WHERE so_the_ts LIKE '...')"
+                                            Khi c� so_the_ts th� filter theo ctbpts, ch?a c� th� l?y t?t c?
+                                        -->
+                                        <AutocompleteComponent Id="ma_bpts_input"
+                                                               Ma_dm="dmbpts"
+                                                               Filter="@BptsFilter"
+                                                               @bind-Value="@CurPh.Ma_bpts"
+                                                               SelectChanged="OnAutoCompleteBptsChanged"
+                                                               IsEnable="@AllowEditMode"
+                                                               IsLangEn="@IsLangEn">
+                                        </AutocompleteComponent>
+                                        <span class="text-muted small">@CurPh.Ten_bpts</span>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+
+                        </DxFormLayoutGroup>
+
+                        <DxFormLayoutGroup ColSpanMd="12" Caption="@Lap["Details"]"
+                                           CaptionCssClass="fw-bold"
+                                           Decoration="FormLayoutGroupDecoration.Card">
+                            <DxFormLayoutItem ColSpanMd="12">
+                                <Template>
+                                    <div @ref="GridWrapper" id="grid-wrapper-bpts"
+                                         @onfocusout="OnGridCTLostFocus">
+                                            <DxGrid @ref="GridCT"
+                                                    SizeMode="@Itemsizemode"
+                                                    CssClass="@grd_Css"
+                                                    @onkeydown="GridCT_OnKeyDown"
+                                                    AllowSelectRowByClick="true"
+                                                    KeyboardNavigationEnabled="true"
+                                                    Data="@LSCt"
+                                                    @bind-SelectedDataItem="@SelectedDataItemCT"
+                                                    ValidationEnabled="false"
+                                                    EditMode="GridEditMode.EditRow"
+                                                    RowClick="@StartEditDataItemByClickCT"
+                                                    SelectionMode="GridSelectionMode.Single"
+                                                    CustomizeEditModel="Grid_CustomizeEditModelCT"
+                                                    EditModelSaving="Grid_EditModelSavingCT"
+                                                    DataItemDeleting="Grid_DataItemDeletingCT"
+                                                    EditNewRowPosition="@NewItemRowPosition"
+                                                    ShowAllRows="true"
+                                                    TextWrapEnabled="false"
+                                                    AllowSort="false"
+                                                    ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                    HighlightRowOnHover="true">
+                                                <Columns>
+                                                    <DxGridCommandColumn Width="40px" NewButtonVisible="false"
+                                                                         Visible="@AllowEditMode" VisibleIndex="0">
+                                                        <CellDisplayTemplate Context="cntedit">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link"
+                                                                          CssClass="grid-delete-btn"
+                                                                          aria-label="Delete"
+                                                                          Click="@(() => GridCT.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                            </div>
+                                                        </CellDisplayTemplate>
+                                                        <CellEditTemplate Context="cntedit1">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton Enabled="false"
+                                                                          CssClass="grid-disabled-button"
+                                                                          IconCssClass="grid-icon grid-icon-delete"
+                                                                          aria-label="Delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridCommandColumn>
+
+                                                    <DxGridDataColumn FieldName="Stt"
+                                                                      Caption="#"
+                                                                      Width="45px"
+                                                                      AllowEdit="false"
+                                                                      CaptionAlignment="GridTextAlignment.Center" />
+
+                                                    <DxGridDataColumn FieldName="Tk_cp"
+                                                                      Caption="@Lap["Cost account"].ToString()"
+                                                                      Width="130"
+                                                                      CaptionAlignment="GridTextAlignment.Center">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <AutocompleteComponent Ma_dm="dmtk1"
+                                                                                   @bind-Value="@_ct.Tk_cp"
+                                                                                   SelectChanged="@((ExpandoObject v) => OnGridCT_DMDM_Changed(v, "Tk_cp"))"
+                                                                                   IsEnable="@AllowEditMode"
+                                                                                   IsLangEn="@IsLangEn">
+                                                            </AutocompleteComponent>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_bpht"
+                                                              Caption="@Lap["Accounting department"].ToString()"
+                                                                      Width="120"
+                                                                      CaptionAlignment="GridTextAlignment.Center">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <AutocompleteComponent Ma_dm="dmbpht"
+                                                                                   @bind-Value="@_ct.Ma_bpht"
+                                                                                   SelectChanged="@((ExpandoObject v) => OnGridCT_DMDM_Changed(v, "Ma_bpht"))"
+                                                                                   IsEnable="@AllowEditMode"
+                                                                                   IsLangEn="@IsLangEn">
+                                                            </AutocompleteComponent>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_dvcs"
+                                                                      Caption="@Lap["Dvcs code"].ToString()"
+                                                                      Width="90px"
+                                                                      CaptionAlignment="GridTextAlignment.Center">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <DxTextBox @bind-Text="@_ct.Ma_dvcs"
+                                                                       ReadOnly="true"
+                                                                       Enabled="false" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_px"
+                                                                      Caption="@Lap["Workshop code"].ToString()"
+                                                                      Width="110"
+                                                                      CaptionAlignment="GridTextAlignment.Center">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <AutocompleteComponent Ma_dm="dmpx"
+                                                                                   @bind-Value="@_ct.Ma_px"
+                                                                                   SelectChanged="@((ExpandoObject v) => OnGridCT_DMDM_Changed(v, "Ma_px"))"
+                                                                                   IsEnable="@AllowEditMode"
+                                                                                   IsLangEn="@IsLangEn">
+                                                            </AutocompleteComponent>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_vv"
+                                                                      Caption="@Lap["Project code"].ToString()"
+                                                                      Width="110"
+                                                                      CaptionAlignment="GridTextAlignment.Center">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <AutocompleteComponent Ma_dm="dmvv"
+                                                                                   @bind-Value="@_ct.Ma_vv"
+                                                                                   SelectChanged="@((ExpandoObject v) => OnGridCT_DMDM_Changed(v, "Ma_vv"))"
+                                                                                   IsEnable="@AllowEditMode"
+                                                                                   IsLangEn="@IsLangEn">
+                                                            </AutocompleteComponent>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="So_lsx"
+                                                                      Caption="@Lap["Manufacturing order"].ToString()"
+                                                                      Width="120"
+                                                                      CaptionAlignment="GridTextAlignment.Center">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <AutocompleteComponent Ma_dm="dmlsx"
+                                                                                   @bind-Value="@_ct.So_lsx"
+                                                                                   IsEnable="@AllowEditMode"
+                                                                                   IsLangEn="@IsLangEn">
+                                                            </AutocompleteComponent>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_sp"
+                                                                      Caption="@Lap["Product code"].ToString()"
+                                                                      Width="110"
+                                                                      CaptionAlignment="GridTextAlignment.Center">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <AutocompleteComponent Ma_dm="dmsp"
+                                                                                   @bind-Value="@_ct.Ma_sp"
+                                                                                   IsEnable="@AllowEditMode"
+                                                                                   IsLangEn="@IsLangEn">
+                                                            </AutocompleteComponent>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ngay_hl1"
+                                                                      Caption="@Lap["Valid from date"].ToString()"
+                                                                      Width="140"
+                                                                      CaptionAlignment="GridTextAlignment.Center"
+                                                                      DisplayFormat="dd-MM-yyyy">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <DxDateEdit @bind-Date="@_ct.Ngay_hl1"
+                                                                        DisplayFormat="dd-MM-yyyy"
+                                                                        Format="dd-MM-yyyy"
+                                                                        Enabled="@AllowEditMode">
+                                                            </DxDateEdit>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ngay_hl2"
+                                                                      Caption="@Lap["Valid to date"].ToString()"
+                                                                      Width="140"
+                                                                      CaptionAlignment="GridTextAlignment.Center"
+                                                                      DisplayFormat="dd-MM-yyyy">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <DxDateEdit @bind-Date="@_ct.Ngay_hl2"
+                                                                        DisplayFormat="dd-MM-yyyy"
+                                                                        Format="dd-MM-yyyy"
+                                                                        Enabled="@AllowEditMode">
+                                                            </DxDateEdit>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="He_so"
+                                                                      Caption="@Lap["Coefficient"].ToString()"
+                                                                      Width="100"
+                                                                      CaptionAlignment="GridTextAlignment.Center"
+                                                                      DisplayFormat="N4">
+                                                        <CellEditTemplate Context="GrdContext">
+                                                            @{ var _ct = (CtBpts)GrdContext.EditModel; }
+                                                            <DxSpinEdit Enabled="@AllowEditMode"
+                                                                        Value="@_ct.He_so"
+                                                                        ValueExpression="@(() => _ct.He_so)"
+                                                                        ValueChanged="@((decimal nv) => OnGridCT_Value_Changed(nv, "He_so"))"
+                                                                        DisplayFormat="N4"
+                                                                        Id="He_so">
+                                                            </DxSpinEdit>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                </Columns>
+                                            </DxGrid>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                    </DxFormLayout>
+                </div>
+            </div>
+    
+    </FormList>
+</div>
+
+<style>
+    .frm-fahsbpts-container {
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 8px;
+    }
+    @@media (max-width: 768px) {
+        .frm-fahsbpts-container { padding: 0 4px; }
+    }
+    .disabled-grid { pointer-events: none; opacity: 0.7; }
+    .frm-fahsbpts .dxbl-grid { min-height: 100px; }
+</style>
+
+@code {
+    #region Parameters & Variables
+
+    PhHspbts CurPh = new PhHspbts();
+    List<CtBpts> LSCt = new List<CtBpts>();
+    CtBpts CurrentEditModel;
+
+    private int activeTabIndex = 0;
+    public bool ParentReload = false;
+    public ElementReference GridWrapper;
+    public DotNetObjectReference<FrmFahsbpts> Pageobj;
+
+    // WinForm: txtma_dvcs.Text = M_ma_dvcs ? filter dmts theo ??n v? c? s?
+    private string MaDvcsFilter =>
+        !string.IsNullOrEmpty(Ma_dvcs) && Ma_dvcs != "ALL"
+            ? $"ma_dvcs LIKE '{Ma_dvcs.Trim()}%'"
+            : "";
+
+    // WinForm: txtma_bpts.Filter = "ma_bpts IN (SELECT ma_bpts FROM ctbpts WHERE so_the_ts LIKE '...')"
+    private string BptsFilter =>
+        !string.IsNullOrEmpty(CurPh?.So_the_ts)
+            ? $"ma_bpts IN (SELECT ma_bpts FROM ctbpts WHERE so_the_ts LIKE '{CurPh.So_the_ts.Trim()}%')"
+            : "";
+
+    #endregion
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Kh�ng g?i base v� ch?c n?ng n�y d�ng composite key (so_the_ts|ma_bpts), kh�ng c� stt_rec ??n
+        await Language();
+        LoadOptions();
+
+        string title = "Hệ số phân bổ khấu hao TSCĐ";
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                Pagetitle = Lap["View"] + ": " + title;
+                V_Xem();
+                break;
+            case ActionTask.Edit:
+                Pagetitle = Lap["Edit"] + ": " + title;
+                V_Sua();
+                break;
+            case ActionTask.New:
+                Pagetitle = Lap["New"] + ": " + title;
+                V_Moi();
+                break;
+            case ActionTask.Copy:
+                Pagetitle = Lap["Copy"] + ": " + title;
+                V_Copy();
+                break;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Pageobj = DotNetObjectReference.Create(this);
+            await JavacriptS.InvokeVoidAsync("SetPageObj", Pageobj);
+            await JavacriptS.InvokeVoidAsync("AttachEnterAsTab");
+            await JavacriptS.InvokeVoidAsync("eval",
+                "document.getElementById('so_the_ts_input')?.querySelector('input')?.focus()");
+        }
+        await JavacriptS.InvokeVoidAsync("changeTextNewRowButton",
+            Lap["Click here to add a new row"].ToString());
+    }
+
+    [JSInvokable]
+    public void CallGridEditMode(string value)
+    {
+        if (!string.IsNullOrEmpty(value) && AllowEditMode && value.Equals(end_GridCt))
+            AddNewCT();
+    }
+
+    // ??? Toolbar actions ??????????????????????????????????????????????????????
+    private Task OnNew()  { V_Moi();  curActionTask = ActionTask.New;  return Task.CompletedTask; }
+    private Task OnCopy() { V_Copy(); curActionTask = ActionTask.Copy; return Task.CompletedTask; }
+    private Task OnEdit() { V_Sua();  curActionTask = ActionTask.Edit; return Task.CompletedTask; }
+    private async Task OnSave() { await Save(); }
+    private async void OnCancel()
+    {
+        if (Closeform.HasDelegate) Closeform.InvokeAsync(ParentReload);
+        if (DxWindowmodel != null) myModal.CloseModal(DxWindowmodel);
+    }
+    private Task OnPrint() { return Task.CompletedTask; }
+
+    // ??? Voucher operations ???????????????????????????????????????????????????
+
+    /// <summary>
+    /// WinForm: Them() ? kh?i t?o form tr?ng
+    /// </summary>
+    void V_Moi()
+    {
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrWhiteSpace(Ma_dvcs) || Ma_dvcs.Trim() == "ALL")
+        {
+            myStateMN.SetNewThongbao(Lap["Please, select Unit code"] + " !");
+            return;
+        }
+
+        CurPh = new PhHspbts
+        {
+            Ma_dvcs = Ma_dvcs,
+            Nam     = DateTime.Now.Year,
+            Ky      = DateTime.Now.Month,
+            Date    = DateTime.Now.Date,
+            Time    = DateTime.Now.ToString("HH:mm:ss"),
+            User_id = curUser?.User_id.ToString()
+        };
+
+        LSCt = new List<CtBpts>();
+        AllowEditMode = true;
+    }
+
+    /// <summary>
+    /// WinForm: Copy ? load b?n g?c r?i xo� key ?? th�nh b?n m?i
+    /// </summary>
+    void V_Copy()
+    {
+        AllowEditMode = true;
+        if (!string.IsNullOrEmpty(Stt_rec))
+            _ = CopyFrom();
+        else
+            V_Moi();
+    }
+
+    private async Task CopyFrom()
+    {
+        await LoaddataFrm();
+
+        // Gi? n?i dung, xo� key identity ?? khi l?u s? Insert
+        var srcPh = CurPh;
+        var srcCt = LSCt.ToList();
+
+        V_Moi();
+
+        CurPh.So_the_ts = srcPh.So_the_ts;
+        CurPh.Ma_bpts   = srcPh.Ma_bpts;
+        CurPh.Nam       = srcPh.Nam;
+        CurPh.Ky        = srcPh.Ky;
+        CurPh.Ten_ts    = srcPh.Ten_ts;
+        CurPh.Ten_bpts  = srcPh.Ten_bpts;
+        CurPh.Loai_ts   = srcPh.Loai_ts;
+        CurPh.Tk_khao   = srcPh.Tk_khao;
+        CurPh.Ma_phi    = srcPh.Ma_phi;
+
+        LSCt = srcCt.Select((x, i) => new CtBpts
+        {
+            Stt       = i + 1,
+            So_the_ts = CurPh.So_the_ts,
+            Ma_bpts   = CurPh.Ma_bpts,
+            Ma_dvcs   = CurPh.Ma_dvcs ?? myStateMN.GetMa_Dvcs()?.Trim() ?? "",
+            Tk_cp     = x.Tk_cp,
+            Ma_bpht   = x.Ma_bpht,
+            Ma_px     = x.Ma_px,
+            Ma_vv     = x.Ma_vv,
+            So_lsx    = x.So_lsx,
+            Ma_sp     = x.Ma_sp,
+            Ngay_hl1  = x.Ngay_hl1,
+            Ngay_hl2  = x.Ngay_hl2,
+            He_so     = x.He_so
+        }).ToList();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async void V_Xem()
+    {
+        AllowEditMode = false;
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await LoaddataFrm();
+            StateHasChanged();
+        }
+    }
+
+    async void V_Sua()
+    {
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await LoaddataFrm();
+            AllowEditMode = true;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Load d? li?u header + detail theo Stt_rec = "so_the_ts|ma_bpts"
+    /// </summary>
+    public override async Task Loaddata()
+    {
+        await LoaddataFrm();
+    }
+
+    private async Task LoaddataFrm()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(Stt_rec)) return;
+
+            var parts  = Stt_rec.Split('|');
+            string soTheTs = parts.Length > 0 ? parts[0].Trim() : "";
+            string maBpts  = parts.Length > 1 ? parts[1].Trim() : "";
+
+            if (string.IsNullOrEmpty(soTheTs) || string.IsNullOrEmpty(maBpts)) return;
+
+            // Header + Detail: chỉ dùng hspbts, join dmts/dmbpts để lấy tên
+            string sqlPh = $@"SELECT TOP 1
+                h.so_the_ts, h.ma_bpts, h.ma_dvcs,
+                ISNULL(d.ten_ts,   '') AS ten_ts,
+                ISNULL(d.loai_ts,  '') AS loai_ts,
+                ISNULL(d.tk_cp,    '') AS tk_khao,
+                ISNULL(d.ma_phi,   '') AS ma_phi,
+                ISNULL(b.ten_bpts, '') AS ten_bpts
+            FROM hspbts h
+            LEFT JOIN dmts   d ON d.so_the_ts = h.so_the_ts
+            LEFT JOIN dmbpts b ON b.ma_bpts   = h.ma_bpts
+            WHERE h.so_the_ts='{soTheTs}' AND h.ma_bpts='{maBpts}'";
+
+            DataSet dsPh = myDb.LoadDataSet(sqlPh);
+            if (dsPh?.Tables.Count > 0 && dsPh.Tables[0].Rows.Count > 0)
+            {
+                var list = myDb.ConvertDataTable<PhHspbts>(dsPh.Tables[0]);
+                if (list?.Count > 0) CurPh = list[0];
+            }
+
+            // Detail
+            string sqlCt = $"SELECT * FROM hspbts WHERE so_the_ts='{soTheTs}' AND ma_bpts='{maBpts}'";
+            DataSet dsCt = myDb.LoadDataSet(sqlCt);
+            if (dsCt?.Tables.Count > 0)
+            {
+                LSCt = myDb.ConvertDataTable<CtBpts>(dsCt.Tables[0]) ?? new List<CtBpts>();
+                int stt = 1;
+                foreach (var r in LSCt) r.Stt = stt++;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Error"] + ": " + ex.Message);
+        }
+    }
+
+    // ??? Validate ?????????????????????????????????????????????????????????????
+
+    private async Task<bool> CheckValid()
+    {
+        // WinForm: CheckValid() trong newForm.xaml.cs
+        if (string.IsNullOrWhiteSpace(CurPh.So_the_ts))
+        {
+            myStateMN.SetNewThongbao(Lap["Asset code is required"] + " !");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(CurPh.Ma_bpts))
+        {
+            myStateMN.SetNewThongbao(Lap["Allocation code is required"] + " !");
+            return false;
+        }
+
+        // WinForm: ph?i c� �t nh?t 1 d�ng chi ti?t c� d? li?u
+        var validRows = LSCt?.Where(r =>
+            !string.IsNullOrEmpty(r.Tk_cp)  || !string.IsNullOrEmpty(r.Ma_bpht) ||
+            !string.IsNullOrEmpty(r.Ma_px)  || !string.IsNullOrEmpty(r.Ma_vv)   ||
+            !string.IsNullOrEmpty(r.So_lsx) || !string.IsNullOrEmpty(r.Ma_sp)).ToList();
+
+        if (validRows == null || validRows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No details entered"] + " !");
+            return false;
+        }
+
+        foreach (var row in validRows)
+        {
+            // WinForm ID 1505: Ch?a nh?p hi?u l?c t? ng�y
+            if (!row.Ngay_hl1.HasValue)
+            {
+                myStateMN.SetNewThongbao(Lap["Valid from date is required"] + " !");
+                return false;
+            }
+
+            // WinForm: ng�y hi?u l?c t? ng�y ph?i l� ng�y ??u k? (ng�y 1 c?a th�ng)
+            if (row.Ngay_hl1.Value.Day != 1)
+            {
+                myStateMN.SetNewThongbao(Lap["Valid from date must be the first day of the period"] + " !");
+                return false;
+            }
+
+            if (row.Ngay_hl2.HasValue)
+            {
+                // WinForm ID 24: ng�y ??n ph?i l� ng�y cu?i th�ng
+                var lastDay = new DateTime(row.Ngay_hl2.Value.Year, row.Ngay_hl2.Value.Month,
+                    DateTime.DaysInMonth(row.Ngay_hl2.Value.Year, row.Ngay_hl2.Value.Month));
+                if (row.Ngay_hl2.Value.Date != lastDay.Date)
+                {
+                    myStateMN.SetNewThongbao(Lap["Valid to date must be the last day of the period"] + " !");
+                    return false;
+                }
+
+                // WinForm ID 1515: ng�y ??n >= ng�y t?
+                if (row.Ngay_hl2.Value < row.Ngay_hl1.Value)
+                {
+                    myStateMN.SetNewThongbao(Lap["Valid to date must be greater than or equal to valid from date"] + " !");
+                    return false;
+                }
+            }
+
+            // WinForm ID 1516: h? s? > 0
+            if (row.He_so <= 0)
+            {
+                myStateMN.SetNewThongbao(Lap["Coefficient must be greater than 0"] + " !");
+                return false;
+            }
+        }
+
+        // WinForm ID 1500: ki?m tra tr�ng chi ti?t (s?p x?p + so s�nh li?n k?)
+        var sorted = validRows
+            .OrderBy(r => r.Tk_cp).ThenBy(r => r.Ma_bpht)
+            .ThenBy(r => r.Ma_vv).ThenBy(r => r.So_lsx).ThenBy(r => r.Ma_sp)
+            .ThenBy(r => r.Ngay_hl1).ThenBy(r => r.Ngay_hl2).ToList();
+
+        for (int i = 0; i < sorted.Count - 1; i++)
+        {
+            var cur = sorted[i];
+            var nxt = sorted[i + 1];
+            if (cur.Tk_cp  == nxt.Tk_cp  && cur.Ma_bpht == nxt.Ma_bpht &&
+                cur.Ma_vv  == nxt.Ma_vv  && cur.So_lsx  == nxt.So_lsx  &&
+                cur.Ma_sp  == nxt.Ma_sp  && cur.Ngay_hl1 <= nxt.Ngay_hl1 &&
+                (!cur.Ngay_hl2.HasValue || nxt.Ngay_hl1 <= cur.Ngay_hl2))
+            {
+                myStateMN.SetNewThongbao(Lap["Duplicate detail entered"] + " !");
+                return false;
+            }
+        }
+
+        // WinForm ID 1675: ki?m tra tr�ng so_the_ts + ma_bpts khi Add/Copy
+        if (curActionTask == ActionTask.New || curActionTask == ActionTask.Copy)
+        {
+            try
+            {
+                object existed = myDb.GetValue(
+                    $"SELECT COUNT(*) FROM hspbts WHERE so_the_ts='{CurPh.So_the_ts.Trim()}' AND ma_bpts='{CurPh.Ma_bpts.Trim()}'");
+                if (existed != null && Convert.ToInt32(existed) > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["Asset code and allocation code already exist"] + " !");
+                    return false;
+                }
+            }
+            catch { }
+        }
+
+        return true;
+    }
+
+    // ??? Save ?????????????????????????????????????????????????????????????????
+
+    private async Task Save()
+    {
+        // Bước 1: ép grid commit dòng đang sửa trước khi validate
+        if (GridCT != null && GridCT.IsEditing())
+        {
+            try { await GridCT.SaveChangesAsync(); } catch { }
+        }
+
+        if (!await CheckValid()) return;
+
+        string soTheTs = CurPh.So_the_ts.Trim();
+        string maBpts  = CurPh.Ma_bpts.Trim();
+        string maDvcs  = CurPh.Ma_dvcs?.Trim() ?? myStateMN.GetMa_Dvcs()?.Trim() ?? "";
+        string time    = DateTime.Now.ToString("HH:mm:ss");
+        string userId  = curUser?.User_id.ToString() ?? "";
+        string sSoTheTs = soTheTs.Replace("'", "''");
+        string sMaBpts  = maBpts.Replace("'", "''");
+        string sMaDvcs  = maDvcs.Replace("'", "''");
+
+        var toInsert = LSCt.Where(r =>
+            !string.IsNullOrEmpty(r.Tk_cp)  || !string.IsNullOrEmpty(r.Ma_bpht) ||
+            !string.IsNullOrEmpty(r.Ma_px)  || !string.IsNullOrEmpty(r.Ma_vv)   ||
+            !string.IsNullOrEmpty(r.So_lsx) || !string.IsNullOrEmpty(r.Ma_sp)).ToList();
+
+        try
+        {
+            // WinForm saveCustomer(): xóa chi tiết cũ rồi insert lại
+            await myDb.ExecuteSqlQueryAsync(
+                $"DELETE FROM hspbts WHERE so_the_ts='{sSoTheTs}' AND ma_bpts='{sMaBpts}'");
+
+            // INSERT từng dòng - giống WinForm saveCustomer()
+            foreach (var ct in toInsert)
+            {
+                string sTkCp   = (ct.Tk_cp   ?? "").Replace("'", "''");
+                string sMaBpht = (ct.Ma_bpht ?? "").Replace("'", "''");
+                string sMaPx   = (ct.Ma_px   ?? "").Replace("'", "''");
+                string sMaVv   = (ct.Ma_vv   ?? "").Replace("'", "''");
+                string sSoLsx  = (ct.So_lsx  ?? "").Replace("'", "''");
+                string sMaSp   = (ct.Ma_sp   ?? "").Replace("'", "''");
+                string ngay1   = ct.Ngay_hl1.HasValue ? $"'{ct.Ngay_hl1.Value:yyyy-MM-dd}'" : "NULL";
+                string ngay2   = ct.Ngay_hl2.HasValue ? $"'{ct.Ngay_hl2.Value:yyyy-MM-dd}'" : "NULL";
+                string heSo    = ct.He_so.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+                string sql = "INSERT INTO hspbts" +
+                    " (so_the_ts, ma_bpts, ma_dvcs, tk_cp, ma_bpht, ma_px, ma_vv, so_lsx, ma_sp," +
+                    "  ngay_hl1, ngay_hl2, he_so, date0, time0, user_id0)" +
+                    $" VALUES (N'{sSoTheTs}', N'{sMaBpts}', N'{sMaDvcs}'," +
+                    $" N'{sTkCp}', N'{sMaBpht}', N'{sMaPx}', N'{sMaVv}', N'{sSoLsx}', N'{sMaSp}'," +
+                    $" {ngay1}, {ngay2}, {heSo}, GETDATE(), '{time}', '{userId}')";
+                await myDb.ExecuteSqlQueryAsync(sql);
+            }
+
+            AllowEditMode = false;
+            IsSaved       = true;
+            ParentReload  = true;
+
+            string msg = (curActionTask == ActionTask.Edit)
+                ? string.Format(Lap["Edit successfully : {0}"].ToString(), soTheTs)
+                : string.Format(Lap["Successfully added new : {0}"].ToString(), soTheTs);
+            myStateMN.SetNewThongbao(msg);
+            curActionTask = ActionTask.View;
+
+            // Đóng form sau khi lưu thành công
+            if (Closeform.HasDelegate)
+                await Closeform.InvokeAsync(true);
+            else if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+            return;
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Error"] + " : " + ex.Message);
+        }
+
+        StateHasChanged();
+    }
+
+    // ??? Autocomplete handlers ????????????????????????????????????????????????
+
+    /// <summary>
+    /// WinForm: txtma_ts_PreviewLostKeyboardFocus
+    /// L?y th�ng tin t? dmts; n?u Add v� grid r?ng th� t? ?i?n d�ng ??u
+    /// </summary>
+    void OnAutoCompleteTsChanged(ExpandoObject value)
+    {
+        if (value == null) return;
+
+        CurPh.So_the_ts = value.FirstOrDefault(a => a.Key == "so_the_ts").Value?.ToString()
+                          ?? value.FirstOrDefault(a => a.Key == "ma_ts").Value?.ToString() ?? "";
+        CurPh.Ten_ts  = value.FirstOrDefault(a => a.Key == "ten_ts").Value?.ToString() ?? "";
+        CurPh.Loai_ts = value.FirstOrDefault(a => a.Key == "loai_ts").Value?.ToString() ?? "";
+        // WinForm l?y tk_cp t? dmts l�m tk_khao
+        CurPh.Tk_khao = value.FirstOrDefault(a => a.Key == "tk_cp").Value?.ToString()
+                        ?? value.FirstOrDefault(a => a.Key == "tk_khao").Value?.ToString() ?? "";
+        CurPh.Ma_phi  = value.FirstOrDefault(a => a.Key == "ma_phi").Value?.ToString() ?? "";
+
+        string maBpht = value.FirstOrDefault(a => a.Key == "ma_bpht").Value?.ToString() ?? "";
+        string maVv   = value.FirstOrDefault(a => a.Key == "ma_vv").Value?.ToString() ?? "";
+
+        // WinForm: Add + grid r?ng ? t? t?o d�ng ??u v?i tk_cp, ma_bpht, ma_vv t? dmts
+        if ((curActionTask == ActionTask.New || curActionTask == ActionTask.Copy) && LSCt.Count == 0)
+        {
+            LSCt.Add(new CtBpts
+            {
+                So_the_ts = CurPh.So_the_ts,
+                Ma_bpts   = CurPh.Ma_bpts,
+                Tk_cp     = CurPh.Tk_khao,
+                Ma_bpht   = maBpht,
+                Ma_vv     = maVv
+            });
+        }
+
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// WinForm: txtma_bpts_PreviewLostKeyboardFocus
+    /// </summary>
+    void OnAutoCompleteBptsChanged(ExpandoObject value)
+    {
+        if (value == null) return;
+
+        CurPh.Ma_bpts  = value.FirstOrDefault(a => a.Key == "ma_bpts").Value?.ToString() ?? "";
+        CurPh.Ten_bpts = value.FirstOrDefault(a => a.Key == "ten_bpts").Value?.ToString() ?? "";
+
+        // C?p nh?t Ma_bpts cho t?t c? d�ng chi ti?t ?ang c�
+        foreach (var ct in LSCt)
+        {
+            ct.Ma_bpts   = CurPh.Ma_bpts;
+            ct.So_the_ts = CurPh.So_the_ts;
+        }
+
+        StateHasChanged();
+    }
+
+    // ??? Grid helpers ?????????????????????????????????????????????????????????
+
+    async void OnGridCTLostFocus(FocusEventArgs e)
+    {
+        bool stillInside = await JavacriptS.InvokeAsync<bool>("focusInside", "grid-wrapper-bpts");
+        if (stillInside) return;
+
+        if (GridCT.IsEditing() && AllowEditMode)
+        {
+            try
+            {
+                await GridCT.SaveChangesAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving grid: {ex.Message}");
+            }
+        }
+    }
+
+    private void OnTabChanged(TabClickEventArgs e) { }
+    private async Task GridCT_OnKeyDown(KeyboardEventArgs e) { }
+
+    async void StartEditDataItemByClickCT()
+    {
+        if (GridCT.IsEditing()) await GridCT.SaveChangesAsync();
+        if (SelectedDataItemCT != null) await GridCT.StartEditDataItemAsync(SelectedDataItemCT);
+    }
+
+    async void AddNewCT()
+    {
+        await GridCT.SaveChangesAsync();
+        await GridCT.StartEditNewRowAsync("Tk_cp");
+    }
+
+    void Grid_CustomizeEditModelCT(GridCustomizeEditModelEventArgs e)
+    {
+        CurrentEditModel = (CtBpts)e.EditModel;
+        if (e.IsNew)
+        {
+            CurrentEditModel.Stt       = LSCt.Count + 1;
+            CurrentEditModel.So_the_ts = CurPh.So_the_ts;
+            CurrentEditModel.Ma_bpts   = CurPh.Ma_bpts;
+            CurrentEditModel.Ma_dvcs   = CurPh.Ma_dvcs ?? myStateMN.GetMa_Dvcs()?.Trim() ?? "";
+        }
+    }
+
+    async Task Grid_EditModelSavingCT(GridEditModelSavingEventArgs e)
+    {
+        var em = (CtBpts)e.EditModel;
+        CurrentEditModel = em;
+
+        if (e.IsNew)
+        {
+            var newRow = new CtBpts
+            {
+                Stt       = LSCt.Count + 1,
+                So_the_ts = string.IsNullOrEmpty(em.So_the_ts) ? CurPh.So_the_ts : em.So_the_ts,
+                Ma_bpts   = string.IsNullOrEmpty(em.Ma_bpts)   ? CurPh.Ma_bpts   : em.Ma_bpts,
+                Ma_dvcs   = string.IsNullOrEmpty(em.Ma_dvcs)   ? (CurPh.Ma_dvcs ?? myStateMN.GetMa_Dvcs()?.Trim() ?? "") : em.Ma_dvcs,
+                Tk_cp     = em.Tk_cp,
+                Ma_bpht   = em.Ma_bpht,
+                Ma_px     = em.Ma_px,
+                Ma_vv     = em.Ma_vv,
+                So_lsx    = em.So_lsx,
+                Ma_sp     = em.Ma_sp,
+                Ngay_hl1  = em.Ngay_hl1,
+                Ngay_hl2  = em.Ngay_hl2,
+                He_so     = em.He_so
+            };
+            LSCt.Add(newRow);
+        }
+        else
+        {
+            var dataItem = (CtBpts)e.DataItem;
+            var cts = LSCt.FirstOrDefault(a => ReferenceEquals(a, dataItem));
+            if (cts == null)
+                cts = LSCt.FirstOrDefault(a =>
+                    a.So_the_ts == dataItem.So_the_ts &&
+                    a.Ma_bpts   == dataItem.Ma_bpts   &&
+                    a.Tk_cp     == dataItem.Tk_cp     &&
+                    a.Ngay_hl1  == dataItem.Ngay_hl1);
+
+            if (cts != null)
+            {
+                cts.Ma_dvcs   = string.IsNullOrEmpty(em.Ma_dvcs) ? cts.Ma_dvcs : em.Ma_dvcs;
+                cts.Tk_cp     = em.Tk_cp;
+                cts.Ma_bpht   = em.Ma_bpht;
+                cts.Ma_px     = em.Ma_px;
+                cts.Ma_vv     = em.Ma_vv;
+                cts.So_lsx    = em.So_lsx;
+                cts.Ma_sp     = em.Ma_sp;
+                cts.Ngay_hl1  = em.Ngay_hl1;
+                cts.Ngay_hl2  = em.Ngay_hl2;
+                cts.He_so     = em.He_so;
+            }
+        }
+    }
+
+    async Task Grid_DataItemDeletingCT(GridDataItemDeletingEventArgs e)
+    {
+        LSCt.Remove((CtBpts)e.DataItem);
+        // Đánh lại số thứ tự
+        int stt = 1;
+        foreach (var r in LSCt) r.Stt = stt++;
+    }
+
+    async void OnGridCT_DMDM_Changed(ExpandoObject value, string fieldName)
+    {
+        if (value == null || CurrentEditModel == null) return;
+
+        switch (fieldName.ToLower())
+        {
+            case "tk_cp":
+                CurrentEditModel.Tk_cp    = value.FirstOrDefault(a => a.Key == "tk").Value?.ToString() ?? "";
+                break;
+            case "ma_bpht":
+                CurrentEditModel.Ma_bpht  = value.FirstOrDefault(a => a.Key == "ma_bpht").Value?.ToString() ?? "";
+                break;
+            case "ma_px":
+                CurrentEditModel.Ma_px    = value.FirstOrDefault(a => a.Key == "ma_px").Value?.ToString() ?? "";
+                break;
+            case "ma_vv":
+                CurrentEditModel.Ma_vv    = value.FirstOrDefault(a => a.Key == "ma_vv").Value?.ToString() ?? "";
+                break;
+            case "so_lsx":
+                CurrentEditModel.So_lsx   = value.FirstOrDefault(a => a.Key == "so_lsx").Value?.ToString() ?? "";
+                break;
+            case "ma_sp":
+                CurrentEditModel.Ma_sp    = value.FirstOrDefault(a => a.Key == "ma_sp").Value?.ToString() ?? "";
+                break;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void OnGridCT_Value_Changed(decimal newvalue, string name)
+    {
+        if (string.IsNullOrEmpty(name) || CurrentEditModel == null) return;
+
+        if (name.ToLower() == "he_so")
+            CurrentEditModel.He_so = newvalue;
+    }
+}

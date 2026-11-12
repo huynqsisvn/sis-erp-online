@@ -1,0 +1,631 @@
+﻿@page "/arsd0"
+@page "/arsd0/{Menu_id}"
+@inherits ListBaseComponent
+
+@using SisLib.List
+@using Microsoft.Extensions.Localization
+
+@attribute [Authorize(Roles = "admin,arsd0")]
+
+<div class="d-flex mt-1 align-items-center gap-3">
+    <h6 class="mb-0">@Lap["Account"] </h6>
+    <AutocompleteComponent Ma_dm="dmtk2" @bind-Value="@M_TK" SelectChanged="Tk_LostFocus" CssClass="w-25"/>
+    <h6 class="mb-0">@Lap["Data entry start date"]: </h6>
+    <span class="badge bg-secondary">@M_ngay_bd</span>
+    <h6 class="mb-0">@Lap["Define financial year"]: </h6>
+    <span class="badge bg-secondary">@M_ngay_dn</span>
+</div>
+<hr style="margin:6px;padding:0px;height:1px;" />
+<div class="row mt-1" @onkeydown="OnKeyDown" @onkeydown:preventDefault="true">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+    CloseOnEscape="true"
+    Width="60vw"
+    MinWidth="700px"
+    Scrollable="true"
+    MaxHeight="98vh"
+    AllowResize="true"
+    AllowDrag="true"
+    AllowDragByHeaderOnly="true"
+    ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+    ShowFooter="false"
+    ShowHeader="false"
+    MinWidth="50vw"
+    @bind-Visible="@IsImportPopupVisible"
+    CloseOnEscape="true"
+    ShowCloseButton="false"
+    AllowResize="true"
+    AllowDrag="true"
+    AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible" CurDmimex="@CurDmimex" OnImportCompleted="@ImportOK" CheckDataBeForeIns="OnCheckDataImport" ShowError="@ShowError" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    public string M_TK_DU0;
+    public string M_MA_NT0;
+    public string preFilter = "";
+    string Ma_dvcs = "";
+    string Nam = "2024";
+    string M_ngay_bd = "01-01-2024";
+    string M_ngay_dn = "01-01-2024";
+    string Ma_imex = "AP03";
+    private string _TK;
+    public string M_TK
+    {
+        get { return _TK; }
+        set
+        {
+            if (_TK != value)
+            {
+                _TK = value;
+                Loaddata();
+            }
+        }
+    }
+    protected override void OnInitialized()
+    {
+        mPage = "Arsd0";
+        editPage = "editArsd0";
+        IsShowCopy = true;
+        IsShowImport = true;
+        M_TK_DU0 = myOption.GetOptionsValue("M_TK_DU0").ToString();
+        M_MA_NT0 = myOption.GetOptionsValue("M_MA_NT0").ToString();
+        sqlTableName = "cdkh";
+        sqlTableView = "v_cdkh";
+        SqlTableKey = "ma_dvcs;ma_kh;tk;nam";
+        SqlItemName = "ten_kh";
+
+        FrmType = typeof(Opening.Arsd0.EditArsd0);
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.sd.03";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true));
+                if (IsShowCopy) myStateMN.SetToolBar(new MyToolbar("Copy", false));
+                if (IsShowImport) myStateMN.SetToolBar(new MyToolbar("Import", true));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+                myStateMN.SetToolBar(new MyToolbar("Change", false));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+            M_TK = myDb.GetValue("Select top 1 tk from dmtk where tk like '131%' order by tk").ToString();
+            await Language();
+
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs.Equals("ALL"))
+            {
+                Ma_dvcs = "";
+            }
+            // Execute update stored procedure
+            string sql = "Exec Glsd0_UpdateTK @M_TK_DU0, @ma_dvcs,@User_id";
+            var parameters = new Dictionary<string, object>
+            {
+                {"M_TK_DU0",M_TK_DU0},
+                {"@ma_dvcs", Ma_dvcs },{"@User_id", curUser.User_id }
+            };
+            await myDb.LoadDataset(sql, parameters);
+        }
+    }
+
+    public virtual void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Them();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Import:
+                V_Import();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            fbrowse = IsLangEn ? curCommand.Vbrowse2 : curCommand.Vbrowse1;
+            Page_size = int.Parse(myOption.GetOptionsValue("M_GRID_NROW").Trim());
+            editPage = "";
+        }
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs.Equals("ALL"))
+        {
+            Ma_dvcs = "";
+        }
+
+        DateTime datedn = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_DN"));
+        DateTime dateTime = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KY1"));
+        M_ngay_bd = dateTime.ToString("dd-MM-yyyy");
+        M_ngay_dn = (new DateTime(dateTime.Year, datedn.Month, datedn.Day)).ToString("dd-MM-yyyy");
+        Nam = dateTime.Year.ToString().Trim();
+
+        preFilter = " nam = " + Nam;
+        preFilter = preFilter + " AND ma_dvcs LIKE '" + Ma_dvcs.Trim() + "%'";
+        preFilter = preFilter + " AND tk LIKE '" + (String.IsNullOrEmpty(M_TK) ? "" : M_TK.Trim()) + "%'";
+
+        DataSet dsList = await myDb.LoadDataset("SELECT * FROM " + sqlTableView + " WHERE " + preFilter + " ORDER BY ma_dvcs, tk, ma_kh");
+        TblData = dsList.Tables[0];
+
+        if (TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+
+        await oBrowse.FocusGridAsync();
+        StateHasChanged();
+    }
+    void Tk_LostFocus(ExpandoObject value)
+    {
+        Loaddata();
+    }
+    public virtual void V_Them()
+    {
+        if (CheckDataEntryLock())
+            return;
+
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs.Equals("ALL"))
+        {
+            myStateMN.SetNewThongbao(Lap["Please, select Unit code"] + "!");
+            return;
+        }
+        string strTK = M_TK;
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            strTK = rview["tk"].ToString().Trim();
+        }
+
+        Par.Clear();
+        Par.Add("Ma_ma", (object)(strTK + ";" + Nam.ToString().Trim()));
+        Par.Add("Menu_id", (object)Menu_id);
+        Par.Add("ShowAdd", (object)true);
+        Par.Add("curActionTask", (object)ActionTask.New);        
+        Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Sua()
+    {
+        if (CheckDataEntryLock())
+            return;
+
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string[] keyFields = SqlTableKey.Split(";");
+            string strkey = keyFields[0]; // ma_dvcs
+
+            if (!rview.DataView.Table.Columns.Contains(strkey))
+                return;
+
+            if (!String.IsNullOrEmpty(rview[strkey].ToString()))
+            {                
+                string compositeKey = rview["ma_dvcs"].ToString().Trim() + ";" +
+                                     rview["ma_kh"].ToString().Trim() + ";" +
+                                     rview["tk"].ToString().Trim() + ";" +
+                                     rview["nam"].ToString().Trim();
+
+                Par.Clear();
+                Par.Add("Ma_ma", (object)compositeKey);
+                Par.Add("Menu_id", (object)Menu_id);
+                Par.Add("ShowAdd", (object)true);
+                Par.Add("curActionTask", (object)ActionTask.Edit);
+                Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                IsShowFrm = true;
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public virtual void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string[] keyFields = SqlTableKey.Split(";");
+            string strkey = keyFields[0];
+
+            if (!rview.DataView.Table.Columns.Contains(strkey))
+                return;
+
+            if (!String.IsNullOrEmpty(rview[strkey].ToString()))
+            {
+                // Build composite key: ma_dvcs;ma_kh;tk;nam
+                string compositeKey = rview["ma_dvcs"].ToString().Trim() + ";" +
+                                     rview["ma_kh"].ToString().Trim() + ";" +
+                                     rview["tk"].ToString().Trim() + ";" +
+                                     rview["nam"].ToString().Trim();
+
+                Par.Clear();
+                Par.Add("Ma_ma", (object)compositeKey);
+                Par.Add("Menu_id", (object)Menu_id);
+                Par.Add("ShowAdd", (object)true);
+                Par.Add("curActionTask", (object)ActionTask.View);               
+                Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                IsShowFrm = true;
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public virtual async void V_Xoa()
+    {
+        if (CheckDataEntryLock())
+            return;
+
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string[] keyFields = SqlTableKey.Split(";");
+
+            if (!rview.DataView.Table.Columns.Contains(keyFields[0]))
+                return;
+
+            string ma_dvcs_val = rview["ma_dvcs"].ToString().Trim();
+            string ma_kh_val = rview["ma_kh"].ToString().Trim();
+            string tk_val = rview["tk"].ToString().Trim();
+            string nam_val = rview["nam"].ToString().Trim();
+
+            string displayValue = $"{ma_dvcs_val}/{ma_kh_val}/{tk_val}";
+
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = String.Format(Lap["Do you want to delete :{0} ?"], displayValue),
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["Yes"],
+                CancelButtonText = Lap["No"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger
+            });
+
+            if (confirm)
+            {
+                await DeleteRecord(ma_dvcs_val, ma_kh_val, tk_val, nam_val);
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    private async Task DeleteRecord(string ma_dvcs, string ma_kh, string tk, string nam)
+    {
+        try
+        {
+            string sql = $"DELETE FROM {sqlTableName} WHERE ma_dvcs = @ma_dvcs AND ma_kh = @ma_kh AND tk = @tk AND nam = @nam";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@ma_dvcs", ma_dvcs },
+                { "@ma_kh", ma_kh },
+                { "@tk", tk },
+                { "@nam", nam }
+            };
+            await myDb.LoadDataset(sql, parameters);
+
+            // Execute Arsd0 stored procedure
+            await myDb.ExecuteSqlQueryAsync("EXEC Arsd0");
+
+            await Loaddata();
+            string ToastMessage = String.Format(Lap["Delete successfully : {0}"], $"{ma_dvcs}/{ma_kh}/{tk}");
+            myStateMN.SetNewThongbao(ToastMessage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Delete failed"] + ": " + ex.Message);
+        }
+    }
+
+    public override async void V_Import()
+    {
+        string sql = "SELECT * FROM dmimex WHERE UPPER(ma_imex) = '" + Ma_imex.ToUpper().Trim() + "'";
+        DataSet ds = await myDb.LoadDataset(sql);
+        List<Dmimex> lsdmimex = myDb.ConvertDataTable<Dmimex>(ds.Tables[0]);
+        if (lsdmimex != null && lsdmimex.Count > 0)
+        {
+            CurDmimex = lsdmimex[0];
+            if (IsLangEn)
+            {
+                CurDmimex.Ten = String.IsNullOrEmpty(CurDmimex.Ten2) ? CurDmimex.Ten : CurDmimex.Ten2;
+            }
+            myStateMN.SetCurrentActionTask(ActionTask.Import);
+            CurDmimex.Overwrite = "0";
+            IsImportPopupVisible = true;
+        }
+        StateHasChanged();
+    }
+
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        if (!string.IsNullOrEmpty(_ma_dvcs) && !_ma_dvcs.Equals("ALL"))
+        {
+            await Loaddata();
+            StateHasChanged();
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["Unit code is empty"] + "!");
+        }
+    }
+
+    private bool OnCheckDataImport(DataTable dt)
+    {
+        bool kq = true;
+        foreach (DataRow row in dt.Rows)
+        {
+            string nam = row["nam"].ToString().Trim();
+            if (nam != Nam)
+            {
+                myStateMN.SetNewThongbao(Lap["Incorrect year"] + ": " + nam + "!");
+                kq = false;
+                break;
+            }
+
+            string ma_dvcs_import = row["ma_dvcs"].ToString().Trim();
+            if (ma_dvcs_import != Ma_dvcs)
+            {
+                myStateMN.SetNewThongbao(Lap["Incorrect unit code"] + ": " + ma_dvcs_import + "!");
+                kq = false;
+                break;
+            }
+        }
+        return kq;
+    }
+
+    public async Task<bool> ShowError(DataErrArgs Args)
+    {
+        DataSet ds = Args.DataErr;
+        bool IsShowErr = false;
+        string strbrowse = "", strTitle = "";
+
+        // Duplicate records
+        if (ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0 && ds.Tables[0].Columns[0].ColumnName == "trung")
+        {
+            if (!IsLangEn)
+            {
+                SisLib.ReportLib.BrowTable(myModal, ds.Tables[0],
+                    "nam:H=Năm;ma_dvcs:H=Mã ĐVCS;ma_kh:H=Mã KH;tk:H=Tài khoản;lan:H=Số dòng bị trùng",
+                    "Những số dư trùng từ dữ liệu Excel", Lap["Cancel"]);
+            }
+            else
+            {
+                SisLib.ReportLib.BrowTable(myModal, ds.Tables[0],
+                    "nam:H=Year;ma_dvcs:H=Unit code;ma_kh:H=Customer code;tk:H=Account;lan:H=Number of duplicate lines",
+                    "The duplicate balance from Excel data", Lap["Cancel"]);
+            }
+            IsShowErr = true;
+        }
+
+        // Invalid customer codes
+        if (ds.Tables.Count > 1 && ds.Tables[1].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ? @"ma_kh:H=Customer code" : @"ma_kh:H=Mã khách hàng";
+            strTitle = IsLangEn ? "List of customer codes not in the customer master" : @"Danh sách mã khách hàng không có trong danh mục khách hàng";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[1], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // Invalid account codes
+        if (ds.Tables.Count > 2 && ds.Tables[2].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ? @"tk:H=Account" : @"tk:H=Tài khoản";
+            strTitle = IsLangEn ? "List of accounts not in chart of accounts or not AR/AP accounts" : "Danh sách tài khoản không có trong danh mục tài khoản hoặc không phải tài khoản công nợ";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[2], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // Invalid unit codes
+        if (ds.Tables.Count > 3 && ds.Tables[3].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ? @"ma_dvcs:H=Unit code" : @"ma_dvcs:H=Mã ĐVCS";
+            strTitle = IsLangEn ? "Unit code list is not in the list of unit code" : "Danh sách mã ĐVCS không có trong danh mục ĐVCS";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[3], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // Year less than opening year
+        if (ds.Tables.Count > 4 && ds.Tables[4].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ? @"nam_ngay_ky1:H=Year" : @"nam_ngay_ky1:H=Năm";
+            strTitle = IsLangEn ? "List of years less than opening year" : "Danh sách năm nhỏ hơn năm mở sổ";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[4], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // Both debit and credit balances
+        if (ds.Tables.Count > 5 && ds.Tables[5].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ?
+                @"nam:H=Year;ma_kh:H=Customer;tk:H=Account;du_no00:H=Opening Dr. balance:N0;du_co00:H=Opening Cr. balance:N0;
+                  du_no_nt00:H=FC Opening Dr. balance:N1;du_co_nt00:H=FC Opening Cr. balance:N1;
+                  du_no1:H=Year-opening Dr. balance:N0;du_co1:H=Year-opening Cr. balance:N0;
+                  du_no_nt1:H=FC Year-opening Dr. balance:N1;du_co_nt1:H=FC Year-opening Cr. balance:N1"
+                : @"nam:H=Năm;ma_kh:H=Khách hàng;tk:H=Tài khoản;du_no00:H=Dư nợ đầu kỳ:N0;du_co00:H=Dư có đầu kỳ:N0;
+                    du_no_nt00:H=Dư nợ đầu kỳ n.tệ:N1;du_co_nt00:H=Dư có đầu kỳ n.tệ:N1;
+                    du_no1:H=Dư nợ đầu năm:N0;du_co1:H=Dư có đầu năm:N0;
+                    du_no_nt1:H=Dư nợ đầu năm n.tệ:N1;du_co_nt1:H=Dư có đầu năm n.tệ:N1";
+
+            strTitle = IsLangEn ? "Not allowed to enter simultaneously debit and credit balances" : "Không được phép nhập đồng thời dư nợ và dư có";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[5], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // Opening and year-opening balance type mismatch
+        if (ds.Tables.Count > 6 && ds.Tables[6].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ?
+                @"nam:H=Year;ma_kh:H=Customer;tk:H=Account;du_no00:H=Opening Dr. balance:N0;du_co00:H=Opening Cr. balance:N0;
+                  du_no_nt00:H=FC Opening Dr. balance:N1;du_co_nt00:H=FC Opening Cr. balance:N1;
+                  du_no1:H=Year-opening Dr. balance:N0;du_co1:H=Year-opening Cr. balance:N0;
+                  du_no_nt1:H=FC Year-opening Dr. balance:N1;du_co_nt1:H=FC Year-opening Cr. balance:N1"
+                : @"nam:H=Năm;ma_kh:H=Khách hàng;tk:H=Tài khoản;du_no00:H=Dư nợ đầu kỳ:N0;du_co00:H=Dư có đầu kỳ:N0;
+                    du_no_nt00:H=Dư nợ đầu kỳ n.tệ:N1;du_co_nt00:H=Dư có đầu kỳ n.tệ:N1;
+                    du_no1:H=Dư nợ đầu năm:N0;du_co1:H=Dư có đầu năm:N0;
+                    du_no_nt1:H=Dư nợ đầu năm n.tệ:N1;du_co_nt1:H=Dư có đầu năm n.tệ:N1";
+
+            strTitle = IsLangEn ? "Opening balance and year-opening balance must be both debit or credit" : "Dư đầu năm, dư đầu kỳ phải cùng là nợ hoặc là có";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[6], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // Foreign currency balance for non-FC accounts
+        if (ds.Tables.Count > 7 && ds.Tables[7].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ?
+                @"nam:H=Year;ma_kh:H=Customer;tk:H=Account;du_no00:H=Opening Dr. balance:N0;du_co00:H=Opening Cr. balance:N0;
+                  du_no_nt00:H=FC Opening Dr. balance:N1;du_co_nt00:H=FC Opening Cr. balance:N1;
+                  du_no1:H=Year-opening Dr. balance:N0;du_co1:H=Year-opening Cr. balance:N0;
+                  du_no_nt1:H=FC Year-opening Dr. balance:N1;du_co_nt1:H=FC Year-opening Cr. balance:N1"
+                : @"nam:H=Năm;ma_kh:H=Khách hàng;tk:H=Tài khoản;du_no00:H=Dư nợ đầu kỳ:N0;du_co00:H=Dư có đầu kỳ:N0;
+                    du_no_nt00:H=Dư nợ đầu kỳ n.tệ:N1;du_co_nt00:H=Dư có đầu kỳ n.tệ:N1;
+                    du_no1:H=Dư nợ đầu năm:N0;du_co1:H=Dư có đầu năm:N0;
+                    du_no_nt1:H=Dư nợ đầu năm n.tệ:N1;du_co_nt1:H=Dư có đầu năm n.tệ:N1";
+
+            strTitle = IsLangEn ? "Not a foreign currency account, cannot enter foreign currency balances" : "Không phải tài khoản n.tệ, không được phép nhập số dư ngoại tệ";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[7], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        return IsShowErr;
+    }
+
+    private bool CheckDataEntryLock()
+    {
+        DateTime M_NGAY_KS = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KS"));
+        DateTime M_NGAY_KY1 = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KY1"));
+
+        if (M_NGAY_KS >= M_NGAY_KY1)
+        {
+            myStateMN.SetNewThongbao(String.Format(Lap["Data entry locked until"] + " [{0}]!", M_NGAY_KS.ToString("dd-MM-yyyy")));
+            return true;
+        }
+        return false;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e is null) return;
+        if (string.Equals(e.Key, "F2", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F2", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_Xem();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        if (string.Equals(e.Key, "F3", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F3", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_Sua();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        if (string.Equals(e.Key, "F4", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F4", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_Them();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+    public override async void Dispose()
+    {        
+        try
+        {
+            await myDb.ExecuteSqlQueryAsync("EXEC Arsd0");
+        }
+        catch { }
+
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+}

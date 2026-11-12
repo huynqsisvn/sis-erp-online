@@ -1,0 +1,706 @@
+﻿@page "/"
+@layout Empty
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager navigation
+@inject IDbManager myDb
+@inject Statemanagerment myStatemanagerment
+@inject ICommandManager Commands
+@using Blazored.LocalStorage;
+@inject ILocalStorageService Localstore
+@inject IOptionsManager myoptions
+@inject ITotpSettingService TotpSetting
+@inject IUserTotpService UserTotp
+@using SisCom.Services.Totp
+@using System.Security.Cryptography
+@using System.Text
+@using System.Data
+@using System.Globalization
+@using Microsoft.Extensions.Localization
+@using Microsoft.JSInterop
+@inject XmlStringLocalizer Lap
+@implements IDisposable
+
+<head>
+    <title>SISERPSME - Phần mềm quản trị DN</title>
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" />
+    <style>
+
+        .div_left {
+            float: left;
+            text-align: center;
+        }
+
+        .div_right {
+            color: dodgerblue;
+            float: right;
+            text-align: center;
+            margin-right: 5px;
+        }
+
+        .wrapper .form-field input {
+            width: 100%;
+            display: block;
+            border: none;
+            outline: none;
+            background: none;
+            font-size: 1.2rem;
+            color: #666;
+            padding: 10px 15px 10px 10px;
+            /* border: 1px solid red; */
+        }
+
+
+        ::placeholder {
+            color: deepskyblue;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        .login-page {
+            width: 100%;
+            height: 100vh;
+            display: inline-block;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-right i {
+            font-size: 100px;
+        }
+
+
+        .inputWithIcon input {
+            width: 100%;
+            border: 1px solid #E8E8E8;
+            height: 35px;
+            margin: 16px 0;
+            padding: 3px 40px;
+            outline: none;
+            box-sizing: border-box;
+            transition: 0.3s;
+            border-radius: 25px;
+            background-color: #eef5ff;
+            box-shadow: 0 0 4px 0 #CCFFFF;
+        }
+
+        .pasWithIcon {
+            position: relative;
+            padding: 0px;
+            height: 45px;
+        }
+
+        .tbbassword {
+            width: 100%;
+            border: 1px solid #E8E8E8;
+            height: 35px;
+            margin: 1px 0;
+            outline: none;
+            padding: 3px 40px;
+            box-sizing: border-box;
+            transition: 0.3s;
+            border-radius: 25px;
+            background-color: #E8F0FE;
+            box-shadow: 0 0 4px 0 #CCFFFF;
+        }
+
+            .tbbassword .inputpas {
+                padding: 1px;
+                height: 28px;
+                background-color: transparent;
+            }
+
+        .pasWithIcon img {
+            position: absolute;
+            right: 18px;
+            top: 9px;
+            height: 16px;
+            width: 16px;
+        }
+
+        .pasWithIcon i {
+            position: absolute;
+            left: 0;
+            top: 13px;
+            padding: 0px 16px;
+            color: dodgerBlue;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            border-color: dodgerBlue;
+            box-shadow: 0 0 16px 0 dodgerBlue;
+        }
+
+        .tbbassword:focus-within {
+            border-color: dodgerBlue !important;
+            box-shadow: 0 0 16px 0 dodgerBlue !important;
+        }
+
+        .center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+    </style>
+</head>
+
+<DxLayoutBreakpoint MaxWidth="1200" @bind-IsActive="@IsMobileLayout" />
+
+<style>
+    /* ===== TOTP enroll: QR mot ben, o nhap xac nhan mot ben ===== */
+    .login_container2--totp {
+        width: 720px !important;
+        min-width: 720px !important;
+        height: auto !important;
+        min-height: 460px;
+        padding: 10px 10px 28px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
+    .totp-enroll {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        align-items: stretch;
+        justify-content: center;
+        padding: 6px 20px;
+    }
+
+        .totp-enroll__qr,
+        .totp-enroll__form {
+            flex: 1 1 270px;
+            min-width: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 8px;
+        }
+
+    .totp-enroll__divider {
+        width: 1px;
+        background: linear-gradient(to bottom, transparent, #d9dee6 20%, #d9dee6 80%, transparent);
+        align-self: stretch;
+    }
+
+    .totp-title {
+        font-weight: 600;
+        font-size: 1.05rem;
+        color: #1f2a44;
+        text-align: center;
+        margin-bottom: 4px;
+    }
+
+    .totp-sub {
+        font-size: 0.85rem;
+        color: #6b7280;
+        text-align: center;
+        margin-bottom: 16px;
+        line-height: 1.35;
+    }
+
+    .totp-qr {
+        width: 200px;
+        height: 200px;
+        border: 1px solid #eef0f4;
+        border-radius: 16px;
+        padding: 10px;
+        background: #fff;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    .totp-secret-label {
+        font-size: 0.78rem;
+        color: #6b7280;
+        margin-top: 16px;
+        text-align: center;
+    }
+
+    .totp-secret {
+        display: inline-block;
+        font-size: 0.92rem;
+        letter-spacing: 2px;
+        word-break: break-all;
+        text-align: center;
+        background: #f3f4f6;
+        border: 1px dashed #cbd2db;
+        border-radius: 8px;
+        padding: 7px 14px;
+        margin-top: 6px;
+        color: #111827;
+    }
+
+    .totp-input {
+        width: 100%;
+        height: 46px;
+    }
+
+        .totp-input input {
+            width: 100%;
+            height: 44px;
+            text-align: center;
+            letter-spacing: 6px;
+            font-size: 1.15rem;
+            font-weight: 600;
+            border: 1px solid #cbd2db;
+            border-radius: 25px;
+            padding: 3px 16px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+            .totp-input input:focus {
+                border-color: #0d6efd;
+                box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+            }
+
+    .totp-confirm-btn {
+        background-color: #0d6efd;
+        color: #fff;
+        width: 100%;
+        display: block;
+        border: none;
+        border-radius: 25px;
+        margin-top: 20px;
+        padding: 10px 0;
+        font-weight: 500;
+        transition: background-color 0.2s;
+    }
+
+        .totp-confirm-btn:hover,
+        .totp-confirm-btn:focus {
+            background-color: #0b5ed7;
+            color: #fff;
+        }
+
+    @@media (max-width: 760px) {
+        .login_container2--totp {
+            width: 350px !important;
+            min-width: 350px !important;
+        }
+
+        .totp-enroll__divider {
+            display: none;
+        }
+    }
+</style>
+
+<div class="container-fluid" style="background-image:url('.\\Images\\erpBG.svg');height: 100vh;background-repeat: no-repeat;background-size:cover;">
+    <div class="row" style="height:5vh;">
+    </div>
+
+    <div class="container" style="padding-top:5vh;">
+        <div class="row">
+            <div class="col-md-3 col-sm-6">  </div>
+            <div class="row col-md-6 col-sm-12 ">
+                <div class="col-2"> </div>
+                <div class="col">
+                    <div class="center">
+                        <div class="login_container2 mt-2 @((_awaitingTotp && _totpEnrollMode && !string.IsNullOrEmpty(_qrImageBase64)) ? "login_container2--totp" : "")">
+                            <div id="space"></div>
+                            <div class="row m-2 justify-content-center">
+                                <div style="height:2vh"></div>
+                                <img src=".\Images\erplogo.svg" style="height:80px;width:280px;" />
+                            </div>
+                            <div style="height:0.5vh;"></div>
+                            <h6 class="text-danger text-center">@Message</h6>
+                            <div class="login-form">
+                                @if (!_awaitingTotp)
+                                {
+                                    <EditForm Model="CurUser" OnValidSubmit="Onsubbmit" class="login-formv">
+                                        <div class="inputWithIcon">
+                                            <input type="text" @bind-value="CurUser.User_name" placeholder="@Lap["username"]">
+                                            <i class="fa fa-user fa-lg fa-fw" aria-hidden="true"></i>
+                                        </div>
+                                        <div style="height:2vh;"></div>
+                                        <div class="pasWithIcon">
+                                            @* <input type="@passtype" @bind-value="@CurUser.Password" placeholder="@Lap["inputpass"]"> *@
+                                            <DxTextBox @bind-Text="@CurUser.Password" Password="@passshow" @key="passtype" NullText="@Lap["inputpass"]" InputId="tbPassword" CssClass="tbbassword" InputCssClass="inputpas" />
+                                            <i class="fa fa-lock fa-lg fa-fw" aria-hidden="true"></i>
+                                            <img src=".\Images\loginpasshow.png" @onclick="ShowPass" />
+                                        </div>
+                                        @if (!IsMobileLayout)
+                                        {
+                                            <div class="row mt-4">
+                                                <span class="text-primary text-center">@Lap["fogetpass"]</span>
+                                            </div>
+                                        }
+                                        <div class="inputWithIcon">
+                                            <button id="btnlogin" class="btn" type="submit">@Lap["login"]</button>
+                                        </div>
+                                        @if (!IsMobileLayout)
+                                        {
+                                            <div class="container_swap">
+                                                <span>@Lap["notcompany"]</span>
+                                                <div class="div_right">  @Lap["register"] </div>
+                                            </div>
+                                            <div id="space"></div>
+                                        }
+                                        else
+                                        {
+                                            <div id="space"></div>
+                                            <div id="space"></div>
+                                        }
+
+                                    </EditForm>
+                                }
+                                else if (_totpEnrollMode && !string.IsNullOrEmpty(_qrImageBase64))
+                                {
+                                    <div class="totp-enroll">
+                                        <div class="totp-enroll__qr">
+                                            <h5 class="totp-title">Thiết lập xác thực</h5>
+                                            <p class="totp-sub">Quét mã QR bằng Microsoft / Google Authenticator</p>
+                                            <img class="totp-qr" src="data:image/png;base64,@_qrImageBase64" />
+                                            @if (!string.IsNullOrEmpty(_totpSecret))
+                                            {
+                                                <div class="totp-secret-label">Hoặc nhập khóa thủ công:</div>
+                                                <code class="totp-secret">@_totpSecret</code>
+                                            }
+                                        </div>
+                                        <div class="totp-enroll__divider"></div>
+                                        <div class="totp-enroll__form">
+                                            <h5 class="totp-title">Nhập mã xác thực</h5>
+                                            <p class="totp-sub">Nhập mã 6 số hiển thị trong ứng dụng</p>
+                                            <div class="inputWithIcon totp-input">
+                                                <input type="text" @bind-value="_totpCode" maxlength="6" placeholder="Mã xác thực 6 số" />
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(_totpError))
+                                            {
+                                                <h6 class="text-danger text-center mt-2">@_totpError</h6>
+                                            }
+                                            <button class="btn totp-confirm-btn" type="button" @onclick="OnSubmitTotpAsync">Xác nhận</button>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="login-formv">
+                                        <p class="text-center">Nhập mã xác thực từ Microsoft Authenticator.</p>
+                                        <div class="inputWithIcon totp-input">
+                                            <input type="text" @bind-value="_totpCode" maxlength="6" placeholder="Mã xác thực 6 số" />
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(_totpError))
+                                        {
+                                            <h6 class="text-danger text-center mt-2">@_totpError</h6>
+                                        }
+                                        <button class="btn totp-confirm-btn" type="button" @onclick="OnSubmitTotpAsync">Xác nhận</button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-2"> </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+@code {
+    string ma_phan_he = "";
+    private string Complogo = @".\Images\Logo.svg";
+    private Users CurUser = new Users();
+    private string Message = "  ";
+    private string passtype = "password";
+    private bool passshow = true;
+    private string UserLang = "Vi", textDangnhap = "Đăng nhập";
+    bool _isMobileLayout;
+    bool IsMobileLayout
+    {
+        get => _isMobileLayout;
+        set
+        {
+            _isMobileLayout = value;
+        }
+    }
+    private int currentCount = 0;
+    private bool _awaitingTotp = false;
+    private bool _totpEnrollMode = false;
+    private string? _qrImageBase64;
+    private string? _totpSecret;
+    private string _totpCode = "";
+    private string _totpError = "";
+    private string _pendingDefaultUrl = "about";
+    private async void Onsubbmit()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(CurUser.User_name) || string.IsNullOrEmpty(CurUser.Password))
+            {
+                Message = Lap["errnameorpass"];
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+			//WLog(String.Format("Login: {0}-{1}-{2}", CurUser.User_name, CurUser.Password, DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")));
+            string inputUserName = CurUser.User_name.Trim();
+            string encryppass = Enc.Encrypt(CurUser.Password);
+
+            // 1) Kiểm tra trước ở bảng userinfo (tài khoản ERP chuẩn, đăng nhập với quyền của chính tài khoản đó)
+            CurUser = await myDb.GetUserbyname(inputUserName, encryppass);
+
+            // 2) Nếu không tồn tại trong userinfo -> kiểm tra tiếp ở userinfo_web
+            //    (tài khoản portal, chạy trên tài khoản Guess về quyền/license nhưng mang danh tính của userinfo_web)
+            if (CurUser == null)
+            {
+                string loginSql = "SELECT * FROM userinfo_web WHERE user_name = @user_name AND password = @password";
+                var loginParams = new Dictionary<string, object>
+                {
+                    ["@user_name"] = inputUserName,
+                    ["@password"] = encryppass
+                };
+                DataSet dsUser = await myDb.LoadDataset(loginSql, loginParams);
+                if (dsUser != null && dsUser.Tables.Count > 0 && dsUser.Tables[0].Rows.Count > 0)
+                {
+                    var webUser = myDb.ConvertDataRow<Users>(dsUser.Tables[0].Rows[0]);
+                    CurUser = await myDb.GetUserbyname("Guess", "5F-A2-85-E1-BE-BE-0A-66-23-E3-3A-FC-04-A1-FB-D5");
+                    if (CurUser != null)
+                    {
+                        // Đè các trường định danh từ userinfo_web, giữ nguyên quyền (PageRole/ButtonRole) của Guess
+                        CurUser.User_name = webUser.User_name;
+                        CurUser.User_id = webUser.User_id;
+                        CurUser.Is_admin = webUser.Is_admin;
+                        CurUser.Email = webUser.Email;
+                        CurUser.Comment = webUser.Comment;
+                        CurUser.Ma_pb = webUser.Ma_pb;
+                        CurUser.Ten_pb = webUser.Ten_pb;
+                        CurUser.Ma_cv = webUser.Ma_cv;
+                        CurUser.Ten_cv = webUser.Ten_cv;
+                    }
+                }
+            }
+
+            Command[] _FavCM = new Command[] { };
+
+            if (CurUser != null)
+            {
+                if (CurUser.Islocked == "1")
+                {
+                    Message = Lap["User is locked, please contact administrator!"];
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+                //Load Options
+                Dvcs _dvcs = myStatemanagerment.GetDvcs();
+                myoptions.LoadData(CurUser.User_id, (_dvcs == null ? "" : _dvcs.Ma_dvcs));
+                myStatemanagerment.SetOptions(myoptions);
+
+                if (!string.IsNullOrEmpty(CurUser.Wr_fav))
+                    _FavCM = Commands.GeteAllMenuID(ma_phan_he).ToArray();
+
+                string defaultUrl = "about";
+                string ma_ph_default = ma_phan_he;
+                if (_FavCM.Length > 0)
+                {
+                    foreach (Command _cm in _FavCM)
+                    {
+                        if (CurUser.Wr_fav.Split('/').Contains(_cm.Menu_id))
+                        {
+                            defaultUrl = string.Format("{0}/{1}", _cm.Mobile_page, _cm.Menu_id.Replace(".", "_"));
+                            break;
+                        }
+                    }
+                }
+                if (String.IsNullOrEmpty(defaultUrl) && ma_ph_default != null)
+                {
+                    DataSet dscmd = myDb.LoadDataSet("Select top 1 menu_id,mobile_page from command where hide_yn = 0 AND is_mobile = '2' AND ma_phan_he = '" +
+                        ma_ph_default.Trim() + "' AND Isnull(mobile_page,'') <>'' order by menu_id0, menu_id");
+                    if (dscmd != null && dscmd.Tables.Count > 0 && dscmd.Tables[0].Rows.Count > 0)
+                    {
+                        defaultUrl = string.Format("{0}/{1}", dscmd.Tables[0].Rows[0]["mobile_page"].ToString(), dscmd.Tables[0].Rows[0]["menu_id"].ToString().Replace(".", "_"));
+                    }
+                }
+                if (string.IsNullOrEmpty(defaultUrl))
+                {
+                    defaultUrl = "about";
+                }
+
+                if (CurUser.Is_admin != 1 && await TotpSetting.GetEnabledAsync())
+                {
+                    var totpRec = await UserTotp.GetByUserIdAsync(CurUser.User_id);
+                    _totpEnrollMode = totpRec == null || !totpRec.IsConfirmed;
+                    if (_totpEnrollMode)
+                    {
+                        string secret = await UserTotp.EnsureSecretAsync(CurUser.User_id);
+                        _totpSecret = secret;
+                        _qrImageBase64 = UserTotp.BuildQrCodePngBase64(UserTotp.BuildOtpAuthUri(secret, CurUser.User_name, "SIS ERP"));
+                    }
+                    _pendingDefaultUrl = defaultUrl;
+                    _awaitingTotp = true;
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+
+                await CompleteLoginAsync(defaultUrl);
+            }
+            else
+            {
+                CurUser = new Users();
+                Message = Lap["errnameorpass"];
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            WLog(ex.Message.Trim());
+        }
+    }
+
+    private async Task CompleteLoginAsync(string defaultUrl)
+    {
+        //myStatemanagerment.SetState(CurUser.Comment, CurUser.User_name, true, CurUser.Is_admin);
+        myStatemanagerment.SetState(CurUser.Comment, CurUser.User_name, CurUser.User_id.ToString(), true, CurUser.Is_admin, CurUser.Ma_pb, CurUser.Ma_cv, CurUser.Ten_cv, CurUser.Ten_pb);
+        myStatemanagerment.SetCurUser(CurUser);
+        ((CustomAuthenticationStateProvider)AuthenticationStateProvider).MarkUserAsAuthenticated(CurUser);
+        // localStorage goi qua JS interop; neu circuit da ngat trong luc hoan tat dang nhap thi bo qua (JSDisconnectedException)
+        // de khong nem loi ra UI - viec ghi log/dieu huong ben duoi van tiep tuc.
+        string session_guid = "";
+        try
+        {
+            Users user = await Localstore.GetItemAsync<Users>("user");
+            if (user != null)
+            {
+                if (!user.User_name.Trim().Equals(CurUser.User_name.Trim()))
+                {
+                    await Localstore.RemoveItemAsync("user");
+                }
+            }
+            await Localstore.SetItemAsync<Users>("user", CurUser);
+
+            session_guid = await Localstore.GetItemAsync<string>("session_guid");
+            if (String.IsNullOrEmpty(session_guid))
+            {
+                session_guid = Guid.NewGuid().ToString();
+                await Localstore.SetItemAsync("session_guid", session_guid);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit da ngat (vi du nguoi dung dong tab/mat ket noi) - khong con goi JS duoc, bo qua.
+        }
+        catch
+        {
+            // Loi localStorage khac: khong chan luong dang nhap.
+        }
+        if (String.IsNullOrEmpty(session_guid))
+        {
+            session_guid = Guid.NewGuid().ToString();
+        }
+        String strSql = String.Format("INSERT INTO [dbo].[userlogs]([date],[time],[user_id],[menu_id],[action],[status],[count],[host]) VALUES (convert(char,getdate(),112),convert(char,getdate(),108),'{0}','{3}','{1}','',0,'{2}')",
+                                    CurUser.User_name.Trim(), "LAN=" + UserLang.Trim(), session_guid.Trim(), @"LOGIN\" + CurUser.User_id.ToString().Trim());
+        await myDb.ExecuteSqlQueryAsync(strSql);
+        navigation.NavigateTo($"{navigation.BaseUri}{defaultUrl}");
+    }
+
+    private async Task OnSubmitTotpAsync()
+    {
+        try
+        {
+            if (await UserTotp.VerifyCodeAsync(CurUser.User_id, _totpCode))
+            {
+                if (_totpEnrollMode)
+                {
+                    await UserTotp.ConfirmAsync(CurUser.User_id);
+                }
+                _totpError = "";
+                await CompleteLoginAsync(_pendingDefaultUrl);
+            }
+            else
+            {
+                _totpError = "Mã xác thực không đúng, vui lòng thử lại";
+                _totpCode = "";
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit da ngat trong luc hoan tat dang nhap - khong nem loi ra UI.
+        }
+        catch (Exception ex)
+        {
+            WLog(ex.Message.Trim());
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        myStatemanagerment.Addstatechange(() => { StateHasChanged(); });
+        CurUser.User_name = "";
+        CurUser.Password = "";
+    }
+    protected override async Task OnInitializedAsync()
+    {
+
+        string session_guid = await Localstore.GetItemAsync<string>("session_guid");
+        if (String.IsNullOrEmpty(session_guid))
+        {
+            session_guid = Guid.NewGuid().ToString();
+            await Localstore.SetItemAsync("session_guid", session_guid);
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+
+        if (firstRender)
+        {
+            ma_phan_he = await Localstore.GetItemAsync<string>("ma_phan_he");
+            UserLang = await Localstore.GetItemAsync<string>("userlang");
+            if (UserLang == null)
+            {
+                UserLang = "Vi";
+                await Localstore.SetItemAsync("userlang", UserLang);
+            }
+            if (UserLang.ToUpper().StartsWith("VI"))
+            {
+                CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("vi-VN");
+                CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("vi-VN");
+            }
+            else if (UserLang.ToUpper().StartsWith("EN"))
+            {
+                CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-us");
+                CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-us");
+            }
+            await Lap.LoadLocalizationAsync(String.Format("{0}", UserLang.Trim()));
+            StateHasChanged();
+        }
+    }
+    public async void ShowPass(EventArgs arg)
+    {
+        if (passtype == "password")
+        {
+            passtype = "text";
+            passshow = false;
+        }
+        else
+        {
+            passtype = "password";
+            passshow = true;
+        }
+    }
+    public void Dispose()
+    {
+        myStatemanagerment.Removestatechange(() => { StateHasChanged(); });
+    }
+
+    public static void WLog(string logMessage)
+    {
+        using (StreamWriter w = File.AppendText(@"..\Sqlerr.txt"))
+        {
+            Log(logMessage.Trim(), w);
+        }
+    }
+
+    //---------------------------------------------------
+    public static void Log(string logMessage, TextWriter w)
+    {
+        w.WriteLine("{0} {1}", DateTime.Now.ToLongTimeString(),
+            DateTime.Now.ToLongDateString());
+        w.WriteLine("{0}", logMessage);
+        w.WriteLine("-------------------------------");
+    }
+}

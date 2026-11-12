@@ -1,0 +1,284 @@
+﻿@page "/fxtinhkh"
+@page "/fxtinhkh/{Menu_id}"
+@inherits FxTinhKHBase
+@attribute [Authorize(Roles = "admin,fxtinhkh")]
+@using SisFx.Pages.Input.FxTinhKH
+@using DevExpress.Blazor
+@using System.Data
+
+@* ================================================================
+   LƯỚI KẾT QUẢ TÍNH PHÂN BỔ
+   ================================================================ *@
+<div class="row mt-1" tabindex="0" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@fbrowse"
+                        Page_size="@Page_size"
+                        SelectItem="CurItem"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@* ================================================================
+   POPUP FILTER / TÍNH PHÂN BỔ
+   ================================================================ *@
+<DxPopup @ref="popFilter"
+         CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="560px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="@Lap["Calculate tool allocation"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="d-flex justify-content-center align-items-center p-4">
+                <div class="spinner-border text-primary" role="status" style="width:4rem;height:4rem;border-width:3px;">
+                    <span class="sr-only">@Lap["Calculating allocation, please wait..."]</span>
+                </div>
+                <span class="ms-3 fs-6 text-primary">@Lap["Executing allocation calculation, please wait..."]</span>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1 pb-2">
+                <DxFormLayout CssClass="w-100" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                    @* --- NĂM --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Year:"]" CaptionCssClass="fw-bold">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:75%;">
+                                <DxSpinEdit @bind-Value="@FilterNam"
+                                            DisplayFormat="####"
+                                            MinValue="2000"
+                                            MaxValue="2099" />
+                            </div>
+                        </div>
+                        
+                    </DxFormLayoutItem>
+
+                    @* --- TỪ KỲ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From period (1-12):"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy1"
+                                                MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy1 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy1 >= 1 && FilterKy1 <= 12)
+                                {
+                                    <span class="badge text-dark">
+                                        @(new DateTime(FilterNam, FilterKy1, 1).ToString("MM/yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- ĐẾN KỲ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To period (1-12):"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy2"
+                                                MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy2 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy2 >= 1 && FilterKy2 <= 12)
+                                {
+                                    <span class="badge text-dark">
+                                        @(new DateTime(FilterNam, FilterKy2, 1).AddMonths(1).AddDays(-1).ToString("MM/yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- DANH SÁCH CÔNG CỤ --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Tool list:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex gap-2">
+                                <DxTextBox Value="@FilterKeyCc"
+                                           ReadOnly="true"
+                                           CssClass="flex-grow-1"
+                                           NullText="@Lap["All tools"]" />
+                                <DxButton Text="@Lap["Select tools"]"
+                                          RenderStyle="ButtonRenderStyle.Secondary"
+                                          IconCssClass="fa fa-list"
+                                          Click="@OpenDmccModal" />
+                                @if (!string.IsNullOrEmpty(FilterKeyCc))
+                                {
+                                    <DxButton Text=""
+                                              RenderStyle="ButtonRenderStyle.Danger"
+                                              IconCssClass="fa fa-times"
+                                              title="@Lap["Clear tool selection"]"
+                                              Click="@ClearKeyCc" />
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+
+                @* ================================================================
+                   MODAL CHỌN CÔNG CỤ
+                   ================================================================ *@
+                @if (ShowModalDmcc)
+                {
+                    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.45);">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header bg-primary text-white py-2">
+                                    <h6 class="modal-title mb-0">
+                                        <i class="fa fa-list me-2"></i>@Lap["Select tools"]
+                                    </h6>
+                                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModalDmcc"></button>
+                                </div>
+                                <div class="modal-body p-2">
+                                    <div class="mb-2 d-flex gap-2">
+                                        <DxTextBox @bind-Text="@DmccSearch"
+                                                   NullText="@Lap["Find tool code/name..."]"
+                                                   CssClass="flex-grow-1" />
+                                        <DxButton Text="@Lap["Search"]"
+                                                  RenderStyle="ButtonRenderStyle.Primary"
+                                                  Click="@(_ => DoSearchDmcc())" />
+                                        <DxButton Text="@Lap["Select all"]"
+                                                  RenderStyle="ButtonRenderStyle.Secondary"
+                                                  Click="@SelectAllDmcc" />
+                                        <DxButton Text="@Lap["Deselect"]"
+                                                  RenderStyle="ButtonRenderStyle.Danger"
+                                                  Click="@ClearDmccSelection" />
+                                    </div>
+
+                                    @if (TblDmcc == null)
+                                    {
+                                        <div class="text-center p-3 text-muted">@Lap["Loading tool list..."]</div>
+                                    }
+                                    else if (TblDmcc.Rows.Count == 0)
+                                    {
+                                        <div class="alert alert-warning p-2 mb-0">@Lap["No tools available."]</div>
+                                    }
+                                    else
+                                    {
+                                        <div style="max-height:380px; overflow-y:auto;">
+                                            <table class="table table-sm table-hover table-bordered mb-0">
+                                                <thead class="table-light sticky-top">
+                                                    <tr>
+                                                        <th style="width:42px;" class="text-center">
+                                                            <input type="checkbox"
+                                                                   checked="@IsAllDmccChecked"
+                                                                   @onchange="@ToggleAllDmcc" />
+                                                        </th>
+                                                        <th>@Lap["Tool Code"]</th>
+                                                        <th>@Lap["Tool Name"]</th>
+                                                        <th>@Lap["Company Unit"]</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (DataRow row in TblDmcc.Rows)
+                                                    {
+                                                        string maCc = row["ma_cc_me"]?.ToString() ?? "";
+                                                        bool isChecked = SelectedDmcc.Contains(maCc);
+                                                        <tr class="@(isChecked ? "table-primary" : "")"
+                                                            style="cursor:pointer;"
+                                                            @onclick="@(() => ToggleDmccRow(maCc))">
+                                                            <td class="text-center" @onclick:stopPropagation>
+                                                                <input type="checkbox"
+                                                                       checked="@isChecked"
+                                                                       @onchange="@(() => ToggleDmccRow(maCc))"
+                                                                       @onclick:stopPropagation />
+                                                            </td>
+                                                            <td>@maCc</td>
+                                                            <td>@(IsLangEn ? row["ten_cc2"]?.ToString() : row["ten_cc"]?.ToString())</td>
+                                                            <td>@row["ma_dvcs"]?.ToString()</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="text-muted small mt-1">
+                                            @Lap["Selected"] <strong>@SelectedDmcc.Count</strong> / @TblDmcc.Rows.Count @Lap["tools"]
+                                        </div>
+                                    }
+                                </div>
+                                <div class="modal-footer py-2 gap-2">
+                                    <DxButton RenderStyle="ButtonRenderStyle.Success"
+                                              Text="@Lap["Confirm"]"
+                                              IconCssClass="fa fa-check"
+                                              Click="@ConfirmDmccSelection" />
+                                    <DxButton RenderStyle="ButtonRenderStyle.Secondary"
+                                              Text="@Lap["Close"]"
+                                              Click="@CloseModalDmcc" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* ================================================================
+                   CONFIRM GHI ĐÈ DỮ LIỆU CŨ
+                   ================================================================ *@
+                @if (ShowConfirmOverwrite)
+                {
+                    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+                        <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+                            <div class="modal-content border-warning">
+                                <div class="modal-header bg-warning py-2">
+                                    <h6 class="modal-title mb-0">
+                                        <i class="fa fa-exclamation-triangle me-2"></i>@Lap["Overwrite data warning"]
+                                    </h6>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-1">
+                                        @Lap["Allocation data already exists for period"] <strong>@FilterKy1 - @FilterKy2 / @FilterNam</strong>.
+                                    </p>
+                                    <p class="mb-0 text-danger">
+                                        <i class="fa fa-exclamation-circle me-1"></i>
+                                        @Lap["Do you want to recalculate and overwrite old data?"]
+                                    </p>
+                                </div>
+                                <div class="modal-footer py-2 gap-2">
+                                    <DxButton RenderStyle="ButtonRenderStyle.Danger"
+                                              Text="@Lap["Yes, recalculate"]"
+                                              IconCssClass="fa fa-calculator"
+                                              Click="@ExecuteTinhPhanBo" />
+                                    <DxButton RenderStyle="ButtonRenderStyle.Secondary"
+                                              Text="@Lap["No, skip"]"
+                                              Click="@CancelOverwrite" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (FilterErrors.Any())
+                {
+                    <div class="alert alert-danger mt-2 p-2 mb-0">
+                        <ul class="mb-0 ps-3">
+                            @foreach (var err in FilterErrors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="d-flex justify-content-end gap-2 m-2">
+                <DxButton RenderStyle="ButtonRenderStyle.Success"
+                          Text="@Lap["Execute allocation calculation"]"
+                          IconCssClass="fa fa-calculator"
+                          Click="@BtnTinhPhanBo_Click" />
+                <DxButton RenderStyle="ButtonRenderStyle.Danger"
+                          Text="@Lap["Close"]"
+                          Click="@CloseFilter" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>

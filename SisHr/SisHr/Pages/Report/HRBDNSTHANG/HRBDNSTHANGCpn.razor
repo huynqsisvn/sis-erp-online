@@ -1,0 +1,391 @@
+﻿@page "/hrbdnsthang"
+@page "/hrbdnsthang/{Menu_id}"
+@inherits RepoBaseComponent
+@attribute [Authorize(Roles = "admin,hrbdnsthang")]
+@using SisHr.Pages.Report.HRBDNSTHANG
+
+@* ================================================================
+   BIỂU ĐỒ BIẾN ĐỘNG NHÂN VIÊN THEO THÁNG
+   ================================================================ *@
+
+@if (ShowChart && ChartData != null && ChartData.Count > 0)
+{
+    <div class="hrbdnsthang-chart-wrapper">
+        <div class="hrbdnsthang-chart-title">
+            @Lap["Employee movement chart by month"] — @Lap["Year:"] @FilterNam
+            @if (!string.IsNullOrEmpty(FilterMaDvcs))
+            {
+                <span> — @FilterMaDvcs</span>
+            }
+        </div>
+
+        <DxChart Data="@ChartData"
+                 Width="100%"
+                 Height="calc(100vh - 140px)"
+                 CssClass="hrbdnsthang-chart">
+            
+            @* Thêm lề Top 30 để các cột cao nhất không bị đụng trần, ép số ra ngoài đồng bộ *@
+            <DxChartMargin Top="30" />
+
+            <DxChartLegend Position="RelativePosition.Outside"
+                           HorizontalAlignment="HorizontalAlignment.Center"
+                           VerticalAlignment="VerticalEdge.Bottom"
+                           Orientation="Orientation.Horizontal" />
+
+            @* 1. Cột Nhân sự đầu tháng *@
+            <DxChartBarSeries Name="@Lap["Beginning of month"]"
+                              ArgumentField="@((HRBDNSTHANGRow r) => r.Thang)"
+                              ValueField="@((HRBDNSTHANGRow r) => r.Ns_dauthang)">
+                <DxChartSeriesLabel Visible="true" Position="RelativePosition.Outside">
+                    <DxChartFont Color="white" Weight="600" />
+                </DxChartSeriesLabel>
+            </DxChartBarSeries>
+
+            @* 2. Cột Tuyển mới *@
+            <DxChartBarSeries Name="@Lap["New employee"]"
+                              ArgumentField="@((HRBDNSTHANGRow r) => r.Thang)"
+                              ValueField="@((HRBDNSTHANGRow r) => r.Ns_moi)">
+                @* <--- SỬA LẠI TÊN BIẾN Ở ĐÂY *@
+                <DxChartSeriesLabel Visible="true" Position="RelativePosition.Outside">
+                    <DxChartFont Color="white" Weight="600" />
+                </DxChartSeriesLabel>
+            </DxChartBarSeries>
+
+            @* 3. Cột Nghỉ việc *@
+            <DxChartBarSeries Name="@Lap["Left employee"]"
+                              ArgumentField="@((HRBDNSTHANGRow r) => r.Thang)"
+                              ValueField="@((HRBDNSTHANGRow r) => r.Ns_nghi)">
+                @* <--- SỬA LẠI TÊN BIẾN Ở ĐÂY *@
+                <DxChartSeriesLabel Visible="true" Position="RelativePosition.Outside">
+                    <DxChartFont Color="white" Weight="600" />
+                </DxChartSeriesLabel>
+            </DxChartBarSeries>
+
+            @* 4. Đường Nhân sự cuối tháng *@
+            <DxChartLineSeries Name="@Lap["End of month"]"
+                               ArgumentField="@((HRBDNSTHANGRow r) => r.Thang)"
+                               ValueField="@((HRBDNSTHANGRow r) => r.Ns_cuoithang)">
+                <DxChartSeriesLabel Visible="true" Position="RelativePosition.Outside">
+                    <DxChartFont Color="#495057" Weight="600" />
+                </DxChartSeriesLabel>
+                <DxChartLineSeriesPoint Visible="true" />
+            </DxChartLineSeries>
+
+        </DxChart>
+    </div>
+}
+else if (ShowChart && (ChartData == null || ChartData.Count == 0))
+{
+    <div class="d-flex justify-content-center align-items-center" style="height:60vh;">
+        <div class="text-muted fs-5">@Lap["No data to display"]</div>
+    </div>
+}
+
+@* ================================================================
+   BỘ LỌC: BIỂU ĐỒ BIẾN ĐỘNG NHÂN VIÊN THEO THÁNG
+   ================================================================ *@
+<DxWindow CloseOnOutsideClick="false"
+          AllowDrag="true"
+          @bind-Visible="@PopupVisible"
+          Width="520px"
+          ShowFooter="true"
+          HeaderText="@Title">
+    <BodyTemplate Context="windowContext">
+        @if (ShowLoadding)
+        {
+            <div class="d-flex justify-content-center align-items-center p-4">
+                <div class="spinner-border text-primary" role="status" style="width:4rem;height:4rem;border-width:3px;">
+                    <span class="sr-only">@Lap["Filtering data..."]</span>
+                </div>
+                <span class="ms-3 fs-6 text-primary">@Lap["Loading data, please wait..."]</span>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1 pb-2">
+                <DxFormLayout CssClass="w-100" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                    @* --- NĂM --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Year:"]" CaptionCssClass="fw-bold">
+                        <Template Context="innerContext">
+                            <div style="width:75%;">
+                                <DxSpinEdit @bind-Value="@FilterNam"
+                                            MinValue="1900"
+                                            MaxValue="2500"
+                                            Increment="1" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+
+                @if (Errors.Any())
+                {
+                    <div class="alert alert-danger mt-3 p-2 mb-0">
+                        <ul class="mb-0 ps-3">
+                            @foreach (var err in Errors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate Context="footerContext">
+        @if (!ShowLoadding)
+        {
+            <div class="d-flex justify-content-end gap-2 m-2">
+                <DxButton RenderStyle="ButtonRenderStyle.Success"
+                          Text="@Lap["OK"]"
+                          IconCssClass="fa fa-check"
+                          Click="@ConfirmGridView_OnOk" />
+                <DxButton RenderStyle="ButtonRenderStyle.Danger"
+                          Text="@Lap["Cancel"]"
+                          IconCssClass="fa fa-times"
+                          Click="@BtnCancel" TabIndex="-1" />
+            </div>
+        }
+    </FooterTemplate>
+</DxWindow>
+
+<style>
+    .hrbdnsthang-chart-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 90px);
+        padding: 0;
+        margin: 0;
+        background-color: #fff;
+    }
+
+    .hrbdnsthang-chart-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-align: center;
+        padding: 12px 8px 8px 8px;
+        margin: 0;
+        color: #333;
+        border-bottom: 1px solid #e0e0e0;
+        flex-shrink: 0;
+    }
+
+    .hrbdnsthang-chart {
+        flex: 1;
+        overflow: auto;
+    }
+
+    ::deep .dxc-series-label {
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    ::deep .dxc-legend {
+        padding: 8px;
+    }
+
+    ::deep .dxc-axis-label {
+        font-size: 11px;
+    }
+</style>
+
+@code {
+    private int FilterNam = DateTime.Now.Year;
+    private string FilterMaDvcs = "";
+
+    private List<string> Errors { get; set; } = new();
+    private List<HRBDNSTHANGRow> ChartData { get; set; }
+    private bool ShowChart { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "wr.bc.24";
+        base.OnInitialized();
+    }
+
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+    }
+
+    private void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+            await Language();
+    }
+
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async void OnDvcsChanged(string ma_dvcs)
+    {
+        FilterMaDvcs = (ma_dvcs == "ALL" ? "" : ma_dvcs);
+        // Tự động reload dữ liệu khi thay đổi dvcs
+        if (ShowChart)
+        {
+            Console.WriteLine($"[HRBDNSTHANG] OnDvcsChanged: FilterMaDvcs={FilterMaDvcs}, reloading data...");
+            await Loaddata();
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmGridView_OnOk()
+    {
+        if (!CheckValid()) return;
+        
+        Console.WriteLine($"[HRBDNSTHANG] ConfirmGridView_OnOk: Closing popup and loading data...");
+        PopupVisible = false;
+        StateHasChanged();
+        
+        // Wait for popup to close properly
+        await Task.Delay(300);
+        
+        await Loaddata();
+        StateHasChanged();
+        
+        Console.WriteLine($"[HRBDNSTHANG] ConfirmGridView_OnOk: Completed");
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool ok = true;
+
+        if (FilterNam <= 0)
+        {
+            Errors.Add(Lap["Year is required."]);
+            ok = false;
+        }
+
+        StateHasChanged();
+        return ok;
+    }
+
+    public override async Task Loaddata()
+    {
+        try
+        {
+            ShowLoadding = true;
+            ShowChart = false;
+            StateHasChanged();
+
+            Console.WriteLine($"[HRBDNSTHANG] Loading data: Nam={FilterNam}, MaDvcs={FilterMaDvcs}");
+
+            var ngayDauNam = new DateTime(FilterNam, DateTime.Now.Month, DateTime.Now.Day);
+            string paramNames = "@ngay_daunam";
+            string paramValues = ngayDauNam.ToString("yyyy-MM-dd");
+
+            Console.WriteLine($"[HRBDNSTHANG] Calling SP: biendongnhansutheothang with param: {paramValues}");
+
+            var ds = await myDb.LoadStoreProcedure("biendongnhansutheothang", paramNames, paramValues);
+
+            Console.WriteLine($"[HRBDNSTHANG] SP returned: {(ds != null ? ds.Tables.Count : 0)} tables");
+
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                ChartData = myDb.ConvertDataTable<HRBDNSTHANGRow>(ds.Tables[0]);
+                Console.WriteLine($"[HRBDNSTHANG] Converted {ChartData.Count} rows to ChartData");
+                ShowChart = true;
+            }
+            else
+            {
+                Console.WriteLine($"[HRBDNSTHANG] No data returned from SP");
+                ChartData = new List<HRBDNSTHANGRow>();
+                ShowChart = false;
+                myStateMN.SetNewThongbao(Lap["No data to display"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[HRBDNSTHANG] ERROR: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine($"[HRBDNSTHANG] StackTrace: {ex.StackTrace}");
+            myStateMN.SetNewThongbao(Lap["Error loading data:"] + " " + ex.Message);
+            ChartData = new List<HRBDNSTHANGRow>();
+            ShowChart = false;
+        }
+        finally
+        {
+            ShowLoadding = false;
+            Console.WriteLine($"[HRBDNSTHANG] Loading completed. ShowChart={ShowChart}, ShowLoadding={ShowLoadding}");
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                CurUser = myStateMN.GetCurUser();
+                FilterMaDvcs = myStateMN.GetMa_Dvcs();
+                FilterMaDvcs = (FilterMaDvcs == "ALL" ? "" : FilterMaDvcs);
+
+                await PageLoad();
+                await Language();
+                await Lap.LoadLocalizationAsync($"hr-{(IsLangEn ? "en" : "vi")}");
+
+                if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+                {
+                    myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                    myStateMN.SetToolBar(new MyToolbar("Search", true, "Ctrl + F"));
+                }
+                else
+                {
+                    myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+                }
+
+                myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+                myStateMN.OnLangguaChanged += OnLangguachange;
+                myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+                PopupVisible = true;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnAfterRenderAsync: {ex.Message}");
+                myStateMN.SetNewThongbao($"Error: {ex.Message}");
+            }
+        }
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+    void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+}

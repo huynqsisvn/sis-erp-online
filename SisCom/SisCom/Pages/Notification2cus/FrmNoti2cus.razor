@@ -1,0 +1,104 @@
+﻿@page "/frmnoti2cus/{menu_id}"
+@page "/frmnoti2cus/{menu_id}/{notificationID}"
+@inject Statemanagerment myStatemanagerment
+@inject IStringLocalizer<EditFormNoti2cus> Lat
+@implements IDisposable
+@inject ILocalStorageService Localstore
+@attribute [Authorize(Roles = "admin,notification2cus")]
+
+<DxWindow @bind-Visible="@PopupVisible"
+          ShowFooter="true" Width="520px"
+          AllowResize="true" ShowCloseButton="false" CloseOnEscape="true"
+          HeaderText="@Lat["Notification to Customers"]">
+    <BodyTemplate>
+        <div class="m-2 p-2" style="border-width:1px;border-radius:5px;border-color:gray;">
+        <CascadingValue Name="IsLangEn" Value="@IsLangEn">
+            <CascadingValue Name="Menu_id" Value="@menu_id">
+                <EditFormNoti2cus notificationID="@notificationID"></EditFormNoti2cus>
+            </CascadingValue>
+        </CascadingValue>
+        </div>
+    </BodyTemplate>
+</DxWindow>
+@code {
+    [Parameter]
+    public string menu_id { get; set; }   
+    [Parameter]
+    public string notificationID { get; set; }
+  
+    public bool PopupVisible { get; set; } = true;
+    private ActionTask curActionTask { get; set; }
+    private string Pagetitle = "Notification";
+    private string userLang { get; set; } = "";
+    private bool IsLangEn = false;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            myStatemanagerment.OnLangguaChanged += OnLangguachange;
+        }
+    }
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            userLang = await Localstore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(userLang))
+            {
+                if (userLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+    public void Dispose()
+    {
+        myStatemanagerment.OnLangguaChanged -= OnLangguachange;
+    }
+    protected override void OnInitialized()
+    {
+        curActionTask = myStatemanagerment.GetCurrentActionTask();
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                {
+                    Pagetitle = Lat["View Notification"];
+                    break;
+                }
+            case ActionTask.Edit:
+                {
+                    Pagetitle = Lat["Edit Notification"];
+                    break;
+                }
+            case ActionTask.New:
+                {
+                    Pagetitle = Lat["New Notification"];
+                    break;
+                }
+            case ActionTask.Delete:
+                {
+                    Pagetitle = Lat["Delete Notification"];
+                    break;
+                }
+            default:
+                {
+                    Pagetitle = Lat["View Notification"];
+                    break;
+                }
+        }
+    }
+}

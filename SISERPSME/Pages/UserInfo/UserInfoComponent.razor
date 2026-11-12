@@ -1,0 +1,133 @@
+@page "/user-info"
+@inject NavigationManager navigation
+@inject Statemanagerment myStatemanagerment
+@inject ITotpSettingService TotpSetting
+@inject IUserTotpService UserTotp
+@using SisCom.Services.Totp
+
+<div class="row m-3">
+    <h4>Cài đặt xác thực hai bước (TOTP)</h4>
+    <div class="col-12 mt-3">
+        <DxCheckBox @bind-Checked="_isEnabled">
+            Bật xác thực TOTP (Microsoft Authenticator / Google Authenticator) cho toàn hệ thống
+        </DxCheckBox>
+    </div>
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="col-12 mt-2 text-success">@_message</div>
+    }
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="col-12 mt-2 text-danger">@_error</div>
+    }
+    <div class="col-12 mt-3">
+        <button class="btn btn-primary" @onclick="SaveAsync">Lưu</button>
+    </div>
+
+    <hr class="mt-4" />
+    <div class="col-12">
+        <h5>Reset TOTP cho người dùng</h5>
+        <div class="text-muted mb-2">
+            Dùng khi người dùng mất điện thoại hoặc app Authenticator giữ secret cũ (nhập mã luôn sai).
+            Sau khi reset, lần đăng nhập kế tiếp của người dùng sẽ hiện QR mới để quét lại.
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(_resetMessage))
+    {
+        <div class="col-12 text-success">@_resetMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(_resetError))
+    {
+        <div class="col-12 text-danger">@_resetError</div>
+    }
+    <div class="col-12 col-md-6 mt-2">
+        <DxTextBox @bind-Text="_resetUserName" NullText="Nhập tên đăng nhập " />
+    </div>
+    <div class="col-12 mt-2">
+        <button class="btn btn-warning" @onclick="ResetTotpAsync">Reset TOTP</button>
+    </div>
+</div>
+
+@code {
+    private Users? _curUser;
+    private bool _isEnabled;
+    private string _message = "";
+    private string _error = "";
+    private string _resetUserName = "";
+    private string _resetMessage = "";
+    private string _resetError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isEnabled = await TotpSetting.GetEnabledAsync();
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _curUser = myStatemanagerment.GetCurUser();
+            if (_curUser == null || _curUser.Is_admin != 1)
+            {
+                navigation.NavigateTo("");
+            }
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_curUser == null || _curUser.Is_admin != 1)
+        {
+            navigation.NavigateTo("");
+            return;
+        }
+        _message = "";
+        _error = "";
+        try
+        {
+            await TotpSetting.SetEnabledAsync(_isEnabled, _curUser.User_name);
+            _message = "Đã lưu cấu hình.";
+        }
+        catch (Exception ex)
+        {
+            _error = "Không lưu được cấu hình TOTP: " + ex.Message;
+        }
+        StateHasChanged();
+    }
+
+    private async Task ResetTotpAsync()
+    {
+        if (_curUser == null || _curUser.Is_admin != 1)
+        {
+            navigation.NavigateTo("");
+            return;
+        }
+        _resetMessage = "";
+        _resetError = "";
+        if (string.IsNullOrWhiteSpace(_resetUserName))
+        {
+            _resetError = "Vui lòng nhập tên đăng nhập.";
+            StateHasChanged();
+            return;
+        }
+        try
+        {
+            bool found = await UserTotp.ResetByUsernameAsync(_resetUserName);
+            if (found)
+            {
+                _resetMessage = $"Đã reset TOTP cho '{_resetUserName.Trim()}'. Lần đăng nhập kế tiếp sẽ hiện QR mới.";
+                _resetUserName = "";
+            }
+            else
+            {
+                _resetError = $"Không tìm thấy người dùng '{_resetUserName.Trim()}'.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _resetError = "Không reset được TOTP: " + ex.Message;
+        }
+        StateHasChanged();
+    }
+}

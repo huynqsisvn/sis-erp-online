@@ -1,0 +1,368 @@
+﻿@* Phân nhóm tài sản - Tương đương FrmDMPhanNhom.xaml trong WinForm *@
+@inject IDbManager myDb
+@inject Statemanagerment myStateMN
+
+<div class="row" style="height: 60vh; min-height: 400px;">
+        
+        @* === LEFT: Danh sách nhóm TS === *@
+        <div class="col-3 border-end pe-2 h-100">
+            @* Bọc DxGrid vào một div có overflow-auto để tạo thanh cuộn *@
+            <div class="w-100 h-100" style="overflow: auto;">
+                <DxGrid Data="@LstNhom"
+                        ShowGroupPanel="false"
+                        ShowFilterRow="true"
+                        SelectionMode="GridSelectionMode.Single"
+                        AllowSelectRowByClick="true"
+                        SelectedDataItem="@SelectedNhom"
+                        SelectedDataItemChanged="@(async (object item) => await OnNhomSelected(item))"
+                        PageSize="1000"
+                        PagerVisible="false"
+                        CssClass="border"
+                        KeyFieldName="Ma_nh">
+                    <Columns>
+                        <DxGridDataColumn FieldName="Ma_nh" Caption="@(IsLangEn ? "Group code" : "Mã nhóm")" Width="100px" />
+                        <DxGridDataColumn FieldName="@(IsLangEn ? "Ten_nh2" : "Ten_nh")" Caption="@(IsLangEn ? "Group name" : "Tên nhóm")" />
+                    </Columns>
+                </DxGrid>
+            </div>
+        </div>
+
+        @* === RIGHT: Danh sách tài sản thuộc nhóm đang chọn === *@
+        <div class="col-9 ps-2 h-100">
+            @* Bọc DxGrid vào một div có overflow-auto để tạo thanh cuộn *@
+            <div class="w-100 h-100" style="overflow: auto;">
+                <DxGrid @ref="GridTS"
+                        Data="@LstTaiSanFiltered"
+                        ShowGroupPanel="false"
+                        ShowFilterRow="true"
+                        SelectionMode="GridSelectionMode.Multiple"
+                        @bind-SelectedDataItems="@SelectedTaiSan"
+                        PageSize="1000"
+                        PagerVisible="false"
+                        KeyFieldName="So_the_ts"
+                        CssClass="border">
+                    <Columns>
+                        <DxGridSelectionColumn Width="50px" Caption="@(IsLangEn ? "Select" : "Chọn")" />
+                        <DxGridDataColumn FieldName="Loai_ts" Caption="@(IsLangEn ? "Type" : "Loại TS")" Width="80px" />
+                        <DxGridDataColumn FieldName="So_the_ts" Caption="@(IsLangEn ? "Asset code" : "Mã tài sản")" Width="120px" />
+                        <DxGridDataColumn FieldName="@(IsLangEn ? "Ten_ts2" : "Ten_ts")" Caption="@(IsLangEn ? "Asset name" : "Tên tài sản")" />
+                        <DxGridDataColumn FieldName="Ma_bpts" Caption="@(IsLangEn ? "Dept" : "Mã bpsd")" Width="100px" />
+                        <DxGridDataColumn FieldName="Ma_dvcs" Caption="@(IsLangEn ? "Unit" : "Mã ĐVCS")" Width="80px" />
+                    </Columns>
+                </DxGrid>
+            </div>
+        </div>
+    </div>
+
+    @* === FOOTER: Radio chọn loại nhóm (trái) + Buttons (phải) === *@
+    <div class="row mt-2 pt-2 border-top align-items-center">
+        <div class="col-auto">
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="rdoNhom" id="rdoNhom1" checked="@(g_loai_nh == 1)" @onchange="@(async () => await OnLoaiNhChanged(1))" />
+                <label class="btn btn-outline-primary btn-sm" for="rdoNhom1">@(IsLangEn ? "Group 1" : "Nhóm 1")</label>
+
+                <input type="radio" class="btn-check" name="rdoNhom" id="rdoNhom2" checked="@(g_loai_nh == 2)" @onchange="@(async () => await OnLoaiNhChanged(2))")/>
+                <label class="btn btn-outline-primary btn-sm" for="rdoNhom2">@(IsLangEn ? "Group 2" : "Nhóm 2")</label>
+
+                <input type="radio" class="btn-check" name="rdoNhom" id="rdoNhom3" checked="@(g_loai_nh == 3)" @onchange="@(async () => await OnLoaiNhChanged(3))") />
+                <label class="btn btn-outline-primary btn-sm" for="rdoNhom3">@(IsLangEn ? "Group 3" : "Nhóm 3")</label>
+            </div>
+        </div>
+        <div class="col-auto ms-auto">
+            <DxButton Text="@(IsLangEn ? "Assign group" : "Phân nhóm")" RenderStyle="ButtonRenderStyle.Primary" Click="@BtnPhanNhom_Click" CssClass="me-1" IconCssClass="fa fa-check" />
+            <DxButton Text="@(IsLangEn ? "Remove group" : "Hủy phân nhóm")" RenderStyle="ButtonRenderStyle.Warning" Click="@BtnHuyPhanNhom_Click" CssClass="me-1" IconCssClass="fa fa-times" />
+            <DxButton Text="@(IsLangEn ? "Close" : "Đóng")" RenderStyle="ButtonRenderStyle.Secondary" Click="@BtnClose_Click" IconCssClass="fa fa-sign-out" />
+        </div>
+    </div>
+
+<DxPopup @bind-Visible="@ShowChonNhom"
+         HeaderText="@(IsLangEn ? "Select group to assign" : "Chọn nhóm để gán")"
+         ShowFooter="false" CloseOnEscape="true" ShowCloseButton="true" Width="400px">
+    <BodyContentTemplate>
+        @if (ShowChonNhom) 
+        {
+            <div class="p-3">
+                <div class="row pb-3">
+                    <label class="col-4 col-form-label">@(IsLangEn ? "Group" : "Nhóm TS"):</label>
+                    <DxComboBox CssClass="col"
+                                Data="@LstNhomForAssign"
+                                ValueFieldName="Ma_nh"
+                                TextFieldName="@(IsLangEn ? "Ten_nh2" : "Ten_nh")"
+                                @bind-Value="@AssignMaNh"
+                                NullText="@(IsLangEn ? "Select ..." : "Chọn ...")"
+                                FilteringMode="DataGridFilteringMode.Contains"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto">
+                        <Columns>
+                            <DxListEditorColumn FieldName="Ma_nh" Caption="@(IsLangEn ? "Code" : "Mã")" Width="60px" />
+                            <DxListEditorColumn FieldName="@(IsLangEn ? "Ten_nh2" : "Ten_nh")" Caption="@(IsLangEn ? "Name" : "Tên nhóm")" />
+                        </Columns>
+                    </DxComboBox>
+                </div>
+                <div class="text-end">
+                    <DxButton Text="OK" RenderStyle="ButtonRenderStyle.Primary" Click="@ConfirmPhanNhom" CssClass="me-2" />
+                    <DxButton Text="@(IsLangEn ? "Cancel" : "Hủy")" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => ShowChonNhom = false)" />
+                </div>
+            </div>
+        }
+    </BodyContentTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public int FilterLoaiNh { get; set; } = 1;
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private int g_loai_nh = 1;
+    private string g_ma_nh = "";
+
+    private List<NhomTsItem> LstNhom = new();
+    private List<NhomTsItem> LstNhomForAssign = new();
+    private List<TaiSanItem> LstTaiSanAll = new();
+    private List<TaiSanItem> LstTaiSanFiltered = new();
+    private NhomTsItem SelectedNhom;
+    private IReadOnlyList<object> SelectedTaiSan = new List<object>();
+    private DxGrid GridTS;
+
+    private bool ShowChonNhom = false;
+    private string AssignMaNh = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        g_loai_nh = FilterLoaiNh;
+        await LoadNhom();
+        await LoadTaiSan();
+        FilterTaiSan();
+    }
+
+    async Task LoadNhom()
+    {
+        try
+        {
+            string sql = $"Select ma_nh, ten_nh, ten_nh2 From dmnhts Where loai_nh = {g_loai_nh} Order by ma_nh";
+            DataSet ds = await myDb.LoadDataset(sql);
+            LstNhom = new List<NhomTsItem>();
+            LstNhom.Add(new NhomTsItem { Ma_nh = "", Ten_nh = "<Chưa phân nhóm>", Ten_nh2 = "<Not grouped>" });
+            if (ds?.Tables[0] != null)
+            {
+                foreach (DataRow r in ds.Tables[0].Rows)
+                {
+                    LstNhom.Add(new NhomTsItem
+                    {
+                        Ma_nh = r["ma_nh"]?.ToString()?.Trim() ?? "",
+                        Ten_nh = r["ten_nh"]?.ToString()?.Trim() ?? "",
+                        Ten_nh2 = r["ten_nh2"]?.ToString()?.Trim() ?? ""
+                    });
+                }
+            }
+            LstNhomForAssign = LstNhom.Where(x => !string.IsNullOrEmpty(x.Ma_nh)).ToList();
+            if (LstNhom.Count > 0)
+                SelectedNhom = LstNhom[0];
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("LoadNhom error: " + ex.Message);
+        }
+    }
+
+    async Task LoadTaiSan()
+    {
+        try
+        {
+            string sql = "Select so_the_ts, ten_ts, ten_ts2, nh_ts1, nh_ts2, nh_ts3, loai_ts, ma_bpts, ma_dvcs from dmts order by ma_dvcs, loai_ts, ma_bpts";
+            DataSet ds = await myDb.LoadDataset(sql);
+            LstTaiSanAll = new List<TaiSanItem>();
+            if (ds?.Tables[0] != null)
+            {
+                foreach (DataRow r in ds.Tables[0].Rows)
+                {
+                    LstTaiSanAll.Add(new TaiSanItem
+                    {
+                        So_the_ts = r["so_the_ts"]?.ToString()?.Trim() ?? "",
+                        Ten_ts = r["ten_ts"]?.ToString()?.Trim() ?? "",
+                        Ten_ts2 = r["ten_ts2"]?.ToString()?.Trim() ?? "",
+                        Loai_ts = r["loai_ts"]?.ToString()?.Trim() ?? "",
+                        Nh_ts1 = r["nh_ts1"]?.ToString()?.Trim() ?? "",
+                        Nh_ts2 = r["nh_ts2"]?.ToString()?.Trim() ?? "",
+                        Nh_ts3 = r["nh_ts3"]?.ToString()?.Trim() ?? "",
+                        Ma_bpts = r["ma_bpts"]?.ToString()?.Trim() ?? "",
+                        Ma_dvcs = r["ma_dvcs"]?.ToString()?.Trim() ?? ""
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("LoadTaiSan error: " + ex.Message);
+        }
+    }
+
+    void FilterTaiSan()
+    {
+        LstTaiSanFiltered = g_loai_nh switch
+        {
+            1 => LstTaiSanAll.Where(x => x.Nh_ts1 == g_ma_nh).ToList(),
+            2 => LstTaiSanAll.Where(x => x.Nh_ts2 == g_ma_nh).ToList(),
+            _ => LstTaiSanAll.Where(x => x.Nh_ts3 == g_ma_nh).ToList()
+        };
+        
+        SelectedTaiSan = new List<object>();
+        GridTS?.ClearSelection(); // THÊM DÒNG NÀY ĐỂ RESET LƯỚI
+    }
+
+    async Task OnLoaiNhChanged(int loaiNh)
+    {
+        g_loai_nh = loaiNh;
+        g_ma_nh = "";
+        await LoadNhom();
+        
+        // Tự động focus vào dòng đầu tiên khi chuyển tab Nhóm 1/2/3
+        if (LstNhom.Count > 0)
+        {
+            SelectedNhom = LstNhom[0];
+            g_ma_nh = SelectedNhom.Ma_nh;
+        }
+        else
+        {
+            SelectedNhom = null;
+        }
+        
+        FilterTaiSan();
+        await InvokeAsync(StateHasChanged); // ÉP MÀN HÌNH VẼ LẠI NGAY LẬP TỨC
+    }
+
+    async Task OnNhomSelected(object item)
+    {
+        SelectedNhom = item as NhomTsItem;
+        if (item is NhomTsItem nhom)
+        {
+            g_ma_nh = nhom.Ma_nh;
+        }
+        else
+        {
+            g_ma_nh = "";
+        }
+        
+        FilterTaiSan();
+        await InvokeAsync(StateHasChanged); // Bắt buộc phải có dòng này để lưới phải nhảy
+    }
+    void BtnPhanNhom_Click()
+    {
+        if (SelectedTaiSan == null || SelectedTaiSan.Count == 0)
+        {
+            myStateMN.SetNewThongbao(IsLangEn ? "No assets selected" : "Chưa chọn tài sản!");
+            return;
+        }
+        AssignMaNh = "";
+        ShowChonNhom = true;
+        StateHasChanged();
+    }
+
+    async Task ConfirmPhanNhom()
+    {
+        if (string.IsNullOrEmpty(AssignMaNh))
+        {
+            myStateMN.SetNewThongbao(IsLangEn ? "Please select a group" : "Chưa chọn nhóm!");
+            return;
+        }
+        ShowChonNhom = false;
+
+        try
+        {
+            foreach (var obj in SelectedTaiSan)
+            {
+                if (obj is TaiSanItem ts)
+                {
+                    await UpdateTSGroup(ts.So_the_ts, AssignMaNh);
+                    UpdateLocalTS(ts, AssignMaNh);
+                }
+            }
+            myStateMN.SetNewThongbao(String.Format(IsLangEn ? "Assigned {0} assets to group [{1}]" : "Đã phân {0} tài sản vào nhóm [{1}]", SelectedTaiSan.Count, AssignMaNh));
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+        }
+
+        FilterTaiSan();
+        StateHasChanged();
+    }
+
+    async Task BtnHuyPhanNhom_Click()
+    {
+        if (SelectedTaiSan == null || SelectedTaiSan.Count == 0)
+        {
+            myStateMN.SetNewThongbao(IsLangEn ? "No assets selected" : "Chưa chọn tài sản!");
+            return;
+        }
+
+        try
+        {
+            int count = SelectedTaiSan.Count;
+            foreach (var obj in SelectedTaiSan)
+            {
+                if (obj is TaiSanItem ts)
+                {
+                    await UpdateTSGroup(ts.So_the_ts, "");
+                    UpdateLocalTS(ts, "");
+                }
+            }
+            myStateMN.SetNewThongbao(String.Format(IsLangEn ? "Removed {0} assets from group" : "Đã hủy phân nhóm {0} tài sản", count));
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+        }
+
+        FilterTaiSan();
+        StateHasChanged();
+    }
+
+    async Task UpdateTSGroup(string so_the_ts, string ma_nh)
+    {
+        string col = g_loai_nh switch
+        {
+            1 => "nh_ts1",
+            2 => "nh_ts2",
+            _ => "nh_ts3"
+        };
+        string sql = $"Update dmts set {col} = '{(ma_nh ?? "").Replace("'", "''")}' where so_the_ts = '{(so_the_ts ?? "").Replace("'", "''")}'";
+        await myDb.ExecuteSqlQueryAsync(sql);
+    }
+
+    void UpdateLocalTS(TaiSanItem ts, string ma_nh)
+    {
+        var item = LstTaiSanAll.FirstOrDefault(x => x.So_the_ts == ts.So_the_ts);
+        if (item == null) return;
+        switch (g_loai_nh)
+        {
+            case 1: item.Nh_ts1 = ma_nh; break;
+            case 2: item.Nh_ts2 = ma_nh; break;
+            default: item.Nh_ts3 = ma_nh; break;
+        }
+    }
+
+    void BtnClose_Click()
+    {
+        OnClose.InvokeAsync();
+    }
+
+    public class NhomTsItem
+    {
+        public string Ma_nh { get; set; } = "";
+        public string Ten_nh { get; set; } = "";
+        public string Ten_nh2 { get; set; } = "";
+    }
+
+    public class TaiSanItem
+    {
+        public string So_the_ts { get; set; } = "";
+        public string Ten_ts { get; set; } = "";
+        public string Ten_ts2 { get; set; } = "";
+        public string Loai_ts { get; set; } = "";
+        public string Nh_ts1 { get; set; } = "";
+        public string Nh_ts2 { get; set; } = "";
+        public string Nh_ts3 { get; set; } = "";
+        public string Ma_bpts { get; set; } = "";
+        public string Ma_dvcs { get; set; } = "";
+    }
+}

@@ -1,0 +1,369 @@
+@page "/dmxnns"
+@page "/dmxnns/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,dmxnns")]
+@using SisHr.Pages.Input.DMXNNS
+@using DevExpress.Blazor
+@using System.Data
+
+<div class="row mt-1" tabindex="0" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@fbrowse"
+                        Page_size="@Page_size"
+                        SelectItem="CurItem"
+                        OnRowDbClick="@OnRDBClick"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="70vw"
+              MinWidth="700px"
+              MinHeight="500px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (frmPrintVisible)
+{
+    <DxPopup @ref="popPrint"
+             CloseOnOutsideClick="false"
+             CssClass="dxPopup"
+             @bind-Visible="@frmPrintVisible"
+             Width="80%" Height="90%"
+             ShowFooter="false"
+             HeaderText="@Lap["Print document handover"]">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@LsData"
+                                   Menu_id="@Menu_id.Replace('_', '.')"
+                                   OnBack="@(() => { frmPrintVisible = false; StateHasChanged(); })" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@code {
+    private DxPopup popPrint;
+    private bool frmPrintVisible = false;
+    private List<DmxnnsModel> LsData;
+
+    protected override void OnInitialized()
+    {
+        mPage        = "dmxnns";
+        editPage     = "";
+        sqlTableName = "DMXNNS";
+        sqlTableView = "v_DMXNNSDTDetails";
+        SqlTableKey  = "ma_ns";
+        SqlItemName  = "ma_ns";
+        IsShowCopy   = false;
+        IsShowImport = false;
+        FrmType      = typeof(FrmDmxnns);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wr.ct.10";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Loaddata();
+
+            string menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New",     true,  "F4"));
+                myStateMN.SetToolBar(new MyToolbar("Copy",    false));
+                myStateMN.SetToolBar(new MyToolbar("Import",  false));
+                myStateMN.SetToolBar(new MyToolbar("Edit",    true,  "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save",    false));
+                myStateMN.SetToolBar(new MyToolbar("Delete",  true,  "F8"));
+                myStateMN.SetToolBar(new MyToolbar("Change",  false));
+                myStateMN.SetToolBar(new MyToolbar("View",    true,  "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print",   true,  "F7"));
+                myStateMN.SetToolBar(new MyToolbar("Export",  true));
+                myStateMN.SetToolBar(new MyToolbar("Search",  false, "Ctrl + F"));
+                myStateMN.SetToolBar(new MyToolbar("Quit",    false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged    += OnLangguachange;
+
+            StateHasChanged();
+        }
+        else
+        {
+            if (oBrowse != null)
+                await oBrowse.FocusGridAsync();
+        }
+    }
+
+    public override async Task PageLoad()
+    {
+        try
+        {
+            if (myCommand == null) return;
+            curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+            if (curCommand != null)
+            {
+                fbrowse   = IsLangEn ? curCommand.Vbrowse2 : curCommand.Vbrowse1;
+                string ps = myOption.GetOptionsValue("M_GRID_NROW");
+                Page_size = string.IsNullOrEmpty(ps) ? 50 : int.Parse(ps.Trim());
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("PageLoad error: " + ex.Message);
+        }
+    }
+
+    public override async Task Loaddata()
+    {
+        SelectedItem = null;
+
+        string sql = "IF OBJECT_ID('tempdb..#tmp') IS NOT NULL DROP TABLE #tmp; "
+                   + "SELECT IDENTITY(int,1,1) AS stt, * INTO #tmp FROM " + sqlTableView + "; "
+                   + "SELECT * FROM #tmp;";
+
+        DataSet ds = await myDb.LoadDataset(sql);
+        TblData = ds?.Tables[0];
+
+        if (TblData != null && TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+
+        StateHasChanged();
+    }
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Them();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Print:
+                DoPrint();
+                StateHasChanged();
+                break;
+        }
+    }
+
+    public virtual void V_Them()
+    {
+        Par.Clear();
+        Par.Add("Ma_ma",         (object)"");
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("ShowAdd",       (object)true);
+        Par.Add("curActionTask", (object)ActionTask.New);
+        Par.Add("OnClose",       EventCallback.Factory.Create(this, CloseForm));
+        FrmType = typeof(FrmDmxnns);
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Sua()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null) { myStateMN.SetNewThongbao(Lap["No data row selected"]); return; }
+
+        string key = rview["ma_ns"].ToString().Trim();
+
+        Par.Clear();
+        Par.Add("Ma_ma",         (object)key);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("ShowAdd",       (object)true);
+        Par.Add("curActionTask", (object)ActionTask.Edit);
+        Par.Add("OnClose",       EventCallback.Factory.Create(this, CloseForm));
+        FrmType = typeof(FrmDmxnns);
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public virtual void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null) { myStateMN.SetNewThongbao(Lap["No data row selected"]); return; }
+
+        string key = rview["ma_ns"].ToString().Trim();
+
+        Par.Clear();
+        Par.Add("Ma_ma",         (object)key);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("ShowAdd",       (object)true);
+        Par.Add("curActionTask", (object)ActionTask.View);
+        Par.Add("OnClose",       EventCallback.Factory.Create(this, CloseForm));
+        FrmType = typeof(FrmDmxnns);
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public virtual async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null) { myStateMN.SetNewThongbao(Lap["No data row selected"]); return; }
+
+        string ma_ns = rview["ma_ns"].ToString().Trim();
+
+        var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+        {
+            Text             = Lap["Are you sure want to delete"] + " [" + ma_ns + "] ? " + Lap["Detail records will also be deleted"],
+            Title            = Lap["Delete confirmation"],
+            OkButtonText     = Lap["Yes"],
+            CancelButtonText = Lap["No"],
+            ShowIcon         = true,
+            ShowCloseButton  = false,
+            RenderStyle      = MessageBoxRenderStyle.Danger
+        });
+
+        if (!confirm) return;
+
+        try
+        {
+            string safe = ma_ns.Replace("'", "''");
+            string sqlDel = "DELETE FROM DMXNNSDT WHERE ma_ns='" + safe + "'; "
+                          + "DELETE FROM DMXNNS WHERE ma_ns='" + safe + "'";
+            await myDb.ExecuteSqlQueryAsync(sqlDel);
+            await Loaddata();
+            myStateMN.SetNewThongbao(Lap["Delete successful"] + ": " + ma_ns);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Delete failed"] + ": " + ex.Message);
+        }
+    }
+
+    private void DoPrint()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null)
+        {
+            myStateMN.SetNewThongbao(Lap["No data row selected"]);
+            return;
+        }
+
+        string ma_ns = rview["ma_ns"].ToString().Trim();
+        string safe = ma_ns.Replace("'", "''");
+
+        string sqlPh = "SELECT v_dmxnns.*, dmns.ten_ns, dmbpns.ten_bpns "
+                     + "FROM v_dmxnns "
+                     + "LEFT JOIN dmns ON v_dmxnns.ma_ns = dmns.ma_ns "
+                     + "LEFT JOIN dmbpns ON dmns.ma_bpns = dmbpns.ma_bpns "
+                     + "WHERE v_dmxnns.ma_ns = '" + safe + "'";
+        DataTable dtPh = myDb.GetTable(sqlPh);
+
+        string sqlNhan = "SELECT dmns.ten_ns, dmbpns.ten_bpns "
+                       + "FROM v_dmxnns "
+                       + "LEFT JOIN dmns ON v_dmxnns.ma_ns_nhan = dmns.ma_ns "
+                       + "LEFT JOIN dmbpns ON dmns.ma_bpns = dmbpns.ma_bpns "
+                       + "WHERE v_dmxnns.ma_ns = '" + safe + "'";
+        DataTable dtNhan = myDb.GetTable(sqlNhan);
+
+        string sqlDt = "IF OBJECT_ID('tempdb..#rptmp') IS NOT NULL DROP TABLE #rptmp; "
+                     + "SELECT IDENTITY(int,1,1) AS stt, * INTO #rptmp FROM v_dmxnnsdt "
+                     + "WHERE ma_ns = '" + safe + "'; SELECT * FROM #rptmp;";
+        DataTable dtDt = myDb.GetTable(sqlDt);
+
+        if (dtPh == null || dtPh.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No data to print"]);
+            return;
+        }
+
+        LsData = new List<DmxnnsModel>();
+
+        var model = new DmxnnsModel();
+        model.Dia_chi = dtPh.Rows[0]["dia_chi"]?.ToString() ?? "";
+        model.Noi_dung = dtPh.Rows[0]["noi_dung"]?.ToString() ?? "";
+        model.Ten_ns_giao = dtPh.Rows[0]["ten_ns"]?.ToString() ?? "";
+
+        if (dtPh.Columns.Contains("ten_bpns") && dtPh.Rows[0]["ten_bpns"] != DBNull.Value)
+            model.Ma_bpns_giao = dtPh.Rows[0]["ten_bpns"].ToString();
+
+        if (dtNhan != null && dtNhan.Rows.Count > 0)
+        {
+            model.Ten_ns_nhan = dtNhan.Rows[0]["ten_ns"]?.ToString() ?? "";
+            if (dtNhan.Columns.Contains("ten_bpns") && dtNhan.Rows[0]["ten_bpns"] != DBNull.Value)
+                model.Ma_bpns_nhan = dtNhan.Rows[0]["ten_bpns"].ToString();
+        }
+
+        if (dtPh.Rows[0]["ngay_ct"] != DBNull.Value)
+        {
+            model.Ngay_ct = Convert.ToDateTime(dtPh.Rows[0]["ngay_ct"]);
+            model.DateString = "ngày " + model.Ngay_ct.Value.Day
+                             + " tháng " + model.Ngay_ct.Value.Month
+                             + " n?m " + model.Ngay_ct.Value.Year;
+        }
+
+        if (dtDt != null && dtDt.Rows.Count > 0)
+        {
+            List<DmxnnsDtPrint> lsDt = myDb.ConvertDataTable<DmxnnsDtPrint>(dtDt);
+            int stt = 1;
+            foreach (var dt in lsDt)
+            {
+                dt.Stt = stt++;
+                // ?? QUAN TR?NG: Chuy?n ??i Boolean (Ban_chinh, Ban_sao) ? Int (1 ho?c 0)
+                // Ban_chinh = true ? So_luong_banchinh = 1
+                // Ban_chinh = false ? So_luong_banchinh = 0
+                dt.So_luong_banchinh = dt.Ban_chinh ? 1 : 0;
+                dt.So_luong_bansao = dt.Ban_sao ? 1 : 0;
+            }
+            model.LsDt = lsDt;
+        }
+
+        LsData.Add(model);
+        frmPrintVisible = true;
+    }
+
+    public async void CloseForm()
+    {
+        IsShowFrm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged    -= OnLangguachange;
+    }
+}

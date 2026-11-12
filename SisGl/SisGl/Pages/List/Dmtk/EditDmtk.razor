@@ -1,0 +1,537 @@
+﻿@inherits FrmListBaseComponent
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDmtk" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmtk" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                <DxFormLayoutItem Caption="@Lap["Account number"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox CssClass="col col-8" @bind-Text="@CurDmtk.Tk0" maxlength="@tblLength["tk0"]" Enabled="@AllowEditMa" InputCssClass="uppercase" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Account name"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @ref="tenTkComponent" @bind-Text="@CurDmtk.Ten_tk0" maxlength="@tblLength["ten_tk0"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Short name"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmtk.Ten_ngan" maxlength="@tblLength["ten_ngan"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Account name 2"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmtk.Ten_tk02" maxlength="@tblLength["ten_tk02"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Short name 2"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmtk.Ten_ngan" maxlength="@tblLength["ten_ngan2"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Currency code"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode" NullText="@Lap["Chọn ..."]"
+                        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                        ListRenderMode="ListRenderMode.Entire"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        Data="@lstDmnt"
+                        TextFieldName="@nameof(listItem.ten_item)"
+                        ValueFieldName="@nameof(listItem.ma_item)"
+                        @bind-Value="@CurDmtk.Ma_nt">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(listItem.ma_item)" Caption="@Lap["Mã"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(listItem.ten_item)" Caption="@Lap["Tên"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Parent account"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode" NullText="@Lap["Chọn ..."]"
+                        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                        ListRenderMode="ListRenderMode.Entire"
+                        FilteringMode="DataGridFilteringMode.Contains"
+                        Data="@lstDmtk"
+                        TextFieldName="@nameof(listItem.ten_item)"
+                        ValueFieldName="@nameof(listItem.ma_item)"
+                        @bind-Value="@CurDmtk.Tk_me">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(listItem.ma_item)" Caption="@Lap["Mã"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(listItem.ten_item)" Caption="@Lap["Tên"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Accounts receivable tracking"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode" NullText="@Lap["Select ..."]"
+                                    Data="@(new List<listItem> { new listItem { ma_item = "0", ten_item = Lap["No"] }, new listItem { ma_item = "1", ten_item = Lap["Yes"] } })"
+                        TextFieldName="@nameof(listItem.ten_item)"
+                        ValueFieldName="@nameof(listItem.ma_item)"
+                        @bind-Value="@CurDmtk.Tk_cn" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Ledger account"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode" NullText="@Lap["Select ..."]"
+                                    Data="@(new List<listItem> { new listItem { ma_item = "0", ten_item = Lap["No"] }, new listItem { ma_item = "1", ten_item = Lap["Yes"] } })"
+                        TextFieldName="@nameof(listItem.ten_item)"
+                        ValueFieldName="@nameof(listItem.ma_item)"
+                        @bind-Value="@CurDmtk.Tk_sc" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Account type"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmnhtk0" @bind-Value="@CurDmtk.Nh_tk0" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Dr. booked rate calc. option"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmtktggs" @bind-Value="@CurDmtk.Loai_cl_no" IsEnable="@(AllowEditMode && CurDmtk.Ma_nt != "VND")" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Cr. booked rate calc. option"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmtktggs" @bind-Value="@CurDmtk.Loai_cl_co" IsEnable="@(AllowEditMode && CurDmtk.Ma_nt != "VND")" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12">
+                    <Template>
+                        <DxMemo @bind-Text="@CurDmtk.Gc_td1" Rows="3" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>               
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+<style>
+    .editor-iconadd {
+    -webkit-mask: url("..\\Images\\Add.svg");
+    mask: url("..\\Images\\Add.svg");
+    }
+</style>
+
+@code {
+    private DxTextBox tenTkComponent;
+    private List<listItem> lstDmnt;
+    private List<listItem> lstDmtk;
+
+    public IEnumerable<string> Tags { get; set; }
+    public Dmtk CurDmtk { get; set; }
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "Dmtk0";
+        SqlTableKey = "tk0";
+        CheckSqlTableKey = "tk0";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "dmtk" : ParentPage;
+        CurDmtk = new Dmtk();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.dm.01";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();            
+
+            string strsql = "Select ma_nt as ma_item, ten_nt as ten_item from dmnt order by ma_nt";
+            lstDmnt = await mySqldb.Loaddata<listItem, dynamic>(strsql, new { });
+            strsql = "Select tk as ma_item, ten_tk as ten_item from dmtk where status = '1' order by tk";
+            lstDmtk = await mySqldb.Loaddata<listItem, dynamic>(strsql, new { });
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDmtk(Ma_ma);
+                    myStateMN.SetToolBar(new MyToolbar("save", false));
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditDmtkRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await CreateNewDmtk();
+                    break;
+                case ActionTask.Copy:
+                    await CreateCopyDmtk(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDmtk(Ma_ma);
+                    break;
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao("Mất kết nối với server, vui lòng thử lại.");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi hệ thống: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            await base.OnAfterRenderAsync(firstRender);
+            if (firstRender)
+            {
+                await tenTkComponent.FocusAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao("Mất kết nối tạm thời, vui lòng thử lại.");
+            StateHasChanged();
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDmtk(CurDmtk.Tk0);
+    }
+
+    async Task ViewDmtk(string SqlTableKeyValue)
+    {
+        CurDmtk = new Dmtk();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task EditDmtkRecord(string SqlTableKeyValue)
+    {
+        CurDmtk = new Dmtk();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        await LoadData(SqlTableKeyValue);
+        if (CheckDeleteListIdDmtk(curCommand.Store_proc.Trim(), SqlTableKeyValue) == 0)
+        {
+            AllowEditMa = false;
+        }
+    }
+
+    async Task SaveDmtk()
+    {
+        try
+        {
+            if (curActionTask == ActionTask.New || curActionTask == ActionTask.Edit)
+            {
+                if (!CheckValid())
+                    return;
+
+                CurDmtk.Tk0 = CurDmtk.Tk0.ToUpper().Trim();
+                SqlTableKeyValue = CurDmtk.Tk0;
+
+                // Kiểm tra trùng mã
+                string checkSql = $"Select {SqlTableKey} from {sqlTableName} where {SqlTableKey} = @tk0 and {SqlTableKey} != @original_tk";
+                DataSet ds = await myDb.LoadDataset(checkSql, "tk0;original_tk", $"{CurDmtk.Tk0};{(curActionTask == ActionTask.Edit ? Ma_ma : CurDmtk.Tk0)}");
+                if (ds != null && ds.Tables[0].Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(String.Format(Lap["Mã tài khoản [{0}] đã tồn tại!"], SqlTableKeyValue));
+                    StateHasChanged();
+                    return;
+                }
+                if(string.IsNullOrEmpty(CurDmtk.Tk_me) || string.IsNullOrWhiteSpace(CurDmtk.Tk_me))
+                {
+                    // Kiểm tra lồng mã
+                    checkSql = $"exec CheckLong @ma_dm, @new_value, @old_value";
+                    ds = await myDb.LoadDataset(checkSql, "ma_dm;new_value;old_value", $"{CurDmdm.Ma_dm};{CurDmtk.Tk0};{(curActionTask == ActionTask.Edit ? Ma_ma : CurDmtk.Tk0)}");
+                    if (ds != null && ds.Tables[0].Rows.Count > 0)
+                    {
+                        myStateMN.SetNewThongbao(String.Format(Lap["Mã tài khoản [{0}] đã tồn tại hoặc lồng mã!"], SqlTableKeyValue));
+                        StateHasChanged();
+                        return;
+                    }
+                }
+                // Xử lý mặc định cho PP tính TGGS
+                if (CurDmtk.Ma_nt == "VND")
+                {
+                    CurDmtk.Loai_cl_no = "0";
+                    CurDmtk.Loai_cl_co = "0";
+                }
+
+                if (curActionTask == ActionTask.New)
+                {
+                    CurDmtk.Date = DateTime.Now.Date;
+                    CurDmtk.Date0 = DateTime.Now.Date;
+                    CurDmtk.Time = DateTime.Now.ToString("HH:mm:ss");
+                    CurDmtk.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                    if (curUser != null)
+                    {
+                        CurDmtk.User_id = curUser.User_id.ToString();
+                        CurDmtk.User_id0 = curUser.User_id.ToString();
+                        CurDmtk.User_name = curUser.User_name;
+                        CurDmtk.User_name0 = curUser.User_name;
+                    }
+                    await myDb.InsertOneRow<Dmtk>(CurDmtk, sqlTableName);
+                    myStateMN.SetNewThongbao(String.Format(Lap["Thêm mới thành công: {0}"], SqlTableKeyValue));
+                }
+                else if (curActionTask == ActionTask.Edit)
+                {
+                    CurDmtk.Date = DateTime.Now.Date;
+                    CurDmtk.Time = DateTime.Now.ToString("HH:mm:ss");
+                    if (curUser != null)
+                    {
+                        CurDmtk.User_id = curUser.User_id.ToString();
+                        CurDmtk.User_name = curUser.User_name;
+                    }
+                    await myDb.UpdateOneRow<Dmtk>(CurDmtk, sqlTableName, SqlTableKey, Ma_ma,true);
+                    myStateMN.SetNewThongbao(String.Format(Lap["Sửa thành công: {0}"], SqlTableKeyValue));
+                }
+                Browse_Closing();
+                if (DxWindowmodel != null)
+                {
+                    myModal.CloseModal(DxWindowmodel);
+                }
+
+                if (ShowAdd == true)
+                {
+                    OnClose.InvokeAsync();
+                }
+                else
+                {
+                    myNavi.NavigateTo("/" + ParentPage);
+                }
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao("Mất kết nối với server, vui lòng thử lại.");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi khi lưu: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmtk.Tk0))
+        {
+            myStateMN.SetNewThongbao(Lap["Chưa nhập mã tài khoản"]);
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurDmtk.Ten_tk0))
+        {
+            myStateMN.SetNewThongbao(Lap["Chưa nhập tên tài khoản"]);
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurDmtk.Nh_tk0))
+        {
+            myStateMN.SetNewThongbao(Lap["Chưa chọn loại tài khoản"]);
+            StateHasChanged();
+            return false;
+        }
+        if ((string.IsNullOrEmpty(CurDmtk.Tk_me.Trim()) || CurDmtk.Tk_me.Length <= CurDmtk.Tk0.Length) && CurDmtk.Tk0.StartsWith(CurDmtk.Tk_me))
+        {
+            myStateMN.SetNewThongbao(Lap["Nested accounts or incorrect parent account configuration"] + " !");
+            StateHasChanged();
+            return false;
+        }
+        if ((curActionTask == ActionTask.New))
+        {
+            DataSet _ds = myDb.LoadDataSet("exec dbo.CheckExistListId @ma_dm, @value", "ma_dm;value", sqlTableName.Trim() + ";" + CurDmtk.Tk0.Trim());
+
+            if (_ds.Tables[0].Rows.Count > 0)
+            {
+                if (_ds.Tables[0].Rows[0][0].ToString().Trim() == "1")
+                {
+                    string _mes = Lap["New code is the same as the code already in the list"] + " !";
+                    myStateMN.SetNewThongbao(_mes);
+                    return false;
+                }
+            }
+        }
+        if (CheckTKContain(sqlTableName, CurDmtk.Tk0.Trim(), CurDmtk.Tk_me.Trim(), curActionTask == ActionTask.Edit ? Ma_ma : ""))
+        {
+            myStateMN.SetNewThongbao(Lap["Nested accounts or incorrect parent account configuration"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        return true;
+    }
+    private bool CheckTKContain(string tableName, string newValue, string tkMe, string oldValue)
+    {
+        try
+        {
+            string sql = $"exec dbo.CheckTKContain '{tableName}', '{newValue}', '{tkMe}', '{oldValue}'";
+            DataSet ds = myDb.LoadDataSet(sql);
+            return ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckTKContain: {ex.Message}");
+            return false;
+        }
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {
+            string sql = $"Select * from {sqlTableName} where {SqlTableKey} = @SqlTableKeyValue";
+            DataSet DsTrans = await myDb.LoadDataset(sql, "SqlTableKeyValue", SqlTableKeyValue);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<Dmtk> lsdetai = myDb.ConvertDataTable<Dmtk>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurDmtk = lsdetai[0];
+                    CurDmtk.Nh_tk0 = CurDmtk.Nh_tk0?.PadRight(16) ?? string.Empty;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao("Mất kết nối với server, vui lòng thử lại.");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi tải dữ liệu: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    async Task CreateNewDmtk()
+    {
+        try
+        {
+            CurDmtk = new Dmtk();
+            CurDmtk.Status = "1";
+            CurDmtk.Tk = GetNewSttDM();
+            CurDmtk.Tk_sc = 0;
+            CurDmtk.Tk_cn = 0;
+            CurDmtk.Loai_cl_no = "0";
+            CurDmtk.Loai_cl_co = "0";
+            AllowEditMode = true;
+            AllowEditMa = true;
+
+            if (!String.IsNullOrEmpty(Ma_ma))
+            {
+                string sql = $"Select ten_tk0, ten_tk02, ma_tra_cuu, search, nh_tk0, tk_me, ma_nt, tk_sc, tk_cn, loai_cl_no, loai_cl_co from {sqlTableName} where {SqlTableKey} = @Ma_ma";
+                DataSet DsTrans = await myDb.LoadDataset(sql, "Ma_ma", Ma_ma);
+                if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+                {
+                    CurDmtk.Tk0 = DsTrans.Tables[0].Rows[0]["tk_me"].ToString();
+                    CurDmtk.Ten_tk0 = DsTrans.Tables[0].Rows[0]["ten_tk0"].ToString();
+                    CurDmtk.Ten_tk02 = DsTrans.Tables[0].Rows[0]["ten_tk02"].ToString();
+                    CurDmtk.Ma_tra_cuu = DsTrans.Tables[0].Rows[0]["ma_tra_cuu"].ToString();
+                    CurDmtk.Search = DsTrans.Tables[0].Rows[0]["search"].ToString();
+                    CurDmtk.Nh_tk0 = DsTrans.Tables[0].Rows[0]["nh_tk0"].ToString();
+                    CurDmtk.Tk_me = DsTrans.Tables[0].Rows[0]["tk_me"].ToString();
+                    CurDmtk.Ma_nt = DsTrans.Tables[0].Rows[0]["ma_nt"].ToString();
+                    CurDmtk.Tk_sc = Convert.ToDecimal(DsTrans.Tables[0].Rows[0]["tk_sc"]);
+                    CurDmtk.Tk_cn = Convert.ToDecimal(DsTrans.Tables[0].Rows[0]["tk_cn"]);
+                    CurDmtk.Loai_cl_no = DsTrans.Tables[0].Rows[0]["loai_cl_no"].ToString();
+                    CurDmtk.Loai_cl_co = DsTrans.Tables[0].Rows[0]["loai_cl_co"].ToString();
+                }
+            }
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao("Mất kết nối với server, vui lòng thử lại.");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi tạo mới: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    async Task CreateCopyDmtk(string SqlTableKeyValue)
+    {
+        try
+        {
+            CurDmtk = new Dmtk();
+            await LoadData(SqlTableKeyValue);
+
+            CurDmtk.Status = "1";
+            CurDmtk.Tk = GetNewSttDM();
+            AllowEditMode = true;
+            AllowEditMa = true;
+            curActionTask = ActionTask.New;
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao("Mất kết nối với server, vui lòng thử lại.");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi sao chép: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+    public void UpdateAll()
+    {
+        try
+        {
+            myDb.ExecuteSqlQueryAsync("exec GLTK0_CreateDMTK");
+            myDb.ExecuteSqlQueryAsync("exec UpdateBacTk");
+            myDb.ExecuteSqlQueryAsync("exec UpdateAllLoaiTk");            
+        }
+        catch (Exception ex)
+        {
+            //ErrorLog.CatchMessage(ex);
+        }
+    }
+    public int CheckDeleteListIdDmtk(string ma_dm, string sqlTableKeyValue)
+    {
+        int num = 0;
+        try
+        {
+            string strsql = $"exec dbo.CheckDeleteListId '{ma_dm}', '{sqlTableKeyValue.Trim()}'";
+            var obj = myDb.GetValue(strsql);
+            num = int.TryParse(obj.ToString(), out int n) ? n : 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Write(ex);
+        }
+        return num;
+    }
+    public void Browse_Closing()
+    {        
+        //DataTable table = myDb.GetTable("exec[GetListTKContain]");
+        // string strBrowse = !StartupBase.M_LAN.Equals("V") ? StartUp.CommandInfo["Ebrowse1"].ToString() : StartUp.CommandInfo["Vbrowse1"].ToString();
+        // if (table.DefaultView.Count > 0)
+        // {
+        //     SasFormBrowes.FormBrowse formBrowse = new SasFormBrowes.FormBrowse(StartupBase.SasObj, table.DefaultView, strBrowse);
+        //     formBrowse.frmBrw.Title = StartupBase.M_LAN.Equals("V") ? SysFunc.Cat_Dau("Danh sach cac tai khoan long nhau. Hay khai bao lai!") : "Add";
+        //     formBrowse.frmBrw.LanguageID = "gltk0_0";
+        //     formBrowse.SetRowColorByTag("ftag", "1");
+        //     formBrowse.ShowDialog();
+        // }
+        UpdateAll();
+    }
+}

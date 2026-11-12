@@ -1,0 +1,366 @@
+﻿@* Phân nhóm công cụ dụng cụ - Tương đương FrmDMPhanNhom.xaml trong WinForm *@
+@inject IDbManager myDb
+@inject Statemanagerment myStateMN
+
+<div class="row" style="height: 60vh; min-height: 400px;">
+
+    @* === LEFT: Danh sách nhóm CCDC === *@
+    <div class="col-3 border-end pe-2 h-100">
+        <div class="w-100 h-100" style="overflow: auto;">
+            <DxGrid Data="@LstNhom"
+                    ShowGroupPanel="false"
+                    ShowFilterRow="true"
+                    SelectionMode="GridSelectionMode.Single"
+                    AllowSelectRowByClick="true"
+                    SelectedDataItem="@SelectedNhom"
+                    SelectedDataItemChanged="@(async (object item) => await OnNhomSelected(item))"
+                    PageSize="1000"
+                    PagerVisible="false"
+                    CssClass="border"
+                    KeyFieldName="Ma_nh">
+                <Columns>
+                    <DxGridDataColumn FieldName="Ma_nh" Caption="@(IsLangEn ? "Group code" : "Mã nhóm")" Width="100px" />
+                    <DxGridDataColumn FieldName="@(IsLangEn ? "Ten_nh2" : "Ten_nh")" Caption="@(IsLangEn ? "Group name" : "Tên nhóm")" />
+                </Columns>
+            </DxGrid>
+        </div>
+    </div>
+
+    @* === RIGHT: Danh sách CCDC thuộc nhóm đang chọn === *@
+    <div class="col-9 ps-2 h-100">
+        <div class="w-100 h-100" style="overflow: auto;">
+            <DxGrid @ref="GridCC"
+                    Data="@LstCcFiltered"
+                    ShowGroupPanel="false"
+                    ShowFilterRow="true"
+                    SelectionMode="GridSelectionMode.Multiple"
+                    @bind-SelectedDataItems="@SelectedCc"
+                    PageSize="1000"
+                    PagerVisible="false"
+                    KeyFieldName="Ma_cc_me"
+                    CssClass="border">
+                <Columns>
+                    <DxGridSelectionColumn Width="50px" Caption="@(IsLangEn ? "Select" : "Chọn")" />
+                    <DxGridDataColumn FieldName="Loai_cc" Caption="@(IsLangEn ? "Type" : "Loại cc")" Width="80px" />
+                    <DxGridDataColumn FieldName="Ma_cc_me" Caption="@(IsLangEn ? "Tool code" : "Mã cc")" Width="120px" />
+                    <DxGridDataColumn FieldName="@(IsLangEn ? "Ten_cc2" : "Ten_cc")" Caption="@(IsLangEn ? "Tool name" : "Tên cc")" />
+                    <DxGridDataColumn FieldName="Ma_bpcc" Caption="@(IsLangEn ? "Dept" : "Mã bpsd")" Width="100px" />
+                    <DxGridDataColumn FieldName="Ma_dvcs" Caption="@(IsLangEn ? "Unit" : "Mã ĐVCS")" Width="80px" />
+                </Columns>
+            </DxGrid>
+        </div>
+    </div>
+</div>
+
+@* === FOOTER: Radio chọn loại nhóm (trái) + Buttons (phải) === *@
+<div class="row mt-2 pt-2 border-top align-items-center">
+    <div class="col-auto">
+        <div class="btn-group" role="group">
+            <input type="radio" class="btn-check" name="rdoNhomCC" id="rdoNhomCC1" checked="@(g_loai_nh == 1)" @onchange="@(async () => await OnLoaiNhChanged(1))" />
+            <label class="btn btn-outline-primary btn-sm" for="rdoNhomCC1">@(IsLangEn ? "Group 1" : "Nhóm 1")</label>
+
+            <input type="radio" class="btn-check" name="rdoNhomCC" id="rdoNhomCC2" checked="@(g_loai_nh == 2)" @onchange="@(async () => await OnLoaiNhChanged(2))" />
+            <label class="btn btn-outline-primary btn-sm" for="rdoNhomCC2">@(IsLangEn ? "Group 2" : "Nhóm 2")</label>
+
+            <input type="radio" class="btn-check" name="rdoNhomCC" id="rdoNhomCC3" checked="@(g_loai_nh == 3)" @onchange="@(async () => await OnLoaiNhChanged(3))" />
+            <label class="btn btn-outline-primary btn-sm" for="rdoNhomCC3">@(IsLangEn ? "Group 3" : "Nhóm 3")</label>
+        </div>
+    </div>
+    <div class="col-auto ms-auto">
+        <DxButton Text="@(IsLangEn ? "Assign group" : "Phân nhóm")" RenderStyle="ButtonRenderStyle.Primary" Click="@BtnPhanNhom_Click" CssClass="me-1" IconCssClass="fa fa-check" />
+        <DxButton Text="@(IsLangEn ? "Remove group" : "Hủy phân nhóm")" RenderStyle="ButtonRenderStyle.Warning" Click="@BtnHuyPhanNhom_Click" CssClass="me-1" IconCssClass="fa fa-times" />
+        <DxButton Text="@(IsLangEn ? "Close" : "Đóng")" RenderStyle="ButtonRenderStyle.Secondary" Click="@BtnClose_Click" IconCssClass="fa fa-sign-out" />
+    </div>
+</div>
+
+<DxPopup @bind-Visible="@ShowChonNhom"
+         HeaderText="@(IsLangEn ? "Select group to assign" : "Chọn nhóm để gán")"
+         ShowFooter="false" CloseOnEscape="true" ShowCloseButton="true" Width="400px">
+    <BodyContentTemplate>
+        @if (ShowChonNhom)
+        {
+            <div class="p-3">
+                <div class="row pb-3">
+                    <label class="col-4 col-form-label">@(IsLangEn ? "Group" : "Nhóm cc"):</label>
+                    <DxComboBox CssClass="col"
+                                Data="@LstNhomForAssign"
+                                ValueFieldName="Ma_nh"
+                                TextFieldName="@(IsLangEn ? "Ten_nh2" : "Ten_nh")"
+                                @bind-Value="@AssignMaNh"
+                                NullText="@(IsLangEn ? "Select ..." : "Chọn ...")"
+                                FilteringMode="DataGridFilteringMode.Contains"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto">
+                        <Columns>
+                            <DxListEditorColumn FieldName="Ma_nh" Caption="@(IsLangEn ? "Code" : "Mã")" Width="60px" />
+                            <DxListEditorColumn FieldName="@(IsLangEn ? "Ten_nh2" : "Ten_nh")" Caption="@(IsLangEn ? "Name" : "Tên nhóm")" />
+                        </Columns>
+                    </DxComboBox>
+                </div>
+                <div class="text-end">
+                    <DxButton Text="OK" RenderStyle="ButtonRenderStyle.Primary" Click="@ConfirmPhanNhom" CssClass="me-2" />
+                    <DxButton Text="@(IsLangEn ? "Cancel" : "Hủy")" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => ShowChonNhom = false)" />
+                </div>
+            </div>
+        }
+    </BodyContentTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public int FilterLoaiNh { get; set; } = 1;
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private int g_loai_nh = 1;
+    private string g_ma_nh = "";
+
+    private List<NhomCcItem> LstNhom = new();
+    private List<NhomCcItem> LstNhomForAssign = new();
+    private List<CongCuItem> LstCcAll = new();
+    private List<CongCuItem> LstCcFiltered = new();
+    private NhomCcItem SelectedNhom;
+    private IReadOnlyList<object> SelectedCc = new List<object>();
+    private DxGrid GridCC;
+
+    private bool ShowChonNhom = false;
+    private string AssignMaNh = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        g_loai_nh = FilterLoaiNh;
+        await LoadNhom();
+        await LoadCongCu();
+        FilterCongCu();
+    }
+
+    async Task LoadNhom()
+    {
+        try
+        {
+            string sql = $"Select ma_nh, ten_nh, ten_nh2 From dmnhcc Where loai_nh = {g_loai_nh} Order by ma_nh";
+            DataSet ds = await myDb.LoadDataset(sql);
+            LstNhom = new List<NhomCcItem>();
+            LstNhom.Add(new NhomCcItem { Ma_nh = "", Ten_nh = "<Chưa phân nhóm>", Ten_nh2 = "<Not grouped>" });
+            if (ds?.Tables[0] != null)
+            {
+                foreach (DataRow r in ds.Tables[0].Rows)
+                {
+                    LstNhom.Add(new NhomCcItem
+                    {
+                        Ma_nh = r["ma_nh"]?.ToString()?.Trim() ?? "",
+                        Ten_nh = r["ten_nh"]?.ToString()?.Trim() ?? "",
+                        Ten_nh2 = r["ten_nh2"]?.ToString()?.Trim() ?? ""
+                    });
+                }
+            }
+            LstNhomForAssign = LstNhom.Where(x => !string.IsNullOrEmpty(x.Ma_nh)).ToList();
+            if (LstNhom.Count > 0)
+                SelectedNhom = LstNhom[0];
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("LoadNhom error: " + ex.Message);
+        }
+    }
+
+    async Task LoadCongCu()
+    {
+        try
+        {
+            string sql = "Select ma_cc_me, ten_cc, ten_cc2, nh_cc1, nh_cc2, nh_cc3, loai_cc, ma_bpcc, ma_dvcs from dmcc order by ma_dvcs, loai_cc, ma_bpcc";
+            DataSet ds = await myDb.LoadDataset(sql);
+            LstCcAll = new List<CongCuItem>();
+            if (ds?.Tables[0] != null)
+            {
+                foreach (DataRow r in ds.Tables[0].Rows)
+                {
+                    LstCcAll.Add(new CongCuItem
+                    {
+                        Ma_cc_me = r["ma_cc_me"]?.ToString()?.Trim() ?? "",
+                        Ten_cc = r["ten_cc"]?.ToString()?.Trim() ?? "",
+                        Ten_cc2 = r["ten_cc2"]?.ToString()?.Trim() ?? "",
+                        Loai_cc = r["loai_cc"]?.ToString()?.Trim() ?? "",
+                        Nh_cc1 = r["nh_cc1"]?.ToString()?.Trim() ?? "",
+                        Nh_cc2 = r["nh_cc2"]?.ToString()?.Trim() ?? "",
+                        Nh_cc3 = r["nh_cc3"]?.ToString()?.Trim() ?? "",
+                        Ma_bpcc = r["ma_bpcc"]?.ToString()?.Trim() ?? "",
+                        Ma_dvcs = r["ma_dvcs"]?.ToString()?.Trim() ?? ""
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("LoadCongCu error: " + ex.Message);
+        }
+    }
+
+    void FilterCongCu()
+    {
+        LstCcFiltered = g_loai_nh switch
+        {
+            1 => LstCcAll.Where(x => x.Nh_cc1 == g_ma_nh).ToList(),
+            2 => LstCcAll.Where(x => x.Nh_cc2 == g_ma_nh).ToList(),
+            _ => LstCcAll.Where(x => x.Nh_cc3 == g_ma_nh).ToList()
+        };
+
+        SelectedCc = new List<object>();
+        GridCC?.ClearSelection();
+    }
+
+    async Task OnLoaiNhChanged(int loaiNh)
+    {
+        g_loai_nh = loaiNh;
+        g_ma_nh = "";
+        await LoadNhom();
+
+        if (LstNhom.Count > 0)
+        {
+            SelectedNhom = LstNhom[0];
+            g_ma_nh = SelectedNhom.Ma_nh;
+        }
+        else
+        {
+            SelectedNhom = null;
+        }
+
+        FilterCongCu();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task OnNhomSelected(object item)
+    {
+        SelectedNhom = item as NhomCcItem;
+        if (item is NhomCcItem nhom)
+        {
+            g_ma_nh = nhom.Ma_nh;
+        }
+        else
+        {
+            g_ma_nh = "";
+        }
+
+        FilterCongCu();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void BtnPhanNhom_Click()
+    {
+        if (SelectedCc == null || SelectedCc.Count == 0)
+        {
+            myStateMN.SetNewThongbao(IsLangEn ? "No tools selected" : "Chưa chọn công cụ!");
+            return;
+        }
+        AssignMaNh = "";
+        ShowChonNhom = true;
+        StateHasChanged();
+    }
+
+    async Task ConfirmPhanNhom()
+    {
+        if (string.IsNullOrEmpty(AssignMaNh))
+        {
+            myStateMN.SetNewThongbao(IsLangEn ? "Please select a group" : "Chưa chọn nhóm!");
+            return;
+        }
+        ShowChonNhom = false;
+
+        try
+        {
+            foreach (var obj in SelectedCc)
+            {
+                if (obj is CongCuItem cc)
+                {
+                    await UpdateCcGroup(cc.Ma_cc_me, AssignMaNh);
+                    UpdateLocalCc(cc, AssignMaNh);
+                }
+            }
+            myStateMN.SetNewThongbao(String.Format(IsLangEn ? "Assigned {0} tools to group [{1}]" : "Đã phân {0} công cụ vào nhóm [{1}]", SelectedCc.Count, AssignMaNh));
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+        }
+
+        FilterCongCu();
+        StateHasChanged();
+    }
+
+    async Task BtnHuyPhanNhom_Click()
+    {
+        if (SelectedCc == null || SelectedCc.Count == 0)
+        {
+            myStateMN.SetNewThongbao(IsLangEn ? "No tools selected" : "Chưa chọn công cụ!");
+            return;
+        }
+
+        try
+        {
+            int count = SelectedCc.Count;
+            foreach (var obj in SelectedCc)
+            {
+                if (obj is CongCuItem cc)
+                {
+                    await UpdateCcGroup(cc.Ma_cc_me, "");
+                    UpdateLocalCc(cc, "");
+                }
+            }
+            myStateMN.SetNewThongbao(String.Format(IsLangEn ? "Removed {0} tools from group" : "Đã hủy phân nhóm {0} công cụ", count));
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+        }
+
+        FilterCongCu();
+        StateHasChanged();
+    }
+
+    async Task UpdateCcGroup(string ma_cc_me, string ma_nh)
+    {
+        string col = g_loai_nh switch
+        {
+            1 => "nh_cc1",
+            2 => "nh_cc2",
+            _ => "nh_cc3"
+        };
+        string sql = $"Update dmcc set {col} = '{(ma_nh ?? "").Replace("'", "''")}' where ma_cc_me = '{(ma_cc_me ?? "").Replace("'", "''")}'";
+        await myDb.ExecuteSqlQueryAsync(sql);
+    }
+
+    void UpdateLocalCc(CongCuItem cc, string ma_nh)
+    {
+        var item = LstCcAll.FirstOrDefault(x => x.Ma_cc_me == cc.Ma_cc_me);
+        if (item == null) return;
+        switch (g_loai_nh)
+        {
+            case 1: item.Nh_cc1 = ma_nh; break;
+            case 2: item.Nh_cc2 = ma_nh; break;
+            default: item.Nh_cc3 = ma_nh; break;
+        }
+    }
+
+    void BtnClose_Click()
+    {
+        OnClose.InvokeAsync();
+    }
+
+    public class NhomCcItem
+    {
+        public string Ma_nh { get; set; } = "";
+        public string Ten_nh { get; set; } = "";
+        public string Ten_nh2 { get; set; } = "";
+    }
+
+    public class CongCuItem
+    {
+        public string Ma_cc_me { get; set; } = "";
+        public string Ten_cc { get; set; } = "";
+        public string Ten_cc2 { get; set; } = "";
+        public string Loai_cc { get; set; } = "";
+        public string Nh_cc1 { get; set; } = "";
+        public string Nh_cc2 { get; set; } = "";
+        public string Nh_cc3 { get; set; } = "";
+        public string Ma_bpcc { get; set; } = "";
+        public string Ma_dvcs { get; set; } = "";
+    }
+}

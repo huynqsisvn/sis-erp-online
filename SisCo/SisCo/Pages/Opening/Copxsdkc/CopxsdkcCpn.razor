@@ -1,0 +1,276 @@
+﻿@page "/copxsdkc"
+@page "/copxsdkc/{Menu_id}"
+@using DevExpress.Blazor
+@using Microsoft.JSInterop
+@attribute [Authorize(Roles = "admin,copxsdkc")]
+
+@inject IJSRuntime JS
+@inject Statemanagerment myStateMN
+@inject ISysVarManager mySysvar
+@inject IDbManager myDb
+@inject ICommandManager myCommand
+@inject ILocalStorageService myLcStore
+@inject XmlStringLocalizer Lap
+@inject IDialogService myDlSvc
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavManager
+
+@if (!ShowBrowseData)
+{
+    <DxPopup Visible="true" ShowCloseButton="false" Modal="true" Width="600" HeaderText="@Title"
+             CloseOnOutsideClick="false" CloseOnEscape="false" ShowFooter="true" CssClass="sas-popup">
+        <ChildContent>
+            <DxFormLayout SizeMode="SizeMode.Medium" CssClass="frm-header">
+                <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box my-2">
+                    <DxFormLayoutItem Caption="@Lap["Transfer from year"]" ColSpanMd="6">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@Model.Year" MinValue="1900" MaxValue="2079" Enabled="@IsEditMode" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="@Lap["To year"]" ColSpanMd="6">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@Model.Year2" MinValue="1900" MaxValue="2079" Enabled="false" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="" ColSpanMd="12">
+                        <Template>
+                            <DxCheckBox @bind-Checked="@Model.ShowTransferred" Enabled="@IsEditMode" CssClass="ms-3">
+                                @Lap["View transferred balances"]
+                            </DxCheckBox>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayoutGroup>
+            </DxFormLayout>
+            <div class="popup-body">
+                @if (!string.IsNullOrEmpty(ValidationMessage))
+                {
+                    <div class="text-danger mt-2">@ValidationMessage</div>
+                }
+                @if (!string.IsNullOrEmpty(InfoMessage))
+                {
+                    <div class="text-info mt-2">@InfoMessage</div>
+                }
+            </div>
+        </ChildContent>
+        <FooterContentTemplate>
+            <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Primary" Text="@Lap["OK"]" Click="@OnOkClicked" />
+            <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@(() => Back())" />
+        </FooterContentTemplate>
+    </DxPopup>
+}
+else
+{
+    <FrmBrowseComponent @ref="@oBrowse" TblData="@TblData" Fbrowse="@Fbrowse" IsLangEn="@IsLangEn" />
+}
+
+@code {
+[Parameter] public string Menu_id { get; set; } = "wo.gs.03";
+[Parameter] public bool pVisible { get; set; }
+
+public string Title = "";
+public CopxsdkcModel Model = new CopxsdkcModel();
+public Command curCommand = new Command();
+private bool IsEditMode = false;
+private string ValidationMessage = "";
+private string InfoMessage = "";
+public bool IsLangEn = false;
+public string UserLang = "";
+    
+// Biến cho FrmBrowseComponent
+public bool ShowBrowseData = false;
+public FrmBrowseComponent oBrowse;
+public DataTable TblData;
+public string Fbrowse = "";
+
+protected override async Task OnAfterRenderAsync(bool firstRender)
+{
+    if (firstRender)
+    {
+        await Language();
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            Title = !IsLangEn ? curCommand.Bar : curCommand.Bar2;            
+            Fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;            
+            if (string.IsNullOrEmpty(Fbrowse))
+            {
+                Fbrowse = IsLangEn 
+                    ? @"nam:100:H=Year;tk:150:H=Account;ma_px:150:H=Workshop;du_no00:130:H=Dr. balance:N0;du_co00:130:H=Cr. balance:N0;du_no_nt00:130:H=Dr. FC:N2;du_co_nt00:130:H=Cr. FC:N2"
+                    : @"nam:100:H=Năm;tk:150:H=Tài khoản;ma_px:150:H=Phân xưởng;du_no00:130:H=Dư nợ:N0;du_co00:130:H=Dư có:N0;du_no_nt00:130:H=Dư nợ n.tệ:N2;du_co_nt00:130:H=Dư có n.tệ:N2";
+            }
+        }
+        await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", curCommand.Ma_phan_he.Trim(), UserLang.Trim()));
+        Model.Year = DateTime.Now.Year;
+        IsEditMode = true;
+        myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            
+        StateHasChanged();
+    }
+    else
+    {
+        if (ShowBrowseData && oBrowse != null)
+        {
+            await oBrowse.FocusGridAsync();
+        }
+    }
+}
+
+    private async Task OnOkClicked()
+    {
+        ValidationMessage = "";
+        InfoMessage = "";
+
+        if (Model.Year < 1900 || Model.Year > 2079)
+        {
+            ValidationMessage = Lap["Invalid year"];
+            return;
+        }
+
+        DateTime t = SisLib.Ctrl.NgayTC.StartOfPeriod(mySysvar, Model.Year, 1);
+        DateTime tms = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KY1"));
+        DateTime tks = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KS"));
+
+        if (t < tms)
+        {
+            myStateMN.SetNewThongbao(Lap["Transfer year must be greater than or equal to opening year"] + " !");
+            ValidationMessage += Lap["Transfer year must be greater than or equal to opening year"] + " !";
+            return;
+        }
+
+        if (t < tks)
+        {
+            ValidationMessage += Lap["Transfer year must be greater than or equal to closing year"] + " !";
+            myStateMN.SetNewThongbao(Lap["Transfer year must be greater than or equal to closing year"] + " !");
+            return;
+        }
+       
+        int nextYear = Model.Year + 1;
+        string sqlCdpx = $"SELECT 1 FROM cdpx WHERE nam = {nextYear}";
+        var dtCdpx = myDb.GetTable(sqlCdpx);
+
+        bool runCdpx = true;
+        if (dtCdpx != null && dtCdpx.Rows.Count > 0)
+        {
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = Lap["Re-run opening balance transfer for workshop"] + " ?",
+                Title = Lap["Confirm"],
+                OkButtonText = Lap["Yes"],
+                CancelButtonText = Lap["No"],
+                ShowIcon = true,
+                RenderStyle = MessageBoxRenderStyle.Warning
+            });
+            if (!confirm)
+            {
+                runCdpx = false;
+            }
+        }
+
+        if (runCdpx)
+        {
+            await ExecuteStoreProc(nextYear);
+        }
+
+        InfoMessage = Lap["Operation completed"] + " !";
+        myStateMN.SetNewThongbao(InfoMessage);
+
+        if (Model.ShowTransferred)
+        {
+            await ShowTransferredData();
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ShowTransferredData()
+    {
+        int nextYear = Model.Year + 1;
+        string sql = $"SELECT * FROM v_cdpx WHERE nam = {nextYear}";
+        DataSet ds = await myDb.LoadDataset(sql);
+
+        if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+        {
+            TblData = ds.Tables[0];
+            ShowBrowseData = true;
+            
+            // Ẩn toolbar khi browse
+            myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            
+            StateHasChanged();
+        }
+        else
+        {
+            InfoMessage = Lap["No data found"];
+            myStateMN.SetNewThongbao(InfoMessage);
+            StateHasChanged();
+        }
+    }
+
+    private async Task Back()
+    {
+        await JS.InvokeVoidAsync("goBack");
+    }
+
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async Task ExecuteStoreProc(int year)
+    {
+        string storeProc = curCommand?.Store_proc;
+        if (string.IsNullOrEmpty(storeProc))
+        {
+            ValidationMessage = Lap["No stored procedure defined!"];
+            return;
+        }
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        string userId = user?.FindFirst("user_id")?.Value ?? "0";
+
+        foreach (var proc in storeProc.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string sql = $"EXEC {proc.Trim()} @Year, @User_id";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@Year", year },
+                { "@User_id", userId }
+            };
+            await myDb.LoadDataset(sql, parameters);
+        }
+    }
+
+    public class CopxsdkcModel
+    {
+        private int _year;
+        public int Year
+        {
+            get => _year;
+            set
+            {
+                _year = value;
+                Year2 = _year + 1;
+            }
+        }
+        public int Year2 { get; set; }
+        public bool ShowTransferred { get; set; } = false;
+    }
+}

@@ -1,0 +1,356 @@
+﻿@inherits FrmListBaseComponent
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2">
+            <DxFormLayout Data="@CurDmgia2" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                <DxFormLayoutItem Caption="@Lap["Item code"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_vt_input" Ma_dm="dmvt" @bind-Value="@CurDmgia2.Ma_vt" AllowNull="false" IsEnable="@AllowEditMa" IsLangEn="@IsLangEn" SelectChanged="OnAutVTChanged"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["UOM"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmgia2.Dvt" Enabled="false" CssClass="fw-bold" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@(Lap["Customer group"] +" 3")" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmnhkh3" @bind-Value="@CurDmgia2.Nh_kh3" AllowNull="true" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" SelectChanged="OnAutNhKhChanged"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem> 
+
+                <DxFormLayoutItem Caption="@Lap["Effective date"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_ban_input" @bind-Date="@CurDmgia2.Ngay_ban" Format="dd-MM-yyyy" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem> 
+                <DxFormLayoutItem Caption="@(Lap["Price"] + " " + myOption.GetOptionsValue("M_MA_NT0").Trim())" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurDmgia2.Gia2" Enabled="@AllowEditMode" DisplayFormat="@M_IP_GIA" CssClass="fw-bold" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["FC sales price"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit Value="@CurDmgia2.Gia_nt2" Enabled="@AllowEditMode" DisplayFormat="@M_IP_GIA_NT" CssClass="fw-bold" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmgia2.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmgia2 CurDmgia2;
+    private string menu_id = "ws_dm_gia2";
+    private string M_IP_GIA = "";
+    private string M_IP_GIA_NT = "";
+    private decimal TyGia = 1;
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "Dmgia2";
+        SqlTableKey = "ma_vt;nh_kh3;ngay_ban";
+        CheckSqlTableKey = "ma_vt;nh_kh3;ngay_ban";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "sogia2" : ParentPage;
+        CurDmgia2 = new Dmgia2();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+        M_IP_GIA = myOption.GetOptionsValue("M_IP_GIA").Trim();
+        M_IP_GIA_NT = myOption.GetOptionsValue("M_IP_GIA_NT").Trim();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await EditDM(Ma_ma);
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        await CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        await CreateCopyDM(Ma_ma);
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        break;
+                    }
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_vt_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmgia2 = new Dmgia2();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);        
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmgia2 = new Dmgia2();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);        
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(Ma_ma);
+    }
+
+    async Task SaveDM()
+    {
+        if (curActionTask == ActionTask.New)
+            if (!CheckValidCode())
+                return;
+
+        if (!CheckValid())
+            return;
+
+        CurDmgia2.Ma_vt = CurDmgia2.Ma_vt.ToUpper().Trim();
+        CurDmgia2.Nh_kh3 = CurDmgia2.Nh_kh3?.Trim() ?? "";        
+        if (CurDmgia2.Ngay_ban.HasValue)
+            CurDmgia2.Ngay_ban = CurDmgia2.Ngay_ban.Value.Date;
+        
+        SqlTableKeyValue = CurDmgia2.Ma_vt + ";" + CurDmgia2.Nh_kh3 + ";" + CurDmgia2.Ngay_ban?.ToString("yyyyMMdd");
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmgia2.Date = DateTime.Now.Date;
+            CurDmgia2.Date0 = DateTime.Now.Date;
+            CurDmgia2.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmgia2.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmgia2.User_id = curUser.User_id;
+                CurDmgia2.User_id0 = curUser.User_id;
+                CurDmgia2.User_name = curUser.User_name;
+                CurDmgia2.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmgia2.Ma_vt.Trim() + ";" + CurDmgia2.Nh_kh3 + ";" + CurDmgia2.Ngay_ban?.ToString("yyyyMMdd");
+            string[] strKey = CheckSqlTableKey.Split(';');
+            string[] strKeyValue = CheckSqlTableKeyValue.Split(';');
+            string condition = "";
+            if (strKey.Length > 0)
+            {
+                for (int x = 0; x < strKey.Length; x++)
+                {
+                    condition += strKey[x] + " = N'" + strKeyValue[x].ToUpper() + "' and ";
+                }
+                if (!string.IsNullOrEmpty(condition))
+                    condition = condition.Substring(0, condition.Length - 4);
+            }
+            string check = "Select " + strKey[0] + " from " + sqlTableName + " where " + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+            }
+            else
+            {
+                CurDmgia2.Giaid = Guid.NewGuid().ToString();
+                CurDmgia2.Search = $"{CurDmgia2.Ma_vt} {CurDmgia2.Ten_vt} {CurDmgia2.Nh_kh3} {CurDmgia2.Ten_nh_kh3}";
+                await myDb.InsertOneRow<Dmgia2>(CurDmgia2, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            string[] keyValues = Ma_ma.Split(';');
+            string condition = $" where (ma_vt <> '{keyValues[0]}' OR nh_kh3 <> N'{keyValues[1]}' OR ngay_ban <> '{keyValues[2]}') AND ma_vt = '{CurDmgia2.Ma_vt.Trim()}' and nh_kh3 = N'{CurDmgia2.Nh_kh3}' and ngay_ban = '{CurDmgia2.Ngay_ban?.ToString("yyyyMMdd")}'";
+            string check = "Select ma_vt from " + sqlTableName + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], CurDmgia2.Ma_vt.Trim()));
+                StateHasChanged();
+                return;
+            }
+
+            CurDmgia2.Date = DateTime.Now.Date;
+            CurDmgia2.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmgia2.User_id = curUser.User_id;
+                CurDmgia2.User_name = curUser.User_name;
+            }
+            
+            CurDmgia2.Search = $"{CurDmgia2.Ma_vt} {CurDmgia2.Ten_vt} {CurDmgia2.Nh_kh3} {CurDmgia2.Ten_nh_kh3}";
+            keyValues = Ma_ma.Split(';');
+            string strwhere = $" where ma_vt = '{keyValues[0]}' and nh_kh3 = N'{keyValues[1]}' and ngay_ban = '{keyValues[2]}'";
+            strwhere = $"Update {sqlTableName} set ma_vt='{CurDmgia2.Ma_vt}',nh_kh3=N'{CurDmgia2.Nh_kh3}',ngay_ban='{CurDmgia2.Ngay_ban?.ToString("yyyyMMdd")}',gia2={CurDmgia2.Gia2.ToString().Replace(",", ".")},gia_nt2={CurDmgia2.Gia_nt2.ToString().Replace(",", ".")},ma_kh='{CurDmgia2.Ma_kh ?? ""}',user_id={CurDmgia2.User_id},user_name=N'{CurDmgia2.User_name}',[date]='{CurDmgia2.Date?.ToString("yyyyMMdd")}',[time]='{CurDmgia2.Time}',status='{CurDmgia2.Status}',search=N'{CurDmgia2.Search}'" + strwhere;
+            await myDb.ExecuteSqlQueryAsync(strwhere);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        // Đóng Form nhập
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmgia2.Ma_vt))
+        {
+            myStateMN.SetNewThongbao(Lap["Item code is required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (CurDmgia2.Ngay_ban == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Effective date is required"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string[] keyValues = SqlTableKeyValue.Split(';');
+        if (keyValues.Length != 3) return;
+        
+        string sql = $@"Select g.*, v.ten_vt, v.ten_vt2, v.dvt, nh.ten_nh as ten_nh_kh3 
+                       from {sqlTableView} g
+                       left join dmvt v on g.ma_vt = v.ma_vt                       
+                       left join dmnhkh nh on g.nh_kh3 = nh.ma_nh
+                       where g.ma_vt = '{keyValues[0]}' and g.nh_kh3 = N'{keyValues[1]}' and CONVERT(char(8), ngay_ban, 112) = '{keyValues[2]}'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmgia2> lsdetai = myDb.ConvertDataTable<Dmgia2>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurDmgia2 = lsdetai[0];
+        }
+    }
+
+    public async Task CreateNewDM()
+    {
+        CurDmgia2 = new Dmgia2();
+        CurDmgia2.Status = "1";
+        CurDmgia2.Gia2 = 0;
+        CurDmgia2.Gia_nt2 = 0;
+        CurDmgia2.Ngay_ban = DateTime.Now;
+        AllowEditMode = true;
+        AllowEditMa = true;
+
+        if (!String.IsNullOrEmpty(Ma_ma))
+        {
+            string[] keyValues = Ma_ma.Split(';');
+            if (keyValues.Length >= 3)
+            {
+                CurDmgia2.Ma_vt = keyValues[0];
+                CurDmgia2.Nh_kh3 = keyValues[1];
+                if (DateTime.TryParseExact(keyValues[2], "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out DateTime ngayBan))
+                    CurDmgia2.Ngay_ban = ngayBan;
+            }
+        }
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmgia2 = new Dmgia2();
+        await LoadData(SqlTableKeyValue);        
+
+        CurDmgia2.Status = "1";
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+    
+    async void OnAutVTChanged(ExpandoObject value)
+    {
+        CurDmgia2.Ten_vt = value.Where(a => a.Key.Equals("ten_vt")).FirstOrDefault().Value?.ToString() ?? "";
+        CurDmgia2.Ten_vt2 = value.Where(a => a.Key.Equals("ten_vt2")).FirstOrDefault().Value?.ToString() ?? "";
+        CurDmgia2.Dvt = value.Where(a => a.Key.Equals("dvt")).FirstOrDefault().Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    async void OnAutKHChanged(ExpandoObject value)
+    {
+        CurDmgia2.Ten_kh = value.Where(a => a.Key.Equals("ten_kh")).FirstOrDefault().Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    async void OnAutNhKhChanged(ExpandoObject value)
+    {
+        CurDmgia2.Ten_nh_kh3 = value.Where(a => a.Key.Equals("ten_nh")).FirstOrDefault().Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    async void OnGiaNt2Changed(decimal value)
+    {
+        CurDmgia2.Gia_nt2 = value;
+        CurDmgia2.Gia2 = Math.Round(value * TyGia, 0);
+        await InvokeAsync(StateHasChanged);
+    }
+}

@@ -1,0 +1,379 @@
+@inherits FrmListBaseComponent
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveInsd0ntxt" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurInsd0ntxt" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <DxFormLayoutItem Caption="@Lap["Voucher date"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_ct_input" @bind-Date="@CurInsd0ntxt.Ngay_ct" Enabled="@AllowEditMode" DisplayFormat="dd-MM-yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Voucher no."]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox Id="so_ct_input" @bind-Text="@CurInsd0ntxt.So_ct" Enabled="@AllowEditMode" MaxLength="15" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Storage code"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_kho_input" Ma_dm="dmkho" @bind-Value="@CurInsd0ntxt.Ma_kho" IsEnable="@AllowEditMode" SelectChanged="Ma_kho_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Warehouse name"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox ReadOnly="true" Text="@ten_kho" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Item code"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_vt_input" Filter="gia_ton = '3'" Ma_dm="dmvt" @bind-Value="@CurInsd0ntxt.Ma_vt" IsEnable="@AllowEditMode" SelectChanged="Ma_vt_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Item name"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox ReadOnly="true" Text="@ten_vt" />
+                    </Template>
+                </DxFormLayoutItem><DxFormLayoutItem Caption="@Lap["Unit"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox ReadOnly="true" Text="@dvt" CssClass="fw-bold"/>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Opening quantity"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Id="so_luong_input" Enabled="@AllowEditMode" Value="@CurInsd0ntxt.So_luong" DisplayFormat="@M_IP_SL" ValueChanged="@((decimal? newValue) => So_luong_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Opening balance"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Id="tien_input" Enabled="@AllowEditMode" Value="@CurInsd0ntxt.Tien" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal? newValue) => Tien_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>               
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+
+    public Insd0ntxt CurInsd0ntxt;
+    private string menu_id = "wi.sd.02";
+    public string M_IP_TIEN = "";
+    public string M_IP_SL = "";
+    public string ten_kho = "";
+    public string ten_vt = "";
+    public string dvt = "";
+    public string Ma_ct = "PNZ";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "cdntxt";
+        sqlTableView = "v_cdntxt";
+        SqlTableKey = "stt_rec_nt";
+        CheckSqlTableKey = "ma_vt";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "insd0ntxt" : ParentPage;
+        CurInsd0ntxt = new Insd0ntxt();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN");
+        M_IP_SL = myOption.GetOptionsValue("M_IP_SL");
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+
+                if (curActionTask == ActionTask.New)
+                {
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ngay_ct_input')?.focus()");
+                }
+                else if (String.IsNullOrEmpty(CurInsd0ntxt.Ma_kho))
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_kho_input')?.focus()");
+                else if (String.IsNullOrEmpty(CurInsd0ntxt.Ma_vt))
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_vt_input')?.focus()");
+                else
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('so_luong_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task ViewRecord(string SqlTableKeyValue)
+    {
+        CurInsd0ntxt = new Insd0ntxt();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task EditRecord(string SqlTableKeyValue)
+    {
+        CurInsd0ntxt = new Insd0ntxt();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task NewRecord(string SqlTableKeyValue)
+    {
+        CurInsd0ntxt = new Insd0ntxt();
+        CurInsd0ntxt.Ma_ct = Ma_ct;
+
+        DateTime M_NGAY_KY1 = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KY1"));
+        CurInsd0ntxt.Ngay_ct = M_NGAY_KY1.AddDays(-1);
+        CurInsd0ntxt.Nam = M_NGAY_KY1.Year;
+
+        if (SqlTableKeyValue.Split(";").Length > 1)
+        {
+            CurInsd0ntxt.Ma_kho = SqlTableKeyValue.Split(";")[0];
+            CurInsd0ntxt.Ma_kho = myDb.GetValue($"select top 1 ma_kho from dmkho where ma_kho like '{CurInsd0ntxt.Ma_kho.Trim()}%' order by ma_kho")?.ToString();
+            await LoadLookupInfo();
+        }
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task SaveInsd0ntxt()
+    {
+        try
+        {
+            if (!CheckValid())
+            {
+                return;
+            }
+
+            if (curActionTask == ActionTask.Edit)
+            {
+                CurInsd0ntxt.Date = DateTime.Now.Date;
+                CurInsd0ntxt.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurInsd0ntxt.User_id = curUser.User_id;
+                    CurInsd0ntxt.User_name = curUser.User_name;
+                }
+
+                string _where = SqlTableKey + " = '" + Ma_ma + "'";
+                await myDb.UpdateOneRow1<Insd0ntxt>(CurInsd0ntxt, sqlTableName, "", _where);
+                myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurInsd0ntxt.So_ct));
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                string ws_id = myOption.GetOptionsValue("M_WS_ID")?.ToString() ?? "1";
+                string stt_rec = myDb.GetValue($"Exec GetSttRec '{Ma_ct}', '{ws_id}'")?.ToString();
+
+                if (string.IsNullOrEmpty(stt_rec))
+                {
+                    myStateMN.SetNewThongbao(Lap["Cannot generate record number"] + " !");
+                    return;
+                }
+
+                CurInsd0ntxt.Stt_rec_nt = stt_rec;
+                CurInsd0ntxt.Stt_rec = stt_rec;
+                CurInsd0ntxt.Date = DateTime.Now.Date;
+                CurInsd0ntxt.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurInsd0ntxt.Date0 = DateTime.Now.Date;
+                CurInsd0ntxt.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                CurInsd0ntxt.Ws_id = ws_id;
+                if (curUser != null)
+                {
+                    CurInsd0ntxt.User_id = curUser.User_id;
+                    CurInsd0ntxt.User_id0 = curUser.User_id;
+                    CurInsd0ntxt.User_name = curUser.User_name;
+                    CurInsd0ntxt.User_name0 = curUser.User_name;
+                }
+                string _where = "stt_rec = '" + CurInsd0ntxt.Stt_rec + "'";
+                await myDb.UpdateOneRow1<Insd0ntxt>(CurInsd0ntxt, sqlTableName, "row_id", _where);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurInsd0ntxt.So_ct));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo(ParentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Save failed: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (CurInsd0ntxt.Ngay_ct == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Voucher date is required"] + " !");
+            return false;
+        }
+
+        DateTime M_NGAY_KY1 = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KY1"));
+        if (CurInsd0ntxt.Ngay_ct >= M_NGAY_KY1)
+        {
+            myStateMN.SetNewThongbao(Lap["Voucher date must be before opening date"] + " !");
+            return false;
+        }
+
+        if (String.IsNullOrEmpty(CurInsd0ntxt.Ma_kho))
+        {
+            myStateMN.SetNewThongbao(Lap["Warehouse is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurInsd0ntxt.Ma_vt))
+        {
+            myStateMN.SetNewThongbao(Lap["Material code is required"] + " !");
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {
+            string sql = $"Select * from {sqlTableView} where {SqlTableKey} = @{SqlTableKey}";
+            var parameters = new Dictionary<string, object>
+            {
+                { $"@{SqlTableKey}", SqlTableKeyValue }
+            };
+            DataSet DsTrans = await myDb.LoadDataset(sql, parameters);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<Insd0ntxt> lsdetai = myDb.ConvertDataTable<Insd0ntxt>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurInsd0ntxt = lsdetai[0];
+                    await LoadLookupInfo();
+                }
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    async Task LoadLookupInfo()
+    {
+        ten_kho = "";
+        if (!String.IsNullOrEmpty(CurInsd0ntxt.Ma_kho))
+        {
+            string col_name = IsLangEn ? "ten_kho2" : "ten_kho";
+            ten_kho = myDb.GetValue($"select {col_name} from dmkho where ma_kho = '{CurInsd0ntxt.Ma_kho.Trim()}'")?.ToString();
+        }
+        if (!String.IsNullOrEmpty(CurInsd0ntxt.Ma_vt))
+        {
+            string col_name = IsLangEn ? "ten_vt2" : "ten_vt";
+            ten_vt = myDb.GetValue($"select {col_name} from dmvt where ma_vt = '{CurInsd0ntxt.Ma_vt.Trim()}'")?.ToString();
+            dvt = myDb.GetValue($"select dvt from dmvt where ma_vt = '{CurInsd0ntxt.Ma_vt.Trim()}'")?.ToString();
+        }
+        StateHasChanged();
+    }
+
+    void Ma_kho_Changed(ExpandoObject value)
+    {
+        ten_kho = "";
+        if (!String.IsNullOrEmpty(CurInsd0ntxt.Ma_kho))
+        {
+            string col_name = IsLangEn ? "ten_kho2" : "ten_kho";
+            ten_kho = myDb.GetValue($"select {col_name} from dmkho where ma_kho = '{CurInsd0ntxt.Ma_kho.Trim()}'")?.ToString();
+            StateHasChanged();
+        }
+    }
+
+    void Ma_vt_Changed(ExpandoObject value)
+    {
+        if (!String.IsNullOrEmpty(CurInsd0ntxt.Ma_vt))
+        {
+            string col_name = IsLangEn ? "ten_vt2" : "ten_vt";
+            ten_vt = myDb.GetValue($"select {col_name} from dmvt where ma_vt = '{CurInsd0ntxt.Ma_vt.Trim()}'")?.ToString();
+            dvt = myDb.GetValue($"select dvt from dmvt where ma_vt = '{CurInsd0ntxt.Ma_vt.Trim()}'")?.ToString();
+            StateHasChanged();
+        }
+    }
+
+    void So_luong_ValueChanged(decimal? newValue)
+    {
+        CurInsd0ntxt.So_luong = newValue;
+        StateHasChanged();
+    }
+
+    void Tien_ValueChanged(decimal? newValue)
+    {
+        CurInsd0ntxt.Tien = newValue;
+        StateHasChanged();
+    }
+}

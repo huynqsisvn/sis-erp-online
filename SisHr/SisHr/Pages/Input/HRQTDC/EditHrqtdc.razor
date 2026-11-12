@@ -1,0 +1,384 @@
+@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRQTDC
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveHrqtdc" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurHrqtdc" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                <!-- Employee code / Mã nhân viên -->
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" Filter="status = 1" @bind-Value="@CurHrqtdc.Ma_ns" IsEnable="@AllowEditMa" SelectChanged="Ma_ns_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Old transfer date / Ngày thuyên chuy?n c? -->
+                <DxFormLayoutItem Caption="@Lap["Old transfer date"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxDateEdit Id="ngay_dc_cu_input" @bind-Date="@CurHrqtdc.Ngay_dc_cu" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Old HR department / Mã b? ph?n c? -->
+                <DxFormLayoutItem Caption="@Lap["Old HR department code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_bpns_cu_input" Ma_dm="dmbpns" @bind-Value="@CurHrqtdc.Ma_bpns_cu" IsEnable="@AllowEditMode" SelectChanged="Ma_bpns_cu_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Old position / Mã ch?c v? c? -->
+                <DxFormLayoutItem Caption="@Lap["Old position code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_cv_cu_input" Ma_dm="dmcv" @bind-Value="@CurHrqtdc.Ma_cv_cu" IsEnable="@AllowEditMode" SelectChanged="Ma_cv_cu_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Old position title / Mã ch?c danh c? -->
+                <DxFormLayoutItem Caption="@Lap["Old position title code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_cd_cu_input" Ma_dm="dmcd" @bind-Value="@CurHrqtdc.Ma_cd_cu" IsEnable="@AllowEditMode" SelectChanged="Ma_cd_cu_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Old note / Ghi chú c? -->
+                <DxFormLayoutItem Caption="@Lap["Old note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrqtdc.Ghi_chu_cu" maxlength="@tblLength["ghi_chu_cu"]" Rows="2" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- New transfer date / Ngày thuyên chuy?n m?i -->
+                <DxFormLayoutItem Caption="@Lap["New transfer date"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxDateEdit Id="ngay_dc_moi_input" @bind-Date="@CurHrqtdc.Ngay_dc_moi" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- New HR department / Mã b? ph?n m?i -->
+                <DxFormLayoutItem Caption="@Lap["New HR department code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_bpns_moi_input" Ma_dm="dmbpns" @bind-Value="@CurHrqtdc.Ma_bpns_moi" IsEnable="@AllowEditMode" SelectChanged="Ma_bpns_moi_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- New position / Mã ch?c v? m?i -->
+                <DxFormLayoutItem Caption="@Lap["New position code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_cv_moi_input" Ma_dm="dmcv" @bind-Value="@CurHrqtdc.Ma_cv_moi" IsEnable="@AllowEditMode" SelectChanged="Ma_cv_moi_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- New position title / Mã ch?c danh m?i -->
+                <DxFormLayoutItem Caption="@Lap["New position title code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_cd_moi_input" Ma_dm="dmcd" @bind-Value="@CurHrqtdc.Ma_cd_moi" IsEnable="@AllowEditMode" SelectChanged="Ma_cd_moi_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- New note / Ghi chú m?i -->
+                <DxFormLayoutItem Caption="@Lap["New note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrqtdc.Ghi_chu_moi" maxlength="@tblLength["ghi_chu_moi"]" Rows="2" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Status / Tr?ng thái -->
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" Data="LSStatus" TextFieldName="Ten" ValueFieldName="Ma" @bind-Value="@CurHrqtdc.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+
+    public HRQTDC CurHrqtdc;
+    private string menu_id = "wr.ct.11";
+
+    private static readonly List<string> LsStatus = new List<string>
+    {
+        "0", "1"
+    };
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmqtdc";
+        sqlTableView = "v_dmqtdc";
+        SqlTableKey = "qtdcid";
+        CheckSqlTableKey = "qtdcid";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "hrqtdc" : ParentPage;
+        CurHrqtdc = new HRQTDC();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = false;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task ViewRecord(string SqlTableKeyValue)
+    {
+        CurHrqtdc = new HRQTDC();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task EditRecord(string SqlTableKeyValue)
+    {
+        CurHrqtdc = new HRQTDC();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task NewRecord(string SqlTableKeyValue)
+    {
+        CurHrqtdc = new HRQTDC();
+        CurHrqtdc.Qtdcid = Guid.NewGuid().ToString();
+        CurHrqtdc.Ma_ns = SqlTableKeyValue;
+        CurHrqtdc.Status = "1";
+        CurHrqtdc.Ngay_dc_cu = DateTime.Now.Date;
+        CurHrqtdc.Ngay_dc_moi = DateTime.Now.Date;
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task SaveHrqtdc()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            CurHrqtdc.Ma_bpns_cu = CurHrqtdc.Ma_bpns_cu ?? "";
+            CurHrqtdc.Ma_cv_cu = CurHrqtdc.Ma_cv_cu ?? "";
+            CurHrqtdc.Ma_cd_cu = CurHrqtdc.Ma_cd_cu ?? "";
+            CurHrqtdc.Ghi_chu_cu = CurHrqtdc.Ghi_chu_cu ?? "";
+            CurHrqtdc.Ma_bpns_moi = CurHrqtdc.Ma_bpns_moi ?? "";
+            CurHrqtdc.Ma_cv_moi = CurHrqtdc.Ma_cv_moi ?? "";
+            CurHrqtdc.Ma_cd_moi = CurHrqtdc.Ma_cd_moi ?? "";
+            CurHrqtdc.Ghi_chu_moi = CurHrqtdc.Ghi_chu_moi ?? "";
+
+            if (curActionTask == ActionTask.Edit)
+            {
+                CurHrqtdc.Date = DateTime.Now.Date;
+                CurHrqtdc.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrqtdc.User_id = curUser.User_id;
+                    CurHrqtdc.User_name = curUser.User_name;
+                }
+
+                await myDb.UpdateOneRow1<HRQTDC>(CurHrqtdc, sqlTableName, "", "qtdcid = '" + Ma_ma + "'");
+                myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurHrqtdc.Ma_ns));
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                CurHrqtdc.Date = DateTime.Now.Date;
+                CurHrqtdc.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurHrqtdc.Date0 = DateTime.Now.Date;
+                CurHrqtdc.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrqtdc.User_id = curUser.User_id;
+                    CurHrqtdc.User_id0 = curUser.User_id;
+                    CurHrqtdc.User_name = curUser.User_name;
+                    CurHrqtdc.User_name0 = curUser.User_name;
+                }
+                await myDb.InsertOneRow<HRQTDC>(CurHrqtdc, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurHrqtdc.Ma_ns));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo(ParentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Save failed: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (String.IsNullOrEmpty(CurHrqtdc.Ma_ns))
+        {
+            myStateMN.SetNewThongbao(Lap["Employee code is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurHrqtdc.Ma_bpns_cu))
+        {
+            myStateMN.SetNewThongbao(Lap["Old HR department code is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurHrqtdc.Ma_bpns_moi))
+        {
+            myStateMN.SetNewThongbao(Lap["New HR department code is required"] + " !");
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {
+            string sql = $"Select * from {sqlTableView} where {SqlTableKey} = @{SqlTableKey}";
+            DataSet DsTrans = await myDb.LoadDataset(sql, SqlTableKey, SqlTableKeyValue);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<HRQTDC> lsdetai = myDb.ConvertDataTable<HRQTDC>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurHrqtdc = lsdetai[0];
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Ma_ns_Changed(ExpandoObject value)
+    {
+        // T? ??ng ?i?n d? li?u khi ch?n mã nhân viên
+        if (!string.IsNullOrEmpty(CurHrqtdc.Ma_ns) && curActionTask == ActionTask.New)
+        {
+            FillOldTransferData(CurHrqtdc.Ma_ns);
+        }
+        StateHasChanged();
+    }
+
+    private async void FillOldTransferData(string ma_ns)
+    {
+        try
+        {
+            // L?y l?n ?i?u chuy?n g?n nh?t tr??c ?ó
+            string sql = $"SELECT TOP 1 * FROM {sqlTableView} WHERE ma_ns = @ma_ns ORDER BY ngay_dc_moi DESC";
+            DataSet dsOldTransfer = await myDb.LoadDataset(sql, "ma_ns", ma_ns);
+
+            if (dsOldTransfer != null && dsOldTransfer.Tables[0].Rows.Count > 0)
+            {
+                // Có l?n ?i?u chuy?n tr??c ?ó - l?y d? li?u t? l?n cu?i cùng
+                DataRow row = dsOldTransfer.Tables[0].Rows[0];
+                CurHrqtdc.Ngay_dc_cu = Convert.ToDateTime(row["ngay_dc_moi"]);
+                CurHrqtdc.Ma_bpns_cu = row["ma_bpns_moi"]?.ToString() ?? "";
+                CurHrqtdc.Ma_cv_cu = row["ma_cv_moi"]?.ToString() ?? "";
+                CurHrqtdc.Ma_cd_cu = row["ma_cd_moi"]?.ToString() ?? "";
+                CurHrqtdc.Ghi_chu_cu = row["ghi_chu_moi"]?.ToString() ?? "";
+            }
+            else
+            {
+                // Không có l?n ?i?u chuy?n tr??c ?ó - l?y t? b?ng nhân viên hi?n t?i
+                string sqlCurrent = "SELECT ma_bpns, ma_chucvu, ma_chucdanh FROM dmns WHERE ma_ns = @ma_ns";
+                DataSet dsCurrent = await myDb.LoadDataset(sqlCurrent, "ma_ns", ma_ns);
+
+                if (dsCurrent != null && dsCurrent.Tables[0].Rows.Count > 0)
+                {
+                    DataRow row = dsCurrent.Tables[0].Rows[0];
+                    CurHrqtdc.Ngay_dc_cu = DateTime.Now.Date;
+                    CurHrqtdc.Ma_bpns_cu = row["ma_bpns"]?.ToString() ?? "";
+                    CurHrqtdc.Ma_cv_cu = row["ma_chucvu"]?.ToString() ?? "";
+                    CurHrqtdc.Ma_cd_cu = row["ma_chucdanh"]?.ToString() ?? "";
+                }
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Error filling old transfer data: {ex.Message}");
+        }
+    }
+
+    void Ma_bpns_cu_Changed(ExpandoObject value) => StateHasChanged();
+    void Ma_cv_cu_Changed(ExpandoObject value) => StateHasChanged();
+    void Ma_cd_cu_Changed(ExpandoObject value) => StateHasChanged();
+    void Ma_bpns_moi_Changed(ExpandoObject value) => StateHasChanged();
+    void Ma_cv_moi_Changed(ExpandoObject value) => StateHasChanged();
+    void Ma_cd_moi_Changed(ExpandoObject value) => StateHasChanged();
+}
+

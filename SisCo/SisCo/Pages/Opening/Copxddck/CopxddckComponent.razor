@@ -1,0 +1,413 @@
+﻿@page "/copxddck"
+@page "/copxddck/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,copxddck")]
+
+<div class="d-flex mt-1 align-items-center gap-3">
+    <h6 class="mb-0">@Lap["Account"]</h6>
+    <AutocompleteComponent Ma_dm="dmtk" @bind-Value="@M_TK" SelectChanged="Tk_LostFocus" CssClass="w-25"/>
+    <h6 class="mb-0">@Lap["End-of-period date"]</h6>
+    <DxDateEdit Date="@M_Ngay" DateChanged="@((DateTime? newDate) => Ngay_Changed(newDate))" CssClass="w-auto" />
+    <h6 class="mb-0">@Lap["Workshop code"]</h6>
+    <AutocompleteComponent Ma_dm="dmpx" @bind-Value="@M_MA_PX" SelectChanged="MaPx_LostFocus" CssClass="w-25"/>
+</div>
+<hr style="margin:6px;padding:0px;height:1px;" />
+<div class="row mt-1" tabindex="0" @onkeydown="OnKeyDown" @onkeydown:preventDefault="true">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="40vw"
+              MaxWidth="400px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@code {
+public string M_TK_DU0;
+public string M_MA_NT0;
+public string M_MA_DVCS = "";
+public string M_MA_PX = "";
+public string preFilter = "";
+string Ma_imex = "CO02";
+    
+private string _TK;
+public string M_TK
+{
+    get { return _TK; }
+    set
+    {
+        if (_TK != value)
+        {
+            _TK = value;
+            Loaddata();
+        }
+    }
+}
+
+private DateTime _Ngay = DateTime.Now;
+public DateTime M_Ngay
+{
+    get { return _Ngay; }
+    set
+    {
+        if (_Ngay != value)
+        {
+            _Ngay = value;
+            Loaddata();
+        }
+    }
+}
+
+    protected override void OnInitialized()
+    {
+        mPage = "copxddck";
+        editPage = "editcopxddck";
+        IsShowCopy = false;
+        IsShowImport = false;
+        M_TK_DU0 = myOption.GetOptionsValue("M_TK_DU0").ToString();
+        M_MA_NT0 = myOption.GetOptionsValue("M_MA_NT0").ToString();
+        sqlTableName = "cdddpx";
+        sqlTableView = "cdddpx";
+        SqlTableKey = "ngay;tk;ma_px";
+        SqlItemName = "ten_px";
+
+        FrmType = typeof(Opening.Copxddck.EditCopxddck);
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wo.gs.02";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true, "F4"));
+                if (IsShowCopy) myStateMN.SetToolBar(new MyToolbar("Copy", false));
+                if (IsShowImport) myStateMN.SetToolBar(new MyToolbar("Import", true));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+                myStateMN.SetToolBar(new MyToolbar("Change", false));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            M_TK = myDb.GetValue("Select top 1 tk from dmtk where tk like '154%' order by tk")?.ToString();
+            M_Ngay = SisLib.Ctrl.NgayTC.EndOfPeriod(mySysvar, SisLib.Ctrl.NgayTC.GetYearOfDate(mySysvar, DateTime.Now), SisLib.Ctrl.NgayTC.GetPeriodOfDate(mySysvar, DateTime.Now));
+            await Language();
+        }
+    }
+
+    public virtual void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Them();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Import:
+                V_Import();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+        }
+    }
+
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            fbrowse = IsLangEn ? curCommand.Vbrowse2 : curCommand.Vbrowse1;
+            Page_size = int.Parse(myOption.GetOptionsValue("M_GRID_NROW").Trim());
+            editPage = "";
+        }
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        string Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs.Equals("ALL"))
+        {
+            Ma_dvcs = "";
+        }
+
+        preFilter = " ngay = '" + M_Ngay.ToString("yyyyMMdd") + "'";
+        preFilter = preFilter + " AND ma_dvcs LIKE '" + Ma_dvcs.Trim() + "%'";
+        preFilter = preFilter + " AND tk LIKE '" + (String.IsNullOrEmpty(M_TK) ? "" : M_TK.Trim()) + "%'";
+        preFilter = preFilter + " AND ma_px LIKE '" + (String.IsNullOrEmpty(M_MA_PX) ? "" : M_MA_PX.Trim()) + "%'";
+
+        DataSet dsList = await myDb.LoadDataset("SELECT * FROM " + sqlTableView + " WHERE " + preFilter + " ORDER BY ma_dvcs, tk, ma_px");
+        TblData = dsList.Tables[0];
+
+        if (TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+        StateHasChanged();
+    }
+
+    void Tk_LostFocus(ExpandoObject value)
+    {
+        Loaddata();
+    }
+
+    void MaPx_LostFocus(ExpandoObject value)
+    {
+        Loaddata();
+    }
+
+    void Ngay_Changed(DateTime? value)
+    {
+        if (value.HasValue)
+        {
+            M_Ngay = value.Value;
+            Task.Run(async () => await Loaddata());
+        }
+    }
+
+    public virtual void V_Them()
+    {
+        string Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs.Equals("ALL"))
+        {
+            myStateMN.SetNewThongbao(Lap["Please, select Unit code"] + "!");
+            return;
+        }
+
+        string strTK = M_TK;
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            strTK = rview["tk"].ToString().Trim();
+        }
+
+        Par.Clear();
+        Par.Add("Ma_ma", (object)(M_Ngay.ToString("yyyy-MM-dd") + ";" + strTK));
+        Par.Add("Menu_id", (object)Menu_id);
+        Par.Add("ShowAdd", (object)true);
+        Par.Add("curActionTask", (object)ActionTask.New);
+        Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Sua()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            DateTime ngayValue = Convert.ToDateTime(rview["ngay"]);
+            string compositeKey = ngayValue.ToString("yyyy-MM-dd") + ";" +
+                                 rview["tk"].ToString().Trim() + ";" +
+                                 rview["ma_px"].ToString().Trim();
+
+            Par.Clear();
+            Par.Add("Ma_ma", (object)compositeKey);
+            Par.Add("Menu_id", (object)Menu_id);
+            Par.Add("ShowAdd", (object)true);
+            Par.Add("curActionTask", (object)ActionTask.Edit);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public virtual void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            DateTime ngayValue = Convert.ToDateTime(rview["ngay"]);
+            string compositeKey = ngayValue.ToString("yyyy-MM-dd") + ";" +
+                                 rview["tk"].ToString().Trim() + ";" +
+                                 rview["ma_px"].ToString().Trim();
+
+            Par.Clear();
+            Par.Add("Ma_ma", (object)compositeKey);
+            Par.Add("Menu_id", (object)Menu_id);
+            Par.Add("ShowAdd", (object)true);
+            Par.Add("curActionTask", (object)ActionTask.View);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public virtual async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            DateTime ngay_val = Convert.ToDateTime(rview["ngay"]);
+            string tk_val = rview["tk"].ToString().Trim();
+            string ma_px_val = rview["ma_px"].ToString().Trim();
+
+            string displayValue = $"{ngay_val:dd-MM-yyyy}/{tk_val}/{ma_px_val}";
+
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = String.Format(Lap["Do you want to delete :{0} ?"], displayValue),
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["Yes"],
+                CancelButtonText = Lap["No"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger
+            });
+
+            if (confirm)
+            {
+                await DeleteRecord(ngay_val, tk_val, ma_px_val);
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    private async Task DeleteRecord(DateTime ngay, string tk, string ma_px)
+    {
+        try
+        {
+            string sql = $"DELETE FROM {sqlTableName} WHERE ngay = @ngay AND tk = @tk AND ma_px = @ma_px";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@ngay", ngay },
+                { "@tk", tk },
+                { "@ma_px", ma_px }
+            };
+            await myDb.LoadDataset(sql, parameters);
+
+            await Loaddata();
+            string ToastMessage = String.Format(Lap["Delete successfully : {0}"], $"{ngay:dd-MM-yyyy}/{tk}/{ma_px}");
+            myStateMN.SetNewThongbao(ToastMessage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Delete failed"] + ": " + ex.Message);
+        }
+    }
+
+    public override async void V_Import()
+    {
+        string sql = "SELECT * FROM dmimex WHERE UPPER(ma_imex) = '" + Ma_imex.ToUpper().Trim() + "'";
+        DataSet ds = await myDb.LoadDataset(sql);
+        List<Dmimex> lsdmimex = myDb.ConvertDataTable<Dmimex>(ds.Tables[0]);
+        if (lsdmimex != null && lsdmimex.Count > 0)
+        {
+            CurDmimex = lsdmimex[0];
+            if (IsLangEn)
+            {
+                CurDmimex.Ten = String.IsNullOrEmpty(CurDmimex.Ten2) ? CurDmimex.Ten : CurDmimex.Ten2;
+            }
+            myStateMN.SetCurrentActionTask(ActionTask.Import);
+            CurDmimex.Overwrite = "0";
+            IsImportPopupVisible = true;
+        }
+        StateHasChanged();
+    }
+
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e is null) return;
+        if (string.Equals(e.Key, "F2", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F2", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_Xem();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        if (string.Equals(e.Key, "F3", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F3", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_Sua();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        if (string.Equals(e.Key, "F4", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F4", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_Them();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+}

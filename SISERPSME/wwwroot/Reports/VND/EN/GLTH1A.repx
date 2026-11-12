@@ -1,0 +1,197 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<XtraReportsLayoutSerializer SerializerVersion="24.2.3.0" Ref="1" ControlType="DevExpress.XtraReports.UI.XtraReport, DevExpress.XtraReports.v24.2, Version=24.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" Name="GLTH1A_EN" Margins="27, 72, 39, 27" PaperKind="A4" PageWidth="827" PageHeight="1169" Version="24.2" DataSource="#Ref-0" Font="Arial, 9.75pt">
+  <CalculatedFields>
+    <Item1 Ref="2" Name="calculatedField1" Expression="Iif(IsNull([Tk]) Or [Tk] == '', &#xA;    '', &#xA;    Iif(IsNull([Ten_tk]) Or [Ten_tk] == '', &#xA;        Upper('Account: ' + [Tk]), &#xA;        Upper('Account: ' + [Tk] + ' - ' + [Ten_tk])&#xA;    )&#xA;)&#xA;" DataMember="LsData" />
+    <Item2 Ref="3" Name="calculatedField2" Expression="Upper('From date: ' + FormatString('{0:dd/MM/yyyy}', [Startdate]) &#xA;      + 'To date: ' + FormatString('{0:dd/MM/yyyy}', [Enddate]))&#xA;&#xA;" />
+  </CalculatedFields>
+  <Bands>
+    <Item1 Ref="4" ControlType="TopMarginBand" Name="TopMargin" HeightF="39" />
+    <Item2 Ref="5" ControlType="BottomMarginBand" Name="BottomMargin" HeightF="27" />
+    <Item3 Ref="6" ControlType="DetailBand" Name="Detail" HeightF="0" />
+    <Item4 Ref="7" ControlType="ReportHeaderBand" Name="ReportHeader" HeightF="156.9167">
+      <Controls>
+        <Item1 Ref="8" ControlType="XRLabel" Name="label9" TextFormatString="{0:N0}" Text="label9" TextAlignment="MiddleRight" SizeF="100,20" LocationFloat="615.0062,136.9167" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+          <ExpressionBindings>
+            <Item1 Ref="9" EventName="BeforePrint" PropertyName="Text" Expression="[LsSoDu].[Co_dk]" />
+          </ExpressionBindings>
+          <StylePriority Ref="10" UseFont="false" UseTextAlignment="false" />
+        </Item1>
+        <Item2 Ref="11" ControlType="XRLabel" Name="label14" TextFormatString="{0:N0}" Text="label9" TextAlignment="MiddleRight" SizeF="100.0031,20" LocationFloat="515,136.9167" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+          <ExpressionBindings>
+            <Item1 Ref="12" EventName="BeforePrint" PropertyName="Text" Expression="[LsSoDu].[No_dk]" />
+          </ExpressionBindings>
+          <StylePriority Ref="13" UseFont="false" UseTextAlignment="false" />
+        </Item2>
+        <Item3 Ref="14" ControlType="XRLabel" Name="label2" Text="OPENING BALANCE:" TextAlignment="MiddleRight" SizeF="168.3161,20" LocationFloat="346.6839,136.9167" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+          <StylePriority Ref="15" UseFont="false" UseTextAlignment="false" />
+        </Item3>
+        <Item4 Ref="16" ControlType="XRLabel" Name="label1" Text="label1" TextAlignment="MiddleCenter" SizeF="704.9999,20" LocationFloat="0.0001748403,91.91666" Font="Arial, 10pt" Padding="2,2,0,0,100" Tag_type="System.String" Tag="NS">
+          <Scripts Ref="17" OnBeforePrint="PageHeader_BeforePrint" />
+          <ExpressionBindings>
+            <Item1 Ref="18" EventName="BeforePrint" PropertyName="Text" Expression="[LsData].[calculatedField1]" />
+          </ExpressionBindings>
+          <StylePriority Ref="19" UseFont="false" UseTextAlignment="false" />
+        </Item4>
+        <Item5 Ref="20" ControlType="XRLabel" Name="lblten_cty2" Text="lblten_cty" TextAlignment="MiddleLeft" SizeF="697,20" LocationFloat="0,0" Font="Arial, 10pt" Padding="2,2,0,0,100">
+          <StylePriority Ref="21" UseTextAlignment="false" />
+        </Item5>
+        <Item6 Ref="22" ControlType="XRLabel" Name="lbltitle" Text="lbltitle" TextAlignment="TopCenter" SizeF="705.0001,25" LocationFloat="0,66.91666" Font="Times New Roman, 15pt, style=Bold" Padding="2,2,0,0,100">
+          <StylePriority Ref="23" UseFont="false" UseTextAlignment="false" />
+        </Item6>
+        <Item7 Ref="24" ControlType="XRLabel" Name="label3" Multiline="true" Text="label3" TextAlignment="MiddleCenter" SizeF="704.9999,20.00002" LocationFloat="0.000111262,111.9167" Font="Arial, 10pt" Padding="2,2,0,0,100" Tag_type="System.String" Tag="NS">
+          <ExpressionBindings>
+            <Item1 Ref="25" EventName="BeforePrint" PropertyName="Text" Expression="[calculatedField2]" />
+          </ExpressionBindings>
+          <StylePriority Ref="26" UseFont="false" UseTextAlignment="false" />
+        </Item7>
+        <Item8 Ref="27" ControlType="XRLabel" Name="lbldia_chi2" Text="lbldia_cty" TextAlignment="MiddleLeft" SizeF="637.5001,20" LocationFloat="0.0001748403,20" Font="Arial, 10pt" Padding="2,2,0,0,100">
+          <StylePriority Ref="28" UseTextAlignment="false" />
+        </Item8>
+      </Controls>
+    </Item4>
+    <Item5 Ref="29" ControlType="PageHeaderBand" Name="PageHeader" HeightF="40.54158">
+      <Controls>
+        <Item1 Ref="30" ControlType="XRTable" Name="table1" TextAlignment="MiddleCenter" SizeF="515,40" LocationFloat="0,0" Font="Times New Roman, 9.75pt, style=Bold" BackColor="255,224,242,224" BorderColor="Gray" Borders="All">
+          <Rows>
+            <Item1 Ref="31" ControlType="XRTableRow" Name="tableRow1" Weight="0.40000024414077406">
+              <Cells>
+                <Item1 Ref="32" ControlType="XRTableCell" Name="tableCell1" Weight="0.339355184385279" Text="REF. ACCOUNT" Font="Arial, 9pt, style=Bold">
+                  <StylePriority Ref="33" UseFont="false" />
+                </Item1>
+                <Item2 Ref="34" ControlType="XRTableCell" Name="tableCell2" Weight="1.7167379589325307" Text="ACCOUNT NAME" Font="Arial, 9pt, style=Bold">
+                  <StylePriority Ref="35" UseFont="false" />
+                </Item2>
+              </Cells>
+            </Item1>
+          </Rows>
+          <StylePriority Ref="36" UseFont="false" UseBackColor="false" UseBorderColor="false" UseBorders="false" UseTextAlignment="false" />
+        </Item1>
+        <Item2 Ref="37" ControlType="XRTable" Name="table3" SizeF="200,39.99999" LocationFloat="514.9999,0">
+          <Rows>
+            <Item1 Ref="38" ControlType="XRTableRow" Name="tableRow3" Weight="0.8">
+              <Cells>
+                <Item1 Ref="39" ControlType="XRTableCell" Name="tableCell10" Weight="2.150345938258059" Text="ARISING AMOUNT" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" BackColor="255,224,242,224" BorderColor="Gray" Borders="Top, Right, Bottom">
+                  <StylePriority Ref="40" UseFont="false" UseBackColor="false" UseBorderColor="false" UseBorders="false" UseTextAlignment="false" />
+                </Item1>
+              </Cells>
+            </Item1>
+            <Item2 Ref="41" ControlType="XRTableRow" Name="tableRow4" Weight="0.79999999999999993">
+              <Cells>
+                <Item1 Ref="42" ControlType="XRTableCell" Name="tableCell12" Weight="1.0751729691290297" Text="DEBIT" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" BackColor="255,224,242,224" BorderColor="Gray" Borders="Right, Bottom">
+                  <StylePriority Ref="43" UseFont="false" UseBackColor="false" UseBorderColor="false" UseBorders="false" UseTextAlignment="false" />
+                </Item1>
+                <Item2 Ref="44" ControlType="XRTableCell" Name="tableCell13" Weight="1.0751729691290293" Text="CREDIT" TextAlignment="MiddleCenter" Font="Arial, 9pt, style=Bold" BackColor="255,224,242,224" BorderColor="Gray" Borders="Right, Bottom">
+                  <StylePriority Ref="45" UseFont="false" UseBackColor="false" UseBorderColor="false" UseBorders="false" UseTextAlignment="false" />
+                </Item2>
+              </Cells>
+            </Item2>
+          </Rows>
+        </Item2>
+      </Controls>
+    </Item5>
+    <Item6 Ref="46" ControlType="DetailReportBand" Name="DetailReport" Level="0" DataMember="LsData" DataSource="#Ref-0">
+      <Bands>
+        <Item1 Ref="47" ControlType="DetailBand" Name="Detail1" HeightF="20">
+          <Controls>
+            <Item1 Ref="48" ControlType="XRTable" Name="table2" SizeF="715,20" LocationFloat="0.0001748403,0" Padding="2,2,2,2,100" BorderColor="Gray" Borders="Left, Right, Bottom">
+              <Rows>
+                <Item1 Ref="49" ControlType="XRTableRow" Name="tableRow2" Weight="0.8">
+                  <Cells>
+                    <Item1 Ref="50" ControlType="XRTableCell" Name="tableCell5" Weight="0.3895741249727076" Text="tableCell5" TextAlignment="MiddleLeft" Font="Arial, 9pt">
+                      <ExpressionBindings>
+                        <Item1 Ref="51" EventName="BeforePrint" PropertyName="Text" Expression="[LsData].[Tk_du]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="52" UseTextAlignment="false" />
+                    </Item1>
+                    <Item2 Ref="53" ControlType="XRTableCell" Name="tableCell8" Weight="1.8903183006117634" Text="tableCell8" TextAlignment="MiddleLeft" Font="Arial, 9pt">
+                      <ExpressionBindings>
+                        <Item1 Ref="54" EventName="BeforePrint" PropertyName="Text" Expression="[LsData].[Ten_tk]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="55" UseTextAlignment="false" />
+                    </Item2>
+                    <Item3 Ref="56" ControlType="XRTableCell" Name="tableCell6" Weight="0.4426976171366615" TextFormatString="{0:N0}" Text="tableCell6" TextAlignment="MiddleRight" Font="Arial, 9pt" Tag_type="System.String" Tag="I0">
+                      <ExpressionBindings>
+                        <Item1 Ref="57" EventName="BeforePrint" PropertyName="Text" Expression="[LsData].[Ps_co]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="58" UseTextAlignment="false" />
+                    </Item3>
+                    <Item4 Ref="59" ControlType="XRTableCell" Name="tableCell7" Weight="0.44269981517195778" TextFormatString="{0:N0}" Text="tableCell7" TextAlignment="MiddleRight" Font="Arial, 9pt" Tag_type="System.String" Tag="I0">
+                      <ExpressionBindings>
+                        <Item1 Ref="60" EventName="BeforePrint" PropertyName="Text" Expression="[LsData].[Ps_no]" />
+                      </ExpressionBindings>
+                      <StylePriority Ref="61" UseTextAlignment="false" />
+                    </Item4>
+                  </Cells>
+                </Item1>
+              </Rows>
+              <StylePriority Ref="62" UsePadding="false" UseBorderColor="false" UseBorders="false" />
+            </Item1>
+          </Controls>
+        </Item1>
+      </Bands>
+    </Item6>
+    <Item7 Ref="63" ControlType="ReportFooterBand" Name="ReportFooter" HeightF="227.5">
+      <Controls>
+        <Item1 Ref="64" ControlType="XRPanel" Name="panel1" SizeF="714.9999,225.2918" LocationFloat="0,0" BorderWidth="0">
+          <Controls>
+            <Item1 Ref="65" ControlType="XRLabel" Name="label10" TextFormatString="{0:N0}" Text="label12" TextAlignment="MiddleRight" SizeF="100.0031,20.00001" LocationFloat="514.9933,20.00001" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+              <ExpressionBindings>
+                <Item1 Ref="66" EventName="BeforePrint" PropertyName="Text" Expression="[LsSoDu].[No_ck]" />
+              </ExpressionBindings>
+              <StylePriority Ref="67" UseFont="false" UseTextAlignment="false" />
+            </Item1>
+            <Item2 Ref="68" ControlType="XRLabel" Name="lblten_ktt" Text="lblten_ktt" TextAlignment="MiddleCenter" SizeF="345.4637,20.00002" LocationFloat="359.5413,203.8335" Font="Arial, 10pt, style=Bold" Padding="2,2,0,0,100">
+              <StylePriority Ref="69" UseFont="false" UseTextAlignment="false" />
+            </Item2>
+            <Item3 Ref="70" ControlType="XRLabel" Name="label13" Multiline="true" Text="PREPARED BY&#xD;&#xA;(Signature, full name)" TextAlignment="MiddleCenter" SizeF="359.5412,20.00001" LocationFloat="0.000111262,108.5417" Font="Arial, 10pt" Padding="2,2,0,0,100" Tag_type="System.String" Tag="NS">
+              <StylePriority Ref="71" UseFont="false" UseTextAlignment="false" />
+            </Item3>
+            <Item4 Ref="72" ControlType="XRLabel" Name="label8" Multiline="true" Text="CHIEF ACCOUNTANT&#xD;&#xA;(Signature, full name)" TextAlignment="MiddleCenter" SizeF="345.4586,20.00001" LocationFloat="359.5413,108.5417" Font="Arial, 10pt" Padding="2,2,0,0,100" Tag_type="System.String" Tag="NS">
+              <StylePriority Ref="73" UseFont="false" UseTextAlignment="false" />
+            </Item4>
+            <Item5 Ref="74" ControlType="XRLabel" Name="label7" Text="Date............................." TextAlignment="MiddleCenter" SizeF="345.4587,20.00002" LocationFloat="359.5413,88.54166" Font="Arial, 10pt" Padding="2,2,0,0,100" Tag_type="System.String" Tag="NS">
+              <StylePriority Ref="75" UseFont="false" UseTextAlignment="false" />
+            </Item5>
+            <Item6 Ref="76" ControlType="XRLabel" Name="label4" Text="TOTAL ARISING  AMOUNT:" TextAlignment="MiddleRight" SizeF="175.4586,20.00001" LocationFloat="339.5346,0" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+              <StylePriority Ref="77" UseFont="false" UseTextAlignment="false" />
+            </Item6>
+            <Item7 Ref="78" ControlType="XRLabel" Name="label5" TextFormatString="{0:N0}" Text="label5" TextAlignment="MiddleRight" SizeF="99.99994,20.00001" LocationFloat="514.9996,0" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+              <Summary Ref="79" IgnoreNullValues="true" />
+              <ExpressionBindings>
+                <Item1 Ref="80" EventName="BeforePrint" PropertyName="Text" Expression="[Ps_no_trong_ky]" />
+              </ExpressionBindings>
+              <StylePriority Ref="81" UseFont="false" UseTextAlignment="false" />
+            </Item7>
+            <Item8 Ref="82" ControlType="XRLabel" Name="label6" TextFormatString="{0:N0}" Text="label6" TextAlignment="MiddleRight" SizeF="100,20.00001" LocationFloat="614.9995,0" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+              <ExpressionBindings>
+                <Item1 Ref="83" EventName="BeforePrint" PropertyName="Text" Expression="[Ps_co_trong_ky]" />
+              </ExpressionBindings>
+              <StylePriority Ref="84" UseFont="false" UseTextAlignment="false" />
+            </Item8>
+            <Item9 Ref="85" ControlType="XRLabel" Name="label11" Text="CLOSING AMOUNT:" TextAlignment="MiddleRight" SizeF="175.4586,20.00001" LocationFloat="339.5348,20.00001" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+              <StylePriority Ref="86" UseFont="false" UseTextAlignment="false" />
+            </Item9>
+            <Item10 Ref="87" ControlType="XRLabel" Name="label12" TextFormatString="{0:N0}" Text="label12" TextAlignment="MiddleRight" SizeF="99.99951,20.00001" LocationFloat="614.9996,20.00001" Font="Arial, 9pt, style=Bold" Padding="2,2,0,0,100">
+              <ExpressionBindings>
+                <Item1 Ref="88" EventName="BeforePrint" PropertyName="Text" Expression="[LsSoDu].[Co_ck]" />
+              </ExpressionBindings>
+              <StylePriority Ref="89" UseFont="false" UseTextAlignment="false" />
+            </Item10>
+          </Controls>
+          <StylePriority Ref="90" UseBorderWidth="false" />
+        </Item1>
+      </Controls>
+    </Item7>
+    <Item8 Ref="91" ControlType="PageFooterBand" Name="PageFooter" HeightF="29.58336">
+      <Controls>
+        <Item1 Ref="92" ControlType="XRLine" Name="line1" SizeF="715.9999,2" LocationFloat="0.0002543131,0" />
+        <Item2 Ref="93" ControlType="XRLabel" Name="lblpageinfo2" Text="lblpageinfo" TextAlignment="MiddleLeft" SizeF="349.3055,25" LocationFloat="0.0002543131,1.999982" Font="Arial, 9pt" Padding="2,2,0,0,100">
+          <StylePriority Ref="94" UseTextAlignment="false" />
+        </Item2>
+      </Controls>
+    </Item8>
+  </Bands>
+  <ComponentStorage>
+    <Item1 Ref="0" ObjectType="DevExpress.DataAccess.ObjectBinding.ObjectDataSource,DevExpress.DataAccess.v24.2" Name="objectDataSource1" Base64="PE9iamVjdERhdGFTb3VyY2UgTmFtZT0ib2JqZWN0RGF0YVNvdXJjZTEiPjxEYXRhU291cmNlIFR5cGU9IlNpc0dsLlBhZ2VzLkdlbmVyYWwuR2x0aDFhLkdsdGgxYU1vZGVsLCBTaXNHbCwgVmVyc2lvbj0xLjAuMC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPW51bGwiIC8+PC9PYmplY3REYXRhU291cmNlPg==" />
+  </ComponentStorage>
+</XtraReportsLayoutSerializer>

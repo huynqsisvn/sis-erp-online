@@ -1,0 +1,298 @@
+﻿@page "/Soycmh"
+@page "/Soycmh/{Menu_id}"
+@inherits TransBaseComponent
+@attribute [Authorize(Roles = "admin,Soycmh")]
+@using System.Data
+@using DevExpress.Blazor
+@using System.Dynamic
+
+@if (ShowLoaddingVoucher)
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    CssClass="w-100"
+                    IndicatorVisible="true"
+                    IndicatorAreaVisible="true"
+                    Visible="true"
+                    Text="@Lap["Processing"]"
+                    TextAlignment="LoadingPanelTextAlignment.Right">
+        <div style="min-height: 250px;"></div>
+    </DxLoadingPanel>
+}
+else if (TblPH != null)
+{
+    <div class="row m-0 p-0">
+        <FrmBrowseComponent @ref="@oBrowsePH" TblData="@TblPH" Page_size="@pageSize" IsPageSize="@IsPageSize" CssClass="grid-frm-height" Fbrowse="@FbrowsePH" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+    <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+    <div class="row my-1 mx-0 p-0">
+        <h8 class="fw-bold bg-light text-warning rounded-pill mb-1">@Lap["Detail"]</h8>
+        <FrmBrowseComponent @ref="@oBrowseCT" TblData="@TblCT" CssClass="grid-frmct-height" Fbrowse="@FbrowseCT" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+}
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@popFilterVisible"
+         Width="700px"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">@Lap["Loading"]</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutGroup Caption="@Lap[""]" ColSpanMd="12">
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template>
+                                <div class="row align-items-center">
+                                    <label class="col-3">@Lap["Quyển c.từ"]</label>
+                                    <div class="col-4 p-0">
+                                        <AutocompleteComponent Ma_dm="dmqs" @bind-Value="@Ma_qs"
+                                                               SelectChanged="@OnAutoCompleteQuyensoChanged"
+                                                               Filter="ma_cts like '%HYM%' and status = 1"
+                                                               IsEnable="true" IsLangEn="@IsLangEn" />
+                                    </div>
+                                    <label class="col-5">@Ten_qs</label>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template>
+                                <div class="row align-items-center">
+                                    <label class="col-3">@Lap["Đh từ ngày"]</label>
+                                    <div class="col-4 p-0">
+                                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idTu_ngay" />
+                                    </div>
+                                    <label class="col-1">@Lap["Đh đến ngày"]</label>
+                                    <div class="col-4 p-0">
+                                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idDen_ngay" />
+                                    </div>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template>
+                                <div class="row align-items-center">
+                                    <label class="col-3">@Lap["Mã NVBH"]</label>
+                                    <div class="col-4 p-0">
+                                        <AutocompleteComponent Ma_dm="dmbp" @bind-Value="@Ma_bp"
+                                                               SelectChanged="@OnAutoCompleteBoPhanChanged"
+                                                               IsEnable="true" IsLangEn="@IsLangEn" />
+                                    </div>
+                                    <label class="col-5">@Ten_bp</label>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template>
+                                <div class="row align-items-center">
+                                    <label class="col-3">@Lap["Lọc theo NSD"]</label>
+                                    <div class="col-4 p-0">
+                                        <DxComboBox Data="@UserFilterOptions"
+                                                    TextFieldName="DisplayText"
+                                                    ValueFieldName="Value"
+                                                    @bind-Value="@UserFilter"
+                                                    CssClass="w-100" />
+                                    </div>
+                                    <label class="col-5">@Lap["0 - Không, 1 - có"]</label>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@BtnFilterOK" />
+                <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnFilterCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm" CloseOnEscape="true" Width="70vw"
+              MinWidth="700px"
+              MinHeight="500px" Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+<style>
+    .grid-frm-height {
+        height: 55vh;
+    }
+
+    .grid-frmct-height {
+        height: 30vh;
+    }
+
+    .dxPopup {
+        font-size: 14px;
+    }
+
+        .dxPopup .row {
+            margin-bottom: 0.5rem;
+        }
+</style>
+
+@code {
+    public string Ma_qs { get; set; } = "";
+    public string Ten_qs { get; set; } = "";
+    public string Ma_bp { get; set; } = "";
+    public string Ten_bp { get; set; } = "";
+    public string Ma_dvcs { get; set; } = "";
+    public string Ten_dvcs { get; set; } = "";
+    public string Ma_kh { get; set; } = "";
+    public string UserFilter { get; set; } = "1";
+
+    private List<ComboBoxDataItem> UserFilterOptions => new List<ComboBoxDataItem>
+    {
+        new ComboBoxDataItem { DisplayText = Lap["Không"], Value = "0" },
+        new ComboBoxDataItem { DisplayText = Lap["Có"], Value = "1" }
+    };
+
+    private class ComboBoxDataItem
+    {
+        public string DisplayText { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    protected override void OnInitialized()
+    {
+        Menu_id = string.IsNullOrEmpty(Menu_id) ? "ws.ct.04" : Menu_id;
+        FrmType = typeof(Input.Soycmh.FrmSoycmh);
+        IsShowImport = true;
+        LanguageID = "";
+        base.OnInitialized();
+    }
+
+    private async Task OnAutoCompleteQuyensoChanged(ExpandoObject? value)
+    {
+        Ten_qs = value?.FirstOrDefault(a => a.Key.Equals("ten_qs", StringComparison.OrdinalIgnoreCase)).Value?.ToString() ?? "";
+        Ma_qs = value?.FirstOrDefault(a => a.Key.Equals("ma_qs", StringComparison.OrdinalIgnoreCase)).Value?.ToString() ?? "";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnAutoCompleteBoPhanChanged(ExpandoObject? value)
+    {
+        Ten_bp = value?.FirstOrDefault(a => a.Key.Equals("ten_bp", StringComparison.OrdinalIgnoreCase)).Value?.ToString() ?? "";
+        Ma_bp = value?.FirstOrDefault(a => a.Key.Equals("ma_bp", StringComparison.OrdinalIgnoreCase)).Value?.ToString() ?? "";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnAutoCompleteDonViChanged(ExpandoObject? value)
+    {
+        Ten_dvcs = value?.FirstOrDefault(a => a.Key.Equals("ten_dvcs", StringComparison.OrdinalIgnoreCase)).Value?.ToString() ?? "";
+        Ma_dvcs = value?.FirstOrDefault(a => a.Key.Equals("ma_dvcs", StringComparison.OrdinalIgnoreCase)).Value?.ToString() ?? "";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void BtnFilterOK()
+    {
+        if (ShowLoadding) return;
+        ShowLoadding = true;
+
+        try
+        {
+            myStateMN.SetStartDate((DateTime)Ngay_ct1);
+            myStateMN.SetEndDate((DateTime)Ngay_ct2);
+            phFilter = "1=1";
+
+            if (Ngay_ct1 != null)
+            {
+                phFilter = phFilter + " AND ngay_ct >= ''" + Ngay_ct1.ToString("yyyyMMdd") + "''";
+            }
+            if (Ngay_ct2 != null)
+            {
+                phFilter = phFilter + " AND ngay_ct <= ''" + Ngay_ct2.ToString("yyyyMMdd") + "''";
+            }
+
+            if (!string.IsNullOrWhiteSpace(Ma_qs))
+            {
+                string ma_qs_safe = Ma_qs.Trim().Replace("'", "''");
+                phFilter += $" AND ma_qs LIKE ''{ma_qs_safe}%''";
+            }
+
+            // ✅ Sửa lại đúng là ma_ns thay vì ma_bp
+            if (!string.IsNullOrWhiteSpace(Ma_bp))
+            {
+                string ma_ns_safe = Ma_bp.Trim().Replace("'", "''");
+                phFilter += $" AND ma_ns LIKE ''{ma_ns_safe}%''";
+            }
+
+            if (!string.IsNullOrWhiteSpace(Ma_dvcs))
+            {
+                string ma_dvcs_safe = Ma_dvcs.Trim().Replace("'", "''");
+                phFilter += $" AND ma_dvcs LIKE '{ma_dvcs_safe}%'";
+            }
+
+            Console.WriteLine("DEBUG - phFilter SQL = " + phFilter);
+
+            await Loaddata(false);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Lỗi xảy ra khi lọc dữ liệu"] + ": " + ex.Message);
+        }
+        finally
+        {
+            ShowLoadding = false;
+            popFilterVisible = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+
+
+    public override async void V_In()
+    {
+        if (SelectedItem is not DataRowView rview)
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }
+
+        try
+        {
+            DataSet? DataSource = CopyVoucherToDataSet(SqlTableKeyValue);
+            if (DataSource?.Tables.Count > 0)
+            {
+                LSData = new List<HYMModel>();
+                HYMModel _curModel = new()
+                {
+                    LSPh = myDb.ConvertDataTable<Ph109>(DataSource.Tables[0]),
+                    LSCt = myDb.ConvertDataTable<Ct109>(DataSource.Tables[1])
+                };
+                LSData.Add(_curModel);
+                ShowReport(LSData, typeof(HYMModel));
+            }
+            else
+            {
+                myStateMN.SetNewThongbao(Lap["No data available for report"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Error generating report"] + ": " + ex.Message);
+        }
+    }
+}

@@ -1,0 +1,58 @@
+﻿<div class="position-fixed bottom-0 right-0 p-3" style="z-index: 1500; right: 0; bottom: 0;">
+    <div id="@Id" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3000">
+        <div class="toast-header bg-info justify-content-around">
+            <i class="oi oi-bell" @onclick="Bell_click" />
+            <strong class="mr-auto text-white">Thông báo</strong>
+            <small class="text-danger fw-bold">@(DateTime.Now.ToString("dd-MM-yyyy HH:mm:ss"))</small>
+            <button type="button" class="btn-close m-1" data-bs-dismiss="toast" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="toast-body text-success">            
+            @Messagehtml
+        </div>       
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+    [Parameter]
+    public string Message {
+        get { return message; }
+        set { 
+            message = value;
+            ChangedMsg(value);
+        }
+    }
+    [Parameter]
+    public EventCallback<string> OnCall { get; set; }
+
+    public MarkupString Messagehtml { get; set; }
+    public string Messagetb { get; set; } = "";
+    private string message = "";
+
+    public void ChangedMsg(string msgVal)
+    {
+        if (String.IsNullOrEmpty(msgVal))
+            msgVal = "";
+        string[] data = msgVal.Split('|');
+        if (data.Length > 1)
+        {
+            Messagetb = data[2].Trim();
+        }
+        else
+            Messagetb = msgVal;
+        Messagehtml = new MarkupString(Messagetb);
+        StateHasChanged();
+    }
+
+    private async void Bell_click()
+    {
+        try
+        {
+            OnCall.InvokeAsync(Message);
+        }
+        catch { }
+    }
+}

@@ -1,0 +1,170 @@
+﻿@inherits FrmListBaseComponent
+@using SisGl.Pages.List.Glnhtk0
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveLoai" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <EditForm Model="@Cur" onkeydown="ModifyEnterKeyPressAsTab(event);" class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DataAnnotationsValidator />
+            <div class="row">
+                <div class="row pb-2">
+                    <label class="col-4">@Lap["Type code"] (*)</label>
+                    <DxTextBox CssClass="col" Id="Ma_nh" @bind-Text="@Cur.Ma_nh" InputCssClass="uppercase font-bold"/>
+                </div>
+
+                <div class="row pb-2">
+                    <label class="col-4">@Lap["Type name"] (*)</label>
+                    <DxTextBox CssClass="col" Id="Ten_nh" @bind-Text="@Cur.Ten_nh" Enabled="@AllowEditMode" />
+                </div>
+               
+                <div class="row pb-2">
+                    <label class="col-4">@Lap["Type name"] 2 (*)</label>
+                    <DxTextBox CssClass="col" Id="Ten_nh" @bind-Text="@Cur.Ten_nh2" Enabled="@AllowEditMode" />
+                </div>
+            </div>
+        </EditForm>
+    </FormList>
+</div>
+
+@code {
+    public LoaiTk Cur { get; set; } = new LoaiTk();
+    private string menu_id = "wg.dm.02";
+    private string sqlTableName = "dmnhtk0";
+    private string SqlTableKey = "ma_nh";
+
+    protected override void OnInitialized()
+    {
+        PageLoad();
+        Cur = new LoaiTk();
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        myStateMN.OnLangguaChanged += OnLangguachange;
+
+        if (curActionTask == ActionTask.None)
+            curActionTask = myStateMN.GetCurrentActionTask();
+
+        curUser = myStateMN.GetCurUser();
+        LanguageID = "Glnhtk0Component";
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                if (!string.IsNullOrEmpty(Ma_ma)) ViewDM(Ma_ma);
+                myStateMN.SetToolBar(new MyToolbar("save", false));
+                break;
+            case ActionTask.Edit:
+                if (!string.IsNullOrEmpty(Ma_ma)) EditDM(Ma_ma);
+                break;
+            case ActionTask.New:
+                CreateNewDM();
+                break;
+            default:
+                if (!string.IsNullOrEmpty(Ma_ma)) ViewDM(Ma_ma);
+                break;
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task OnCopy()
+    {
+        CreateCopyDM(Cur.Ma_nh);
+    }
+
+    void ViewDM(string key)
+    {
+        Cur = new LoaiTk();
+        AllowEditMode = false;
+        LoadData(key);
+    }
+
+    void EditDM(string key)
+    {
+        Cur = new LoaiTk();
+        AllowEditMode = true;
+        SqlTableKeyValueOld = key;
+        LoadData(key);
+    }
+
+    public async void CreateCopyDM(string key)
+    {
+        Cur = new LoaiTk();
+        await LoadData(key);
+        Cur.Status = "1";
+        Cur.Ma_nh = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+
+    async Task SaveLoai()
+    {
+        Cur.Ma_nh = Cur.Ma_nh?.ToUpper().Trim();
+        SqlTableKeyValue = Cur.Ma_nh;
+        if (string.IsNullOrEmpty(Cur.Ma_nh) || string.IsNullOrEmpty(Cur.Ten_nh))
+        {
+            myStateMN.SetNewThongbao(Lap["Code and name required"]);
+            StateHasChanged();
+            return;
+        }
+
+        if (curActionTask == ActionTask.New)
+        {
+            Cur.Date = DateTime.Now.Date;
+            Cur.Date0 = DateTime.Now.Date;
+            Cur.Time = DateTime.Now.ToString("HH:mm:ss");
+            Cur.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                Cur.User_id = curUser.User_id;
+                Cur.User_id0 = curUser.User_id;
+            }
+            await myDb.InsertOneRow<LoaiTk>(Cur, sqlTableName);
+            myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            Cur.Date = DateTime.Now.Date;
+            Cur.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null) Cur.User_id = curUser.User_id;
+            await myDb.UpdateOneRow<LoaiTk>(Cur, sqlTableName, SqlTableKey, SqlTableKeyValueOld, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        // Close
+        if (DxWindowmodel != null) myModal.CloseModal(DxWindowmodel);
+        if (ShowAdd == true) OnClose.InvokeAsync();
+        else myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    async Task LoadData(string key)
+    {
+        string sql = "Select * from " + sqlTableName + " where " + SqlTableKey + " = '" + key + "'";
+        DataSet ds = await myDb.LoadDataset(sql);
+        if (ds != null && ds.Tables[0].Rows.Count > 0)
+        {
+            var list = myDb.ConvertDataTable<LoaiTk>(ds.Tables[0]);
+            if (list != null && list.Count > 0) Cur = list[0];
+        }
+        StateHasChanged();
+    }
+
+    async void CreateNewDM()
+    {
+        Cur = new LoaiTk();
+        Cur.Status = "1";
+        Cur.Ma_nh = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+}

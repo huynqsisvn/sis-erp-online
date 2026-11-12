@@ -1,0 +1,30 @@
+﻿@page "/editreport/{rpName}"
+@page "/editreport/{rpName}/{mPage}"
+@using DevExpress.Blazor.Reporting
+
+<DxReportDesigner @ref="@designer" ReportName="@rpName" Height="1000px" Width="100%" AllowMDI="true">
+    <DxReportDesignerWizardSettings UseFullscreenWizard="true" EnableObjectDataSource="true" EnableSqlDataSource="true" EnableJsonDataSource="true" EnableFederationDataSource="true" />
+    <DxReportDesignerDataSourceSettings AllowAddDataSource="true"
+                                        AllowEditDataSource="true"
+                                        AllowRemoveDataSource="false" />
+</DxReportDesigner>
+
+@code {
+    [Parameter]
+    public string rpName { get; set; }
+    [Parameter]
+    public string mPage { get; set; }
+    DxReportDesigner designer { get; set; } 
+    string abc = "";
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        rpName = rpName ?? "Blankreport";
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        designer.CallbacksModel = new ReportDesignerCallbacksModel();
+        designer.CallbacksModel.Events.ExitDesigner = "\"ReportDesignerExit\"";
+        base.OnAfterRender(firstRender);
+    }
+}

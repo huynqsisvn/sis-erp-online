@@ -1,0 +1,330 @@
+﻿@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRQTCT
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveHrqtct" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurHrqtct" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                <!-- Employee code -->
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" Filter="status = 1" @bind-Value="@CurHrqtct.Ma_ns" IsEnable="@AllowEditMa" SelectChanged="Ma_ns_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Order number -->
+                <DxFormLayoutItem Caption="@Lap["Order number"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Id="stt_input" Enabled="@AllowEditMode" Value="@CurHrqtct.Stt" DisplayFormat="0" ValueChanged="@((int newValue) => Stt_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- From date -->
+                <DxFormLayoutItem Caption="@Lap["From date"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxDateEdit Id="tu_ngay_input" Enabled="@AllowEditMode" @bind-Date="@CurHrqtct.Tu_ngay" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- To date -->
+                <DxFormLayoutItem Caption="@Lap["To date"]" ColSpanMd="12">
+                    <Template>
+                        <DxDateEdit Id="den_ngay_input" Enabled="@AllowEditMode" @bind-Date="@CurHrqtct.Den_ngay" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Job title / Công việc -->
+                <DxFormLayoutItem Caption="@Lap["Job title"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="cong_viec_input" @bind-Text="@CurHrqtct.Cong_viec" maxlength="@tblLength["cong_viec"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Work unit / Đơn vị -->
+                <DxFormLayoutItem Caption="@Lap["Work unit"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="donvi_ct_input" @bind-Text="@CurHrqtct.Donvi_ct" maxlength="@tblLength["donvi_ct"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Position code / Chức vụ -->
+                <DxFormLayoutItem Caption="@Lap["Position code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_cv_input" Ma_dm="dmcv" @bind-Value="@CurHrqtct.Ma_cv" IsEnable="@AllowEditMode" SelectChanged="Ma_cv_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Note / Ghi chú -->
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrqtct.Ghi_chu" maxlength="@tblLength["ghi_chu"]" Rows="3" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Status / Trạng thái -->
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" Data="LSStatus" TextFieldName="Ten" ValueFieldName="Ma" @bind-Value="@CurHrqtct.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+
+    public HRQTCT CurHrqtct;
+    private string menu_id = "wr.ct.07";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmqtct";
+        sqlTableView = "v_dmqtct";
+        SqlTableKey = "ma_qtct";
+        CheckSqlTableKey = "ma_qtct";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "hrqtct" : ParentPage;
+        CurHrqtct = new HRQTCT();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = false;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task ViewRecord(string SqlTableKeyValue)
+    {
+        CurHrqtct = new HRQTCT();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task EditRecord(string SqlTableKeyValue)
+    {
+        CurHrqtct = new HRQTCT();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task NewRecord(string SqlTableKeyValue)
+    {
+        CurHrqtct = new HRQTCT();
+        CurHrqtct.Ma_qtct = Guid.NewGuid().ToString();
+        CurHrqtct.Ma_ns = SqlTableKeyValue;
+        CurHrqtct.Status = "1";
+        CurHrqtct.Tu_ngay = DateTime.Now.Date;
+        CurHrqtct.Den_ngay = DateTime.Now.Date;
+
+        int nextStt = await GetNextStt();
+        CurHrqtct.Stt = nextStt;
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task SaveHrqtct()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            CurHrqtct.Cong_viec = CurHrqtct.Cong_viec ?? "";
+            CurHrqtct.Donvi_ct = CurHrqtct.Donvi_ct ?? "";
+            CurHrqtct.Ma_cv = CurHrqtct.Ma_cv ?? "";
+            CurHrqtct.Ghi_chu = CurHrqtct.Ghi_chu ?? "";
+
+            if (curActionTask == ActionTask.Edit)
+            {
+                CurHrqtct.Date = DateTime.Now.Date;
+                CurHrqtct.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrqtct.User_id = curUser.User_id;
+                    CurHrqtct.User_name = curUser.User_name;
+                }
+
+                await myDb.UpdateOneRow1<HRQTCT>(CurHrqtct, sqlTableName, "", "ma_qtct = '" + Ma_ma + "'");
+                myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurHrqtct.Ma_ns));
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                CurHrqtct.Date = DateTime.Now.Date;
+                CurHrqtct.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurHrqtct.Date0 = DateTime.Now.Date;
+                CurHrqtct.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrqtct.User_id = curUser.User_id;
+                    CurHrqtct.User_id0 = curUser.User_id;
+                    CurHrqtct.User_name = curUser.User_name;
+                    CurHrqtct.User_name0 = curUser.User_name;
+                }
+                await myDb.InsertOneRow<HRQTCT>(CurHrqtct, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurHrqtct.Ma_ns));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo(ParentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Save failed: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (String.IsNullOrEmpty(CurHrqtct.Ma_ns))
+        {
+            myStateMN.SetNewThongbao(Lap["Employee code is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurHrqtct.Donvi_ct))
+        {
+            myStateMN.SetNewThongbao(Lap["Work unit is required"] + " !");
+            return false;
+        }
+        if (CurHrqtct.Stt <= 0)
+        {
+            myStateMN.SetNewThongbao(Lap["Order number is required"] + " !");
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {
+            string sql = $"Select * from {sqlTableView} where {SqlTableKey} = @{SqlTableKey}";
+            DataSet DsTrans = await myDb.LoadDataset(sql, SqlTableKey, SqlTableKeyValue);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<HRQTCT> lsdetai = myDb.ConvertDataTable<HRQTCT>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurHrqtct = lsdetai[0];
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Ma_ns_Changed(ExpandoObject value)
+    {
+        StateHasChanged();
+    }
+
+    void Ma_cv_Changed(ExpandoObject value)
+    {
+        StateHasChanged();
+    }
+
+    void Stt_ValueChanged(int newValue)
+    {
+        CurHrqtct.Stt = newValue;
+        StateHasChanged();
+    }
+
+    async Task<int> GetNextStt()
+    {
+        try
+        {
+            string sql = "SELECT ISNULL(MAX(stt), 0) + 1 as next_stt FROM " + sqlTableName;
+            DataTable dt = myDb.GetTable(sql);
+            if (dt.Rows.Count > 0)
+            {
+                return Convert.ToInt32(dt.Rows[0]["next_stt"]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("GetNextStt error: " + ex.Message);
+        }
+        return 1;
+    }
+}

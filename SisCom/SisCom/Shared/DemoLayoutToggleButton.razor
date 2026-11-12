@@ -1,0 +1,31 @@
+﻿@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@using DevExpress.Blazor
+@using Microsoft.JSInterop;
+
+<DxButton Click="@OnToggleButtonClick"
+          RenderStyle="ButtonRenderStyle.Secondary"
+          IconCssClass="m-toggler-icon"
+          CssClass="d-block border-0">  
+</DxButton>
+
+@code {
+    bool _canToggle;
+    [Parameter]
+    public bool Toggled { get; set; }
+    [Parameter]
+    public EventCallback<bool> ToggledChanged { get; set; }
+
+    async Task OnToggleButtonClick() => await ToggleState(!Toggled);
+    public async Task ToggleState(bool isToggled) {
+        if(_canToggle && Toggled != isToggled) {
+            Toggled = isToggled;
+            await ToggledChanged.InvokeAsync(Toggled);
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        base.OnAfterRender(firstRender);
+        _canToggle = true;
+    }
+}

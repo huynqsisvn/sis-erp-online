@@ -1,0 +1,27 @@
+﻿@page "/logout"
+@inject NavigationManager navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Statemanagerment myStatemanagerment
+@using Blazored.LocalStorage;
+@inject ILocalStorageService Localstore
+@code 
+{
+    protected override async Task OnInitializedAsync()
+    {
+        myStatemanagerment.SetState("", "",false,0);    
+        ((CustomAuthenticationStateProvider)AuthenticationStateProvider).MarkUserAsLoggedOut();
+        try
+        {
+            Users user = await Localstore.GetItemAsync<Users>("user");
+            if (user != null)
+            {
+               await Localstore.RemoveItemAsync("user");
+            }
+        }
+        catch
+        {
+
+        }
+        navigation.NavigateTo("");
+    }
+}

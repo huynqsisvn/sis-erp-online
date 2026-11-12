@@ -1,0 +1,473 @@
+@inherits FrmListBaseComponent
+@using System.Data
+@using DevExpress.Blazor
+
+<FormList Title="@Title" @bind-curActionTask="@curActionTask" OnNew="@OnNew" OnCopy="@OnCopy" OnEdit="@OnEdit" OnSave="@OnSave" OnCancel="@OnCancel">
+    <div class="row m-1 me-2 rounded-1 border border-light shadow">
+        <DxFormLayout Data="@CurItem" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+            
+            <DxFormLayoutItem Caption="@Lap["Date"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxDateEdit @bind-Date="CurItem.Ngay_ct" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Voucher No"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxTextBox @bind-Text="CurItem.So_ct" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Serial No"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxTextBox @bind-Text="CurItem.So_seri" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Invoice date"]" ColSpanMd="6">
+                <Template>
+                    <DxDateEdit @bind-Date="CurItem.Ngay_lct" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Customer code"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmkh" @bind-Value="CurItem.Ma_kh" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" SelectChanged="MaKh_Changed" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Customer name"]" ColSpanMd="6">
+                <Template>
+                    <DxTextBox @bind-Text="CurItem.Ten_kh" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Address"]" ColSpanMd="12">
+                <Template>
+                    <DxTextBox @bind-Text="CurItem.Dia_chi" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Tax code"]" ColSpanMd="6">
+                <Template>
+                    <DxTextBox @bind-Text="CurItem.Ma_so_thue" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="@Lap["Item/Service"]" ColSpanMd="12">
+                <Template>
+                    <DxTextBox @bind-Text="CurItem.Ten_vt" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Currency"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmnt" @bind-Value="CurItem.Ma_nt" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" SelectChanged="MaNt_Changed" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Ex rate"]" ColSpanMd="6">
+                <Template>
+                    <DxSpinEdit @bind-Value="CurItem.Ty_gia" DisplayFormat="@M_IP_SL" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>           
+
+            <DxFormLayoutItem Caption="@Lap["Amount (FC)"]" ColSpanMd="6">
+                <Template>
+                    <DxSpinEdit Value="@CurItem.T_tien_nt2" DisplayFormat="@M_IP_TIEN_NT" Enabled="@AllowEditMode" ValueChanged="@((decimal val) => { CurItem.T_tien_nt2 = val; CalculateTotal(); })" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@(Lap["Amount"] + " " + M_MA_NT0)" ColSpanMd="6">
+                <Template>
+                    <DxSpinEdit Value="@CurItem.T_tien2" DisplayFormat="@M_IP_TIEN" Enabled="@AllowEditMode" ValueChanged="@((decimal val) => { CurItem.T_tien2 = val; CalculateTotal(); })" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Tax code"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmthue" @bind-Value="CurItem.Ma_thue" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" SelectChanged="MaThue_Changed" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Tax rate"]" ColSpanMd="6">
+                <Template>
+                    <DxSpinEdit Value="@CurItem.Thue_suat" DisplayFormat="@M_IP_SL" Enabled="@AllowEditMode" ValueChanged="@((decimal val) => { CurItem.Thue_suat = val; CalculateTax(); })" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Tax amount (FC)"]" ColSpanMd="6">
+                <Template>
+                    <DxSpinEdit @bind-Value="CurItem.T_thue_nt" DisplayFormat="@M_IP_TIEN_NT" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@(Lap["Tax amount"] + " " + M_MA_NT0)" ColSpanMd="6">
+                <Template>
+                    <DxSpinEdit @bind-Value="CurItem.T_thue" DisplayFormat="@M_IP_TIEN" Enabled="@AllowEditMode" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["VAT account"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmtk" @bind-Value="CurItem.Tk_thue_co" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Receivable account"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmtk" @bind-Value="CurItem.Tk_du" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Department"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmbp" @bind-Value="CurItem.Ma_bp" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Project"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmvv" @bind-Value="CurItem.Ma_vv" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12">
+                <Template>
+                    <DxTextBox @bind-Text="CurItem.Ghi_chu" Enabled="@AllowEditMode"/>
+                </Template>
+            </DxFormLayoutItem>
+
+        </DxFormLayout>
+    </div>
+</FormList>
+
+@code {
+[Parameter] public string Ma_ct { get; set; } = "T02";
+    
+Ctgt20 CurItem = new Ctgt20();
+public string Stt_rec { get; set; } = "";
+public string M_WS_ID = "Z";
+public string M_MA_NT0 = "VND";
+public string M_IP_SL = "N2";
+public string M_IP_GIA = "N0";
+public string M_IP_TIEN = "N0";
+public string M_IP_TIEN_NT = "N0";
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        Stt_rec = Ma_ma?.Trim();
+        PageLoad();
+        LoadOptions();
+
+        CurItem = new Ctgt20();
+
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                Title = Lap["View"] + ": " + Lap["VAT Output Invoice"];
+                V_Xem();
+                break;
+            case ActionTask.Edit:
+                Title = Lap["Edit"] + ": " + Lap["VAT Output Invoice"];
+                V_Sua();
+                break;
+            case ActionTask.New:
+                Title = Lap["New"] + ": " + Lap["VAT Output Invoice"];
+                V_Moi();
+                break;
+            default:
+                V_Xem();
+                break;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await base.OnAfterRenderAsync(firstRender);
+            StateHasChanged();
+        }
+    }
+
+    async Task OnNew() { V_Moi(); curActionTask = ActionTask.New; StateHasChanged(); }
+    async Task OnCopy() { V_Copy(); curActionTask = ActionTask.New; StateHasChanged(); }
+    async Task OnEdit() { V_Sua(); }
+
+    async void V_Moi()
+    {
+        CurItem = new Ctgt20();
+        CurItem.Stt_rec = GetStt_rec();
+        CurItem.Ma_ct = Ma_ct;
+        CurItem.Ngay_ct = DateTime.Now.Date;
+        CurItem.Ngay_lct = DateTime.Now.Date;
+        CurItem.Ma_dvcs = myStateMN.GetMa_Dvcs();
+        CurItem.Ma_nt = "VND";
+        CurItem.Ty_gia = 1;
+        CurItem.Thue_suat = 10;
+        CurItem.Date0 = DateTime.Now;
+        CurItem.Time0 = DateTime.Now.ToString("HH:mm:ss");
+        CurItem.User_id0 = curUser?.User_id.ToString() ?? "0";
+        CurItem.Status = "1";
+        AllowEditMode = true;
+        StateHasChanged();
+    }
+
+    async void V_Copy()
+    {
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await LoadData(Stt_rec);
+            CurItem.Stt_rec = GetStt_rec();
+            CurItem.Stt_rec0 = "";
+            CurItem.So_ct = "";
+            AllowEditMode = true;
+            curActionTask = ActionTask.New;
+            StateHasChanged();
+        }
+    }
+
+    async void V_Xem()
+    {
+        AllowEditMode = false;
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await LoadData(Stt_rec);
+            StateHasChanged();
+        }
+    }
+
+    async void V_Sua()
+    {
+        if (!string.IsNullOrEmpty(Stt_rec))
+        {
+            await LoadData(Stt_rec);
+            AllowEditMode = true;
+            curActionTask = ActionTask.Edit;
+            StateHasChanged();
+        }
+    }
+
+    async Task LoadData(string sttRec)
+    {
+        try
+        {
+            string sql = $"SELECT * FROM ctgt20 WHERE stt_rec = @sttRec";
+            var ds = await myDb.LoadDataset(sql, "sttRec", sttRec);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                var list = myDb.ConvertDataTable<Ctgt20>(ds.Tables[0]);
+                CurItem = list.First();
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Error loading data"]}: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    async Task OnSave()
+    {
+        if (curActionTask == ActionTask.New || curActionTask == ActionTask.Edit)
+            await Save();
+    }
+
+    private async Task Save()
+    {
+        if (!CheckValid()) return;
+
+        try
+        {
+            CurItem.Date = DateTime.Now;
+            CurItem.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurItem.User_id = curUser?.User_id.ToString() ?? "0";
+            CurItem.Ma_dvcs = myStateMN.GetMa_Dvcs();
+            CurItem.Ma_ct = Ma_ct;
+
+            if (curActionTask == ActionTask.New)
+            {
+                CurItem.Date0 = DateTime.Now;
+                CurItem.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                CurItem.User_id0 = curUser?.User_id.ToString() ?? "0";
+                
+                await myDb.InsertOneRow<Ctgt20>(CurItem, "ctgt20");
+                curActionTask = ActionTask.View;
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurItem.So_ct));
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                await myDb.UpdateOneRow<Ctgt20>(CurItem, "ctgt20", "stt_rec", Stt_rec);
+                curActionTask = ActionTask.View;
+                myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurItem.So_ct));
+            }
+
+            StateHasChanged();
+            AllowEditMode = false;
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed"]}: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (!CurItem.Ngay_ct.HasValue)
+        {
+            myStateMN.SetNewThongbao(Lap["Date is required"] + "!");
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(CurItem.So_ct))
+        {
+            myStateMN.SetNewThongbao(Lap["Voucher number is required"] + "!");
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(CurItem.Ma_kh))
+        {
+            myStateMN.SetNewThongbao(Lap["Customer code is required"] + "!");
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(CurItem.Tk_thue_co))
+        {
+            myStateMN.SetNewThongbao(Lap["VAT account is required"] + "!");
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(CurItem.Tk_du))
+        {
+            myStateMN.SetNewThongbao(Lap["Receivable account is required"] + "!");
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    async void MaKh_Changed(ExpandoObject value)
+    {
+        if (!string.IsNullOrEmpty(CurItem.Ma_kh))
+        {
+            try
+            {
+                string sql = "SELECT ten_kh, dia_chi, ma_so_thue FROM dmkh WHERE ma_kh = @makhs";
+                var ds = await myDb.LoadDataset(sql, "makhs", CurItem.Ma_kh);
+                if (ds != null && ds.Tables[0].Rows.Count > 0)
+                {
+                    var row = ds.Tables[0].Rows[0];
+                    CurItem.Ten_kh = row["ten_kh"]?.ToString() ?? "";
+                    CurItem.Dia_chi = row["dia_chi"]?.ToString() ?? "";
+                    CurItem.Ma_so_thue = row["ma_so_thue"]?.ToString() ?? "";
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
+    }
+
+    async void MaNt_Changed(ExpandoObject value)
+    {
+        if (!string.IsNullOrEmpty(CurItem.Ma_nt))
+        {
+            try
+            {
+                string sql = "SELECT ty_gia FROM dmnt WHERE ma_nt = @mant";
+                var ds = await myDb.LoadDataset(sql, "mant", CurItem.Ma_nt);
+                if (ds != null && ds.Tables[0].Rows.Count > 0)
+                {
+                    var row = ds.Tables[0].Rows[0];
+                    CurItem.Ty_gia = Convert.ToDecimal(row["ty_gia"] ?? 1);
+                    CalculateTotal();
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
+    }
+
+    async void MaThue_Changed(ExpandoObject value)
+    {
+        if (!string.IsNullOrEmpty(CurItem.Ma_thue))
+        {
+            try
+            {
+                string sql = "SELECT thue_suat, tk_co FROM dmthue WHERE ma_thue = @mathue";
+                var ds = await myDb.LoadDataset(sql, "mathue", CurItem.Ma_thue);
+                if (ds != null && ds.Tables[0].Rows.Count > 0)
+                {
+                    var row = ds.Tables[0].Rows[0];
+                    CurItem.Thue_suat = Convert.ToDecimal(row["thue_suat"] ?? 10);
+                    CurItem.Tk_thue_co = row["tk_co"]?.ToString() ?? "";
+                    CalculateTax();
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
+    }
+
+    void CalculateTotal()
+    {
+        if (CurItem.Ma_nt == "VND")
+        {
+            CurItem.T_tien_nt2 = CurItem.T_tien2;
+        }
+        else
+        {
+            CurItem.T_tien2 = CurItem.T_tien_nt2 * CurItem.Ty_gia;
+        }
+        CalculateTax();
+    }
+
+    void CalculateTax()
+    {
+        CurItem.T_thue_nt = CurItem.T_tien_nt2 * CurItem.Thue_suat / 100;
+        CurItem.T_thue = CurItem.T_tien2 * CurItem.Thue_suat / 100;
+        StateHasChanged();
+    }
+
+    public string GetStt_rec()
+    {
+        int result = 0;
+        object obj = myDb.GetValue($"SELECT MAX(stt_rec) FROM ctgt20 WHERE stt_rec LIKE '{M_WS_ID}{Ma_ct}%'");
+        if (obj == null || obj == DBNull.Value)
+            return string.Format("{0}{1}{2:0000000}", M_WS_ID, Ma_ct, result + 1);
+        
+        string maxValue = obj.ToString();
+        if (maxValue.Length > 4 + Ma_ct.Length)
+        {
+            int.TryParse(maxValue.Substring(1 + Ma_ct.Length), out result);
+        }
+        return string.Format("{0}{1}{2:0000000}", M_WS_ID, Ma_ct, result + 1);
+    }
+
+    public virtual void LoadOptions()
+    {
+        M_WS_ID = myOption.GetOptionsValue("M_WS_ID").Trim().ToUpper();
+        M_MA_NT0 = myOption.GetOptionsValue("M_MA_NT0");
+        M_IP_SL = myOption.GetOptionsValue("M_IP_SL");
+        M_IP_GIA = myOption.GetOptionsValue("M_IP_GIA");
+        M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN");
+        M_IP_TIEN_NT = myOption.GetOptionsValue("M_IP_TIEN_NT");
+    }
+
+    public virtual void OnCancel()
+    {
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo(ParentPage);
+    }
+}

@@ -1,0 +1,161 @@
+﻿@inject NavigationManager navigation
+@inject IStringLocalizer<App> Lap
+<DxGridLayout CssClass="w-100 ch-480">
+    <Rows>
+        <DxGridLayoutRow Height="auto" />
+        <DxGridLayoutRow Height="40" />
+    </Rows>
+    <Items>
+        <DxGridLayoutItem Row="0">
+            <Template>
+                <div class="container">
+                    @if (LSFiles != null && LSFiles.Count > 0)
+                    {
+                        @foreach (FilesManager file in LSFiles)
+                        {
+                            <div class="row m-1 align-content-center" style="border-radius:20px;">
+                                <img class="col-3 align-content-center" src="@file.FileUrl" width="80" height="80" style="border-radius:10px;border-width:1px;border:thick;border-color:silver;">
+                                <div class="col-5 text-wrap align-content-center"> @file.FileName </div>
+                                <div class="col-4">
+                                    <div class="row align-content-center">
+                                        <DxButton Click="@(()=>{View(file.FileName);})" CssClass="col btn btn-success m-1" Text="Tải xuống"></DxButton>
+                                        <DxButton Click="@(()=>{Delete(file.FileName);})" CssClass="col btn btn-danger m-1" Text="Xóa"></DxButton>
+                                    </div>
+                                </div>
+                                <div class="row" style="height:1px; background-color:silver"> </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </Template>
+        </DxGridLayoutItem>
+        <DxGridLayoutItem Row="1">
+            <Template>
+                <div class="row">
+                    <div class="row col-5 justify-content-end">
+                        <DxButton Click="@(()=>{Save();})" CssClass="col btn btn-primary m-1" Text="@Lap["Save"].ToString()"></DxButton>
+                        <DxButton Click="@(()=>{Close();})" CssClass="col btn btn-danger m-1" Text="@Lap["Cancel"].ToString()"></DxButton>
+                    </div>
+                </div>
+            </Template>
+        </DxGridLayoutItem>
+    </Items>
+</DxGridLayout>
+<SisCom.Shared.XacnhanComponent Content="@Deletemessage" Xacnhanxoa="Dongyxoa"></SisCom.Shared.XacnhanComponent>
+
+@code {
+    [CascadingParameter(Name = "Lang")]
+    private bool LangEn { get; set; }
+    [Parameter]
+    public string Stringdata { get; set; }
+    [Parameter]
+    public EventCallback<string> SaveDone { get; set; }
+    List<FilesManager> LSFiles = new List<FilesManager>();
+    string fileFolder = "uploads";
+    string deleteFile = "";
+    string lsdeletefile = "";
+    private string Deletemessage { get; set; }
+    private async Task Dongyxoa(bool status)
+    {
+        if (status)
+        {
+            if (!string.IsNullOrEmpty(deleteFile))
+            {
+                FilesManager f = LSFiles.Where(a => a.FileName.Equals(deleteFile)).FirstOrDefault();
+                if (f != null)
+                {
+                    LSFiles.Remove(f);
+                    lsdeletefile += deleteFile + ",";
+                }
+            }
+        }
+
+        Deletemessage = "";
+        deleteFile = "";
+        StateHasChanged();
+    }
+    void Save()
+    {
+        if (!string.IsNullOrEmpty(lsdeletefile))
+        {
+            lsdeletefile = lsdeletefile.Substring(0, lsdeletefile.Length - 1);
+        }
+        SaveDone.InvokeAsync(lsdeletefile);
+    }
+    void Close()
+    {
+        SaveDone.InvokeAsync("");
+    }
+    class FilesManager
+    {
+        public string FileName { get; set; }
+        public string FileUrl { get; set; }
+    }
+    void View(string value)
+    {
+        string path = Path.Combine(navigation.BaseUri, fileFolder, value);
+        navigation.NavigateTo(path, true);
+    }
+    void Delete(string value)
+    {
+        deleteFile = value;
+        Deletemessage = "Xác nhận xóa tệp: " + value;
+        StateHasChanged();
+    }
+    string GetFileIcon(string str)
+    {
+        string[] exten = str.Split('.');
+        string name = "";
+        switch (exten[1])
+        {
+            case "xls":
+            case "xlsx":
+                name = "excelicon.PNG";
+                break;
+            case "doc":
+            case "docx":
+                name = "wordicon.PNG";
+                break;
+            case "ppt":
+            case "pptx":
+                name = "powerpointicon.PNG";
+                break;
+            case "pdf":
+                name = "pdficon.PNG";
+                break;
+            default:
+                name = "fileicon.PNG";
+                break;
+        }
+        return name;
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!string.IsNullOrEmpty(Stringdata))
+            {
+                LSFiles.Clear();
+                string[] tmp = Stringdata.Split(',');
+                foreach (string str in tmp)
+                {
+                    string iconName = "";
+                    if (str.ToLower().EndsWith("jpg") || str.ToLower().EndsWith("png") || str.ToLower().EndsWith("svg"))
+                    {
+                        iconName = Path.Combine("uploads", str);
+                    }
+                    else
+                    {
+                        iconName = Path.Combine("images", GetFileIcon(str));
+                    }
+                    LSFiles.Add(new FilesManager()
+                        {
+                            FileName = str,
+                            FileUrl = iconName
+                        });
+                    StateHasChanged();
+                }
+            }
+        }
+    }
+}

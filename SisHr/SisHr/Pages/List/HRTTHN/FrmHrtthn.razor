@@ -1,0 +1,53 @@
+@page "/frmhrtthn"
+@page "/frmhrtthn/{menu_id}"
+@page "/frmhrtthn/{menu_id}/{ma_tthn}"
+@inject Statemanagerment myStatemanagerment
+@inject NavigationManager navigation
+@inject IDbManager myDb
+@inject IJSRuntime JavacriptS
+
+<DxPopup @bind-Visible="@PopVisible"
+         ShowFooter="false"
+         ShowHeader="false"
+         CloseOnEscape="false"
+         CloseOnOutsideClick="false"
+         ShowCloseButton="false"
+         Width="auto"
+         MinWidth="600px"
+         MinHeight="200px"
+         MaxHeight="98vh"
+         AllowResize="true"
+         AllowDrag="true"
+         AllowDragByHeaderOnly="true">
+    <BodyTemplate>
+        <div class="row">
+            <EditHrtthn Ma_ma="@ma_tthn"
+                        Menu_id="@menu_id"
+                        curActionTask="@curActionTask"
+                        ShowAdd="@ShowAdd"
+                        OnClose="ClickHandler" />
+        </div>
+    </BodyTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public string menu_id { get; set; }
+    [Parameter] public string ma_tthn { get; set; }
+    [Parameter] public ActionTask curActionTask { get; set; } = ActionTask.None;
+    [Parameter] public bool ShowAdd { get; set; }
+
+    public bool PopVisible { get; set; } = true;
+
+    protected override void OnInitialized()
+    {
+        if (curActionTask == ActionTask.None)
+            curActionTask = myStatemanagerment.GetCurrentActionTask();
+    }
+
+    private void ClickHandler()
+    {
+        PopVisible = false;
+        OnClose.InvokeAsync();
+    }
+}

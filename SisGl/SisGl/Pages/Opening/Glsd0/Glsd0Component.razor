@@ -1,0 +1,391 @@
+﻿@page "/Glsd0"
+@page "/Glsd0/{Menu_id}"
+@inherits ListBaseComponent
+
+@using SisLib.List
+@using Microsoft.Extensions.Localization
+
+@attribute [Authorize(Roles = "admin,glsd0")]
+<div class="d-flex mt-1 align-items-center gap-3">
+    <h6 class="mb-0">@Lap["Data entry start date"]: </h6>
+    <span class="badge bg-secondary">@M_ngay_bd</span>
+    <h6 class="mb-0">@Lap["Define financial year"]: </h6>
+    <span class="badge bg-secondary">@M_ngay_dn</span>
+</div>
+<hr style="margin:6px;padding:0px;height:1px;"/>
+<div class="row mt-1">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+    CloseOnEscape="true" Width="60vw"
+    MinWidth="700px"
+    Scrollable="true"
+    MaxHeight="98vh"
+    AllowResize="true"
+    AllowDrag="true"
+    AllowDragByHeaderOnly="true"
+    ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+    ShowFooter="false"
+    ShowHeader="false"
+    MinWidth="50vw"
+    @bind-Visible="@IsImportPopupVisible"
+    CloseOnEscape="true"
+    ShowCloseButton="false"
+    AllowResize="true"
+    AllowDrag="true"
+    AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible" CurDmimex="@CurDmimex" OnImportCompleted="@ImportOK" CheckDataBeForeIns="OnCheckDataImport" ShowError="@ShowError"/>
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+@code {
+    public string M_TK_DU0;
+    public string preFilter = "";
+    string Ma_dvcs = "";
+    string Nam = "2024";
+    string M_ngay_bd = "01-01-2024";
+    string M_ngay_dn = "01-01-2024";
+    string Ma_imex = "GL02";
+
+    protected override void OnInitialized()
+    {
+        mPage = "Glsd0";
+        editPage = "editGlsd0";
+        IsShowCopy = true;
+        IsShowImport = true;
+        M_TK_DU0 = myOption.GetOptionsValue("M_TK_DU0").ToString();
+        sqlTableName = "cdtk";
+        sqlTableView = "v_cdtk";
+        SqlTableKey = "tk;nam;ma_dvcs";        
+
+        FrmType = typeof(Opening.Glsd0.EditGlsd0);
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.sd.01";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", false));
+                if (IsShowCopy) myStateMN.SetToolBar(new MyToolbar("Copy", false));
+                if (IsShowImport) myStateMN.SetToolBar(new MyToolbar("Import", true));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", false));
+                myStateMN.SetToolBar(new MyToolbar("Change", false));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+            await Loaddata();
+            await Language();            
+        }
+    }
+    public virtual void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {            
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;          
+            case ActionTask.Import:
+                V_Import();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));        
+        if (curCommand != null)
+        {
+            fbrowse = IsLangEn ? curCommand.Vbrowse2 : curCommand.Vbrowse1;
+            Page_size = int.Parse(myOption.GetOptionsValue("M_GRID_NROW").Trim());
+            editPage = "";
+        }
+        StateHasChanged();
+    }
+    public override async Task Loaddata()
+    {
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs.Equals("ALL"))
+        {
+            myStateMN.SetNewThongbao(Lap["Please, select Unit code"] + "!");
+            return;
+        }
+        
+        DateTime datedn = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_DN"));
+        DateTime dateTime = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KY1"));
+        M_ngay_bd = dateTime.ToString("dd-MM-yyyy");
+        M_ngay_dn = (new DateTime(dateTime.Year, datedn.Month, datedn.Day)).ToString("dd-MM-yyyy");
+        Nam = dateTime.Year.ToString().Trim();
+        preFilter = " nam =" + Nam;
+        preFilter = preFilter + " and ma_dvcs LIKE '" + Ma_dvcs.Trim() + "'";
+        DataSet dsList = await myDb.LoadDataset("select * from " + sqlTableView + " WHERE loai_tk = 1 AND " + preFilter);
+        TblData = dsList.Tables[0];        
+        if (TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+    }
+    public override void V_Sua()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            if (rview["tk_cn"].ToString().Trim().Equals("1"))
+            {
+                myStateMN.SetNewThongbao(Lap["This is AR/AP account, need to input at AR/AP subsystem"] + "!");
+                return;
+            }
+            string strkey = SqlTableKey.Split(";").FirstOrDefault();
+            if (!rview.DataView.Table.Columns.Contains(strkey))
+                return;
+            if (!String.IsNullOrEmpty(rview[strkey].ToString()))
+            {                
+                Par.Clear();
+                Par.Add("Ma_ma", (object)rview[strkey].ToString().Trim()+";"+Nam+";"+Ma_dvcs.Trim());
+                Par.Add("Menu_id", (object)Menu_id);
+                Par.Add("ShowAdd", (object)true);
+                Par.Add("curActionTask", (object)ActionTask.Edit);
+                Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                IsShowFrm = true;
+                StateHasChanged();                
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+    public virtual void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string strkey = SqlTableKey.Split(";").FirstOrDefault();
+            if (!rview.DataView.Table.Columns.Contains(strkey))
+                return;
+            if (!String.IsNullOrEmpty(rview[strkey].ToString()))
+            {
+                if (editPage.ToUpper().StartsWith("FRM"))
+                    myNavi.NavigateTo(editPage + "/" + Menu_id + "/" + rview[strkey].ToString());
+                else
+                {
+                    Par.Clear();
+                    Par.Add("Ma_ma", (object)rview[strkey].ToString().Trim() + ";" + Nam + ";" + Ma_dvcs.Trim());
+                    Par.Add("Menu_id", (object)Menu_id);
+                    Par.Add("ShowAdd", (object)true);
+                    Par.Add("curActionTask", (object)ActionTask.View);
+                    Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                    IsShowFrm = true;
+                    StateHasChanged();
+                }
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+    public override async void V_Import()
+    {
+        string sql = "select * from dmimex where Upper(ma_imex) = '" + Ma_imex.ToUpper().Trim() + "'";
+        DataSet ds = await myDb.LoadDataset(sql);
+        List<Dmimex> lsdmimex = myDb.ConvertDataTable<Dmimex>(ds.Tables[0]);
+        if (lsdmimex != null && lsdmimex.Count > 0)
+        {
+            CurDmimex = lsdmimex[0];
+            if (IsLangEn)
+            {
+                CurDmimex.Ten = String.IsNullOrEmpty(CurDmimex.Ten2) ? CurDmimex.Ten : CurDmimex.Ten2;
+            }
+            myStateMN.SetCurrentActionTask(ActionTask.Import);
+            CurDmimex.Overwrite = "0";
+            IsImportPopupVisible = true;
+        }
+        StateHasChanged();
+
+    }
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        if (!string.IsNullOrEmpty(_ma_dvcs) && !_ma_dvcs.Equals("ALL"))
+        {            
+            await Loaddata();
+            StateHasChanged();
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["Unit code is empty"] + "!");
+        }
+    }
+    private bool OnCheckDataImport(DataTable dt)
+    {
+        bool kq = true;
+        foreach (DataRow row in dt.Rows)
+        {
+            string tk = row["nam"].ToString().Trim();
+            if (tk != Nam)
+            {
+                myStateMN.SetNewThongbao(Lap["Incorrect year"] +": " + tk + "!");
+                kq = false;
+                break;
+            }            
+        }
+        return kq;
+    }
+    public async Task<bool> ShowError(DataErrArgs Args)
+    {
+        DataSet ds = Args.DataErr;
+        bool IsShowErr = false;
+        string strbrowse = "", strTitle = "";
+
+        if (ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0 && ds.Tables[0].Columns[0].ColumnName == "trung")
+        {
+            if (!IsLangEn)
+            {
+                SisLib.ReportLib.BrowTable(myModal, ds.Tables[0], "nam:H=Năm;tk:H=Tài khoản;ma_dvcs:H=Mã ĐVCS;lan:H=Số dòng bị trùng", "Những số dư trùng từ dữ liệu Excel", Lap["Cancel"]);
+            }
+            else
+            {
+                SisLib.ReportLib.BrowTable(myModal, ds.Tables[0], "nam:H=Year;tk:H=Account;ma_dvcs:H=Unit code;lan:H=Number of duplicate lines", "The duplicate balance from Excel data", Lap["Cancel"]);
+            }
+            IsShowErr = true;
+        }
+
+        if (ds.Tables.Count > 1 && ds.Tables[1].Rows.Count > 0)
+        { 
+            strbrowse = IsLangEn ? @"tk:H=Account" : @"tk:H=Tài khoản";
+            strTitle = IsLangEn ? "List of no account in the chart of accounts or consolidated accounts" : @"Danh sách tài khoản không có trong danh mục tài khoản hoặc là tài khoản tổng hợp";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[1], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+        // 2️⃣ Danh sách tài khoản là tài khoản công nợ
+        if (ds.Tables.Count > 2 && ds.Tables[2].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ? @"tk:H=Account" : @"tk:H=Tài khoản";
+            strTitle = IsLangEn ? "List of financial account liabilities" : "Danh sách tài khoản là tài khoản công nợ";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[2], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+        // 3️⃣ Danh sách mã ĐVCS không có trong danh mục
+        if (ds.Tables.Count > 3 && ds.Tables[3].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ? @"ma_dvcs:H=Unit code" : @"ma_dvcs:H=Mã ĐVCS";
+            strTitle = IsLangEn ? "Unit code list is not in the list of unit code" : "Danh sách mã ĐVCS không có trong danh mục ĐVCS";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[3], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // 4️⃣ Danh sách năm nhỏ hơn năm mở sổ
+        if (ds.Tables.Count > 4 && ds.Tables[4].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ? @"nam_ngay_ky1:H=Year" : @"nam_ngay_ky1:H=Năm";
+            strTitle = IsLangEn ? "List of open windows in smaller" : "Danh sách năm nhỏ hơn năm mở sổ";
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[4], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // 5️⃣ Không được phép nhập đồng thời dư nợ và dư có
+        if (ds.Tables.Count > 5 && ds.Tables[5].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ? @"nam:H=Year;tk:H=Account;du_no00:H=Opening Dr. balance:N0;du_co00:H=Opening Cr. balance:N0;
+           du_no_nt00:H=FC Opening Dr. balance:N1;du_co_nt00:H=FC Opening Cr. balance:N1;
+           du_no1:H=Year-opening Dr. balance:N0;du_co1:H=Year-opening Cr. balance:N0;
+           du_no_nt1:H=FC Year-opening Dr. balance:N1;du_co_nt1:H=FC Year-opening Cr. balance:N1"
+                : @"nam:H=Năm;tk:H=Tài khoản;du_no00:H=Dư nợ đầu kỳ:N0;du_co00:H=Dư có đầu kỳ:N0;
+           du_no_nt00:H=Dư nợ đầu kỳ n.tệ:N1;du_co_nt00:H=Dư có đầu kỳ n.tệ:N1;
+           du_no1:H=Dư nợ đầu năm:N0;du_co1:H=Dư có đầu năm:N0;
+           du_no_nt1:H=Dư nợ đầu năm n.tệ:N1;du_co_nt1:H=Dư có đầu năm n.tệ:N1";
+
+            strTitle = IsLangEn ? "Not allowed to enter simultaneously and outstanding balances" : "Không được phép nhập đồng thời dư nợ và dư có";
+
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[5], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // 6️⃣ Dư đầu năm, dư đầu kỳ phải cùng là nợ hoặc có
+        if (ds.Tables.Count > 6 && ds.Tables[6].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn ? @"nam:H=Year;tk:H=Account;du_no00:H=Opening Dr. balance:N0;du_co00:H=Opening Cr. balance:N0;
+           du_no_nt00:H=FC Opening Dr. balance:N1;du_co_nt00:H=FC Opening Cr. balance:N1;
+           du_no1:H=Year-opening Dr. balance:N0;du_co1:H=Year-opening Cr. balance:N0;
+           du_no_nt1:H=FC Year-opening Dr. balance:N1;du_co_nt1:H=FC Year-opening Cr. balance:N1"
+                : @"nam:H=Năm;tk:H=Tài khoản;du_no00:H=Dư nợ đầu kỳ:N0;du_co00:H=Dư có đầu kỳ:N0;
+           du_no_nt00:H=Dư nợ đầu kỳ n.tệ:N1;du_co_nt00:H=Dư có đầu kỳ n.tệ:N1;
+           du_no1:H=Dư nợ đầu năm:N0;du_co1:H=Dư có đầu năm:N0;
+           du_no_nt1:H=Dư nợ đầu năm n.tệ:N1;du_co_nt1:H=Dư có đầu năm n.tệ:N1";
+
+            strTitle = IsLangEn ? "Opening balance, beginning balance to the debt or is there": "Dư đầu năm, dư đầu kỳ phải cùng là nợ hoặc là có";
+
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[6], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+
+        // 7️⃣ Không phải tài khoản ngoại tệ, không được phép nhập số dư ngoại tệ
+        if (ds.Tables.Count > 7 && ds.Tables[7].Rows.Count > 0)
+        {
+            strbrowse = IsLangEn? @"nam:H=Year;tk:H=Account;du_no00:H=Opening Dr. balance:N0;du_co00:H=Opening Cr. balance:N0;
+           du_no_nt00:H=FC Opening Dr. balance:N1;du_co_nt00:H=FC Opening Cr. balance:N1;
+           du_no1:H=Year-opening Dr. balance:N0;du_co1:H=Year-opening Cr. balance:N0;
+           du_no_nt1:H=FC Year-opening Dr. balance:N1;du_co_nt1:H=FC Year-opening Cr. balance:N1"
+                : @"nam:H=Năm;tk:H=Tài khoản;du_no00:H=Dư nợ đầu kỳ:N0;du_co00:H=Dư có đầu kỳ:N0;
+           du_no_nt00:H=Dư nợ đầu kỳ n.tệ:N1;du_co_nt00:H=Dư có đầu kỳ n.tệ:N1;
+           du_no1:H=Dư nợ đầu năm:N0;du_co1:H=Dư có đầu năm:N0;
+           du_no_nt1:H=Dư nợ đầu năm n.tệ:N1;du_co_nt1:H=Dư có đầu năm n.tệ:N1";
+
+            strTitle = IsLangEn? "Not a foreign currency account, cannot enter foreign currency balances" : "Không phải tài khoản n.tệ, không được phép nhập số dư ngoại tệ";
+
+            SisLib.ReportLib.BrowTable(myModal, ds.Tables[7], strbrowse, " : " + strTitle, Lap["Cancel"]);
+            IsShowErr = true;
+        }
+        
+        return IsShowErr;
+    }
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+}

@@ -1,0 +1,103 @@
+@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.DMNVGL
+@using DevExpress.Blazor
+@using System.Data
+@using System.Linq
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveData" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                <DxFormLayoutItem Caption="@Lap["Voucher date"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_ct_input" Enabled="@AllowEditMode" @bind-Date="@CurNgayCt" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+
+        <div class="row m-1 me-2 mt-2">
+            <h6 class="fw-bold text-primary m-0 mb-1">@Lap["Salary transfer employee list"]</h6>
+
+            <div @ref="GridWrapperCt" id="grid-wrapper-ct" @onfocusout="OnGridCtLostFocus" @onfocusin='() => LastFocusedGrid = "CT"' class="mt-2 mb-3">
+                <DxGrid @ref="GridCT"
+                        Data="@LsRows"
+                        SizeMode="@Itemsizemode"
+                        CssClass="w-100 grid-height-dynamic"
+                        @onkeydown="GridCT_OnKeyDown"
+                        AllowSelectRowByClick="true"
+                        KeyboardNavigationEnabled="true"
+                        @bind-SelectedDataItem="@SelectedCt"
+                        ValidationEnabled="false"
+                        EditMode="GridEditMode.EditRow"
+                        RowClick="@StartEditRow"
+                        SelectionMode="GridSelectionMode.Single"
+                        CustomizeEditModel="Grid_CustomizeEditModel"
+                        EditModelSaving="Grid_EditModelSaving"
+                        DataItemDeleting="Grid_DataItemDeleting"
+                        ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                        EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                        ShowAllRows="true"
+                        TextWrapEnabled="false"
+                        AllowSort="false"
+                        HighlightRowOnHover="true"
+                        FooterDisplayMode="GridFooterDisplayMode.Always">
+                    <Columns>
+                        <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                            <CellDisplayTemplate Context="ctx">
+                                <div class="grid-cell-align-center">
+                                    <a class="text-danger fw-bold cursor-pointer" tabindex="-1"
+                                       @onclick="@(() => GridCT.ShowRowDeleteConfirmation(ctx.VisibleIndex))" title="Xóa dòng">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                </div>
+                            </CellDisplayTemplate>
+                            <CellEditTemplate Context="ctx">
+                            </CellEditTemplate>
+                        </DxGridCommandColumn>
+
+                        <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                        <DxGridDataColumn FieldName="Ma_ns" Caption="@Lap["Employee code"]" MinWidth="180">
+                            <CellEditTemplate Context="ctx">
+                                @{ var item = (DmnvglRow)ctx.EditModel; }
+                                <AutocompleteComponent Ma_dm="dmns"
+                                                       @bind-Value="@item.Ma_ns"
+                                                       IsEnable="@AllowEditMode"
+                                                       SelectChanged="@((ExpandoObject v) => Ma_ns_GridChanged(item, v))"
+                                                       IsLangEn="@IsLangEn" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+
+                        <DxGridDataColumn FieldName="Ten_ns" Caption="@Lap["Employee name"]" MinWidth="200" ReadOnly="true" />
+
+                        <DxGridDataColumn FieldName="Dien_giai" Caption="@Lap["Description"]" MinWidth="200">
+                            <CellEditTemplate Context="ctx">
+                                @{ var item = (DmnvglRow)ctx.EditModel; }
+                                <DxTextBox @bind-Text="@item.Dien_giai" CssClass="w-100" />
+                            </CellEditTemplate>
+                        </DxGridDataColumn>
+                    </Columns>
+                </DxGrid>
+            </div>
+        </div>
+    </FormList>
+</div>
+
+<style>
+    .grid-height-dynamic {
+        height: 350px;
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .grid-cell-align-center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>

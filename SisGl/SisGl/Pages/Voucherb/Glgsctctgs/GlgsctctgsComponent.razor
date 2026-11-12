@@ -1,0 +1,454 @@
+﻿@page "/glgsctctgs"
+@page "/glgsctctgs/{Menu_id}"
+@inherits ListBaseComponent
+@implements IAsyncDisposable
+@using System.Linq
+@using Microsoft.JSInterop;
+@attribute [Authorize(Roles = "admin,glgsctctgs")]
+
+<div class="row my-1 py-1">
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 fw-bold">@Lap["Ctgs from date"]</label>
+        <div>
+            <DxDateEdit @bind-Date="NgayCt1" NullText="01-01-2020" Format="dd-MM-yyyy" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+        </div>
+    </div>
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2">@Lap["To date"]</label>
+        <div>
+            <DxDateEdit @bind-Date="NgayCt2" NullText="01-01-2020" Format="dd-MM-yyyy" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+        </div>
+    </div>
+    <div class="col-auto d-flex align-items-center">
+        <DxButton RenderStyle="ButtonRenderStyle.Secondary" Text="@Lap["Search"]" Click="@OnSearchClick" />
+    </div>
+</div>
+
+<div class="row mt-1">
+    <FrmBrowse3Component @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" SelectCol="tag" IsLangEn="@IsLangEn"></FrmBrowse3Component>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="80vw"
+              MinWidth="850px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@code {
+    public new FrmBrowse3Component oBrowse;
+
+    private DateTime _ngayCt1 = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    private DateTime _ngayCt2 = new DateTime(DateTime.Now.Year, DateTime.Now.Month,
+        DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month));
+
+    public DateTime NgayCt1
+    {
+        get => _ngayCt1;
+        set { _ngayCt1 = value; }
+    }
+    public DateTime NgayCt2
+    {
+        get => _ngayCt2;
+        set { _ngayCt2 = value; }
+    }
+
+    protected override void OnInitialized()
+    {
+        mPage = "glgsctctgs";
+        SqlTableKey = "stt_ctgs";
+        IsShowCopy = false;
+        IsShowImport = false;
+        FrmType = typeof(Voucherb.Glgsctctgs.EditGlgsctctgs);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.vb.02";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            SqlTableKey = "stt_ctgs";
+            fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.AddOrderToolBarButton("Button1", Lap["Registry"] + "-F4", 1);
+                myStateMN.SetToolBar(new MyToolbar("New", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            await Loaddata();
+            await Language();
+        }
+    }
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Button1:
+                myStateMN.SetCurrentActionTask(ActionTask.Button1);
+                V_Moi();
+                break;
+            case ActionTask.Copy:
+                myStateMN.SetCurrentActionTask(ActionTask.Copy);
+                V_Copy();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Change:
+                ChangeID();
+                break;
+            case ActionTask.Import:
+                V_Import();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+    async Task OnSearchClick()
+    {
+        myStateMN.SetStartDate(NgayCt1);
+        myStateMN.SetEndDate(NgayCt2);
+
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        string sql = @"SELECT CAST(0 AS BIT) AS tag,
+            ct.stt_ctgs, ct.stt, ct.ngay_lo,
+            ct.so_lo, ct.dien_giai,
+            ct.tien, ct.sl_ct_ht,
+            ct.ngay_ct1, ct.ngay_ct2,
+            ct.ngay_ctgs1, ct.ngay_ctgs2,
+            ct.ma_ct_gs,
+            ct.tk, ct.no_co,
+            CASE ct.no_co WHEN 1 THEN N'Nợ' WHEN 2 THEN N'Có' ELSE N'Nợ và có' END AS no_co_browse,
+            ct.tk_du,
+            ct.ma_bpht, ct.ma_vv, ct.ma_dvcs,
+            ct.tien_nt,
+            ct.date AS ngay_sua, ct.time AS gio_sua, ct.user_id AS nguoi_sua
+        FROM ctgs AS ct
+        WHERE ct.ngay_ctgs1 >= @ngay1 AND ct.ngay_ctgs1 <= @ngay2
+        ORDER BY ct.uu_tien, ct.ngay_lo, ct.so_lo";
+
+        string paramValues = NgayCt1.ToString("yyyyMMdd") + ";" + NgayCt2.ToString("yyyyMMdd");
+        DataSet dsList = await myDb.LoadDataset(sql, "ngay1;ngay2", paramValues);
+        TblData = myDb.SetNoneReadOnlyDataTable(dsList.Tables[0]);
+        if (!TblData.Columns.Contains("tag"))
+            TblData.Columns.Add("tag", typeof(string));
+        foreach (DataRow r in TblData.Rows)
+        {
+            var tagCol = TblData.Columns["tag"];
+            if (tagCol.DataType == typeof(bool))
+                r["tag"] = false;
+            else
+                r["tag"] = "0";
+        }
+        if (TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+    }
+
+    // B1: Đăng ký - theo logic WPF ToolBar_Cm_Moi
+    public override async void V_Moi()
+    {
+        var checkedRows = GetCheckedRows();
+        if (checkedRows == null || checkedRows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["Please select at least one CTGS"]);
+            return;
+        }
+
+        string sttCtgsList = string.Join(",", checkedRows.Select(r => r["stt_ctgs"].ToString().Trim()));
+
+        if (checkedRows.Length == 1)
+        {
+            // 1 bản ghi: mở popup sửa (EditEntries)
+            OpenEditPopup(sttCtgsList, ActionTask.Edit);
+            return;
+        }
+
+        // Nhiều bản ghi: kiểm tra đã đăng ký chưa
+        bool isRegistried = await IsRegistriedAsync(sttCtgsList);
+        if (isRegistried)
+        {
+            myStateMN.SetNewThongbao(Lap["Must delete registered CTGS before registering"]);
+            return;
+        }
+
+        // Thực hiện đăng ký hàng loạt
+        await RegisterCtgsAsync(sttCtgsList, checkedRows);
+    }
+
+    async Task<bool> IsRegistriedAsync(string sttCtgsList)
+    {
+        string sql = $"IF EXISTS(SELECT stt_ctgs FROM ct00 WHERE dbo.InList(stt_ctgs,'{sttCtgsList}', ',') = 1) SELECT 1 ELSE SELECT 0";
+        var result = myDb.GetValue(sql);
+        return result != null && result.ToString() == "1";
+    }
+
+    async Task RegisterCtgsAsync(string sttCtgsList, DataRowView[] checkedRows)
+    {
+        try
+        {
+            // Gọi SP Glgsctctgs_Reg để đăng ký
+            string regSql = $"EXEC dbo.Glgsctctgs_Reg @Entries = '{sttCtgsList}'";
+            await myDb.ExecuteSqlQueryAsync(regSql);
+
+            // Lấy thông tin cập nhật sau đăng ký
+            string updateSql = $"EXEC Glgsctctgs_Update @Entries = '{sttCtgsList}'";
+            DataSet dsUpdate = await myDb.LoadDataset(updateSql, "", "");
+            DataView dvUpdate = dsUpdate?.Tables[0]?.DefaultView;
+            if (dvUpdate != null)
+                dvUpdate.Sort = "stt_ctgs";
+
+            foreach (DataRowView r in checkedRows)
+            {
+                r["tag"] = false;
+                string key = r["stt_ctgs"].ToString().Trim();
+                if (dvUpdate != null)
+                {
+                    int idx = dvUpdate.Find(key);
+                    if (idx >= 0)
+                    {
+                        r["tien"] = dvUpdate[idx]["tien"];
+                        r["tien_nt"] = dvUpdate[idx]["tien_nt"];
+                        r["sl_ct_ht"] = dvUpdate[idx]["sl_ct_ht"];
+                    }
+                    else
+                    {
+                        r["tien"] = 0;
+                        r["tien_nt"] = 0;
+                        r["sl_ct_ht"] = 0;
+                    }
+                }
+            }
+
+            myStateMN.SetNewThongbao(Lap["Registry completed"]);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed: {ex.Message}"]}: {ex.Message}");
+        }
+    }
+
+    public override void V_Xem()
+    {
+        var checkedRows = GetCheckedRows();
+        if (checkedRows == null || checkedRows.Length == 0)
+        {
+            // fallback to selected row
+            DataRowView rview = (DataRowView)SelectedItem;
+            if (rview != null && !string.IsNullOrEmpty(rview[SqlTableKey]?.ToString()))
+                OpenEditPopup(rview[SqlTableKey].ToString().Trim(), ActionTask.View);
+            else
+                myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }
+        string sttCtgsList = string.Join(",", checkedRows.Select(r => r["stt_ctgs"].ToString().Trim()));
+        OpenEditPopup(sttCtgsList, ActionTask.View);
+    }
+
+    public override void V_Sua()
+    {
+        var checkedRows = GetCheckedRows();
+        if (checkedRows == null || checkedRows.Length == 0)
+        {
+            DataRowView rview = (DataRowView)SelectedItem;
+            if (rview != null && !string.IsNullOrEmpty(rview[SqlTableKey]?.ToString()))
+                OpenEditPopup(rview[SqlTableKey].ToString().Trim(), ActionTask.Edit);
+            else
+                myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }
+        string sttCtgsList = string.Join(",", checkedRows.Select(r => r["stt_ctgs"].ToString().Trim()));
+        OpenEditPopup(sttCtgsList, ActionTask.Edit);
+    }
+
+    public override async void V_Xoa()
+    {
+        var checkedRows = GetCheckedRows();
+        if (checkedRows == null || checkedRows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["Please select at least one CTGS"]);
+            return;
+        }
+        string sttCtgsList = string.Join(",", checkedRows.Select(r => r["stt_ctgs"].ToString().Trim()));
+
+        MessageDl = Lap["Do you want to delete selected CTGS?"];
+        ResultDl = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+        {
+            Text = MessageDl,
+            Title = Lap["Confirm deletion of list"],
+            OkButtonText = Lap["OK"],
+            CancelButtonText = Lap["Cancel"],
+            ShowIcon = true,
+            ShowCloseButton = false,
+            RenderStyle = MessageBoxRenderStyle.Danger,
+        });
+        if (ResultDl == true)
+        {
+            await DeleteCtgs(sttCtgsList, checkedRows);
+            StateHasChanged();
+        }
+        MessageDl = "";
+    }
+
+    async Task DeleteCtgs(string sttCtgsList, DataRowView[] checkedRows)
+    {
+        try
+        {
+            string delSql = $"EXEC Glgsctctgs_del @Entries = '{sttCtgsList}'";
+            await myDb.ExecuteSqlQueryAsync(delSql);
+            foreach (DataRowView r in checkedRows)
+            {
+                r["tag"] = false;
+                r["tien"] = 0;
+                r["tien_nt"] = 0;
+                r["sl_ct_ht"] = 0;
+            }
+
+            myStateMN.SetNewThongbao(Lap["Delete successfully"]);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed: {ex.Message}"]}: {ex.Message}");
+        }
+    }
+
+    void OpenEditPopup(string sttCtgsList, ActionTask mode)
+    {
+        _lastEditedSttCtgs = sttCtgsList;
+        Par.Clear();
+        Par.Add("NgayCt1", (object)NgayCt1);
+        Par.Add("NgayCt2", (object)NgayCt2);
+        Par.Add("SttCtgsList", (object)sttCtgsList);
+        Par.Add("Menu_id", (object)Menu_id);
+        Par.Add("ShowAdd", (object)true);
+        Par.Add("curActionTask", (object)mode);
+        Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));        
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    private string _lastEditedSttCtgs = "";
+    public override async void CloseForm()
+    {
+        await UpdateAfterClose();
+        await Loaddata();
+        IsShowFrm = false;
+        StateHasChanged();
+    }
+
+    public async Task UpdateAfterClose()
+    {
+        if (string.IsNullOrEmpty(_lastEditedSttCtgs) || TblData == null) return;
+        try
+        {
+            string updateSql = $"EXEC Glgsctctgs_Update @Entries = '{_lastEditedSttCtgs}'";
+            DataSet dsUpdate = await myDb.LoadDataset(updateSql, "", "");
+            DataView dvUpdate = dsUpdate?.Tables[0]?.DefaultView;
+            if (dvUpdate == null || dvUpdate.Count == 0) return;
+
+            dvUpdate.Sort = "stt_ctgs";
+            foreach (DataRowView r in TblData.DefaultView)
+            {
+                string key = r["stt_ctgs"].ToString().Trim();
+                int idx = dvUpdate.Find(key);
+                if (idx >= 0)
+                {
+                    r["tien"] = dvUpdate[idx]["tien"];
+                    r["tien_nt"] = dvUpdate[idx]["tien_nt"];
+                    r["sl_ct_ht"] = dvUpdate[idx]["sl_ct_ht"];
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed: {ex.Message}"]}: {ex.Message}");
+        }
+        finally
+        {
+            _lastEditedSttCtgs = "";
+        }
+    }
+
+    DataRowView[] GetCheckedRows()
+    {
+        if (TblData == null) return Array.Empty<DataRowView>();
+        return TblData.DefaultView
+            .Cast<DataRowView>()
+            .Where(r =>
+            {
+                if (!r.Row.Table.Columns.Contains("tag")) return false;
+                var val = r["tag"];
+                if (val is bool b) return b;
+                var s = val?.ToString().Trim().ToLower();
+                return s == "1" || s == "true";
+            })
+            .ToArray();
+    }
+
+    public override async void ExportData(int type)
+    {
+        oBrowse?.ExPortGrid(type);
+        myStateMN.SetNewThongbao(Lap["Export successfully"]);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _dotNetHelper?.Dispose();
+        base.Dispose();
+    }
+}

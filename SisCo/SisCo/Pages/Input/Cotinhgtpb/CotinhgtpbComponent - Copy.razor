@@ -1,0 +1,500 @@
+﻿@page "/cotinhgtpbC"
+@page "/cotinhgtpbC/{Menu_id}"
+@using DevExpress.Blazor
+@using Microsoft.JSInterop
+@using SisData.Service
+@using SisData.Data
+@using SisData.Model
+@using Blazored.LocalStorage
+@using Microsoft.AspNetCore.Authorization
+@using System.Data
+
+@attribute [Authorize(Roles = "admin,cotinhgtpbC")]
+@inject IJSRuntime JS
+@inject Statemanagerment myStateMN
+@inject ISysVarManager mySysvar
+@inject IOptionsManager myOptions
+@inject IDbManager myDb
+@inject ICommandManager myCommand
+@inject ILocalStorageService myLcStore
+@inject XmlStringLocalizer Lap
+
+<div class="container-fluid p-4">
+    @if (!ShowBrowseResult)
+    {
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">@Title</h5>
+                <div>
+                    <button class="btn btn-outline-light me-2" @onclick="() => PopupVisible = true" disabled="@isProcessing">
+                        <i class="fas fa-filter"></i> @Lap["Filter"]
+                    </button>
+                    <button class="btn btn-success" @onclick="StartCalculateCost" disabled="@isProcessing">
+                        <i class="fas fa-play"></i> @Lap["Excute"]
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h6>@Lap["Processing"]:</h6>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar progress-bar-animated"
+                                 role="progressbar"
+                                 style="width: @(progressValue)%;">
+                                @resultText
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning" role="alert">@Lap["The calculation process may take time, please wait ..."]</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">@Title</h5>
+                <div>
+                    <button class="btn btn-outline-light me-2" @onclick="OnRefreshClick" disabled="@isProcessing">
+                        <i class="fas fa-sync-alt"></i> @Lap["Refresh"] (Ctrl+R)
+                    </button>
+                    <button class="btn btn-success me-2" @onclick="OnUpdatePriceClick" disabled="@isProcessing">
+                        <i class="fas fa-edit"></i> @Lap["Update price for finished product import slip"] (F3)
+                    </button>
+                    <button class="btn btn-secondary" @onclick="OnBackClick">
+                        <i class="fas fa-arrow-left"></i> @Lap["Back"] (Esc)
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                @if (TblData != null && oBrowse != null)
+                {
+                    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@Fbrowse" IsLangEn="@IsLangEn" Page_size="20" IsFilter="true" CssClass="grid0-frm-height" />
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<DxPopup @bind-Visible="PopupVisible" CloseOnOutsideClick="false" CssClass="dxPopup"
+         Width="40%" Height="auto" MaxWidth ="400" ShowFooter="true" HeaderText="@Lap["Filter"]">
+    <BodyTemplate Context="popupContext">        
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 4rem; height:4rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="p-3">
+                <DxFormLayout SizeMode="SizeMode.Medium" CssClass="frm-header" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box my-2">                       
+                        <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From month"]">
+                            <Template>
+                                <DxSpinEdit @bind-Value="Period1" Min="1" Max="12" ShowSpinButtons="true" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To month"]">
+                            <Template>
+                                <DxSpinEdit @bind-Value="Period2" Min="1" Max="12" ShowSpinButtons="true" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Year"]">
+                            <Template>
+                                <DxSpinEdit @bind-Value="Year" Min="1900" Max="2100" ShowSpinButtons="true" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Workshop code"]" BeginRow="true">
+                            <Template>
+                                <AutocompleteComponent Id="ma_px_input" Ma_dm="dmpx" @bind-Value="@Ma_px" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Account"]">
+                            <Template>                                
+                                <AutocompleteComponent Id="tk_input" Ma_dm="dmtk" @bind-Value="@Tk" IsLangEn="@IsLangEn" AllowNull = "false"></AutocompleteComponent>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+                </DxFormLayout>
+
+                @if (Errors.Any())
+                {
+                    <div class="mt-2 alert alert-danger p-2">
+                        <ul class="mb-0">
+                            @foreach (var err in Errors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row m-0 justify-content-end align-content-end">
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@ConfirmGridView_OnOk" />
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+<style>
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+
+    .grid0-frm-height {
+        height: 75vh;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string Menu_id { get; set; }
+    
+    public Command curCommand = new Command();
+    public bool IsLangEn = false;
+    public string UserLang = "";
+    string Title = "";
+
+    private int Year { get; set; }
+    private int Period1 { get; set; }
+    private int Period2 { get; set; }
+    private string Ma_px { get; set; } = "";
+    private string Tk { get; set; } = "";
+    private string Ma_dvcs { get; set; } = "";
+
+    private bool PopupVisible { get; set; } = false;
+    private bool ShowLoadding { get; set; } = false;
+    private List<string> Errors { get; set; } = new();
+
+    private bool isProcessing = false;
+    private double progressValue = 0;
+    private string resultText = "0%";
+
+    // Browse result variables
+    private bool ShowBrowseResult { get; set; } = false;
+    private DataTable TblData { get; set; }
+    private FrmBrowseComponent oBrowse;
+    private string Fbrowse { get; set; } = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();        
+        var today = DateTime.Today;
+        Year = today.Year;
+        Period1 = 1;
+        Period2 = today.Month;
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {            
+            try
+            {
+                await Language();                
+                curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+                if (curCommand != null)
+                {
+                    Title = !IsLangEn ? curCommand.Bar : curCommand.Bar2;                    
+                    Fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+                }
+                await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+
+                int p1 = myStateMN.GetCurrentMonth();
+                int y1 = myStateMN.GetCurrentYear().Year;
+                int p2 = p1;
+                if (p1 > 0) Period1 = p1;
+                if (y1 > 0) Year = y1;
+                if (p2 > 0) Period2 = p2;
+
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
+
+    private void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+
+    private void AddError(string msg)
+    {
+        Errors.Add(msg);
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool ok = true;
+        
+        // Validate Account (Tk) first - required field
+        if (string.IsNullOrWhiteSpace(Tk))
+        {
+            AddError(Lap["Account is required"]);
+            ok = false;
+        }
+        else
+        {
+            string resTk = myDb.GetValue($"SELECT tk FROM dmtk WHERE tk = '{Tk.Trim()}'").ToString();
+            if (string.IsNullOrEmpty(resTk))
+            {
+                AddError(Lap["Account does not exist in the list"]);
+                ok = false;
+            }
+        }
+        
+        // Validate Period1
+        if (Period1 < 1 || Period1 > 12) 
+        { 
+            AddError(Lap["From month invalid"]); 
+            ok = false; 
+        }
+        
+        // Validate Period2
+        if (Period2 < 1 || Period2 > 12) 
+        { 
+            AddError(Lap["To month invalid"]); 
+            ok = false; 
+        }
+        
+        // Validate Year
+        if (Year < 1900 || Year > 2079) 
+        { 
+            AddError(Lap["Year invalid"]); 
+            ok = false; 
+        }
+
+        // Check year against opening year
+        try
+        {
+            var ngayKy1 = mySysvar.GetSysVar("M_NGAY_KY1");
+            if (ngayKy1 != null)
+            {
+                DateTime dateKy1 = Convert.ToDateTime(ngayKy1);
+                if (Year < dateKy1.Year)
+                {
+                    AddError(Lap["Year must be greater than or equal to opening year"]);
+                    ok = false;
+                }
+            }
+        }
+        catch { }
+
+        // Check if period is locked
+        try
+        {
+            var ngayDongSo = mySysvar.GetSysVar("M_NGAY_DONG_SO");
+            if (ngayDongSo != null)
+            {
+                DateTime dateDongSo = Convert.ToDateTime(ngayDongSo);
+                DateTime ngayCtEnd = new DateTime(Year, Period2, DateTime.DaysInMonth(Year, Period2));
+                if (ngayCtEnd <= dateDongSo)
+                {
+                    AddError(Lap["Data is locked cannot calculate cost"]);
+                    ok = false;
+                }
+            }
+        }
+        catch { }
+
+        if (!ok)
+        {
+            if (Errors.Count > 0)
+                myStateMN.SetNewThongbao(Errors[0]);
+            StateHasChanged();
+        }
+        return ok;
+    }
+
+    private async void ConfirmGridView_OnOk()
+    {
+        if (!CheckValid()) return;
+        PopupVisible = false;
+        StateHasChanged();
+
+        await StartCalculateCost();
+        StateHasChanged();
+    }
+    
+    public async Task StartCalculateCost()
+    {
+        // Validate before processing
+        if (!CheckValid())
+        {
+            return;
+        }
+
+        try
+        {
+            isProcessing = true;
+            progressValue = 0;
+            resultText = "0%";
+            StateHasChanged();
+            
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+
+            DateTime ngay_ct1 = new DateTime(Year, Period1, 1);
+            DateTime ngay_ct2 = new DateTime(Year, Period2, DateTime.DaysInMonth(Year, Period2));
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@nam", Year },
+                { "@thang", Period1 },
+                { "@thang2", Period2 },
+                { "@ngay_ct1", ngay_ct1.ToString("yyyyMMdd") },
+                { "@ngay_ct2", ngay_ct2.ToString("yyyyMMdd") },
+                { "@ma_px", Ma_px?.Trim() ?? "" },
+                { "@tk", Tk.Trim() },
+                { "@ma_ct_list", curCommand.Parameter ?? "" },
+                { "@tp", "1" }
+            };
+
+            progressValue = 50;
+            resultText = Lap["Processing"] + "...";
+            await InvokeAsync(StateHasChanged);
+
+            var result = await myDb.LoadDataset(curCommand.Store_proc ?? "sis_COGTPB", parameters);
+
+            progressValue = 100;
+            resultText = Lap["Complete"];
+            await InvokeAsync(StateHasChanged);
+
+            // Load data to browse
+            if (result != null && result.Tables.Count > 0)
+            {
+                TblData = result.Tables[0];
+                TblData.TableName = "tbMain";
+                ShowBrowseResult = true;
+                await InvokeAsync(StateHasChanged);
+            }
+
+            myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        }
+        catch (Exception ex)
+        {
+            progressValue = 0;
+            resultText = Lap["Error"];
+            myStateMN.SetNewThongbao(Lap["Operation error"] + $": {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnRefreshClick()
+    {
+        if (!isProcessing)
+        {
+            await StartCalculateCost();
+        }
+    }
+
+    private async Task OnUpdatePriceClick()
+    {
+        if (isProcessing) return;
+
+        try
+        {
+            isProcessing = true;
+            progressValue = 0;
+            resultText = Lap["Processing"] + "...";
+            StateHasChanged();
+
+            DateTime ngay_ct1 = new DateTime(Year, Period1, 1);
+            DateTime ngay_ct2 = new DateTime(Year, Period2, DateTime.DaysInMonth(Year, Period2));
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@nam", Year },
+                { "@thang", Period1 },
+                { "@thang2", Period2 },
+                { "@ngay_ct1", ngay_ct1 },
+                { "@ngay_ct2", ngay_ct2 },
+                { "@ma_px", Ma_px?.Trim() ?? "" },
+                { "@tk", Tk.Trim() },
+                { "@ma_ct_list", curCommand.Parameter ?? "" }
+            };
+
+            progressValue = 50;
+            await InvokeAsync(StateHasChanged);
+
+            // Execute post price stored procedure
+            await myDb.LoadDataset("sis_COGTPB_POSTGIA", parameters);
+
+            progressValue = 100;
+            resultText = Lap["Complete"];
+            await InvokeAsync(StateHasChanged);
+
+            myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        }
+        catch (Exception ex)
+        {
+            progressValue = 0;
+            resultText = Lap["Error"];
+            myStateMN.SetNewThongbao(Lap["Operation error"] + $": {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnBackClick()
+    {
+        ShowBrowseResult = false;
+        progressValue = 0;
+        resultText = "0%";
+        TblData = null;
+        StateHasChanged();
+    }
+
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}

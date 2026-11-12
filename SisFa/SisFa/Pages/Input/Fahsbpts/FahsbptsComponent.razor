@@ -1,0 +1,584 @@
+﻿@page "/Fahsbpts"
+@page "/Fahsbpts/{Menu_id}"
+@inherits TransBaseComponent
+@attribute [Authorize(Roles = "admin,fahsbpts")]
+@using SisFa.Pages.Input.Fahsbpts
+@using System.Data
+
+@if (ShowLoaddingVoucher)
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    CssClass="w-100"
+                    IndicatorVisible="true"
+                    IndicatorAreaVisible="true"
+                    Visible="true"
+                    Text="Processing..."
+                    TextAlignment="LoadingPanelTextAlignment.Right">
+        <div style="min-height: 250px;"></div>
+    </DxLoadingPanel>
+}
+else if (TblPH != null)
+{
+    <div class="row m-0 p-0">
+        <FrmBrowseComponent @ref="@oBrowsePH" TblData="@TblPH" Page_size="@pageSize" IsPageSize="@IsPageSize"
+                            CssClass="grid-frm-height" Fbrowse="@FbrowsePH"
+                            SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+    <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+    <div class="row my-1 mx-0 p-0">
+        <h8 class="fw-bold bg-light text-warning rounded-pill mb-1"> @Lap["Detail"] </h8>
+        @if (SelectedItem != null)
+        {
+        <FrmBrowseComponent @ref="@oBrowseCT" TblData="@TblCT" CssClass="grid-frmct-height"
+                            Fbrowse="@FbrowseCT" IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+        }
+    </div>
+}
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@popFilterVisible"
+         Width="500px"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Year"]">
+                        <DxSpinEdit CssClass="col" @bind-Value="@FilterNam" NullText=""
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idNam" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From period"]">
+                        <DxSpinEdit CssClass="col" @bind-Value="@FilterKy" NullText=""
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" InputId="idKy" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Asset code"]">
+                        <Template>
+                            <AutocompleteComponent CssClass="col p-0" Ma_dm="dmts"
+                                                   @bind-Value="@FilterSoTheTs" IsLangEn="@IsLangEn">
+                            </AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Allocation code"]">
+                        <Template>
+                            <AutocompleteComponent CssClass="col p-0" Ma_dm="dmbpts"
+                                                   @bind-Value="@FilterMaBpts" IsLangEn="@IsLangEn">
+                            </AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success"
+                          Text="@Lap["OK"]" Click="@BtnFilterOK" />
+                <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Danger"
+                          Text="@Lap["Cancel"]" Click="@BtnFilterCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm" CloseOnEscape="true"
+              Width="90vw"
+              MinWidth="720px"
+              MinHeight="200px" Scrollable="true"
+              MaxWidth="1400px"
+              MaxHeight="92vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+<style>
+    .grid-frm-height {
+        height: 55vh;
+    }
+
+    .grid-frmct-height {
+        height: 30vh;
+    }
+</style>
+
+@code {
+// Bi?n filter popup
+public int FilterNam = DateTime.Now.Year;
+public int FilterKy = DateTime.Now.Month;
+public string FilterSoTheTs = "";
+public string FilterMaBpts = "";
+
+// Cột lưới phếu: Stt | Loại TS | Mã TS | Tên TS | Mã bpsd | Tên bpsd | Tk k.hao | Mã phí | Mã ĐVCS
+private const string _FbrowsePH =
+    "Stt:45:h=Stt:FL:HR;" +
+    "loai_ts:70:h=Loại ts:FL;" +
+    "so_the_ts:120:h=Mã tài sản:FL;" +
+    "ten_ts:280:h=Tên tài sản:FL;" +
+    "ma_bpts:100:h=Mã bpsd:FL;" +
+    "ten_bpts:200:h=Tên bpsd:FL;" +
+    "tk_khao:90:h=Tk k.hao:FL;" +
+    "ma_phi:80:h=Mã phí:FL;" +
+    "ma_dvcs:80:h=Mã ĐVCS:FL";
+
+// Cột lưới chi tiết: Stt | Tk cp | Mã bpht | Mã px | Mã dự án | Số lsx | Mã sp | Hiệu lực từ ngày | Hiệu lực đến ngày | Hệ số
+private const string _FbrowseCT =
+    "Stt:45:h=Stt:FL:HR;" +
+    "tk_cp:90:h=Tk cp:FL;" +
+    "ma_bpht:90:h=Mã bpht:FL;" +
+    "ma_px:80:h=Mã px:FL;" +
+    "ma_vv:100:h=Mã dự án:FL;" +
+    "so_lsx:80:h=Số lsx:FL;" +
+    "ma_sp:80:h=Mã sp:FL;" +
+    "ngay_hl1:110:h=Hiệu lực từ ngày:FL:D;" +
+    "ngay_hl2:110:h=Hiệu lực đến ngày:FL:D;" +
+    "he_so:80:h=Hệ số:N2:I0:FL";
+
+    protected override void OnInitialized()
+    {
+        Menu_id = string.IsNullOrEmpty(Menu_id) ? "wf.ct.07" : Menu_id;
+        FrmType = typeof(Input.Fahsbpts.FrmFahsbpts);
+        LanguageID = "";
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+
+            if (curCommand != null)
+                await Lap.LoadLocalizationAsync(
+                    string.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+
+            string menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New",     true));
+                myStateMN.SetToolBar(new MyToolbar("Copy",    true));
+                myStateMN.SetToolBar(new MyToolbar("Import",  false));
+                myStateMN.SetToolBar(new MyToolbar("Edit",    true));
+                myStateMN.SetToolBar(new MyToolbar("Save",    false));
+                myStateMN.SetToolBar(new MyToolbar("Delete",  true));
+                myStateMN.SetToolBar(new MyToolbar("Change",  false));
+                myStateMN.SetToolBar(new MyToolbar("View",    true));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print",   false));
+                myStateMN.SetToolBar(new MyToolbar("Export",  true));
+                myStateMN.SetToolBar(new MyToolbar("Search",  true));
+                myStateMN.SetToolBar(new MyToolbar("Quit",    false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged    += OnLangguachange;
+            myStateMN.OnDvcsChanged       += OnDvcsChanged;
+
+            popFilterVisible = true;
+            StateHasChanged();
+        }
+    }
+    private async void OnDvcsChanged(string ma_dvcs)
+    {
+        // Ép giao diện chạy lại hàm lọc với mã ĐVCS mới nhất
+        await InvokeAsync(() =>
+        {
+            BtnFilterOK();
+        });
+    }
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            string pSize = myOption.GetOptionsValue("M_GRID_NROW");
+            pageSize = string.IsNullOrEmpty(pSize) ? 50 : int.Parse(pSize.Trim());
+        }
+        FbrowsePH = _FbrowsePH;
+        FbrowseCT = _FbrowseCT;
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata(bool isFirst = true)
+    {
+        ShowLoaddingVoucher = true;
+        StateHasChanged();
+
+        try
+        {
+            string dvcs = myStateMN.GetMa_Dvcs();
+            string where = string.IsNullOrEmpty(phFilter) || phFilter == "1=1" ? "1=1" : phFilter;
+
+            // N?u ch?a có filter dvcs thì áp dvcs hi?n t?i
+            if (where == "1=1" && !string.IsNullOrEmpty(dvcs) && dvcs != "ALL")
+                where += $" AND h.ma_dvcs LIKE '{dvcs.Trim()}%'";
+
+            // WinForm g?c: dùng store_proc tr? 2 b?ng t? hspbts, không có view v_ph_hspbts
+            // Master: DISTINCT so_the_ts + ma_bpts join thêm tên t? dmts, dmbpts
+            string sqlPh = $@"SELECT
+                ROW_NUMBER() OVER (ORDER BY h.so_the_ts, h.ma_bpts) AS Stt,
+                h.so_the_ts, h.ma_bpts, h.ma_dvcs,
+                ISNULL(d.loai_ts,  '') AS loai_ts,
+                ISNULL(d.ten_ts,    '') AS ten_ts,
+                ISNULL(d.ten_ts2,   '') AS ten_ts2,
+                ISNULL(b.ten_bpts,  '') AS ten_bpts,
+                ISNULL(b.ten_bpts2, '') AS ten_bpts2,
+                ISNULL(d.tk_cp,    '') AS tk_khao,
+                ISNULL(d.ma_phi,   '') AS ma_phi
+            FROM hspbts h
+            LEFT JOIN dmts   d ON d.so_the_ts = h.so_the_ts
+            LEFT JOIN dmbpts b ON b.ma_bpts   = h.ma_bpts
+            WHERE {where}
+            GROUP BY h.so_the_ts, h.ma_bpts, h.ma_dvcs,
+                d.loai_ts, d.ten_ts, d.ten_ts2, b.ten_bpts, b.ten_bpts2, d.tk_cp, d.ma_phi";
+
+            DataSet dsPh = myDb.LoadDataSet(sqlPh);
+            TblPH = dsPh?.Tables.Count > 0 ? dsPh.Tables[0].Copy() : new DataTable();
+
+            // Detail: l?y toàn b? chi ti?t kh?p v?i các c?p (so_the_ts, ma_bpts) t? TblPH
+            string sqlCt;
+            if (TblPH != null && TblPH.Rows.Count > 0)
+            {
+                sqlCt = $@"SELECT
+                    ROW_NUMBER() OVER (PARTITION BY h.so_the_ts, h.ma_bpts ORDER BY h.so_the_ts, h.ma_bpts) AS Stt,
+                    h.*
+                FROM hspbts h
+                WHERE EXISTS (
+                    SELECT 1 FROM ({sqlPh}) x
+                    WHERE x.so_the_ts = h.so_the_ts AND x.ma_bpts = h.ma_bpts
+                )";
+            }
+            else
+            {
+                sqlCt = "SELECT * FROM hspbts WHERE 1=0";
+            }
+            DataSet dsCt = myDb.LoadDataSet(sqlCt);
+            TblCT = dsCt?.Tables.Count > 0 ? dsCt.Tables[0].Copy() : new DataTable();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Error"] + ": " + ex.Message);
+            TblPH = new DataTable();
+            TblCT = new DataTable();
+        }
+
+        ShowLoaddingVoucher = false;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Khi ch?n dòng master ? l?c TblCT theo so_the_ts + ma_bpts
+    /// </summary>
+    public override void CurItem(object obj)
+    {
+        if (obj == null) return;
+        SelectedItem = obj;
+        try
+        {
+            DataRowView rview = (DataRowView)obj;
+            string soTheTs = rview.Row.Table.Columns.Contains("so_the_ts")
+                ? rview["so_the_ts"].ToString().Trim() : "";
+            string maBpts = rview.Row.Table.Columns.Contains("ma_bpts")
+                ? rview["ma_bpts"].ToString().Trim() : "";
+
+            SqlTableKeyValue = $"{soTheTs}|{maBpts}";
+
+            if (TblCT != null && !string.IsNullOrEmpty(soTheTs) && !string.IsNullOrEmpty(maBpts))
+                TblCT.DefaultView.RowFilter = $"so_the_ts='{soTheTs}' AND ma_bpts='{maBpts}'";
+        }
+        catch { }
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Double-click dòng master ? m? form View, Stt_rec = "so_the_ts|ma_bpts"
+    /// </summary>
+    public new void OnRDBClick(object obj)
+    {
+        if (obj == null) return;
+        try
+        {
+            DataRowView rview = (DataRowView)obj;
+            string soTheTs = rview.Row.Table.Columns.Contains("so_the_ts")
+                ? rview["so_the_ts"].ToString().Trim() : "";
+            string maBpts = rview.Row.Table.Columns.Contains("ma_bpts")
+                ? rview["ma_bpts"].ToString().Trim() : "";
+
+            SqlTableKeyValue = $"{soTheTs}|{maBpts}";
+
+            Par.Clear();
+            Par.Add("Stt_rec",       (object)SqlTableKeyValue);
+            Par.Add("Ma_ct",         (object)Ma_ct);
+            Par.Add("Menu_id",       (object)Menu_id);
+            Par.Add("curActionTask", (object)ActionTask.View);
+            Par.Add("Closeform", EventCallback.Factory.Create<bool>(this, async (bool reload) =>
+            {
+                if (reload)
+                {
+                    await Loaddata(false);
+                    if (!string.IsNullOrEmpty(SqlTableKeyValue) && TblCT != null)
+                    {
+                        var p2 = SqlTableKeyValue.Split('|');
+                        string ts2 = p2.Length > 0 ? p2[0].Trim().Replace("'", "''") : "";
+                        string bp2 = p2.Length > 1 ? p2[1].Trim().Replace("'", "''") : "";
+                        TblCT.DefaultView.RowFilter = $"so_the_ts='{ts2}' AND ma_bpts='{bp2}'";
+                    }
+                }
+                IsShowFrm = false;
+                await InvokeAsync(StateHasChanged);
+            }));
+
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        catch { }
+    }
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Moi();
+                break;
+            case ActionTask.Copy:
+                myStateMN.SetCurrentActionTask(ActionTask.Copy);
+                V_Copy();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Search:
+                myStateMN.SetCurrentActionTask(ActionTask.Search);
+                popFilterVisible = true;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    public override void V_Moi()
+    {
+        string dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrWhiteSpace(dvcs) || dvcs.Trim().ToUpper() == "ALL")
+        {
+            myStateMN.SetNewThongbao(Lap["Please, select Unit code"] + " !");
+            return;
+        }
+        Par.Clear();
+        Par.Add("Stt_rec",       (object)string.Empty);
+        Par.Add("Ma_ct",         (object)Ma_ct);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("curActionTask", (object)ActionTask.New);
+        Par.Add("Closeform", EventCallback.Factory.Create<bool>(this, async (bool reload) =>
+        {
+            if (reload)
+            {
+                await Loaddata(false);
+                // Sau thêm mới không có selection cũ → ẩn chi tiết
+                SelectedItem = null;
+                SqlTableKeyValue = "";
+                if (TblCT != null) TblCT.DefaultView.RowFilter = "1=0";
+            }
+            IsShowFrm = false;
+            await InvokeAsync(StateHasChanged);
+        }));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Copy()
+    {
+        if (SelectedItem == null) { myStateMN.SetNewThongbao(Lap["No data selected"]); return; }
+        Par.Clear();
+        Par.Add("Stt_rec",       (object)SqlTableKeyValue);
+        Par.Add("Ma_ct",         (object)Ma_ct);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("curActionTask", (object)ActionTask.Copy);
+        Par.Add("Closeform", EventCallback.Factory.Create<bool>(this, async (bool reload) =>
+        {
+            if (reload)
+            {
+                await Loaddata(false);
+                // Áp lại RowFilter theo dòng đang chọn
+                if (!string.IsNullOrEmpty(SqlTableKeyValue) && TblCT != null)
+                {
+                    var p = SqlTableKeyValue.Split('|');
+                    string ts  = p.Length > 0 ? p[0].Trim().Replace("'", "''") : "";
+                    string bp  = p.Length > 1 ? p[1].Trim().Replace("'", "''") : "";
+                    TblCT.DefaultView.RowFilter = $"so_the_ts='{ts}' AND ma_bpts='{bp}'";
+                }
+            }
+            IsShowFrm = false;
+            await InvokeAsync(StateHasChanged);
+        }));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Sua()
+    {
+        if (SelectedItem == null) { myStateMN.SetNewThongbao(Lap["No data selected"]); return; }
+        Par.Clear();
+        Par.Add("Stt_rec",       (object)SqlTableKeyValue);
+        Par.Add("Ma_ct",         (object)Ma_ct);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("curActionTask", (object)ActionTask.Edit);
+        Par.Add("Closeform", EventCallback.Factory.Create<bool>(this, async (bool reload) =>
+        {
+            if (reload)
+            {
+                await Loaddata(false);
+                if (!string.IsNullOrEmpty(SqlTableKeyValue) && TblCT != null)
+                {
+                    var p = SqlTableKeyValue.Split('|');
+                    string ts  = p.Length > 0 ? p[0].Trim().Replace("'", "''") : "";
+                    string bp  = p.Length > 1 ? p[1].Trim().Replace("'", "''") : "";
+                    TblCT.DefaultView.RowFilter = $"so_the_ts='{ts}' AND ma_bpts='{bp}'";
+                }
+            }
+            IsShowFrm = false;
+            await InvokeAsync(StateHasChanged);
+        }));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Xem()
+    {
+        if (SelectedItem == null) { myStateMN.SetNewThongbao(Lap["No data selected"]); return; }
+        Par.Clear();
+        Par.Add("Stt_rec",       (object)SqlTableKeyValue);
+        Par.Add("Ma_ct",         (object)Ma_ct);
+        Par.Add("Menu_id",       (object)Menu_id);
+        Par.Add("curActionTask", (object)ActionTask.View);
+        Par.Add("Closeform", EventCallback.Factory.Create<bool>(this, async (bool reload) =>
+        {
+            if (reload)
+            {
+                await Loaddata(false);
+                if (!string.IsNullOrEmpty(SqlTableKeyValue) && TblCT != null)
+                {
+                    var p = SqlTableKeyValue.Split('|');
+                    string ts  = p.Length > 0 ? p[0].Trim().Replace("'", "''") : "";
+                    string bp  = p.Length > 1 ? p[1].Trim().Replace("'", "''") : "";
+                    TblCT.DefaultView.RowFilter = $"so_the_ts='{ts}' AND ma_bpts='{bp}'";
+                }
+            }
+            IsShowFrm = false;
+            await InvokeAsync(StateHasChanged);
+        }));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override async void V_Xoa()
+    {
+        if (SelectedItem == null) { myStateMN.SetNewThongbao(Lap["No data selected"]); return; }
+        try
+        {
+            var parts  = SqlTableKeyValue.Split('|');
+            string soTheTs = parts.Length > 0 ? parts[0].Trim() : "";
+            string maBpts  = parts.Length > 1 ? parts[1].Trim() : "";
+            if (string.IsNullOrEmpty(soTheTs) || string.IsNullOrEmpty(maBpts)) return;
+
+            bool confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text             = string.Format(Lap["Do you want to delete :{0} ?"].ToString(), $"{soTheTs} | {maBpts}"),
+                Title            = Lap["Confirm deletion of voucher"],
+                OkButtonText     = Lap["OK"],
+                CancelButtonText = Lap["Cancel"],
+                ShowIcon         = true,
+                ShowCloseButton  = false,
+                RenderStyle      = MessageBoxRenderStyle.Danger
+            });
+
+            if (confirm)
+            {
+                string safe_ts   = soTheTs.Replace("'", "''");
+                string safe_bpts = maBpts.Replace("'", "''");
+                await myDb.ExecuteSqlQueryAsync(
+                    $"DELETE FROM hspbts WHERE so_the_ts='{safe_ts}' AND ma_bpts='{safe_bpts}'");
+                myStateMN.SetNewThongbao(string.Format(Lap["Edit successfully : {0}"].ToString(), soTheTs));
+                // Reset selection để ẩn chi tiết sau khi xóa
+                SelectedItem = null;
+                SqlTableKeyValue = "";
+                await Loaddata(false);
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Error"] + ": " + ex.Message);
+        }
+    }
+
+    private async void BtnFilterOK()
+    {
+        ShowLoadding = true;
+
+        string dvcs = myStateMN.GetMa_Dvcs();
+
+        // WinForm g?c: FrmLoc l?c theo nam, ky, ma_ts, ma_bpts, ma_dvcs
+        // ? web: build WHERE cho query master (alias h.)
+        phFilter = "1=1";
+
+        if (!string.IsNullOrEmpty(dvcs) && dvcs != "ALL")
+            phFilter += $" AND h.ma_dvcs LIKE '{dvcs.Trim()}%'";
+
+        if (FilterNam > 0)
+            phFilter += $" AND YEAR(h.ngay_hl1) = {FilterNam}";
+
+        if (FilterKy > 0)
+            phFilter += $" AND MONTH(h.ngay_hl1) = {FilterKy}";
+
+        if (!string.IsNullOrEmpty(FilterSoTheTs))
+            phFilter += $" AND h.so_the_ts LIKE '{FilterSoTheTs.Trim()}%'";
+
+        if (!string.IsNullOrEmpty(FilterMaBpts))
+            phFilter += $" AND h.ma_bpts LIKE '{FilterMaBpts.Trim()}%'";
+
+        await Loaddata(false);
+
+        ShowLoadding    = false;
+        popFilterVisible = false;
+        await InvokeAsync(StateHasChanged);
+    }
+}

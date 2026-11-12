@@ -1,0 +1,264 @@
+﻿@page "/fxcc2"
+@page "/fxcc2/{Menu_id}"
+@inherits ListBaseComponent
+@inject IJSRuntime JSRuntime
+@using System.Data
+@using SisLib.List
+@using DevExpress.Blazor
+@attribute [Authorize(Roles = "admin,fxcc2")]
+
+    <div class="row m-0 p-0">
+        <FrmBrowseComponent @ref="oBrowse"
+                            TblData="@TblData"
+                            Fbrowse="@fbrowse"
+                            Page_size="@Page_size"
+                            CssClass="grid-frm-height"
+                            SelectItem="CurItem"
+                            OnRowDbClick="@OnRDBClick"
+                            IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+    <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+    <div class="row my-1 mx-0 p-0">
+    <h8 class="fw-bold bg-light text-warning rounded-pill mb-1">@Lap["Tool detail cards"]</h8>
+        <FrmBrowseComponent @ref="oBrowseCT"
+                            TblData="@TblCT"
+                            CssClass="grid-frmct-height"
+                            Fbrowse="@fbrowseCt"
+                            IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+
+@* ---- POPUP FORM XEM ---- *@
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="60vw"
+              MinWidth="600px"
+              Scrollable="true"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+<style>
+    .grid-frm-height {
+        height: 55vh;
+    }
+    .grid-frmct-height {
+        height: 30vh;
+    }
+</style>
+
+@code {
+bool ShowLoaddingVoucher = false;
+FrmBrowseComponent oBrowseCT;
+DataTable TblCT;
+string fbrowseCt = "";
+
+    protected override void OnInitialized()
+    {
+        mPage = "fxcc2";
+        sqlTableName = "dmcc";
+        sqlTableView = "v_dmcc";
+        SqlTableKey = "ma_cc_me";
+        SqlItemName = "ma_cc_me";
+        IsShowCopy = false;
+        FrmType = typeof(Input.FXCC2.FrmFxcc2);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wf.xc.02";
+
+        myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(string.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+            await Lap.LoadLocalizationAsync(string.Format("sisFx-{0}", UserLang.Trim()));
+            await Lap.LoadLocalizationAsync(string.Format("fx-{0}", UserLang.Trim()));
+
+            string menuId = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(menuId, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", false));
+                myStateMN.SetToolBar(new MyToolbar("Copy", false));
+                myStateMN.SetToolBar(new MyToolbar("Import", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", false));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", false));
+                myStateMN.SetToolBar(new MyToolbar("Change", false));
+                myStateMN.SetToolBar(new MyToolbar("View", true));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            await Loaddata();
+            StateHasChanged();
+        }
+    }
+
+    public async void CloseForm()
+    {
+        IsShowFrm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            string vbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+            if (!string.IsNullOrWhiteSpace(vbrowse))
+            {
+                string[] parts = vbrowse.Split('|');
+                fbrowse   = parts.Length > 0 ? parts[0] : "";
+                fbrowseCt = parts.Length > 1 ? parts[1] : "";
+            }
+            else
+            {
+                fbrowse   = "";
+                fbrowseCt = "";
+            }
+            string pSize = myOption.GetOptionsValue("M_GRID_NROW");
+            Page_size = string.IsNullOrEmpty(pSize) ? 50 : int.Parse(pSize.Trim());
+        }
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        ShowLoaddingVoucher = true;
+        StateHasChanged();
+
+        string maDvcs = myStateMN.GetMa_Dvcs();
+        string preFilter = "1=1";
+
+        if (!string.IsNullOrEmpty(maDvcs) && !maDvcs.Equals("ALL"))
+            preFilter = $"ma_dvcs LIKE '{maDvcs.Trim()}%'";
+
+        string sql = $"SELECT * FROM {sqlTableName} WHERE {preFilter} ORDER BY ma_cc_me";
+
+        try
+        {
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                TblData = ds.Tables[0];
+                AddSttColumn(TblData);
+                if (TblData.DefaultView.Count > 0)
+                    SelectedItem = TblData.DefaultView[0];
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi LoadData FXCC2: " + ex.Message);
+        }
+
+        await LoadCTData();
+
+        ShowLoaddingVoucher = false;
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+
+        StateHasChanged();
+    }
+
+    private async Task LoadCTData()
+    {
+        if (SelectedItem == null) { TblCT = null; return; }
+        DataRowView row = SelectedItem as DataRowView;
+        if (row == null) { TblCT = null; return; }
+
+        string maCcMe = row["ma_cc_me"].ToString().Trim().Replace("'", "''");
+        string sqlCt = $@"SELECT ROW_NUMBER() OVER (ORDER BY c.ma_cc) AS stt,
+                   c.*,
+                   ISNULL(b.ten_bpts, '') AS ten_bpcc
+            FROM ctdmcc c
+            LEFT JOIN dmbpts b ON b.ma_bpts = c.ma_bpcc
+            WHERE c.ma_cc_me = N'{maCcMe}' AND ISNULL(c.cc0, '1') = '1'
+            ORDER BY c.ma_cc";
+        try
+        {
+            DataSet dsCt = await myDb.LoadDataset(sqlCt);
+            if (dsCt != null && dsCt.Tables.Count > 0)
+            {
+                TblCT = dsCt.Tables[0];
+                AddSttColumn(TblCT);
+            }
+            else
+                TblCT = new DataTable();
+        }
+        catch
+        {
+            TblCT = new DataTable();
+        }
+    }
+
+    public async Task CurItem(object item)
+    {
+        SelectedItem = item;
+        await LoadCTData();
+        StateHasChanged();
+    }
+
+    private async void OnDvcsChanged(string maDvcs)
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+        base.Dispose();
+    }
+
+    private async void OnActionTaskchanged(ActionTask task)
+    {
+        // FXCC2 chỉ cho phép xem
+        if (task == ActionTask.View)
+        {
+            try { base.OnActionTaskchanged(task); } catch { }
+        }
+    }
+
+    private static void AddSttColumn(DataTable tbl)
+    {
+        if (tbl == null) return;
+        if (tbl.Columns.Contains("stt")) return;
+
+        tbl.Columns.Add("stt", typeof(int));
+        int stt = 1;
+        foreach (DataRow row in tbl.Rows)
+            row["stt"] = stt++;
+        tbl.AcceptChanges();
+    }
+}

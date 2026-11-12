@@ -1,0 +1,148 @@
+﻿@using DevExpress.XtraRichEdit
+@using DevExpress.XtraRichEdit.API.Native
+@using System.Drawing
+@using Rich = DevExpress.XtraRichEdit
+@using DevExpress.Blazor.Office
+@using DevExpress.Blazor.RichEdit
+@inject NavigationManager navigation
+@inject IWebHostEnvironment hostingEnvironment
+@inject Statemanagerment myStatemanagerment
+@implements IDisposable
+
+<DevExpress.Blazor.RichEdit.DxRichEdit @bind-DocumentContent="@previewDocumentContent" CustomizeRibbon="@OnCustomizeRibbon" CssClass="w-100 h-100">
+</DevExpress.Blazor.RichEdit.DxRichEdit>
+
+@code {
+    [Parameter]
+    public string Template_file { get; set; } = "";
+    [Parameter]
+    public string[] ColsToFind { get; set; } = new string[] { };
+    [Parameter]
+    public string[] ColsToReplace { get; set; } = new string[] { };
+    RichEditDocumentServer documentServer = new();
+    byte[] previewDocumentContent = new byte[0];   
+    string convert_file_path = "";
+    // DevExpress.Blazor.RichEdit.DocumentFormat documentFormat = DevExpress.Blazor.RichEdit.DocumentFormat.OpenXml;
+    // bool modified = false;
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Template_file))
+        {
+            string _file_Url = Path.Combine(hostingEnvironment.WebRootPath, "Doc_Template", Template_file);
+            if (File.Exists(_file_Url))
+            {
+                documentServer.Options.Export.Html.EmbedImages = true;
+                await Task.Run(async () =>
+                {
+                    documentServer.LoadDocument(_file_Url);
+                    await SaveDocument();
+                });
+            }
+        }
+    }
+
+    void GetTemplateFile()
+    {
+        string _file_Url = Path.Combine(navigation.BaseUri, "Documents_Convert", convert_file_path);
+        if (!File.Exists(_file_Url))
+        {
+            myStatemanagerment.SetNewThongbao(string.Format("Không tìm thấy tệp: {0}", convert_file_path));
+            return;
+        }
+        navigation.NavigateTo(_file_Url, true);
+        myStatemanagerment.SetNewThongbao(string.Format("Đã tải xuống tệp: {0}", convert_file_path));
+    }
+    async Task ReplaceAll(string textToFind, string replaceText)
+    {
+        await Task.Run(() =>
+        {
+            DocumentRange[] ranges = documentServer.Document.FindAll(textToFind, SearchOptions.None, documentServer.Document.Range);
+            for (int i = 0; i < ranges.Length; i++)
+            {
+                documentServer.Document.Replace(ranges[i], replaceText);
+                DevExpress.XtraRichEdit.API.Native.CharacterProperties cp = documentServer.Document.BeginUpdateCharacters(ranges[i]);
+                // cp.BackColor = Color.FromArgb(180, 201, 233);
+                documentServer.Document.EndUpdateCharacters(cp);
+            };
+        });
+    }
+    async Task FindAll(string textToFind)
+    {
+        await Task.Run(() =>
+        {
+            DocumentRange[] ranges = documentServer.Document.FindAll(textToFind, SearchOptions.None, documentServer.Document.Range);
+            for (int i = 0; i < ranges.Length; i++)
+            {
+                DevExpress.XtraRichEdit.API.Native.CharacterProperties cp = documentServer.Document.BeginUpdateCharacters(ranges[i]);
+                // cp.BackColor = Color.FromArgb(180, 201, 233);
+                documentServer.Document.EndUpdateCharacters(cp);
+            };
+        });
+    }
+    async Task SaveDocument()
+    {
+        convert_file_path = "";
+        if (ColsToFind.Length > 0 && ColsToReplace.Length > 0 && ColsToFind.Length == ColsToReplace.Length)
+        {
+            for (int x = 0; x < ColsToFind.Length; x++)
+            {
+                await ReplaceAll(ColsToFind[x], ColsToReplace[x]);
+            }
+        }
+        await Task.Run(async () =>
+               {
+                   string docdUrl = Path.Combine(hostingEnvironment.WebRootPath, "Documents_Convert");
+                   if (!Directory.Exists(docdUrl))
+                       Directory.CreateDirectory(docdUrl);
+                   convert_file_path = Path.Combine(docdUrl, Template_file);
+                   using MemoryStream outputStream = new MemoryStream();
+                   documentServer.SaveDocument(outputStream, Rich.DocumentFormat.OpenXml);
+
+                   using FileStream fs = new FileStream(convert_file_path, FileMode.Create, FileAccess.Write);
+                   await fs.WriteAsync(outputStream.ToArray(), 0, outputStream.ToArray().Length);
+                   previewDocumentContent = outputStream.ToArray();
+               });      
+    }
+    // void OnCustomizeToolbar(IToolbar toolbar)
+    // {
+    //     toolbar.Groups.Clear();
+    //     IBarGroup fileCommonGroup = toolbar.Groups.AddCustomGroup(0);
+    //     // Inserts a custom combo box at the end of the item collection
+    //     IBarComboBox documentFormatComboBox = fileCommonGroup.Items.AddCustomComboBox(
+    //         () => documentFormat,
+    //         (value) => Task.FromResult(documentFormat = (DevExpress.Blazor.RichEdit.DocumentFormat)value)
+    //     );
+    //     documentFormatComboBox.Items.Add("DOCX", Rich.DocumentFormat.OpenXml);
+    //     documentFormatComboBox.Items.Add("RTF", Rich.DocumentFormat.Rtf);
+    //     // Inserts a custom button at the first position in the item collection
+    //     IBarButton exportButton = fileCommonGroup.Items.AddCustomButton(0, "Tải xuống", OnButtonBackClick);
+    // }
+    void OnCustomizeRibbon(IRibbon ribbon)
+    {
+        ribbon.Tabs.Clear();
+        ribbon.Tabs.Add(0, RichEditRibbonTabNames.File);
+
+        IRibbonTab fileTab = ribbon.Tabs[RichEditRibbonTabNames.File];
+        IBarGroup fontGroup = fileTab.Groups[RichEditRibbonGroupNames.FileCommon];
+
+        fontGroup.Items.Clear();
+        fontGroup.Items.Add(0, RichEditBarItemNames.PrintDocument);
+        fontGroup.Items.Add(1, RichEditBarItemNames.DownloadMenu);
+        fontGroup.Items.AddCustomButton("Quay lại", OnButtonBackClick);
+        IBarItem downloadMenu = fontGroup.Items[RichEditBarItemNames.DownloadMenu]; 
+    }
+    Task OnButtonBackClick()
+    {
+        ParentPages _curPage = myStatemanagerment.GetParentPage();
+        if (_curPage != null)
+        {
+            navigation.NavigateTo(_curPage.CurPage);
+        }
+        return Task.CompletedTask;
+    }
+   
+    public void Dispose()
+    {
+        documentServer.Dispose();
+    }
+}

@@ -1,0 +1,332 @@
+﻿@inherits FrmListBaseComponent
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmhsqd" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                <DxFormLayoutItem Caption="@Lap["Item code"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmvt" @bind-Value="@CurDmhsqd.Ma_vt" AllowNull="false" IsEnable="@AllowEditMa" IsLangEn="@IsLangEn" SelectChanged="OnAutVTChanged"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>                
+                <DxFormLayoutItem Caption="@Lap["UOM"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmhsqd.Dvt" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Unit of conversion"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="dvt1_input" @bind-Text="@CurDmhsqd.Dvt1" Enabled="@AllowEditMode" CssClass="fw-bold" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Conversion factor"]" ColSpanMd="6" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurDmhsqd.Hs_qd" Enabled="@AllowEditMode" DisplayFormat="@M_IP_SL" CssClass="fw-bold" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Conversion formula"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox Text="@GetConversionUnitText()" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>                
+
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmhsqd.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmhsqd CurDmhsqd;
+    private string menu_id = "wi.dm.04";
+    private string M_IP_SL = "";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "Dmhsqd";
+        SqlTableKey = "Ma_vt;Dvt1";
+        CheckSqlTableKey = "Ma_vt;Dvt1";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "inhsqd" : ParentPage;
+        CurDmhsqd = new Dmhsqd();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+        M_IP_SL = myOption.GetOptionsValue("M_IP_SL").Trim();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await EditDM(Ma_ma);
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        await CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        await CreateCopyDM(Ma_ma);
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        break;
+                    }
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('dvt1_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmhsqd = new Dmhsqd();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);        
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmhsqd = new Dmhsqd();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);        
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(Ma_ma);
+    }
+
+    async Task SaveDM()
+    {
+        if (curActionTask == ActionTask.New)
+            if (!CheckValidCode())
+                return;
+
+        if (!CheckValid())
+            return;
+
+        CurDmhsqd.Ma_vt = CurDmhsqd.Ma_vt.ToUpper().Trim();
+        CurDmhsqd.Dvt1 = CurDmhsqd.Dvt1.Trim();
+        SqlTableKeyValue = CurDmhsqd.Ma_vt + ";" + CurDmhsqd.Dvt1;
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmhsqd.Date = DateTime.Now.Date;
+            CurDmhsqd.Date0 = DateTime.Now.Date;
+            CurDmhsqd.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmhsqd.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmhsqd.User_id = curUser.User_id;
+                CurDmhsqd.User_id0 = curUser.User_id;
+                CurDmhsqd.User_name = curUser.User_name;
+                CurDmhsqd.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmhsqd.Ma_vt.Trim() + ";" + CurDmhsqd.Dvt1.Trim();
+            string[] strKey = CheckSqlTableKey.Split(';');
+            string[] strKeyValue = CheckSqlTableKeyValue.Split(';');
+            string condition = "";
+            if (strKey.Length > 0)
+            {
+                for (int x = 0; x < strKey.Length; x++)
+                {
+                    condition += strKey[x] + " = N'" + strKeyValue[x].ToUpper() + "' and ";
+                }
+                if (!string.IsNullOrEmpty(condition))
+                    condition = condition.Substring(0, condition.Length - 4);
+            }
+            string check = "Select " + strKey[0] + " from " + sqlTableName + " where " + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0} ] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmhsqd>(CurDmhsqd, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            string[] keyValues = Ma_ma.Split(';');
+            string condition = " where (ma_vt <> '" + keyValues[0] + "' OR dvt1 <> N'" + keyValues[1] + "') AND ma_vt = '" + CurDmhsqd.Ma_vt.Trim() + "' and dvt1 = N'" + CurDmhsqd.Dvt1.Trim() + "'";
+            string check = "Select ma_vt from " + sqlTableName + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], CurDmhsqd.Ma_vt.Trim() + "-" + CurDmhsqd.Dvt1.Trim()));
+                StateHasChanged();
+                return;
+            }
+
+            CurDmhsqd.Date = DateTime.Now.Date;
+            CurDmhsqd.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmhsqd.User_id = curUser.User_id;
+                CurDmhsqd.User_name = curUser.User_name;
+            }
+            //await myDb.UpdateOneRow<Dmhsqd>(CurDmhsqd, sqlTableName, SqlTableKey, SqlTableKeyValue);
+            keyValues = Ma_ma.Split(';');
+            string strwhere = " where ma_vt = '" + keyValues[0] + "' and dvt1 = N'" + keyValues[1] + "' AND Isnull(dvt1,'')<>'' ";
+            strwhere = $"Update {sqlTableName} set ma_vt ='{CurDmhsqd.Ma_vt}',dvt1=N'{CurDmhsqd.Dvt1}',hs_qd={CurDmhsqd.Hs_qd.ToString().Replace(",", ".")},user_id={CurDmhsqd.User_id},user_name='{CurDmhsqd.User_name}',[date] ='{CurDmhsqd.Date.Value.ToString("yyyyMMdd")}',[time] ='{CurDmhsqd.Time}', status='{CurDmhsqd.Status}'" + strwhere;
+            await myDb.ExecuteSqlQueryAsync(strwhere);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        // Đóng Form nhập
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmhsqd.Ma_vt))
+        {
+            myStateMN.SetNewThongbao(Lap["Item code is required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurDmhsqd.Dvt1))
+        {
+            myStateMN.SetNewThongbao(Lap["Conversion unit is required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (CurDmhsqd.Hs_qd <= 0)
+        {
+            myStateMN.SetNewThongbao(Lap["Conversion factor must be greater than 0"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string[] keyValues = SqlTableKeyValue.Split(';');
+        string sql = "Select * from " + sqlTableView + " where ma_vt = '" + keyValues[0] + "' and dvt1 = N'" + keyValues[1] + "'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmhsqd> lsdetai = myDb.ConvertDataTable<Dmhsqd>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurDmhsqd = lsdetai[0];
+        }
+    }
+
+
+
+    public async Task CreateNewDM()
+    {
+        CurDmhsqd = new Dmhsqd();
+        CurDmhsqd.Status = "1";
+        CurDmhsqd.Hs_qd = 1;
+        AllowEditMode = true;
+        AllowEditMa = true;
+
+        if (!String.IsNullOrEmpty(Ma_ma))
+        {
+            string[] keyValues = Ma_ma.Split(';');
+            if (keyValues.Length >= 2)
+            {
+                CurDmhsqd.Ma_vt = keyValues[0];
+                CurDmhsqd.Dvt1 = keyValues[1];
+
+            }
+        }
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmhsqd = new Dmhsqd();
+        await LoadData(SqlTableKeyValue);        
+
+        CurDmhsqd.Status = "1";
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+    async void OnAutVTChanged(ExpandoObject value)
+    {
+        CurDmhsqd.Dvt = value.Where(a => a.Key.Equals("dvt")).FirstOrDefault().Value?.ToString() ?? "";        
+        StateHasChanged();
+    }
+
+    string GetConversionUnitText()
+    {
+        if (!string.IsNullOrEmpty(CurDmhsqd.Dvt1) && !string.IsNullOrEmpty(CurDmhsqd.Dvt))
+        {
+            int decimalPlaces = 0;
+            int.TryParse(mySysvar.GetSysVar("M_ROUND_SL").Trim(), out decimalPlaces);
+            string formatString = $"{{0:N{decimalPlaces}}}";
+            return $"{CurDmhsqd.Dvt1} = {string.Format(formatString, CurDmhsqd.Hs_qd)} {CurDmhsqd.Dvt}";
+        }
+        return "";
+    }
+}

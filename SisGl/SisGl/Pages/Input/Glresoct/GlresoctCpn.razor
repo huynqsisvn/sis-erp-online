@@ -1,0 +1,80 @@
+@page "/glresoct"
+@page "/glresoct/{Menu_id}"
+@using DevExpress.Blazor
+@using Microsoft.JSInterop
+@attribute [Authorize(Roles = "admin,glresoct")]
+
+@inject IJSRuntime JS
+@inject Statemanagerment myStateMN
+@inject ISysVarManager mySysvar
+@inject IDbManager myDb
+@inject ICommandManager myCommand
+@inject ILocalStorageService myLcStore
+@inject XmlStringLocalizer Lap
+@inject NavigationManager myNavi
+
+<DxPopup Visible="true" ShowCloseButton="false" Modal="true" Width="660" HeaderText="@Title"
+         CloseOnOutsideClick="false" CloseOnEscape="false" ShowFooter="true" CssClass="sas-popup">
+    <ChildContent>
+        <GlresoctFrm @ref="oFrm" Menu_id="@Menu_id" OnClose="@Back" />
+    </ChildContent>
+    <FooterContentTemplate>
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Primary"
+                  Text="@Lap["OK"]" Click="@OnOkClicked" />
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Danger"
+                  Text="@Lap["Cancel"]" Click="@Back" />
+    </FooterContentTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public string Menu_id { get; set; } = "wg.ct.14";
+
+    public string Title = "";
+    public bool IsLangEn = false;
+    public string UserLang = "";
+    private Command curCommand = new Command();
+    private GlresoctFrm oFrm;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+            if (curCommand != null)
+                Title = !IsLangEn ? curCommand.Bar : curCommand.Bar2;
+
+            myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}",
+                curCommand?.Ma_phan_he?.Trim()?.ToLower() ?? "gl", UserLang.Trim()));
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnOkClicked()
+    {
+        if (oFrm != null)
+            await oFrm.OnExecute();
+    }
+
+    private async Task Back()
+    {
+        await JS.InvokeVoidAsync("goBack");
+    }
+
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}

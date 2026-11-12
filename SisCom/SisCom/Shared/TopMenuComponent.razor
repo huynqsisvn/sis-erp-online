@@ -1,0 +1,627 @@
+﻿@layout Empty
+@inject NavigationManager navigation
+@inject Statemanagerment myStatemanagerment
+@inject ICommandManager Commands
+@inject IDbManager myDb
+@inject IChatService SisChatService
+
+@using System.Globalization
+@using System.Timers
+
+@inject ILocalStorageService Localstore
+@implements IDisposable
+@inject IStringLocalizer<App> Lap
+
+<DxLayoutBreakpoint MaxWidth="1025" @bind-IsActive="@IsMobileLayout"/>
+<DxLayoutBreakpoint MaxWidth="600" @bind-IsActive="@IsMobile" />
+
+<div>
+    <div class="row align-items-center">
+        <div class="d-flex justify-content-between">
+            <div class="d-flex justify-content-start">
+                <div class="justify-content-center dropdown">
+                    <div class="dropdown-body">
+                        <button class="col-ali dropbtn" id="dropfButton">
+                            <img class="ipicture" src="./Images/erpFav.svg" />
+                            @if (!IsMobileLayout)
+                            {
+                                <span class="icaption pt-2">@Lap["Favourite"]</span>
+                                <img style="width:8px;height:9px;margin-right:10px;" src="./Images/erpSe.png" />
+                            }
+                        </button>
+                        <div class="dropdown-content" aria-labelledby="dropfButton">
+                            @foreach (Command _command in LSCommand)
+                            {
+                                string strsrc = (!IsLangEn ? _command.Bar : _command.Bar2);
+                                <a @onclick="() => OnComandChanged(_command)" style="cursor:pointer;"> @strsrc </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="justify-content-center dropdown">
+                    <div class="dropdown-body">
+                        <button class="col-ali dropbtn" id="droppButton">
+                            <span class="icaption pt-2" style="margin-left:20px;"> @strdvcs </span>
+                            <img style="width:8px;height:9px;margin-right:10px;" src="./Images/erpSe.png" />
+                        </button>
+                        <div class="dropdown-content" aria-labelledby="droppButton">
+                            @foreach (Dmdvcs dvcs in LSDVCS)
+                            {
+                                string strsrc = (!IsLangEn ? dvcs.Ten_dvcs : dvcs.Ten_dvcs2);
+                                <a @onclick="() => OnDVCSChanged(dvcs.Ma_dvcs)" style="cursor:pointer;"> @strsrc </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @(new MarkupString(String.IsNullOrEmpty(strtb) || IsMobileLayout ? "" : strtb))
+            <div class="d-flex justify-content-end">
+                <div class="d-flex align-items-center">
+                    <div class="col-ali d-flex align-items-center">
+                        <div Id="flyout-placement-target-mail" class="col-ald" style="cursor:pointer;" @onclick="OnMail_click">
+                            <img class="ipicture" src="./Images/erpEmail.svg" title=@Lap["Works"]/>
+                            <span class="@_blinkEmail">@Slemail</span>
+                        </div>
+                        <div Id="flyout-placement-target-Alert" class="col-ald" style="cursor:pointer;" @onclick="OnAlert_click">
+                            <img class="ipicture" style="margin-left:10px;" src="./Images/erpAlert.svg" title=@Lap["Notices"] />
+                            <span class="@_blinkAlert">@Slalter</span>
+                        </div>
+                    </div>
+
+                    @if (!IsMobileLayout)
+                    {
+                        <div style="width:20px;"></div>
+                        <div class="col-ali">
+                            <div class="d-flex justify-content-center">
+                                <div class="img-with-text" @onclick="OnSis_click" >
+                                    <img class="fpicture" src="./Images/erpWeb.svg" alt="https://sis.vn" title="Website" />
+                                    <p class="ismallcaption">Website</p>
+                                </div>
+
+                                <div class="img-with-text" @onclick="OnSis_click">
+                                    <img class="fpicture" src="./Images/erpHelp.svg" alt="https://sis.vn" title="@Lap["Help"]" />
+                                    <p class="ismallcaption">@Lap["Help"]</p>
+                                </div>
+
+                                <div class="img-with-text" @onclick="OnSis_click">
+                                    <img class="fpicture" src="./Images/erpInfo.svg" alt="https://sis.vn" title="@Lap["Infor"]" />
+                                    <p class="ismallcaption">@Lap["Infor"]</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="justify-content-end dropdown">
+                    <button class="col-ali" Id="flyout-placement-target-container" @onclick="OnUser_click">
+                        @if (!IsMobileLayout)
+                        {
+                            <img class="ipicture" src="./Images/erpUser.svg" />
+                            <span class="icaption">@strUser</span>
+                            <img style="width:8px;height:9px;margin-right:10px;" src="./Images/erpSe.png" />
+                        }
+                        else
+                        {
+                            <span class="icaption">@strUser</span>
+                        }
+                    </button>
+                </div>
+                <div class="justify-content-end dropdown">
+                    <button class="col-ali dropbtn" id="dropdButton" style="width:65px;margin-right:1px;">
+                        <img class="ipicture" src="@srclang" />
+                        <img style="width:8px;height:9px;margin-left:7px;" src="./Images/erpSe.png" />
+                    </button>
+                    <div class="dropdown-content" aria-labelledby="dropdButton" style="left:-50%">
+                        <a @onclick="SetLangVi">
+                            <img src="./Images/Viflag.png"
+                                 width="18" height="15"> Tiếng Việt
+                        </a>
+                        <a @onclick="SetLangEn">
+                            <img src="./Images/Enflag.png"
+                                 width="18" height="15"> English
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<DxFlyout @bind-IsOpen="IsOpen"
+          PositionTarget="#flyout-placement-target-container"
+          Position="FlyoutPosition.Auto"
+          RestrictionTarget="#Navigation-Flyout-Overview"
+          FitToRestriction=false
+          CloseMode="FlyoutCloseMode.Close"
+          HeaderVisible="false"
+          FooterVisible="true"
+          HeaderText="Header"
+          Width="max(25vw, 400px)">
+    <BodyContentTemplate>
+        <div class="w-100 custom-flyout-body">
+            <EmployeeCard EmployeeInfo=@_curUser OnHideClick="HideClickHandler" />
+        </div>
+    </BodyContentTemplate>
+    <FooterContentTemplate>
+        <div class="w-100">
+            <div class="custom-flyout-footer justify-content-center">
+                <div class="row m-0">
+                    <button class="col-ali1" @onclick=@(()=> {IsOpen = false;})>
+                        <span class="icaption">@Lap["Cancel"]</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </FooterContentTemplate>
+</DxFlyout>
+
+@* <DxFlyout @bind-IsOpen="IsOpenAlert"
+          PositionTarget="#flyout-placement-target-Alert"
+          Position="FlyoutPosition.Auto"
+          RestrictionTarget="#Navigation-Flyout-Overview"
+          FitToRestriction=false
+          CloseMode="FlyoutCloseMode.Close"
+          HeaderVisible="false"
+          FooterVisible="true"
+          HeaderText="Header"
+          Width="max(30vw, 500px)">
+    <BodyContentTemplate>
+        <div style="width:100%;max-height:500px;overflow-y:scroll;">
+            <NotificationComponent TblData="@TblNotification" Readed="@OnReloadNotification"></NotificationComponent>
+        </div>
+    </BodyContentTemplate>
+    <FooterContentTemplate>
+        <div class="w-100">
+            <div class="row m-0 justify-content-around"> 
+                <label class="col-2">@Lap["From date"]</label>
+                <DxDateEdit CssClass="col" Date="@_tu_ngay" DateExpression="@(()=> _tu_ngay)" DateChanged="@((DateTime newvalue)=> {OnTu_ngayChanged(newvalue);})"></DxDateEdit>
+                <label class="col-2">@Lap["To date"]</label>
+                <DxDateEdit CssClass="col" Date="@_den_ngay" DateExpression="@(()=> _den_ngay)" DateChanged="@((DateTime newvalue)=> {OnDen_ngayChanged(newvalue);})"></DxDateEdit>
+                <hr />
+            </div>           
+            <div class="row m-0 justify-content-around">
+                <button class="col-3 btn btn-link text-blue" @onclick="@ViewAllAlert">
+                    @Lap["All"]
+                </button>
+                <button class="col-3 btn btn-link text-blue" @onclick="@ViewUnReadAlert">
+                    @Lap["UnReaded"]
+                </button>
+                <button class="col-3 btn btn-link text-blue" @onclick=@(()=> {IsOpenAlert = false;})>
+                    @Lap["Close"]
+                </button>
+            </div>
+        </div>
+    </FooterContentTemplate>
+</DxFlyout>
+<DxFlyout @bind-IsOpen="IsOpenMail"
+          PositionTarget="#flyout-placement-target-mail"
+          Position="FlyoutPosition.Auto"
+          RestrictionTarget="#Navigation-Flyout-Overview"
+          FitToRestriction=false
+          CloseMode="FlyoutCloseMode.Close"
+          HeaderVisible="false"
+          FooterVisible="true"
+          HeaderText="Header"
+          Width="max(30vw, 500px)">
+    <BodyContentTemplate>
+        <div style="width:100%;max-height:500px;overflow-y:scroll;">
+            <NotificationComponent TblData="@TblMail" Readed="@OnEditMail"></NotificationComponent>
+        </div>
+    </BodyContentTemplate>
+    <FooterContentTemplate>
+        <div class="w-100">            
+            <div class="row m-0 justify-content-around">
+                <button class="col-3 btn btn-link text-blue" @onclick="@ViewAllMail">
+                    @Lap["View"]
+                </button>
+                
+                <button class="col-3 btn btn-link text-blue" @onclick=@(()=> {IsOpenMail = false;})>
+                    @Lap["Close"]
+                </button>
+            </div>
+        </div>
+    </FooterContentTemplate>
+</DxFlyout>
+<DxPopup Height="600px" Width="400px" ShowCloseButton="true" Visible="@IsGift" HeaderText="@HeadGift">
+    <BodyTemplate>
+        @(new MarkupString(String.IsNullOrEmpty(strgift) ? "" : strgift))
+    </BodyTemplate>
+</DxPopup> *@
+<DxDialogProvider />
+@code {
+    private List<Dmdvcs> LSDVCS = new List<Dmdvcs>();
+    private List<DMPhanhe> LSPHANHE = new List<DMPhanhe>();
+    private string ma_phan_he { get; set; } = "";
+    private string ma_dvcs { get; set; } = "";
+    private string UserLang = "Vi";
+    private string srclang { get; set; } = @"./Images/erpLangVi.svg";
+    private string strUser = "User";
+    private bool IsLangEn = false;
+    private bool IsOpen { get; set; } = false;
+    private bool IsOpenAlert { get; set; } = false;
+    private bool IsOpenMail { get; set; } = false;
+    private int Slalter { get; set; } = 0;
+    private int Slemail { get; set; } = 0;
+    private string AlertLoai { get; set; } = "1";
+
+    private Dmdvcs DvcsModel = new Dmdvcs();
+    private DMPhanhe PhanheModel = new DMPhanhe();
+    List<Command> LSCommand = new List<Command>();
+    DataTable TblNotification = null;
+    DataTable TblMail = null;
+    private Users _curUser;
+    private static System.Timers.Timer aTimer;
+    Queue<Notification> LSmessage = new Queue<Notification>();
+    DateTime _tu_ngay { get; set; } = new DateTime(DateTime.Now.Year, DateTime.Now.Month,1);
+    DateTime _den_ngay { get; set; } = DateTime.Now;
+    string strdvcs = "";
+    string strtb = "";
+    private bool IsGift { get; set; } = false;
+    private string HeadGift = "Chúc mừng";
+    private string strgift = "";
+
+    string store_proc = "Load_Notification1";
+    string strcommand = "";
+    string _blinkEmail = "icircle1";
+    string _blinkAlert = "icircle1";
+    bool _isMobileLayout;
+    bool IsMobileLayout
+    {
+        get => _isMobileLayout;
+        set
+        {
+            _isMobileLayout = value;
+        }
+    }
+    bool _isMobile;
+    bool IsMobile
+    {
+        get => _isMobile;
+        set
+        {
+            _isMobile = value;
+        }
+    }
+
+    async  void OnTu_ngayChanged(DateTime tu_ngay)
+    {
+        _tu_ngay = tu_ngay;
+        await LoadNotification(_curUser.User_name, AlertLoai);
+        StateHasChanged();
+    }
+    async void OnDen_ngayChanged(DateTime tu_ngay)
+    {
+        _den_ngay = tu_ngay;
+        await LoadNotification(_curUser.User_name, AlertLoai);
+        StateHasChanged();
+    }
+    void StartTimer()
+    {
+        aTimer = new System.Timers.Timer(3000);
+        aTimer.Elapsed += CountDownTimer;
+        aTimer.Enabled = true;
+    }
+    void CountDownTimer(Object source, ElapsedEventArgs e)
+    {
+        if (LSmessage.Count > 0)
+        {
+            Notification _curMessage = LSmessage.Dequeue();
+            myStatemanagerment.SetNewThongbao(_curMessage.Noi_dung);
+        }
+    }
+    async Task Language()
+    {
+        try
+        {
+            UserLang = await Localstore.GetItemAsync<string>("userlang");
+            if (UserLang == null)
+            {
+                UserLang = "Vi";
+                await Localstore.SetItemAsync("userlang", UserLang);
+            }
+            if (UserLang.ToUpper().StartsWith("VI"))
+            {
+                CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("vi-VN");
+                CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("vi-VN");
+                srclang = @"./Images/erpLangVi.svg";
+            }
+            else if (UserLang.ToUpper().StartsWith("EN"))
+            {
+                CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-us");
+                CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-us");
+                srclang = @"./Images/erpLangEN.svg";
+            }
+
+            IsLangEn = false;
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+    string[] lsRight = new string[] { };
+    private async void SetLangEn()
+    {
+        await Localstore.SetItemAsync<string>("userlang", "En");
+        myStatemanagerment.SetNewLangvalue("En", true);
+        await Language();
+    }
+    private async void SetLangVi()
+    {
+        await Localstore.SetItemAsync<string>("userlang", "Vi");
+        myStatemanagerment.SetNewLangvalue("Vi", true);
+        await Language();
+    }
+    void OnComandChanged(Command _command)
+    {
+        if (_command != null)
+            navigation.NavigateTo(_command.Mobile_page + "/" + _command.Menu_id.Replace('.', '_'));
+    }
+    private async void OnDVCSChanged(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            ma_dvcs = value;
+            strdvcs = IsLangEn ? LSDVCS.Where(a => a.Ma_dvcs == ma_dvcs).First().Ten_dvcs2 : LSDVCS.Where(a => a.Ma_dvcs == ma_dvcs).First().Ten_dvcs;
+            await Localstore.SetItemAsync<string>("ma_dvcs", value);
+            myStatemanagerment.SetDvcs(value.Trim(), value.Trim());
+            myStatemanagerment.DvcsChanged(value.Trim());
+        }
+    }
+    private void OnPhanheChanged(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            ma_phan_he = value;
+            CreateFavMenu(ma_phan_he);
+        }
+    }
+    void Movetopage(string page)
+    {
+        navigation.NavigateTo(page);
+    }
+    private void Movetouserinfo()
+    {
+        navigation.NavigateTo("user-info");
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {               
+            ma_phan_he = await Localstore.GetItemAsync<string>("ma_phan_he");
+            ma_dvcs = await Localstore.GetItemAsync<string>("ma_dvcs");
+            _curUser = await Localstore.GetItemAsync<Users>("user");
+            if (_curUser != null)
+            {
+                strUser = String.IsNullOrEmpty(_curUser.User_name) ? "" : _curUser.User_name.Trim();
+                LSDVCS = await myDb.GetDVCS(String.IsNullOrEmpty(_curUser.User_name) ? "" : _curUser.User_name.Trim());
+            }
+
+            if (LSDVCS != null && LSDVCS.Count > 0)
+            {
+                if (_curUser != null)
+                {
+                    if (_curUser.Is_admin == 1 || _curUser.Admin_root == 1)
+                    {
+                        LSDVCS.Add(new Dmdvcs() { Ma_dvcs = "ALL", Ten_dvcs = "Tất cả", Ten_dvcs2 = "All", User_right = "ALL" });
+                    }
+                }
+                ma_dvcs = String.IsNullOrEmpty(ma_dvcs) ? "" : ma_dvcs;
+                if (LSDVCS.Where(a => a.Ma_dvcs == ma_dvcs).Count() > 0)
+                    strdvcs = IsLangEn ? LSDVCS.Where(a => a.Ma_dvcs == ma_dvcs).First().Ten_dvcs2 : LSDVCS.Where(a => a.Ma_dvcs == ma_dvcs).First().Ten_dvcs;
+                else
+                    strdvcs = IsLangEn ? LSDVCS.First().Ten_dvcs2 : LSDVCS.First().Ten_dvcs;
+
+                Dmdvcs dmdv = LSDVCS.Where(ls => ls.Ma_dvcs.Trim() == ma_dvcs.Trim()).FirstOrDefault();
+                if (dmdv != null)
+                    myStatemanagerment.SetDvcs(dmdv.Ma_dvcs.Trim(), dmdv.Ten_dvcs);
+                else
+                    myStatemanagerment.SetDvcs(LSDVCS[0].Ma_dvcs.Trim(), LSDVCS[0].Ten_dvcs);
+            }
+
+            // if (_curUser != null)
+            //     await LoadNotification(_curUser.User_name, AlertLoai);
+
+            // try
+            // {
+            //     strtb = (await myDb.LoadStoreProcedure("GetTB", "", "")).Tables[0].Rows[0][0].ToString().Trim();
+            // }
+            // catch (Exception ex)
+            // { strtb = ""; }
+
+            // IsGift = false;
+            // strgift = "";
+            // try
+            // {
+            //     DataTable tbGift = (await myDb.LoadStoreProcedure("GetGIFT", "user_name", _curUser.User_name.Trim())).Tables[0];
+            //     if (tbGift.Rows.Count > 0)
+            //     {
+            //         if (tbGift.Rows[0][0].ToString().Trim() == "1")
+            //         {
+            //             strgift = tbGift.Rows[0][2].ToString().Trim();
+            //             HeadGift = @"Chúc mừng " + tbGift.Rows[0][3].ToString().Trim() + "!";
+            //             IsGift = true;
+            //         }
+            //     }
+            // }
+            // catch (Exception ex)
+            // {
+            //     IsGift = false;
+            //     strgift = "";
+            // }
+
+            await Language();
+
+            if (!string.IsNullOrEmpty(ma_phan_he))
+                CreateFavMenu(ma_phan_he);            
+
+            myStatemanagerment.OnLangguaChanged += OnLangguachange;
+            myStatemanagerment.OnAddFavorite += OnAddFavorite;
+            myStatemanagerment.OnPhanheChanged += OnPhanheChanged;
+            SisChatService.RecivceNotification += OnRecivceNotification;
+            //await JavacriptS.InvokeVoidAsync("RegisterNotification");
+            //StartTimer();
+        }
+    }
+    void CreateFavMenu(string ma_ph)
+    {
+        LSCommand.Clear();
+        if (_curUser != null)
+        {
+            if (!string.IsNullOrEmpty(_curUser.Wr_fav))
+            {
+                List<Command> commands = Commands.GeteAllMenuID(ma_ph);
+                LSCommand = commands.Where(a => _curUser.Wr_fav.Split('/').Contains(a.Menu_id)).ToList();
+            }           
+        }
+        StateHasChanged();
+    }
+    async void OnReloadNotification(string NotificationID)
+    {
+        if (!string.IsNullOrEmpty(NotificationID))
+        {
+            DataRow? _row = TblNotification.Select(string.Format("NotificationID = '{0}'", NotificationID)).FirstOrDefault();
+            if (_row != null)
+            {               
+                string sql = string.Format("Update [Notification] set users_check = '' where NotificationID = '{0}' AND users_check is null;Update [Notification] set users_check = RTRIM(users_check) + '{1};' where NotificationID = '{0}'", NotificationID, _curUser.User_name);
+                await myDb.ExecuteSqlQueryAsync(sql);
+                await LoadNotification(_curUser.User_name, AlertLoai);
+                StateHasChanged();
+            }
+        }
+    }
+    async void OnEditMail(string NotificationID)
+    {
+        string strurl = @"frmdmworkcrph/we_cr_61/" + NotificationID + "/" + _curUser.User_name.Trim() + "/000001/EDIT";
+
+        IsOpenMail = false;
+        navigation.NavigateTo(strurl);
+    }
+    async void OnRecivceNotification(string message)
+    {        
+        if (!string.IsNullOrEmpty(message))
+        {
+            string[] data = message.Split('|');
+            myStatemanagerment.SetNewThongbao(message);
+            //await LoadNotification(_curUser.User_name, "1");
+            //await JavacriptS.InvokeVoidAsync("BroweserPushNotification", "Thông báo", data[2], "https://sis.vn");
+        }       
+    }
+
+    async Task LoadNotification(string user_name, string loai)
+    {
+        /*
+        try
+        {
+            AlertLoai = loai;
+            string _param = "user_name;loai;tu_ngay;den_ngay";
+            string _value = user_name + ";" + loai + ";" + _tu_ngay.ToString("yyyyMMdd") + ";" + _den_ngay.ToString("yyyyMMdd");
+            DataSet ds = await myDb.LoadStoreProcedure(store_proc, _param, _value);
+            TblNotification = ds.Tables[0];
+            Slalter = TblNotification.Rows.Count;
+            _blinkAlert = Slalter > 0 ? "icircle" : "icircle1";
+
+            string sql = "Select inv_guid as NotificationID,noi_dung,ghi_chu,RTRIM(ten_kh) + ': ' + RTRIM(ket_qua) as tieu_de,'' as img_link,'/frmdmworkcrph/we_cr_61/' + RTRIM(inv_guid) + '/' + RTRIM(ma_ns) + '/' + RTRIM(ma_kh) + '/VIEW' as no_link from v_dmworkcrph ";
+            sql += " where ngay_bd <=CONVERT(char,getdate(),112) AND ngay_kt >=CONVERT(char,getdate(),112)";
+            sql += " AND (ma_ns ='" + user_name + "' OR EXISTS(Select items from dbo.Split(ma_nsgv_list,';') WHERE items = '" + user_name + "'))";
+            sql += " order by ngay_bd desc, ma_ns";
+
+            DataSet dsm = await myDb.LoadDataset(sql);
+            TblMail = dsm.Tables[0];
+            Slemail = TblMail.Rows.Count;
+            _blinkEmail = Slemail > 0 ? "icircle" : "icircle1";
+        }
+        catch{}
+        */
+    }
+
+    async void ViewUnReadAlert()
+    {
+        await LoadNotification(_curUser.User_name, "1");
+        StateHasChanged();
+    }
+    async void ViewAllAlert()
+    {
+        await LoadNotification(_curUser.User_name, "0");
+        StateHasChanged();
+    }
+    async void ViewAllMail()
+    {
+        IsOpenMail = false;
+        navigation.NavigateTo(@"crmdmworkcrph/we_cr_61");
+    }
+    void OnAddFavorite(string value, bool isAdd)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            Command _cm = Commands.GeteAllMenuID(ma_phan_he).Where(a => a.Menu_id.Equals(value)).FirstOrDefault();
+            if (isAdd)
+            {
+                if (_cm != null)
+                    LSCommand.Add(_cm);
+            }
+            else
+            {
+                if (_cm != null)
+                    LSCommand.Remove(_cm);
+            }
+            StateHasChanged();
+        }
+    }
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+    private async void OnAlert_click(EventArgs arg)
+    {
+        await LoadNotification(_curUser.User_name, AlertLoai);
+        IsOpenAlert = !IsOpenAlert;
+        StateHasChanged();
+    }
+    private async void OnMail_click(EventArgs arg)
+    {
+        /*
+        string user_name = _curUser.User_name.Trim();
+        string sql = "Select inv_guid as NotificationID,noi_dung,ghi_chu,RTRIM(ten_kh) + ': ' + RTRIM(ket_qua) as tieu_de,'' as img_link,'/frmdmworkcrph/we_cr_61/' + RTRIM(inv_guid) + '/' + RTRIM(ma_ns) + '/' + RTRIM(ma_kh) + '/VIEW' as no_link from v_dmworkcrph ";
+        sql += " where ngay_bd <=CONVERT(char,getdate(),112) AND ngay_kt >=CONVERT(char,getdate(),112)";
+        sql += " AND (ma_ns ='" + user_name + "' OR EXISTS(Select items from dbo.Split(ma_nsgv_list,';') WHERE items = '" + user_name + "'))";
+        sql += " order by ngay_bd desc, ma_ns";
+
+        DataSet dsm = await myDb.LoadDataset(sql);
+        TblMail = dsm.Tables[0];
+        Slemail = TblMail.Rows.Count;
+        _blinkEmail = Slemail > 0 ? "icircle" : "icircle1";
+        IsOpenMail = !IsOpenMail;
+        StateHasChanged();
+        */
+    }
+    private void OnUser_click(EventArgs arg)
+    {
+        IsOpen = !IsOpen;
+        StateHasChanged();
+    }
+    private void OnSis_click(EventArgs arg)
+    {
+        navigation.NavigateTo("https://sis.vn");
+    }
+    void HideClickHandler(bool isopen)
+    {
+        IsOpen = isopen;
+    }
+    public void Dispose()
+    {
+        myStatemanagerment.OnLangguaChanged -= OnLangguachange;
+        myStatemanagerment.OnAddFavorite -= OnAddFavorite;
+        myStatemanagerment.OnPhanheChanged -= OnPhanheChanged;
+        SisChatService.RecivceMessage -= OnRecivceNotification;
+    }
+}

@@ -1,0 +1,1335 @@
+﻿@inject Statemanagerment myStatemanagerment
+@inject IOptionsManager options
+@using DevExpress.Data.Filtering
+@using System.Data
+@using SisData.Service
+@using SisData.Data
+@using SisFunc
+@using DevExpress.Blazor
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.Extensions.Localization
+@inject IJSRuntime JavacriptS
+@implements IDisposable;
+@inject IWebHostEnvironment hostEnvironment;
+@inject IStringLocalizer<App> Lap;
+@inject IDbManager myDb
+
+<style>
+    .bold-item > td {
+        font-weight: bold;
+    }
+
+    .italic-item > td {
+        font-style: italic;
+    }
+
+    .white-item > td {
+        color: white;
+    }
+
+    .black-item > td {
+        color: black;
+    }
+
+    .blue-item > td {
+        color: blue;
+    }
+
+    .green-item {
+        color: green;
+    }
+
+    .red-item {
+        color: red;
+    }
+
+    .yellow-item {
+        color: yellow;
+    }
+
+    .gold-item {
+        color: gold;
+    }
+
+    .goldenrod-item {
+        color: goldenrod;
+    }
+
+    .silver-item {
+        color: silver;
+    }
+
+    .violet-item {
+        color: violet;
+    }
+
+    .tomato-item {
+        color: tomato;
+    }
+
+    .skyblue-item {
+        color: skyblue;
+    }
+
+    .white-bck {
+        background-color: white;
+    }
+
+    .black-bck {
+        background-color: black;
+    }
+
+    .blue-bck {
+        background-color: blue;
+    }
+
+    .green-bck {
+        background-color: green;
+    }
+
+    .red-bck {
+        background-color: red;
+    }
+
+    .yellow-bck {
+        background-color: yellow;
+    }
+
+    .gold-bck {
+        background-color: gold;
+    }
+
+    .goldenrod-bck {
+        background-color: goldenrod;
+    }
+
+    .silver-bck {
+        background-color: silver;
+    }
+
+    .violet-bck {
+        background-color: violet;
+    }
+
+    .tomato-bck {
+        background-color: tomato;
+    }
+
+    .skyblue-bck {
+        background-color: skyblue;
+    }
+</style>
+<div class="container-fluid">
+    <DxGrid @ref="@Grid"
+            CssClass="@CssClass"
+            ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+            Data="@TblData"
+            PageSize="@Page_size"
+            PagerPosition="GridPagerPosition.Bottom"
+            PageSizeSelectorVisible="true"
+            PageSizeSelectorItems="@(new int[] { 10, 20, 30, 100 })"
+            PageSizeSelectorAllRowsItemVisible="true"
+            PagerSwitchToInputBoxButtonCount="10"
+            PagerVisibleNumericButtonCount="10"
+            PageIndexChanged="@PageSelectChange"
+            SearchTextParseMode="@_GridSearchTextParseMode"
+            PageIndex="@Pageindex"
+            ShowFilterRow="@IsFilter"
+            PagerVisible="@IsPageSize"
+            AllowSelectRowByClick="true"
+            SelectionMode="GridSelectionMode.Multiple"
+            @bind-SelectedDataItem="SelectedDataItem"
+            SearchText="@GridSearchText"
+            CustomizeSummaryDisplayText="Grid_CustomizeSummaryDisplayText"
+            CustomizeElement="Grid_CustomizeElement"
+            SelectedDataItemsChanged="OnSelectedDataItemsChanged" SelectAllCheckboxMode="GridSelectAllCheckboxMode.AllPages"
+            VirtualScrollingEnabled="@IsVirtualScrollingEnabled">
+        <Columns>
+            @if (TblData != null)
+            {
+                <DxGridSelectionColumn Width="50px" AllowSelectAll="false" FixedPosition="GridColumnFixedPosition.Left">
+                    <HeaderTemplate>
+                        <div class="w-100">
+                            <DxCheckBox @bind-Checked="@SelectAll" CssClass="justify-content-center align-items-center" Enabled="@EnableCheck"></DxCheckBox>
+                        </div>
+                    </HeaderTemplate>
+                    <CellDisplayTemplate>
+                        @{
+                            DataRowView item = (DataRowView)context.DataItem;
+                        }
+                        <DxCheckBox Checked=@(item[SelectCol].ToString() == "1" || item[SelectCol].ToString().ToUpper() == "TRUE" ) CheckedChanged="@((bool value) => CheckedChanged(value,item))" Enabled="@EnableCheck" />
+                    </CellDisplayTemplate>
+                </DxGridSelectionColumn>
+
+                fields = Fbrowse.Split(';');
+                if (fields != null && fields.Length > 0)
+                {
+                    foreach (string str in fields)
+                    {
+                        string dinhdang = "";
+                        string[] _data = str.Split(':');
+                        string ma = _data[0];
+                        string rong = _data[1] + "px";
+                        string ten = "";
+                        if (_data[2].StartsWith("h="))
+                            ten = _data[2].Split('=')[1].Replace("[M_MA_NT0]", M_Ma_nt0);
+                        string BI = "";
+                        string BG = "";
+                        _GridColumnFixedPosition = GridColumnFixedPosition.None;
+                        if (_data.Length > 3)
+                        {
+                            if (_data.Contains("FL"))
+                            {
+                                _GridColumnFixedPosition = GridColumnFixedPosition.Left;
+                            }
+                            else if (_data.Contains("FR"))
+                            {
+                                _GridColumnFixedPosition = GridColumnFixedPosition.Right;
+                            }
+                            else
+                            {
+                                _GridColumnFixedPosition = GridColumnFixedPosition.None;
+                            }
+                            for (int x = 3; x < _data.Length; x++)
+                            {
+                                dinhdang = "";
+                                string d = _data[x].ToUpper();
+                                if (d.StartsWith("D") || d.StartsWith("N") || d.StartsWith("R") || d.StartsWith("P") || d.StartsWith("Q") || d.StartsWith("IMG") || d.StartsWith("SOLID") || d.StartsWith("TEXT") || d.StartsWith("COLOR") || d.StartsWith("HIDE") || d.StartsWith("BUTTON") || d.StartsWith("LINK"))
+                                {
+                                    if (d.ToUpper().StartsWith("N"))
+                                    {
+                                        if (d.ToUpper().Equals("N0"))
+                                            dinhdang = M_IP_TIEN;
+                                        else
+                                            dinhdang = M_IP_TIEN_NT;
+                                    }
+                                    else if (d.ToUpper().StartsWith("P0"))
+                                    {
+                                        dinhdang = M_IP_GIA;
+                                    }
+                                    else if (d.ToUpper().StartsWith("P1"))
+                                    {
+                                        dinhdang = M_IP_GIA_NT;
+                                    }
+                                    else if (d.ToUpper().StartsWith("Q"))
+                                    {
+                                        dinhdang = M_IP_SL;
+                                    }
+                                    else if (d.ToUpper().StartsWith("RF"))
+                                    {
+                                        dinhdang = M_IP_TY_GIAF;
+                                    }
+                                    else if (d.ToUpper().StartsWith("R"))
+                                    {
+                                        dinhdang = M_IP_TY_GIA;
+                                    }
+                                    else
+                                        dinhdang = d;
+                                    break;
+                                }
+                                if ("BI".Contains(d))
+                                    BI = d;
+                                if ("G".Contains(d))
+                                    BG = d;
+                            }
+                        }
+                        foreach (DataColumn col in TblData.Columns)
+                        {
+                            if (col.ColumnName.ToLower().Equals(ma.ToLower()))
+                            {
+                                ten = String.IsNullOrEmpty(ten) ? col.ColumnName : ten;
+                                if (col.DataType.Name.ToLower().Equals("boolean"))
+                                {
+                                    bool _check = false;
+                                    <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong">
+                                        <CellDisplayTemplate>
+                                            @if (!string.IsNullOrEmpty(context.Value.ToString()))
+                                            {
+                                                _check = (bool)context.Value;
+                                            }
+                                            <DxCheckBox CssClass="d-inline-block" Enabled="false" Checked="@_check" />
+                                        </CellDisplayTemplate>
+                                    </DxGridDataColumn>
+                                }
+                                else if (col.DataType.Name.ToLower().Equals("datetime"))
+                                {
+                                    string _dformat = "MM/dd/yyyy";
+                                    string _dformat1 = "{0:MM/dd/yyyy}";
+                                    if (IsLangEn)
+                                    {
+                                        _dformat = "MM/dd/yyyy";
+                                        _dformat1 = "{0:MM/dd/yyyy}";
+                                    }
+                                    else
+                                    {
+                                        _dformat = "dd/MM/yyyy";
+                                        _dformat1 = "{0:dd/MM/yyyy}";
+                                    }
+
+                                    if (dinhdang.Equals("DG"))
+                                    {
+                                        string _style = string.Format("background-color:{0};color:{1};text-align:center;border-radius:5px;padding:5px;", M_GRD_CELL_BG_Color, M_GRD_CELL_Color);
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" DisplayFormat="@_dformat" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                            <FilterRowCellTemplate>
+                                                <DxDateEdit Date="(DateTime?)context.FilterRowValue"
+                                                            Format="@_dformat"
+                                                            DisplayFormat="@_dformat"
+                                                            DateChanged="(DateTime? v) => context.FilterRowValue = v"
+                                                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                                            </FilterRowCellTemplate>
+                                            <CellDisplayTemplate>
+                                                @if (string.IsNullOrEmpty(context.Value.ToString()))
+                                                {
+                                                    _style = "font-weight:normal;";
+                                                }
+                                                else
+                                                {
+                                                    _style = string.Format("background-color:{0};text-align:center;border-radius:5px;padding:5px;", M_GRD_CELL_BG_Color);
+                                                }
+                                                <div style="@_style"> @(string.Format(_dformat1, context.Value))</div>
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else            //if (dinhdang.Equals("D"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" DisplayFormat="@_dformat" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                            <FilterRowCellTemplate>
+                                                <DxDateEdit Date="(DateTime?)context.FilterRowValue"
+                                                            Format="@_dformat"
+                                                            DisplayFormat="@_dformat"
+                                                            DateChanged="(DateTime? v) => context.FilterRowValue = v"
+                                                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" />
+                                            </FilterRowCellTemplate>
+                                        </DxGridDataColumn>
+                                    }
+
+                                }
+                                else
+                                {
+                                    if (string.IsNullOrEmpty(dinhdang))
+                                    {
+                                        string _style = "font-weight:normal;text-wrap: wrap;";
+                                        string _style1 = "font-weight:normal;text-wrap: wrap;";
+                                        if (BI == "B")
+                                        {
+                                            _style1 = "font-weight:bold;text-wrap: wrap;";
+                                        }
+                                        else if (BI == "I")
+                                        {
+                                            _style1 = "font-weight:italic;text-wrap: wrap;";
+                                        }
+                                        else if (BI == "BI")
+                                        {
+                                            _style1 = "font-weight:bold;font-style:italic;text-wrap: wrap;";
+                                        }
+                                        else if (BG.Equals("G"))
+                                        {
+                                            _style1 = "text-wrap: wrap;text-align:center;border-radius:5px;padding:5px;background-color:" + M_GRD_CELL_BG_Color;
+                                        }
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" FixedPosition="@_GridColumnFixedPosition" FilterRowOperatorType="GridFilterRowOperatorType.Contains" Width="@rong">
+                                            <CellDisplayTemplate>
+                                                @if (!string.IsNullOrEmpty(context.Value.ToString()))
+                                                {
+                                                    _style = _style1;
+                                                }
+                                                <div style="@_style">@context.Value</div>
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else if (dinhdang.StartsWith("IMG"))
+                                    {
+                                        if (dinhdang.Equals("IMGR"))
+                                        {
+                                            <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                                <CellDisplayTemplate>
+                                                    @if (context.Value.ToString().Split(";").Count() > 0)
+                                                    {
+                                                        string[] arrs = context.Value.ToString().Split(";");
+                                                        foreach (string str1 in arrs)
+                                                        {
+                                                            if (!String.IsNullOrEmpty(str1))
+                                                            {
+                                                                string str = str1.Trim();
+                                                                if (!str.Contains(@"."))
+                                                                    str = str + ".PNG";
+                                                                if (!str.Contains(@"/"))
+                                                                    str = @"./Pict/" + str;
+
+                                                                if (SysFunc.PictureHelper.Exits(str, hostEnvironment))
+                                                                {
+                                                                    if (arrs.Count() == 1)
+                                                                    {
+                                                                        <img style="position: relative; width: 35px; height: 35px; overflow: hidden; border-radius: 50%;" src="@str" title="@str1" />
+                                                                    }
+                                                                    else if (arrs.Count() < 4)
+                                                                    {
+                                                                        <img style="position: relative; width: 30px; height: 30px; overflow: hidden; border-radius: 50%;margin-right:2px;" src="@str" title="@str1" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img style="position: relative; width: 20px; height: 20px; overflow: hidden; border-radius: 50%;margin-right:2px;" src="@str" title="@str1" />
+                                                                    }
+                                                                }
+                                                                else
+                                                                {
+                                                                    str = @"./Pict/User.png";
+                                                                    if (arrs.Count() == 1)
+                                                                    {
+                                                                        <img style="position: relative; width: 35px; height: 35px; overflow: hidden; border-radius: 50%;" src="@str" title="@str1" />
+                                                                    }
+                                                                    else if (arrs.Count() < 4)
+                                                                    {
+                                                                        <img style="position: relative; width: 30px; height: 30px; overflow: hidden; border-radius: 50%;margin-right:2px;" src="@str" title="@str1" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <img style="position: relative; width: 20px; height: 20px; overflow: hidden; border-radius: 50%;margin-right:2px;" src="@str" title="@str1" />
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                </CellDisplayTemplate>
+                                            </DxGridDataColumn>
+                                        }
+                                        else if (dinhdang.Equals("IMGM"))
+                                        {
+                                            <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                                <CellDisplayTemplate>
+                                                    @if (context.Value.ToString().Split(";").Count() > 0)
+                                                    {
+                                                        string[] arrs = context.Value.ToString().Split(";");
+                                                        foreach (string str1 in arrs)
+                                                        {
+                                                            if (!String.IsNullOrEmpty(str1))
+                                                            {
+                                                                string str = str1.Trim();
+                                                                if (!str.Contains(@"."))
+                                                                    str = str + ".PNG";
+                                                                if (!str.Contains(@"/"))
+                                                                    str = @"./Pict/" + str;
+
+                                                                if (SysFunc.PictureHelper.Exits(str, hostEnvironment))
+                                                                {
+                                                                    <img style="position: relative; width: 30px; height: 30px; overflow: hidden; border-radius: 50%;margin-right:2px;" src="@str" title="@str1" />
+                                                                }
+                                                                else
+                                                                {
+                                                                    str = @"./Pict/User.png";
+                                                                    <img style="position: relative; width: 30px; height: 30px; overflow: hidden; border-radius: 50%;margin-right:2px;" src="@str" title="@str1" />
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                </CellDisplayTemplate>
+                                            </DxGridDataColumn>
+                                        }
+                                        else if (dinhdang.Equals("IMGS"))
+                                        {
+                                            <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                                <CellDisplayTemplate>
+                                                    @if (context.Value.ToString().Split(";").Count() > 0)
+                                                    {
+                                                        string[] arrs = context.Value.ToString().Split(";");
+                                                        foreach (string str1 in arrs)
+                                                        {
+                                                            if (!String.IsNullOrEmpty(str1))
+                                                            {
+                                                                string str = str1.Trim();
+                                                                if (!str.Contains(@"."))
+                                                                    str = str + ".PNG";
+                                                                if (!str.Contains(@"/"))
+                                                                    str = @"./Pict/" + str;
+
+                                                                if (SysFunc.PictureHelper.Exits(str, hostEnvironment))
+                                                                {
+                                                                    <img style="position: relative; width: 20px; height: 20px; overflow: hidden; border-radius: 50%;margin-right:2px;" src="@str" title="@str1" />
+                                                                }
+                                                                else
+                                                                {
+                                                                    str = @"./Pict/User.png";
+                                                                    <img style="position: relative; width: 20px; height: 20px; overflow: hidden; border-radius: 50%;margin-right:2px;" src="@str" title="@str1" />
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                </CellDisplayTemplate>
+                                            </DxGridDataColumn>
+                                        }
+                                        else if (dinhdang.Equals("IMGC"))
+                                        {
+                                            <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                                <CellDisplayTemplate>
+                                                    <div>
+                                                        @if (context.Value.ToString().Split(";").Count() > 0)
+                                                        {
+                                                            string[] arrs = context.Value.ToString().Split(";");
+                                                            foreach (string str1 in arrs)
+                                                            {
+                                                                if (!String.IsNullOrEmpty(str1))
+                                                                {
+                                                                    string[] str = str1.Trim().Split(':');
+                                                                    string ma_nv = str[0];
+                                                                    string type = "0";
+                                                                    string tooltip = "";
+                                                                    if (str.Length > 1)
+                                                                        type = str[1];
+
+                                                                    if (str.Length > 2)
+                                                                        tooltip = str[2];
+
+                                                                    if (!ma_nv.Contains(@"."))
+                                                                        ma_nv = ma_nv + ".PNG";
+
+                                                                    if (!ma_nv.Contains(@"/"))
+                                                                        ma_nv = @"./Pict/" + ma_nv;
+
+                                                                    string checkicon = @"./Pict/imgcheck.PNG";
+                                                                    if (type.Equals("0"))
+                                                                    {
+                                                                        checkicon = @"./Pict/imgnormal.PNG";
+                                                                    }
+                                                                    else if (type.Equals("1"))
+                                                                    {
+                                                                        checkicon = @"./Pict/imgcheck.PNG";
+                                                                    }
+                                                                    else if (type.Equals("2"))
+                                                                    {
+                                                                        checkicon = @"./Pict/imgcancel.PNG";
+                                                                    }
+                                                                    if (SysFunc.PictureHelper.Exits(ma_nv, hostEnvironment))
+                                                                    {
+                                                                        <span style="width:30px;height:25px;display: inline-block;">
+                                                                            <img style="position:relative;top:0px;left:0px;width: 25px; height: 25px; overflow: hidden; border-radius: 50%" src="@ma_nv" title="@tooltip" />
+                                                                            <img style="position:relative;top:5px;left:-25px;width: 27px; height:15px; overflow: hidden" src="@checkicon" title="@tooltip" />
+                                                                        </span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        ma_nv = @"./Pict/User.png";
+                                                                        <span style="width:30px;height:25px;display: inline-block;">
+                                                                            <img style="position:relative;top:0px;left:0px;width: 25px; height: 25px; overflow: hidden; border-radius: 50%" src="@ma_nv" title="@tooltip" />
+                                                                            <img style="position:relative;top:5px;left:-25px;width:27px; height:15px; overflow: hidden" src="@checkicon" title="@tooltip" />
+                                                                        </span>
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    </div>
+                                                </CellDisplayTemplate>
+                                            </DxGridDataColumn>
+                                        }
+                                        else if (dinhdang.Equals("IMGL"))
+                                        {
+                                            <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                                <CellDisplayTemplate>
+                                                    @if (context.Value.ToString().Split(",").Count() > 0 || context.Value.ToString().Split(";").Count() > 0)
+                                                    {
+                                                        string[] arrs = context.Value.ToString().Contains(",") ? context.Value.ToString().Split(",") : context.Value.ToString().Split(";");
+                                                        foreach (string str1 in arrs)
+                                                        {
+                                                            if (!String.IsNullOrEmpty(str1))
+                                                            {
+                                                                string str = str1.Trim();
+                                                                if (str.Contains(@"."))
+                                                                {
+                                                                    if (!str.Contains(@"/"))
+                                                                        str = @"./uploads/" + str;
+                                                                    if (SysFunc.PictureHelper.Exits1(str, hostEnvironment))
+                                                                    {
+                                                                        <div class="row">
+                                                                            <a href="@str" target="_blank">
+                                                                                @str1.Split('.')[0]
+                                                                            </a>
+                                                                        </div>
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                </CellDisplayTemplate>
+                                            </DxGridDataColumn>
+                                        }
+                                        else
+                                        {
+                                            <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                                <CellDisplayTemplate>
+                                                    <img style="max-width:100px;max-height:100px" src="@context.Value" />
+                                                </CellDisplayTemplate>
+                                            </DxGridDataColumn>
+                                        }
+                                    }
+                                    else if (dinhdang.Equals("SOLID"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                            <CellDisplayTemplate>
+                                                <div class="d-flex justify-content-center">
+                                                    <div style="border-radius:5px;width:16px;height:16px;background-color:@context.Value"></div>
+                                                </div>
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else if (dinhdang.Equals("SOLIDL"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                            <CellDisplayTemplate>
+                                                <div class="d-flex justify-content-center">
+                                                    <div style="border-radius:5px;width:@rong;height:@rong;background-color:@context.Value"></div>
+                                                </div>
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else if (dinhdang.Equals("SOLIDLB"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                            <CellDisplayTemplate>
+                                                <div class="d-flex justify-content-center">
+                                                    <div style="border-radius:5px;border:solid;border-width:1px;border-color:silver;width:@rong;height:@rong;background-color:@context.Value"></div>
+                                                </div>
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else if (dinhdang.Equals("TEXT") || dinhdang.Equals("COLOR"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" FixedPosition="@_GridColumnFixedPosition" FilterRowOperatorType="GridFilterRowOperatorType.Contains" Width="@rong">
+                                            <CellDisplayTemplate>
+                                                @{
+                                                    string[] str = context.Value.ToString().Split('|');
+                                                    string _value = str[0];
+                                                    string _fw = "normal";
+                                                    string _color = "black";
+                                                    if (str.Length > 1)
+                                                    {
+                                                        _color = str[1];
+                                                    }
+                                                    if (str.Length > 2)
+                                                    {
+                                                        if (str[2].ToUpper().Contains("B"))
+                                                        {
+                                                            _fw = "bold";
+                                                        }
+                                                        else if (str[2].ToUpper().Contains("I"))
+                                                        {
+                                                            _fw = "italic";
+                                                        }
+                                                        else
+                                                        {
+                                                            _fw = "normal";
+                                                        }
+                                                    }
+                                                }
+                                                <span style="color:@_color;font-weight:@_fw;text-wrap: wrap;">@_value</span>
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else if (dinhdang.Equals("BUTTON"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                            <CellDisplayTemplate>
+                                                @if (!string.IsNullOrEmpty(context.Value.ToString()))
+                                                {
+                                                    string scolor = "w-100 empty-bck";
+                                                    string[] rows = new string[] { };
+                                                    @if (context.Value.ToString().Contains("&"))
+                                                    {
+                                                        rows = context.Value.ToString().Split('&');
+                                                    }
+                                                    @if (rows.Length > 1)
+                                                    {
+                                                        <div class="d-flex justify-content-around">
+                                                            @{
+                                                                string[] value = rows[0].Split(':');
+                                                                if (value.Length > 2)
+                                                                    scolor = value[2] + "-bck";
+                                                            }
+                                                            <div class="justify-content-center" style="min-width:100px; margin-right:5px;">
+                                                                <DxButton RenderStyle="ButtonRenderStyle.Primary" CssClass="@scolor"
+                                                                          Text="@value[0]" Click="@(()=>FunctionButton(value.Length >= 2 ? value[1] : value[0]))"></DxButton>
+                                                            </div>
+                                                        </div>
+                                                        <div class="d-flex justify-content-around mt-1">
+                                                            @{
+                                                                string[] value1 = rows[1].Split(':');
+                                                                if (value.Length > 2)
+                                                                    scolor = value1[2] + "-bck";
+                                                            }
+                                                            <div class="justify-content-center" style="min-width:100px; margin-right:5px;">
+                                                                <DxButton RenderStyle="ButtonRenderStyle.Danger" CssClass="@scolor"
+                                                                          Text="@value1[0]" Click="@(()=>FunctionButton(value1.Length >= 2 ? value1[1] : value1[0]))"></DxButton>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="d-flex justify-content-around">
+                                                            @{
+                                                                string[] value = context.Value.ToString().Split(':');
+                                                                if (value.Length > 2)
+                                                                    scolor = value[2] + "-bck";
+                                                            }
+                                                            <div class="justify-content-center" style="min-width:100px; margin-right:5px;">
+                                                                <DxButton RenderStyle="ButtonRenderStyle.Primary" CssClass="@scolor"
+                                                                          Text="@value[0]" Click="@(()=>FunctionButton(value.Length >= 2 ? value[1] : value[0]))"></DxButton>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else if (dinhdang.Equals("BUTTONS"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                            <CellDisplayTemplate>
+                                                @if (!string.IsNullOrEmpty(context.Value.ToString()))
+                                                {
+                                                    string scolor = "w-100 empty-bck";
+                                                    string[] rows = new string[] { };
+                                                    @if (context.Value.ToString().Contains("&"))
+                                                    {
+                                                        rows = context.Value.ToString().Split('&');
+                                                    }
+                                                    @if (rows.Length > 1)
+                                                    {
+                                                        <div class="d-flex justify-content-around">
+                                                            @{
+                                                                string[] value = rows[0].Split(';');
+                                                                foreach (string str in value)
+                                                                {
+                                                                    if (!string.IsNullOrEmpty(str))
+                                                                    {
+                                                                        string[] data = str.Split('|');
+                                                                        string payload = "";
+                                                                        for (int x = 1; x < data.Length; x++)
+                                                                        {
+                                                                            payload += data[x] + "|";
+                                                                        }
+                                                                        if (payload.Length > 0)
+                                                                            payload = payload.Substring(0, payload.Length - 1);
+                                                                        <div class="justify-content-center" style="min-width:100px; margin-right:5px;">
+                                                                            <DxButton RenderStyle="ButtonRenderStyle.Primary" CssClass="@scolor"
+                                                                                      Text="@data[0]" Click="@(()=>FunctionButton(payload))"></DxButton>
+                                                                        </div>
+                                                                    }
+                                                                }
+                                                            }
+                                                        </div>
+                                                        <div class="d-flex justify-content-around mt-1">
+                                                            @{
+                                                                string[] value1 = rows[1].Split(';');
+                                                                foreach (string str in value1)
+                                                                {
+                                                                    if (!string.IsNullOrEmpty(str))
+                                                                    {
+                                                                        string[] data = str.Split('|');
+                                                                        string payload = "";
+                                                                        for (int x = 1; x < data.Length; x++)
+                                                                        {
+                                                                            payload += data[x] + "|";
+                                                                        }
+                                                                        if (payload.Length > 0)
+                                                                            payload = payload.Substring(0, payload.Length - 1);
+                                                                        <div class="justify-content-center" style="min-width:100px; margin-right:5px;">
+                                                                            <DxButton RenderStyle="ButtonRenderStyle.Danger" CssClass="@scolor"
+                                                                                      Text="@data[0]" Click="@(()=>FunctionButton(payload))"></DxButton>
+                                                                        </div>
+                                                                    }
+                                                                }
+                                                            }
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        string[] value = context.Value.ToString().Split(';');
+                                                        if (value.Length > 5)
+                                                        {
+                                                            <div class="d-flex justify-content-between">
+                                                                @for (int y = 0; y < (value.Length / 2); y++)
+                                                                {
+                                                                    if (!string.IsNullOrEmpty(value[y]))
+                                                                    {
+                                                                        string[] data = value[y].Split('|');
+                                                                        string payload = "";
+                                                                        for (int x = 1; x < data.Length; x++)
+                                                                        {
+                                                                            payload += data[x] + "|";
+                                                                        }
+                                                                        if (payload.Length > 0)
+                                                                            payload = payload.Substring(0, payload.Length - 1);
+                                                                        <div class="justify-content-center" style="min-width:100px; margin-right:5px;">
+                                                                            <DxButton RenderStyle="ButtonRenderStyle.Primary" CssClass="@scolor"
+                                                                                      Text="@data[0]" Click="@(()=>FunctionButton(payload))"></DxButton>
+                                                                        </div>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                            <div class="d-flex justify-content-between mt-2">
+                                                                @for (int y = (value.Length / 2); y < value.Length; y++)
+                                                                {
+                                                                    if (!string.IsNullOrEmpty(value[y]))
+                                                                    {
+                                                                        string[] data = value[y].Split('|');
+                                                                        string payload = "";
+                                                                        for (int x = 1; x < data.Length; x++)
+                                                                        {
+                                                                            payload += data[x] + "|";
+                                                                        }
+                                                                        if (payload.Length > 0)
+                                                                            payload = payload.Substring(0, payload.Length - 1);
+                                                                        <div class="justify-content-center" style="min-width:100px; margin-right:5px;">
+                                                                            <DxButton RenderStyle="ButtonRenderStyle.Primary" CssClass="@scolor"
+                                                                                      Text="@data[0]" Click="@(()=>FunctionButton(payload))"></DxButton>
+                                                                        </div>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="d-flex justify-content-between">
+                                                                @foreach (string str in value)
+                                                                {
+                                                                    if (!string.IsNullOrEmpty(str))
+                                                                    {
+                                                                        string[] data = str.Split('|');
+                                                                        string payload = "";
+                                                                        for (int x = 1; x < data.Length; x++)
+                                                                        {
+                                                                            payload += data[x] + "|";
+                                                                        }
+                                                                        if (payload.Length > 0)
+                                                                            payload = payload.Substring(0, payload.Length - 1);
+                                                                        <div class="justify-content-center" style="min-width:100px; margin-right:5px;">
+                                                                            <DxButton RenderStyle="ButtonRenderStyle.Primary" CssClass="@scolor"
+                                                                                      Text="@data[0]" Click="@(()=>FunctionButton(payload))"></DxButton>
+                                                                        </div>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        }
+                                                    }
+                                                }
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else if (dinhdang.Equals("LINK"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                            <CellDisplayTemplate>
+                                                <a href="@context.Value.ToString()" target="_blank">@context.Value.ToString()</a>
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else if (dinhdang.Equals("LINKS"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Width="@rong" FixedPosition="@_GridColumnFixedPosition">
+                                            <CellDisplayTemplate>
+                                                @if (!string.IsNullOrEmpty(context.Value.ToString()))
+                                                {
+                                                    string[] _data = context.Value.ToString().Split('|');
+                                                    if (_data.Length > 0)
+                                                    {
+                                                        foreach (string str in _data)
+                                                        {
+                                                            <a href="@str" target="_blank">@str</a>
+                                                        }
+                                                    }
+                                                }
+                                            </CellDisplayTemplate>
+                                        </DxGridDataColumn>
+                                    }
+                                    else if (dinhdang.Equals("HIDE"))
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" Visible="false" FixedPosition="@_GridColumnFixedPosition" FilterRowOperatorType="GridFilterRowOperatorType.Contains" DisplayFormat="@dinhdang" Width="@rong"></DxGridDataColumn>
+                                    }
+                                    else
+                                    {
+                                        <DxGridDataColumn FieldName="@ma" Name="@ma" Caption="@ten" FixedPosition="@_GridColumnFixedPosition" FilterRowOperatorType="GridFilterRowOperatorType.Contains" DisplayFormat="@dinhdang" Width="@rong">
+
+                                        </DxGridDataColumn>
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (DataColumn col in TblData.Columns)
+                    {
+                        <DxGridDataColumn FieldName="@col.ColumnName" Name="@col.ColumnName" Caption="@col.ColumnName" FilterRowOperatorType="GridFilterRowOperatorType.Contains" MinWidth="100" />
+                    }
+                }
+            }
+        </Columns>
+        <TotalSummary>
+            @if (TblData != null)
+            {
+                if (fields != null && fields.Length > 0)
+                {
+                    foreach (string str in fields)
+                    {
+                        string dinhdang = "N0";
+                        string[] _data = str.Split(':');
+                        string ma = _data[0];
+                        if (_data.Length > 3)
+                        {
+                            for (int x = 3; x < _data.Length; x++)
+                            {
+                                if (_data[x].ToUpper().Equals("S"))
+                                {
+                                    for (int y = 3; y < _data.Length; y++)
+                                    {
+                                        string str2 = _data[y];
+                                        if (str2.ToUpper().StartsWith("N"))
+                                        {
+                                            if (str2.ToUpper().Equals("N0"))
+                                                dinhdang = M_IP_TIEN;
+                                            else
+                                                dinhdang = M_IP_TIEN_NT;
+
+                                            break;
+                                        }
+                                        else if (str2.ToUpper().StartsWith("P0"))
+                                        {
+                                            dinhdang = M_IP_GIA;
+                                            break;
+                                        }
+                                        else if (str2.ToUpper().StartsWith("P1"))
+                                        {
+                                            dinhdang = M_IP_GIA_NT;
+                                            break;
+                                        }
+                                        else if (str2.ToUpper().StartsWith("Q"))
+                                        {
+                                            dinhdang = M_IP_SL;
+                                            break;
+                                        }
+                                    }
+                                    foreach (DataColumn col in TblData.Columns)
+                                    {
+                                        if (col.ColumnName.ToLower().Equals(ma.ToLower()))
+                                        {
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" ValueDisplayFormat="@dinhdang" Name="@_data[0]" FieldName="@_data[0]" />
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        </TotalSummary>
+    </DxGrid>
+</div>
+@code {
+    // CustomizeElement="Grid_CustomizeElement"
+    IGrid Grid { get; set; }
+    [Parameter]
+    public int Page_size { get; set; }
+    [Parameter]
+    public string Fbrowse { get; set; } = "";
+    [Parameter]
+    public DataTable TblData { get; set; }
+    [Parameter]
+    public bool IsLangEn { get; set; }
+    [Parameter]
+    public bool IsFilter { get; set; } = true;
+    [Parameter]
+    public bool AllowSearch { get; set; } = true;
+    [Parameter]
+    public bool IsPageSize { get; set; } = true;
+    [Parameter]
+    public bool InCrementNo { get; set; } = false;
+    [Parameter]
+    public bool CustomeHeaderBackground { get; set; } = true;
+    [Parameter]
+    public string CssClass { get; set; } = "";
+    [Parameter]
+    public bool IsVirtualScrollingEnabled { get; set; } = false;
+    GridColumnFixedPosition _GridColumnFixedPosition = GridColumnFixedPosition.None;
+    object SelectedDataItem { get; set; }
+    [Parameter]
+    public EventCallback<object> SelectItem { get; set; }
+    [Parameter]
+    public EventCallback<string> FunctionButtonClick { get; set; }
+    string[] fields;
+    bool firstLoad = false;
+    private int Pageindex = 0;
+    string GridSearchText { get; set; }
+    private string M_Ma_nt0 { get; set; }
+    private string M_IP_TY_GIA { get; set; }
+    private string M_IP_TY_GIAF { get; set; }
+    private string M_IP_TIEN { get; set; }
+    private string M_IP_TIEN_NT { get; set; }
+    private string M_IP_SL { get; set; }
+    private string M_IP_GIA { get; set; }
+    private string M_IP_GIA_NT { get; set; }
+    bool ExportSelectedRowsOnly { get; set; } = false;
+    private string M_GRD_CELL_Color { get; set; } = "black";
+    private string M_GRD_CELL_BG_Color { get; set; } = "transparent";
+    private string M_GRD_HEAD_BG_Color { get; set; } = "transparent";
+    private string M_GRD_HEAD_Color { get; set; } = "black";
+    private string M_GRD_FOOTER_BG_Color { get; set; } = "transparent";
+    private string M_GRD_FOOTER_Color { get; set; } = "black";
+    string _export_name = "ExportResult";
+    GridSearchTextParseMode _GridSearchTextParseMode = GridSearchTextParseMode.GroupWordsByOr;
+    // public static string PrimaryColor = "#FFFBAA32";//vang
+    // public static string SeccondColor = "#FF1372BA";//xanh
+
+    public void SetSelectRow(int row)
+    {
+        Grid.SelectRow(row);
+    }
+    public void SetPageindex(int row)
+    {
+        Pageindex = row;
+    }
+    protected override void OnParametersSet()
+    {
+        StateHasChanged();
+    }
+    public void SetFilterRowCol(string col, GridFilterRowOperatorType gridFilterRowOperatorType, object filter)
+    {
+        Grid.FilterBy(col, gridFilterRowOperatorType, filter);
+    }
+
+    void FunctionButton(string value)
+    {
+        FunctionButtonClick.InvokeAsync(value);
+    }
+    void Grid_CustomizeElement(GridCustomizeElementEventArgs e)
+    {
+        //if(e.ElementType == GridElementType.DataRow && e.VisibleIndex % 2 == 1) {
+        //    e.CssClass = "alt-item";
+        //}
+
+        if (e.ElementType == GridElementType.PagerContainer)
+        {
+            e.CssClass = "my-pager";
+        }
+
+        @*   if (e.ElementType == GridElementType.DataRow)
+        {
+            IReadOnlyList<IGridColumn> grdcol = e.Grid.GetColumns();
+            foreach (IGridColumn grd in grdcol)
+            {
+                if (grd.Name != null)
+                {
+                    if (grd.Name.ToLower().StartsWith("bold_color"))
+                    {
+                        if (!string.IsNullOrEmpty(e.Grid.GetRowValue(e.VisibleIndex, "bold_color").ToString()))
+                        {
+                            string[] value = e.Grid.GetRowValue(e.VisibleIndex, "bold_color").ToString().Split(':');
+                            if (value.Length > 1)
+                            {
+                                string cssclass = "";
+                                if (value[0].Equals("1"))
+                                {
+                                    cssclass = "bold-item";
+                                    if (!string.IsNullOrEmpty(value[1]))
+                                    {
+                                        cssclass += string.Format(" {0}-item", value[1].Trim());
+                                    }
+                                    e.CssClass = cssclass;
+                                }
+                                else
+                                {
+                                    if (!string.IsNullOrEmpty(value[1]))
+                                    {
+                                        cssclass = string.Format("{0}-item", value[1].Trim());
+                                    }
+                                }
+                                e.CssClass = cssclass;
+                            }
+                            else
+                            {
+                                if (value[0].Equals("1"))
+                                {
+                                    e.CssClass = "bold-item";
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        } *@
+
+        //if (e.ElementType == GridElementType.DataCell && e.Column.Name == "stt")
+        //{
+        //    if (e.Grid.GetRowValue(e.VisibleIndex, "stt").ToString() == "1")
+        //    {
+        //        e.CssClass = "red-item";
+        //    }
+        //}
+
+        //if (e.ElementType == GridElementType.GroupRow && e.Column.Name == "Country")
+        //{
+        //    var summaryItems = e.Grid.GetGroupSummaryItems().Select(i => e.Grid.GetGroupSummaryDisplayText(i, e.VisibleIndex));
+        //    e.Attributes["title"] = string.Join(", ", summaryItems);
+        //}
+    }
+
+    static readonly IReadOnlyList<QuantityFilterInterval> UnitQuantityIntervals = new QuantityFilterInterval[] {
+        new("[tong_sl] < 100", "< 100"),
+        new("[tong_sl] between (100, 1000)", "100 to 1000"),
+        new("[tong_sl] > 1000", "> 1000")
+    };
+    void OnSelectedDataItemsChanged(IReadOnlyList<object> newSelection)
+    {
+        SelectItem.InvokeAsync(SelectedDataItem);        
+    }
+    void PageSelectChange(int index)
+    {
+        if (index != -1)
+            myStatemanagerment.SetCurpage(index);
+    }
+    protected override Task OnParametersSetAsync()
+    {
+        @*
+        if (!string.IsNullOrEmpty(Fbrowse))
+            fields = Fbrowse.Split(';');
+        *@
+        if (TblData != null && InCrementNo && TblData.DefaultView.Count < 10)
+        {
+            int addRecord = 10 - TblData.DefaultView.Count;
+            for (int x = 0; x < addRecord; x++)
+            {
+                DataRow r = TblData.NewRow();
+                TblData.Rows.Add(r);
+            }
+            TblData.AcceptChanges();
+        }
+        return base.OnParametersSetAsync();
+    }
+
+    record QuantityFilterInterval(CriteriaOperator Criteria, string DisplayText)
+    {
+        public QuantityFilterInterval(string CriteriaText, string DisplayText)
+            : this(CriteriaOperator.Parse(CriteriaText), DisplayText)
+        {
+        }
+    }
+    void Grid_CustomizeSummaryDisplayText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        if (e.Item.SummaryType == GridSummaryItemType.Sum)
+        {
+            string str = "{0:" + e.Item.ValueDisplayFormat + "}";
+            e.DisplayText = string.Format(str, e.Value);
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        string _SEARCH_TYPE = "";
+        if (firstRender)
+        {
+            try
+            {
+                _SEARCH_TYPE = options.GetOptionsValue("M_SEARCH_TYPE").Trim();
+                M_GRD_CELL_Color = options.GetOptionsValue("M_GRD_CELL_CL").Trim();
+                M_GRD_CELL_BG_Color = options.GetOptionsValue("M_GRD_CELL_BG").Trim();
+                M_GRD_HEAD_BG_Color = options.GetOptionsValue("M_GRD_HEAD_BG").Trim();
+                M_GRD_HEAD_Color = options.GetOptionsValue("M_GRD_HEAD_CL").Trim();
+                M_GRD_FOOTER_BG_Color = options.GetOptionsValue("M_GRD_FOOTER_BG").Trim();
+                M_GRD_FOOTER_Color = options.GetOptionsValue("M_GRD_FOOTER_CL").Trim();
+                if (string.IsNullOrEmpty(_SEARCH_TYPE))
+                {
+                    _GridSearchTextParseMode = GridSearchTextParseMode.GroupWordsByOr;
+                }
+                else
+                {
+                    if (_SEARCH_TYPE.Equals("0"))
+                    {
+                        _GridSearchTextParseMode = GridSearchTextParseMode.GroupWordsByOr;
+                    }
+                    else if (_SEARCH_TYPE.Equals("1"))
+                    {
+                        _GridSearchTextParseMode = GridSearchTextParseMode.GroupWordsByAnd;
+                    }
+                    else if (_SEARCH_TYPE.Equals("2"))
+                    {
+                        _GridSearchTextParseMode = GridSearchTextParseMode.ExactMatch;
+                    }
+                }
+            }
+            catch
+            {
+
+            }
+
+            if (CustomeHeaderBackground)
+            {
+                await JavacriptS.InvokeVoidAsync("SetDXGridHeaderFooter", M_GRD_HEAD_Color, M_GRD_HEAD_BG_Color, M_GRD_FOOTER_Color, M_GRD_FOOTER_BG_Color);
+            }
+            else
+            {
+                await JavacriptS.InvokeVoidAsync("ReSetDXGridHeaderFooter");
+            }
+            await JavacriptS.InvokeVoidAsync("changeTextGridPageSize", Lap["Page Size"].ToString().Trim());
+
+            StateHasChanged();
+        }
+    }
+    protected override void OnInitialized()
+    {
+        M_Ma_nt0 = options.GetOptionsValue("M_MA_NT0").Trim();
+        M_IP_TY_GIA = options.GetOptionsValue("M_IP_TY_GIA").Trim();
+        M_IP_TY_GIAF = options.GetOptionsValue("M_IP_TY_GIAF").Trim();
+        M_IP_TIEN = options.GetOptionsValue("M_IP_TIEN").Trim();
+        M_IP_TIEN_NT = options.GetOptionsValue("M_IP_TIEN_NT").Trim();
+        M_IP_SL = options.GetOptionsValue("M_IP_SL").Trim();
+        M_IP_GIA = options.GetOptionsValue("M_IP_GIA").Trim();
+        M_IP_GIA_NT = options.GetOptionsValue("M_IP_GIA_NT").Trim();
+
+        string nrow = options.GetOptionsValue("M_GRID_NROW");
+        if (Page_size <= 0)
+            Page_size = string.IsNullOrEmpty(nrow) ? 10 : int.Parse(nrow);
+        if (String.IsNullOrEmpty(CssClass))
+            CssClass = "FrmBrowseGrid";
+
+        Pageindex = myStatemanagerment.GetCurpage();
+        myStatemanagerment.OnActionTaskChanged += OnActionTaskchanged;
+    }
+    private void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                if (AllowSearch)
+                {
+                    GridSearchText = myStatemanagerment.GetSearchText();
+                    StateHasChanged();
+                }
+                break;
+        }
+    }
+
+    public async void ExPortGrid(int type)
+    {
+        if (type == 1)
+        {
+            await ExportXlsx();
+        }
+        else if (type == 2)
+        {
+            await ExportXls();
+        }
+        else if (type == 3)
+        {
+            await ExportCsv();
+        }
+        else
+        {
+            await ExportCsv();
+        }
+    }
+    public async void ExPortGrid(int type, string name)
+    {
+        _export_name = name;
+        if (type == 1)
+        {
+            await ExportXlsx();
+        }
+        else if (type == 2)
+        {
+            await ExportXls();
+        }
+        else if (type == 3)
+        {
+            await ExportCsv();
+        }
+        else
+        {
+            await ExportCsv();
+        }
+    }
+    async Task ExportXlsx()
+    {
+        await Grid.ExportToXlsxAsync(_export_name, new GridXlExportOptions()
+            {
+                ExportSelectedRowsOnly = ExportSelectedRowsOnly
+                // CustomizeCell = OnCustomizeCell
+            });
+    }
+    async Task ExportXls()
+    {
+        await Grid.ExportToXlsAsync(_export_name, new GridXlExportOptions()
+            {
+                ExportSelectedRowsOnly = ExportSelectedRowsOnly
+                // CustomizeCell = OnCustomizeCell
+            });
+    }
+    async Task ExportCsv()
+    {
+        await Grid.ExportToCsvAsync(_export_name, new GridCsvExportOptions()
+            {
+                ExportSelectedRowsOnly = ExportSelectedRowsOnly
+            });
+    }
+    public void Dispose()
+    {
+        myStatemanagerment.OnActionTaskChanged -= OnActionTaskchanged;
+    }
+
+    [Parameter]
+    public bool EnableCheck { get; set; } = true;
+    [Parameter]
+    public string SelectCol { get; set; } = "checkcol";
+    [Parameter]
+    public EventCallback<bool> CheckChangedCallBack { get; set; }
+    void CheckedChanged(bool value, DataRowView rowval)
+    {
+        if (rowval.Row.Table.Columns[SelectCol].DataType == typeof(bool))
+            rowval.Row[SelectCol] = value;
+        else
+            rowval.Row[SelectCol] = (value ? "1" : "0");
+        CheckChangedCallBack.InvokeAsync(true);
+    }
+
+    bool? _SelectAll = false;
+    bool? SelectAll
+    {
+        get => _SelectAll;
+        set
+        {
+            _SelectAll = value;
+            CheckAll(value);
+        }
+    }
+    private void CheckAll(bool? chkVal)
+    {
+        if (chkVal == true)
+        {
+            foreach (DataRow row in TblData.Rows)
+            {
+                if (row.Table.Columns[SelectCol].DataType == typeof(bool))
+                    row[SelectCol] = true;
+                else
+                    row[SelectCol] = "1";
+            }
+        }
+        else
+        {
+            foreach (DataRow row in TblData.Rows)
+            {
+                if (row.Table.Columns[SelectCol].DataType == typeof(bool))
+                    row[SelectCol] = false;
+                else
+                    row[SelectCol] = "0";
+            }
+        }
+    }
+    public DataTable GetFilterTable()
+    {
+        DataTable dat = Grid.Data as DataTable;
+        DataTable tblmoi = dat.Clone();
+        for (int i = 0; i < Grid.GetVisibleRowCount(); i++)
+        {
+            DataRow a = (Grid.GetDataItem(i) as DataRowView).Row;
+            tblmoi.Rows.Add(a.ItemArray);
+        }
+        return tblmoi;
+    }
+}

@@ -1,0 +1,207 @@
+﻿@using System.Dynamic;
+@using System.Timers
+
+@inject Statemanagerment myStatemanagerment
+@inject NavigationManager navigation
+@inject IDbManager myDb
+@inject IJSRuntime JavacriptS
+@inject ILocalStorageService Localstore
+@inject IChatService SisChatService
+@inject IOptionsManager myoptions
+@inject IStringLocalizer<App> Lap
+<div>    
+    <DxFormLayout class="p-3 m-3" onkeydown="ModifyEnterKeyPressAsTab(event);">
+        <DxFormLayoutItem Caption="Khách hàng" ColSpanMd="12" BeginRow="true">
+            <Template>
+                <AutocompleteComponent Ma_dm="dmkh" @bind-Value="@CurItem.Ma_kh" SelectChanged="OnAutoCompleteMakhChanged" IsLangEn="@IsLangEn"></AutocompleteComponent>
+            </Template>
+        </DxFormLayoutItem>
+        <DxFormLayoutItem Caption="Sản phẩm" ColSpanMd="12" BeginRow="true">
+            <Template>
+                <AutocompleteComponent Ma_dm="dmnhsp" @bind-Value="@CurItem.Ma_nhsp" SelectChanged="OnAutoCompleteManhspChanged" IsLangEn="@IsLangEn"></AutocompleteComponent>
+            </Template>
+        </DxFormLayoutItem>
+        <DxFormLayoutItem Caption="Mã số xin cấp" ColSpanMd="12" BeginRow="true">
+            <Template>
+                <DxTextBox @bind-Text="@CurItem.Ma_tra_cuu" style="font-weight:bold;" maxlength="32"></DxTextBox>
+            </Template>
+        </DxFormLayoutItem>
+        <DxFormLayoutItem Caption="Kết quả" ColSpanMd="9" BeginRow="true">
+            <Template>
+                <DxTextBox @bind-Text="@CurItem.Ms_ket_qua" ReadOnly="true" CssClass="txtBold"></DxTextBox>
+            </Template>
+        </DxFormLayoutItem>
+        <DxFormLayoutItem Caption="." ColSpanMd="2">
+            <Template>
+                <DxButton RenderStyle="ButtonRenderStyle.Warning" Text="Copy" Click="@HCopy"/>
+            </Template>
+        </DxFormLayoutItem>
+        <DxFormLayoutItem ColSpanMd="12" BeginRow="true">   
+            @if (isSending)
+            {
+                <p>@CurItem.Inv_id.ToString() </p>
+            }
+        </DxFormLayoutItem>
+        <DxFormLayoutItem ColSpanMd="12" BeginRow="true">
+            <DxButton Context="btnctxn" CssClass="popup-button col-4" RenderStyle="ButtonRenderStyle.Success" Click="@SaveDM" Enabled="!isSending">
+                <div class="d-flex">
+                    <DxWaitIndicator Visible="isSending"/>
+                    <span class="mx-2">@MsktMessage</span>
+                </div>
+            </DxButton>
+            <DxButton CssClass="popup-button col-4" RenderStyle="ButtonRenderStyle.Warning" Text="@Lap["Cancel"]" Click="@HideVoucher" />
+        </DxFormLayoutItem>
+    </DxFormLayout>    
+</div>
+<style>
+    .txtBold > input {
+        color:firebrick;
+        font-size: 2rem;
+        font-weight: 600;
+    }    
+</style>
+
+@code {
+    public string ma_kh { get; set; } = "";
+    public bool PopVisible { get; set; } = true; 
+    public bool isSending { get; set; } = false;    
+    [Parameter]
+    public EventCallback<string> OnClose { get; set; }
+
+    private string MsktMessage = @"Gửi";    
+    private string curTen_kh = "";
+    private Dmmskt CurItem = new Dmmskt();
+    private bool IsLangEn = false;
+    Users CurUser = new Users();
+
+    private static System.Timers.Timer aTimer = new System.Timers.Timer(5000);  
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {            
+            CurUser = await Localstore.GetItemAsync<Users>("user");
+            CurItem = new Dmmskt();
+            CurItem.Inv_id = Guid.NewGuid();
+            CurItem.Ma_kh = "000001          ";
+            CurItem.Ma_nhsp = "";
+            CurItem.User_name0 = CurUser.User_name;
+            CurItem.User_id0 = CurUser.User_id;
+            aTimer = new System.Timers.Timer(5000);
+        }
+    }
+    async Task SaveDM()
+    {
+        CurItem.Inv_id = Guid.NewGuid();
+        CurItem.Time0 = DateTime.Now.ToString("HH:mm:ss");
+        CurItem.Date0 = DateTime.Now;
+        CurItem.Ms_ket_qua = "";
+        CurItem.Ma_tra_cuu = CurItem.Ma_tra_cuu.Trim();
+        await myDb.InsertOneRow<Dmmskt>(CurItem,"dmkhmskt");
+
+        string userms = myoptions.GetOptionsValue("M_USER_MSKT").Trim().ToUpper();
+        if (!String.IsNullOrEmpty(userms))
+        {
+            string strcmd = @"|cmd:mskt:" + CurItem.Inv_id.ToString() + ":" + CurItem.Ma_kh.Trim();
+            SisChatService.SendNotification(CurUser.User_name, userms, "Bạn có yêu cầu cấp MSKT: " + CurItem.Ma_kh.Trim() + "-" + curTen_kh.Trim() + strcmd);
+        }
+
+        MsktMessage = @"Xin đợi duyệt!";
+        isSending = true;
+        tmCoun = 0;
+        aTimer.Elapsed += CountDownTimer;
+        aTimer.Enabled = true;
+
+        //await JavacriptS.InvokeVoidAsync("navigator.clipboard.writeText", CurItem.Ms_ket_qua);
+    }
+    public DataSet dsms = null;
+    public int tmCoun = 0;
+    private async void CountDownTimer(Object source, ElapsedEventArgs e)
+    {
+        try
+        {
+            tmCoun++;
+            string sql = "Select ms_ket_qua from dmkhmskt where inv_id ='" + CurItem.Inv_id.ToString() + "' AND ISNULL(ms_ket_qua,'')<> ''";
+            dsms = await myDb.LoadDataset(sql);
+            if (dsms.Tables[0].Rows.Count > 0)
+            {
+                CurItem.Ms_ket_qua = dsms.Tables[0].Rows[0][0].ToString().Trim();
+                //var myTask1 = JavacriptS.InvokeVoidAsync("navigator.clipboard.writeText", CurItem.Ms_ket_qua);            
+                aTimer.Enabled = false;
+                isSending = false;
+                MsktMessage = @"Gửi";
+            }
+            else
+            {
+                dsms = null;
+                MsktMessage = @"Xin đợi duyệt (" + tmCoun.ToString().Trim() + ")";
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+        catch( Exception ex)
+        {
+            String _filere = Path.Combine("C:\\Temp\\", "MsktErr0.txt");
+            using (StreamWriter streamWriter = new StreamWriter(_filere))
+            {
+                streamWriter.Write(ex.Message);
+            }
+        }
+    }
+
+    async void OnAutoCompleteMakhChanged(ExpandoObject value)
+    {
+        if (value == null)
+            return;
+
+        CurItem.Ma_kh = value.Where(a => a.Key.Equals("ma_kh")).FirstOrDefault().Value.ToString();
+        curTen_kh = value.Where(a => a.Key.Equals("ten_kh")).FirstOrDefault().Value.ToString();
+        string strsql = "Select DMSANPHAM.ma_nhsp as ma_nhsp from dmkhcr left join DMSANPHAM On dmkhcr.ma_sp = DMSANPHAM.ma_sp where dmkhcr.ma_kh='" + CurItem.Ma_kh.Trim() + "' ";
+        DataSet dstmp = await myDb.LoadDataset(strsql);
+        if (dstmp.Tables[0].Rows.Count > 0)
+            CurItem.Ma_nhsp = dstmp.Tables[0].Rows[0]["ma_nhsp"].ToString();
+
+        StateHasChanged();
+    }
+    void OnAutoCompleteManhspChanged(ExpandoObject value)
+    {
+        if (value == null)
+            return;
+
+        CurItem.Ma_nhsp = value.Where(a => a.Key.Equals("ma_nhsp")).FirstOrDefault().Value.ToString();      
+        StateHasChanged();
+    }
+    private void HideVoucher()
+    {
+        if (aTimer != null)
+            aTimer.Enabled = false;
+        PopVisible = false;
+        try
+        {
+            OnClose.InvokeAsync(CurItem.Inv_id.ToString());
+        }
+        catch{}
+    }
+    private async void HCopy()
+    {       
+        try
+        {
+            if (String.IsNullOrEmpty(CurItem.Ms_ket_qua))
+            {
+                string sql = "Select ms_ket_qua from dmkhmskt where inv_id ='" + CurItem.Inv_id.ToString() + "' AND ISNULL(ms_ket_qua,'')<> ''";
+                dsms = await myDb.LoadDataset(sql);
+                if (dsms.Tables[0].Rows.Count > 0)
+                {
+                    CurItem.Ms_ket_qua = dsms.Tables[0].Rows[0][0].ToString().Trim();                  
+                    aTimer.Enabled = false;
+                    isSending = false;
+                    MsktMessage = @"Gửi";                    
+                }
+                dsms.Dispose();
+            }
+            if (!String.IsNullOrEmpty(CurItem.Ms_ket_qua))
+                await JavacriptS.InvokeVoidAsync("navigator.clipboard.writeText", CurItem.Ms_ket_qua);           
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { }
+    }
+}

@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <BaseIntermediateOutputPath></BaseIntermediateOutputPath>
+    <BaseOutputPath>..\..\Dll</BaseOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <WarningLevel>0</WarningLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <WarningLevel>0</WarningLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
+    <PackageReference Include="DevExpress.Blazor" Version="24.2.3" />
+    <PackageReference Include="DevExpress.Blazor.Reporting.JSBasedControls" Version="24.2.3" />
+    <PackageReference Include="DevExpress.Blazor.Reporting.Viewer" Version="24.2.3" />
+    <PackageReference Include="DevExpress.Blazor.RichEdit" Version="24.2.3" />
+    <PackageReference Include="DevExpress.Reporting.Core" Version="24.2.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Model\" />
+    <Folder Include="Shared\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="SisCom">
+      <HintPath>..\..\Dll\Debug\net8.0\SisCom.dll</HintPath>
+    </Reference>
+    <Reference Include="SisData">
+      <HintPath>..\..\Dll\Debug\net8.0\SisData.dll</HintPath>
+    </Reference>
+    <Reference Include="SisFunc">
+      <HintPath>..\..\Dll\Debug\net8.0\SisFunc.dll</HintPath>
+    </Reference>
+    <Reference Include="SisLib">
+      <HintPath>..\..\Dll\Debug\net8.0\SisLib.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

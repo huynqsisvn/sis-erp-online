@@ -1,0 +1,48 @@
+@page "/copxdmtkvv"
+@page "/copxdmtkvv/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,copxdmtkvv")]
+
+<div class="row mt-1" tabindex="0" @onkeydown="OnoBrowseKeyDown" @onkeydown:preventDefault="true">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxPopup @bind-Visible="@IsShowFrm"
+             CloseOnEscape="true" CloseOnOutsideClick="false" ShowCloseButton="false"
+              Width="50vw"
+              MinWidth="500px"
+              Scrollable="true"
+              MaxHeight="95vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        mPage = "copxdmtkvv";
+        sqlTableName = "dmtkpx";
+        sqlTableView = "v_dmtkpx";
+        SqlTableKey = "tk";
+
+        IsShowCopy = true;
+        IsShowImport = false;
+        Is_doi_ma = false;
+
+        FrmType = typeof(SisCo.Pages.List.Copxdmtkvv.EditDmtkpx);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wo.dm.02";
+
+        base.OnInitialized();
+    }
+}

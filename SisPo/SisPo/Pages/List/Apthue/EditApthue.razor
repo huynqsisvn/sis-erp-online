@@ -1,0 +1,296 @@
+﻿@inherits FrmListBaseComponent
+@using SisPo.Pages.List.Apthue
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmthue30" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                <DxFormLayoutItem Caption="@Lap["Tax rate code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="ma_thue_input" @bind-Text="@CurDmthue30.Ma_thue" maxlength="@tblLength["ma_thue"]" Enabled="@AllowEditMa"/>
+                    </Template>
+                </DxFormLayoutItem>
+                
+                <DxFormLayoutItem Caption="@Lap["Tax name"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmthue30.Ten_thue" maxlength="@tblLength["ten_thue"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                
+                <DxFormLayoutItem Caption="@Lap["Tax name 2"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmthue30.Ten_thue2" maxlength="@tblLength["ten_thue2"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                
+                <DxFormLayoutItem Caption="@Lap["Tax rate (%)"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurDmthue30.Thue_suat" MinValue="0" MaxValue="100" Increment="0.01m" DisplayFormat="N2" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                
+                <DxFormLayoutItem Caption="@Lap["Input VAT account"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="tk_thue_no_input" Ma_dm="dmtk" @bind-Value="@CurDmthue30.Tk_thue_no" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+                
+                <DxFormLayoutItem Caption="@Lap["NCC compensation account"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="tk_thue_co_input" Ma_dm="dmtk" @bind-Value="@CurDmthue30.Tk_thue_co" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+                
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmthue30.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px"/>
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]"/>                    
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmthue30 CurDmthue30 { get; set; }
+    private string menu_id = "wp.dm.08";
+    
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmthue30";
+        SqlTableKey = "ma_thue";
+        CheckSqlTableKey = "ma_thue";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "apthue" : ParentPage;
+        CurDmthue30 = new Dmthue30();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            ViewDM(Ma_ma);
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            EditDM(Ma_ma);
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        CreateCopyDM(Ma_ma);
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            ViewDM(Ma_ma);
+                        break;
+                    }
+            }
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_thue_input')?.focus()");
+        }
+    }
+    
+    void ViewDM(string SqlTableKeyValue)
+    {
+        CurDmthue30 = new Dmthue30();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        LoadData(SqlTableKeyValue);
+    }
+    
+    void EditDM(string SqlTableKeyValue)
+    {
+        CurDmthue30 = new Dmthue30();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        if (CheckDeleteListId(curCommand.Store_proc.Trim(), SqlTableKeyValue) == 0)
+            AllowEditMa = false;
+        LoadData(SqlTableKeyValue);
+    }
+    
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+    
+    async Task OnCopy()
+    {
+        CreateCopyDM(CurDmthue30.Ma_thue);
+    }
+    
+    async Task SaveDM()
+    {
+        CurDmthue30.Ma_thue = CurDmthue30.Ma_thue.ToUpper().Trim().Replace(" ", "");
+        bool valid = await CheckValid();
+        if (!valid)
+            return;
+
+        SqlTableKeyValue = CurDmthue30.Ma_thue.ToUpper().Trim();
+        SqlTableKeyValueOld = (curActionTask == ActionTask.New ? "" : Ma_ma);
+        if (!CheckValidCode())
+            return;
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmthue30.Date = DateTime.Now.Date;
+            CurDmthue30.Date0 = DateTime.Now.Date;
+            CurDmthue30.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmthue30.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmthue30.User_id = curUser.User_id;
+                CurDmthue30.User_id0 = curUser.User_id;
+                CurDmthue30.User_name = curUser.User_name;
+                CurDmthue30.User_name0 = curUser.User_name;
+            }
+            CheckSqlTableKeyValue = CurDmthue30.Ma_thue.Trim();
+            string[] strKey = CheckSqlTableKey.Split(';');
+            string[] strKeyValue = CheckSqlTableKeyValue.Split(';');
+            string condition = "";
+            if (strKey.Length > 0)
+            {
+                for (int x = 0; x < strKey.Length; x++)
+                {
+                    condition += strKey[x] + " = '" + strKeyValue[x] + "' and ";
+                }
+                if (!string.IsNullOrEmpty(condition))
+                    condition = condition.Substring(0, condition.Length - 4);
+            }
+            string check = "Select " + SqlTableKey + " from " + sqlTableName + " where " + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0} ] already exists !"], SqlTableKeyValue));
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmthue30>(CurDmthue30, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmthue30.Date = DateTime.Now.Date;
+            CurDmthue30.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmthue30.User_id = curUser.User_id;
+                CurDmthue30.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmthue30>(CurDmthue30, sqlTableName, SqlTableKey, Ma_ma, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+        
+        // Đóng Form nhập
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+    
+    async Task<bool> CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmthue30.Ma_thue))
+        {
+            myStateMN.SetNewThongbao(Lap["Empty code"] + " !");
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurDmthue30.Ten_thue))
+        {
+            myStateMN.SetNewThongbao(Lap["No tax name entered"] + " !");
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+    
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = "Select * from " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmthue30> lsdetai = myDb.ConvertDataTable<Dmthue30>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurDmthue30 = lsdetai[0];
+        }
+        StateHasChanged();
+    }
+    
+    public async void CreateNewDM()
+    {
+        CurDmthue30 = new Dmthue30();
+        CurDmthue30.Status = "1";
+        CurDmthue30.Ma_thue = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+
+        if (!String.IsNullOrEmpty(Ma_ma))
+        {
+            string sql = "Select Ten_thue,Ten_thue2 from " + sqlTableName + " where " + SqlTableKey + " = '" + Ma_ma + "'";
+            DataSet DsTrans = await myDb.LoadDataset(sql);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                CurDmthue30.Ten_thue = DsTrans.Tables[0].Rows[0]["Ten_thue"].ToString();
+                CurDmthue30.Ten_thue2 = DsTrans.Tables[0].Rows[0]["Ten_thue2"].ToString();
+            }
+        }
+        StateHasChanged();
+    }
+    
+    public async void CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmthue30 = new Dmthue30();
+        await LoadData(SqlTableKeyValue);
+
+        CurDmthue30.Status = "1";
+        CurDmthue30.Ma_thue = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+}

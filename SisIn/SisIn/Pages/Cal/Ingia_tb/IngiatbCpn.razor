@@ -1,0 +1,711 @@
+﻿@page "/ingiatb"
+@page "/ingiatb/{Menu_id}"
+@using DevExpress.Blazor
+@using Microsoft.JSInterop
+@using SisData.Service
+@using SisData.Data
+@using SisData.Model
+@using Blazored.LocalStorage;
+@using Microsoft.AspNetCore.Authorization
+@using System.Data
+
+@attribute [Authorize(Roles = "admin,ingiatb")]
+@inject IJSRuntime JS
+@inject Statemanagerment myStateMN
+@inject ISysVarManager mySysvar
+@inject IOptionsManager myOptions
+@inject IDbManager myDb
+@inject ICommandManager myCommand
+@inject ILocalStorageService myLcStore
+@inject XmlStringLocalizer Lap
+
+<div class="container-fluid p-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">@Title </h5>
+            <div>
+                <button class="btn btn-outline-light me-2" @onclick="() => PopupVisible = true" disabled="@isProcessing">
+                    <i class="fas fa-filter"></i> @Lap["Filter"]
+                </button>
+                <button class="btn btn-success" @onclick="StartCalculateAveragePrice" disabled="@isProcessing">
+                    <i class="fas fa-play"></i> @Lap["Excute"]
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h6>@Title :</h6>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar progress-bar-animated"
+                             role="progressbar"
+                             style="width: @(maxProgressTinhgia > 0 ? (progressValue / maxProgressTinhgia) * 100 : 0)%;}">
+                            @resultTinhgia
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h6>@Lap["Update average cost"]:</h6>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                             role="progressbar">
+                            @resultUpdatePX
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h6>@Lap["Generate difference transaction"]:</h6>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                             role="progressbar">
+                            @resultTaoCL
+                        </div>
+                    </div>
+                </div>
+            </div>                      
+            <div class="alert alert-warning" role="alert">@Lap["The calculation process may take time, please wait ..."]</div>
+        </div>
+    </div>
+</div>
+
+<DxPopup @bind-Visible="PopupVisible" CloseOnOutsideClick="false" CssClass="dxPopup"
+         Width="60%" Height="auto" ShowFooter="true" HeaderText="@Lap["Filter"]">
+    <BodyTemplate Context="popupContext">        
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 4rem; height:4rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="p-3">
+                <DxFormLayout SizeMode="SizeMode.Medium" CssClass="frm-header" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                    <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box my-2">
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["From month"]">
+                            <Template>
+                                <DxSpinEdit @bind-Value="Period1" Min="1" Max="12" ShowSpinButtons="true" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["From year"]">
+                            <Template>
+                                <DxSpinEdit @bind-Value="Year1" Min="1900" Max="2100" ShowSpinButtons="true" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["To month"]">
+                            <Template>
+                                <DxSpinEdit @bind-Value="Period2" Min="1" Max="12" ShowSpinButtons="true" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["To year"]">
+                            <Template>
+                                <DxSpinEdit @bind-Value="Year2" Min="1900" Max="2100" ShowSpinButtons="true" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Site code"]">
+                            <Template>
+                                <DxTextBox @bind-Text="Ma_kho" Enabled="@(M_GIA_VT!=1)" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Project code"]">
+                            <Template>
+                                <DxTextBox @bind-Text="Ma_vv" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption="Tk vật tư">
+                            <DxTextBox @bind-Text="Tk_vt" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Item code"]">
+                            <DxTextBox @bind-Text="Ma_vt" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Default accounts accounting inventory price differences"]">
+                            <Template>                            
+                                <AutocompleteComponent Id="Tk_cl_vt_input" Ma_dm="dmnx" @bind-Value="@Tk_cl_vt" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Update average cost"]">                           
+                            <Template>
+                                <DxComboBox Data="@TinhgiaList"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                NullText="@Lap["Select ..."]"
+                                ListRenderMode="ListRenderMode.Virtual"
+                                FilteringMode="DataGridFilteringMode.Contains"
+                                ValueFieldName="Ma"
+                                @bind-Value="@Tinh_giatb"
+                                EditFormat="{0}-{1}">
+                                    <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)"
+                                    Caption="@Lap["ID"]"
+                                    Width="50px" />
+                                    <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)"
+                                    Caption="@Lap["Name"]" />
+                                    <DxListEditorColumn FieldName="@nameof(Dmtk.Value2)"
+                                    Caption="@Lap["List ID"]" />
+                                </DxComboBox>
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Generate difference transaction"]">
+                            <Template>
+                                <DxComboBox Data="@DkClList" TextFieldName="Ten" ValueFieldName="Ma" @bind-Value="@Dk_cl" />
+                            </Template>
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Handling accounting when inventory arbitrage"]">
+                            <DxComboBox Data="@NhScList" TextFieldName="Ten" ValueFieldName="Ma" @bind-Value="@Nh_sc" />
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+                </DxFormLayout>
+
+                @if (Errors.Any())
+                {
+                    <div class="mt-2 alert alert-danger p-2">
+                        <ul class="mb-0">
+                            @foreach (var err in Errors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row m-0 justify-content-end align-content-end">
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@ConfirmGridView_OnOk" />
+                <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+<style>
+    .popup-button-footer {
+    width: 100px;
+    margin-right: 20px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string Menu_id { get; set; }
+    public Command curCommand = new Command();
+    public bool IsLangEn = false;
+    public string UserLang = "";
+    string Title = "";
+
+    private int Period1 { get; set; }
+    private int Year1 { get; set; }
+    private int Period2 { get; set; }
+    private int Year2 { get; set; }
+    private string ProcessID { get; set; } = "";
+    private string Ma_dvcs { get; set; } = "";
+    private string Ma_kho { get; set; } = "";
+    private string Ma_vv { get; set; } = "";
+    private string Tk_vt { get; set; } = "";
+    private string Ma_vt { get; set; } = "";
+    private string Tk_cl_vt { get; set; } = "";
+    private int Tinh_giatb { get; set; } = 1;
+    private int Dk_cl { get; set; } = 0;
+    private int Nh_sc { get; set; } = 0;
+
+    private bool PopupVisible { get; set; } = false;
+    private bool ShowLoadding { get; set; } = false;
+    private List<string> Errors { get; set; } = new();
+
+    // existing processing state and variables kept
+    private List<string> _oma_vts = new List<string>();
+    private bool isSuccess = false;
+    private DataTable tbPN = null;
+    private DataTable tbKhongGia = null;
+    private string M_CHCK_KHO_LV = "0";
+    private int M_GIA_VT = 1;
+    private int count = 0;
+    private int n = 0;
+    private string _ma_vts = "";
+    private double progressValue = 0;
+    private string progressText = "0%";
+    private string resultTinhgia = "0%";
+    private string resultUpdatePX = "";
+    private string resultTaoCL = "";
+    private double maxProgressTinhgia = 100;
+    private double maxProgressUpdatePX = 100;
+    private double maxProgressTaoCL = 100;
+    private bool isProcessing = false;
+    public List<Dmtk> TinhgiaList { get; set; }
+    public List<Dmtk> DkClList { get; set; }
+    public List<Dmtk> NhScList { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync(); 
+        // var obj = myStateMN.GetItem("NAM");
+        // if (obj != null)
+        // {
+        //     Year1 = (int)obj;
+        //     Year2 = (int)obj;
+        // }
+        // obj = myStateMN.GetItem("THANG1");
+        // if (obj != null)
+        // {
+        //     Period1 = (int)obj;
+        // }
+        // obj = myStateMN.GetItem("THANG2");
+        // if (obj != null)
+        // {
+        //     Period2 = (int)obj;
+        // }
+        if (Period2 < Period1)
+        {
+            Period2 = Period1;
+        }
+
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+        Tinh_giatb = 2;
+        M_GIA_VT = int.Parse(myOptions.GetOptionsValue("M_GIA_VT") ?? "1");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {            
+            try
+            {
+                await Language();                
+                curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+                if (curCommand != null)
+                {
+                    Title = !IsLangEn ? curCommand.Bar : curCommand.Bar2;
+                }
+                await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+
+                if (Year1 == 0 || Year2 == 0 || Period1 == 0 || Period2 == 0)
+                {
+                    int p1 = myStateMN.GetCurrentMonth();
+                    int y1 = myStateMN.GetCurrentYear().Year;
+                    int p2 = p1;
+                    int y2 = y1;
+                    if (p1 > 0) Period1 = p1;
+                    if (y1 > 0) Year1 = y1;
+                    if (p2 > 0) Period2 = p2;
+                    if (y2 > 0) Year2 = y2;
+                }
+                Tk_cl_vt = myOptions.GetOptionsValue("M_TK_CL_VT").Trim();
+                Tk_cl_vt = myDb.GetValue($"Select ma_nx from dmnx where ma_nx ='{Tk_cl_vt}'")?.ToString()??"";
+                Dk_cl = 1;
+                Nh_sc = 0;
+
+                TinhgiaList = new List<Dmtk>() {                    
+                    new Dmtk() {Ma= "1",Ten= Lap["Only update the inventory ledger"] },
+                    new Dmtk() {Ma= "2",Ten= Lap["Update both the inventory ledger and the general ledger"] }
+                };
+                DkClList = new List<Dmtk>() {
+                    new Dmtk() {Ma = "0",Ten= Lap["Don't generate"] },
+                    new Dmtk() {Ma = "1",Ten= Lap["Generate in case : quantity = 0, amount # 0"] },
+                    new Dmtk() {Ma = "2",Ten= Lap["Generate in case: have to export in period"] }
+                };
+                NhScList = new List<Dmtk>() {
+                    new Dmtk() {Ma = "0",Ten= Lap["No group when saved to the ledger"] },
+                    new Dmtk() {Ma = "1",Ten= Lap["Group when saving to ledger"] }
+                };
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
+
+    private void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+
+    private void AddError(string msg)
+    {
+        Errors.Add(msg);
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool ok = true;
+        if (Period1 < 1 || Period1 > 12) { AddError("Từ tháng không hợp lệ."); ok = false; }
+        if (Period2 < 1 || Period2 > 12) { AddError("Đến tháng không hợp lệ."); ok = false; }
+        if (Year1 < 1900 || Year2 < 1900) { AddError("Năm không hợp lệ."); ok = false; }
+        if (ok)
+        {
+            if (Year1 > Year2 || (Year1 == Year2 && Period1 > Period2))
+            {
+                AddError("Kỳ bắt đầu phải nhỏ hơn hoặc bằng kỳ kết thúc.");
+                ok = false;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(Tk_cl_vt))
+        {            
+            string Resutk = myDb.GetValue($"Select ma_nx from dmnx where ma_nx ='{Tk_cl_vt.Trim()}'").ToString();
+            if (String.IsNullOrEmpty(Resutk))
+            {
+                AddError("Tài khoản ngầm định hạch toán chênh lệch không tồn tại.");
+                ok = false;
+            }
+        }
+
+        if (!ok)
+        {
+            if (Errors.Count > 0)
+                myStateMN.SetNewThongbao(Errors[0]);
+            StateHasChanged();
+        }
+        return ok;
+    }
+
+    private async void ConfirmGridView_OnOk()
+    {
+        if (!CheckValid()) return;
+        PopupVisible = false;
+        // myStateMN.SetItem("NAM", Year1);
+        // myStateMN.SetItem("THANG1", Period1);
+        // myStateMN.SetItem("THANG2", Period2);
+        StateHasChanged();
+
+        await StartCalculateAveragePrice();
+        StateHasChanged();
+    }
+    
+    public async Task StartCalculateAveragePrice()
+    {
+        try
+        {
+            isProcessing = true;
+            resultTinhgia = "0%";
+            resultUpdatePX = "";
+            resultTaoCL = "";
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+
+            M_CHCK_KHO_LV = myOptions.GetOptionsValue("M_CHCK_KHO_LV");            
+            int calcMethod = M_GIA_VT;
+
+            if (calcMethod == 2 || calcMethod == 3)
+            {                
+                await Ingia_tb_GiaiHePT();
+            }
+            else
+            {                
+                await CalculateAveragePriceWithStoredProcedure();
+            }
+
+            isProcessing = false;
+            myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Operation error"] + $": {ex.Message}");
+            isProcessing = false;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Ingia_tb_GiaiHePT()
+    {
+        try
+        {
+            ProcessID = Guid.NewGuid().ToString();
+            int ky1 = Period1;
+            int nam1 = Year1;
+            int ky2 = Period2;
+            int nam2 = Year2;
+            string ma_kho = Ma_kho.Trim()+ "%";            
+            string ma_vv = Ma_vv.Trim() + "%";
+            string ma_vt = Ma_vt.Trim() + "%";
+            string tk_vt = Tk_vt.Trim() + "%";
+            string nh_vt1 = "%";
+            string nh_vt2 = "%";
+            string nh_vt3 = "%";
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+            var parameters = new Dictionary<string, object>
+                {
+                    { "@Period1", ky1 },
+                    { "@Year1", nam1 },
+                    { "@Period2", ky2 },
+                    { "@Year2", nam2 },
+                    { "@Ma_kho", ma_kho },
+                    { "@Ma_dvcs", Ma_dvcs.Trim()+ "%" },
+                    { "@Ma_vv", ma_vv },
+                    { "@Ma_vt", ma_vt },
+                    { "@Tk_vt", tk_vt },
+                    { "@Nh_vt1", nh_vt1 },
+                    { "@Nh_vt2", nh_vt2 },
+                    { "@Nh_vt3", nh_vt3 }
+                };
+
+            var result = await myDb.LoadDataset("Ingia_tb_getPN", parameters);
+
+            if (result.Tables.Count < 2)
+            {
+                myStateMN.SetNewThongbao(Lap["No data"] + " !");
+                return;
+            }
+
+            tbKhongGia = result.Tables[0];
+            tbPN = result.Tables[1];
+
+            if (tbPN.Rows.Count == 0)
+            {
+                if (tbKhongGia.Rows.Count == 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+                    return;
+                }
+                tbPN.Merge(tbKhongGia, true);
+            }
+
+            int roundGia = int.Parse(mySysvar.GetSysVar("M_ROUND_GIA") ?? "2");
+            int roundGiaNT = int.Parse(mySysvar.GetSysVar("M_ROUND_GIA_NT") ?? "2");
+
+            _oma_vts = tbPN.AsEnumerable()
+                .Where(a => a.Field<string>("ma_kho").ToString().Trim() != "")
+                .Select(x => x.Field<string>("ma_vt"))
+                .Distinct()
+                .ToList();
+
+            _ma_vts = string.Join(",", _oma_vts);
+
+            int batchSize = 50;
+            n = (_oma_vts.Count / batchSize) + (_oma_vts.Count % batchSize != 0 ? 1 : 0);
+            maxProgressTinhgia = n;
+
+            for (int i = 0; i < n; i++)
+            {
+                await ProcessBatch(i, batchSize, tbPN, ky1, nam1, ky2, nam2, ma_kho, Ma_dvcs, ma_vv, ma_vt, tk_vt, nh_vt1, nh_vt2, nh_vt3, roundGia, roundGiaNT);
+                progressValue = i + 1;
+                progressText = $"{Math.Round(progressValue * 100.0 / maxProgressTinhgia, 0)}%";
+                await InvokeAsync(StateHasChanged);
+            }
+
+            resultTinhgia = "Hoàn tất";
+            await InvokeAsync(StateHasChanged);
+
+            await ApplyCalculatedPrices(ky1, nam1, ky2, nam2, ma_kho, Ma_dvcs, ma_vv, ma_vt, tk_vt, nh_vt1, nh_vt2, nh_vt3);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Operation error"] + $": {ex.Message}");
+        }
+    }
+
+    private async Task ProcessBatch(int batchIndex, int batchSize, DataTable dataTable,
+        int ky1, int nam1, int ky2, int nam2, string ma_kho, string ma_dvcs,
+        string ma_vv, string ma_vt, string tk_vt, string nh_vt1, string nh_vt2, string nh_vt3,
+        int roundGia, int roundGiaNT)
+    {
+        try
+        {
+            int startIndex = batchIndex * batchSize;
+            int endIndex = Math.Min(startIndex + batchSize, _oma_vts.Count);
+
+            var batchItems = _oma_vts.Skip(startIndex).Take(endIndex - startIndex).ToList();
+            string conditionVT = "(" + string.Join(",", batchItems.Select(x => $"'{x}'")) + ")";
+
+            DataRow[] batchRows = dataTable.Select($"ma_kho <> '' AND ma_vt IN {conditionVT}");
+
+            if (batchRows.Length == 0)
+                return;
+
+            List<Dictionary<string, object>> batchData = new List<Dictionary<string, object>>();
+            foreach (DataRow row in batchRows)
+            {
+                var dict = new Dictionary<string, object>();
+                foreach (DataColumn col in dataTable.Columns)
+                    dict.Add(col.ColumnName, row[col]);
+                batchData.Add(dict);
+            }
+
+            await ProcessBatchData(batchData, batchIndex, batchSize, ky1, nam1, roundGia, roundGiaNT);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Lỗi xử lý batch {batchIndex}: {ex.Message}", ex);
+        }
+    }
+
+    private async Task ProcessBatchData(List<Dictionary<string, object>> batchData,
+       int batchIndex, int batchSize, int ky1, int nam1, int roundGia, int roundGiaNT)
+    {
+        await ProcessBatchDataWithLinearEquations(batchData, batchIndex, roundGia, roundGiaNT, tbPN);
+    }
+
+    private async Task CalculateAveragePriceWithStoredProcedure()
+    {
+        try
+        {
+            maxProgressTinhgia = 60000;
+            var parameters = new Dictionary<string, object>
+                {
+                    { "@Period1", Period1 },
+                    { "@Year1", Year1 },
+                    { "@Period2", Period2 },
+                    { "@Year2", Year2 },
+                    { "@Ma_kho", Ma_kho.Trim() + "%" },
+                    { "@Ma_dvcs", Ma_dvcs.Trim() + "%" },
+                    { "@Ma_vt", Ma_vt.Trim() + "%" },
+                    { "@Ma_vv", Ma_vv.Trim() + "%" },
+                    { "@Tk_vt", Tk_vt.Trim() + "%" },
+                    { "@Tk_cl_vt_loc", Tk_cl_vt },
+                    { "@Nh_vt1", "%" },
+                    { "@Nh_vt2", "%" },
+                    { "@Nh_vt3", "%" },
+                    { "@Nh_sc", Nh_sc },
+                    { "@Dk_cl", Dk_cl },
+                    { "@Tinh_giatb", Tinh_giatb }
+                };
+
+            var result = await myDb.LoadDataset(curCommand.Store_proc ?? "Ingia_tb", parameters);
+
+            resultTinhgia = Lap["Complete"];
+            resultUpdatePX = Lap["Complete"];
+            resultTaoCL = Lap["Complete"];
+
+            await InvokeAsync(StateHasChanged);
+
+            if (Dk_cl != 0)
+            {
+                await ShowErrorsAndCreateCL(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Lỗi: {ex.Message}");
+        }
+    }
+
+    private async Task ApplyCalculatedPrices(int ky1, int nam1, int ky2, int nam2,
+        string ma_kho, string ma_dvcs, string ma_vv, string ma_vt,
+        string tk_vt, string nh_vt1, string nh_vt2, string nh_vt3)
+    {
+        try
+        {
+            maxProgressUpdatePX = 60000;
+            resultUpdatePX = "Đang xử lý...";
+
+            var parameters = new Dictionary<string, object>
+                {
+                    { "@Period1", ky1 },
+                    { "@Year1", nam1 },
+                    { "@Period2", ky2 },
+                    { "@Year2", nam2 },
+                    { "@Ma_kho", ma_kho },
+                    { "@Ma_dvcs", ma_dvcs },
+                    { "@Ma_vt", ma_vt },
+                    { "@Ma_vv", ma_vv },
+                    { "@Tk_vt", tk_vt },
+                    { "@Nh_vt1", nh_vt1 },
+                    { "@Nh_vt2", nh_vt2 },
+                    { "@Nh_vt3", nh_vt3 },
+                    { "@Nh_sc", Nh_sc },
+                    { "@Dk_cl", Dk_cl },
+                    { "@Tinh_giatb", Tinh_giatb },
+                    { "@Tk_cl_vt_loc", Tk_cl_vt },
+                    { "@computername", "" },
+                    { "@processid", ProcessID },
+                };
+
+            await myDb.LoadDataset("Ingia_tb_LV", parameters);
+
+            resultUpdatePX = "Hoàn tất";
+            await InvokeAsync(StateHasChanged);
+
+            if (M_CHCK_KHO_LV == "1")
+            {
+                await CheckInventoryValidity(ky1, nam1, ky2, nam2, ma_kho, ma_dvcs, ma_vv, ma_vt, tk_vt, nh_vt1, nh_vt2, nh_vt3);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi cập nhật giá: {ex.Message}");
+        }
+    }
+
+    private async Task CheckInventoryValidity(int ky1, int nam1, int ky2, int nam2,
+        string ma_kho, string ma_dvcs, string ma_vv, string ma_vt,
+        string tk_vt, string nh_vt1, string nh_vt2, string nh_vt3)
+    {
+        try
+        {
+            var parameters = new Dictionary<string, object>
+                {
+                    { "@Period1", ky1 },
+                    { "@Year1", nam1 },
+                    { "@Period2", ky2 },
+                    { "@Year2", nam2 },
+                    { "@Ma_kho", ma_kho },
+                    { "@Ma_dvcs", ma_dvcs },
+                    { "@Ma_vt", ma_vt },
+                    { "@Ma_vv", ma_vv },
+                    { "@Tk_vt", tk_vt },
+                    { "@Nh_vt1", nh_vt1 },
+                    { "@Nh_vt2", nh_vt2 },
+                    { "@Nh_vt3", nh_vt3 }
+                };
+
+            await myDb.LoadDataset("Ingia_tb_CheckKhoLV", parameters);
+            resultTaoCL = "Hoàn tất";
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi kiểm tra kho: {ex.Message}");
+        }
+    }
+
+    private async Task ShowErrorsAndCreateCL(DataSet result)
+    {
+        if (result.Tables.Count >= 2)
+        {
+            var errorTable = result.Tables[result.Tables.Count - 2];
+            var detailTable = result.Tables[result.Tables.Count - 1];
+            // Handle error display logic here
+        }
+    }
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}

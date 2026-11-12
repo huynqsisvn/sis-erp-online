@@ -1,0 +1,459 @@
+﻿@page "/sasnamks"
+@page "/sasnamks/{Menu_id}"
+@using DevExpress.Blazor
+@using Microsoft.JSInterop
+@attribute [Authorize(Roles = "admin,sasnamks")]
+@inject IJSRuntime JS
+@inject Statemanagerment myStateMN
+@inject ISysVarManager mySysvar
+@inject IDbManager myDb
+@inject ICommandManager myCommand
+@inject ILocalStorageService myLcStore
+@inject XmlStringLocalizer Lap
+
+<DxPopup Visible="true" ShowCloseButton="false" Modal="true" Width="600" HeaderText="@Title"
+    CloseOnOutsideClick="false" CloseOnEscape="false" ShowFooter="true" CssClass="sas-popup">   
+    <ChildContent>
+        <div>
+        <DxFormLayout SizeMode="SizeMode.Medium" CssClass="frm-header" onkeydown="ModifyEnterKeyPressAsTab(event);">
+            <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box my-2">
+                <DxFormLayoutItem Caption="@Lap["Lock data entry until the end of the day"]" ColSpanMd="8">
+                    <Template Context="fld">
+                        <DxDateEdit @bind-Date="@Model.Ngay_ks" CssClass="mb-1 p-0" style="height:24px;" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="@IsEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="" ColSpanMd="4">
+                    <Template Context="fld">
+                        <DxButton CssClass="col-9 mx-2 mb-1 p-0" RenderStyle="ButtonRenderStyle.Warning" Click="@OnDetailClicked" Enabled="@IsEditMode">Chi tiết theo c.từ</DxButton>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Close accounting books until the end of the period"]" ColSpanMd="12">                    
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Year"]" ColSpanMd="8">
+                    <Template Context="fld">
+                        <DxSpinEdit @bind-Value="@Year" MinValue="1900" MaxValue="2079" Enabled="@IsEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Month"]" ColSpanMd="8" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@Month" MinValue="1" MaxValue="12" Enabled="@IsEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="" ColSpanMd="4">
+                    <Template>
+                        <DxDateEdit @bind-Date="@Model.Ngay_dong_so" CssClass="mb-1 p-0" style="height:24px;" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayoutGroup>
+        </DxFormLayout>
+            <div class="popup-body">            
+
+                @if (!String.IsNullOrEmpty(ValidationMessage))
+                {
+                    <div class="text-danger mt-2">@ValidationMessage</div>
+                }
+            </div>       
+        </div>
+    </ChildContent>
+    <FooterContentTemplate>
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Primary" Text="@Lap["OK"]" Click="@OnOkClicked" Visible="@IsEditMode"/>
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Warning" Text="@Lap["Cancel"]" Click="@OnCancelClicked" Visible="@IsEditMode" />
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["Edit"]" Click="@OnEditClicked" Visible="@(!IsEditMode)" />
+        <DxButton CssClass="col-2 mx-2 p-0" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Close"]" Click="@(() => Back())" Visible="@(!IsEditMode)"/>
+    </FooterContentTemplate>
+</DxPopup>
+<DxPopup @ref="@popDmct"
+          onkeydown="ModifyEnterKeyPressAsTab(event);"
+          ShowFooter="true"
+          Visible="@ShowPop"
+          Width="75vw"
+          MinHeight="600px"
+          CloseOnEscape="true"
+          CloseOnOutsideClick="false"
+          Closed="@OnClosed"
+          ShowCloseButton="false"
+          AllowResize="false"
+          Context="windowContext1"
+          HeaderText="@Title">
+    <BodyTemplate>
+        <div class="row m-2 text-black">
+            <DxGrid Data="@LSDMCT"
+                    PageSize="@_pagesize"
+                    PagerPosition="GridPagerPosition.Bottom"
+                    PageSizeSelectorVisible="true"
+                    PageSizeSelectorItems="@(new int[] { 10, 20, 30, 100 })"
+                    PageSizeSelectorAllRowsItemVisible="true"
+                    PagerSwitchToInputBoxButtonCount="10"
+                    PagerVisibleNumericButtonCount="10"
+                    AllowSelectRowByClick=true
+                    RowDoubleClick="@StartEditDataItemByClickCT"
+                    SelectionMode="GridSelectionMode.Single"
+                    @bind-SelectedDataItem="@SelectedDataItemCT"
+                    CustomizeEditModel="Grid_CustomizeEditModelCT"
+                    EditModelSaving="Grid_EditModelSavingCT"
+                    CustomizeSummaryDisplayText="Grid_CustomizeSummaryDisplayText"
+                    EditMode="GridEditMode.EditRow" @ref="GridCT">
+                <Columns>
+                    <DxGridCommandColumn MinWidth="120" Width="150" Visible="true" Caption="" NewButtonVisible="false" DeleteButtonVisible="false">
+                        <CellDisplayTemplate Context="GrdContext">
+                            @{
+                                var keyField = GrdContext.DataItem;
+                                <DxButton Click="() => GridCT.StartEditDataItemAsync(GrdContext.DataItem)" Text="@Lap["Edit"].ToString()" RenderStyle="ButtonRenderStyle.Link" />                                
+                            }
+                        </CellDisplayTemplate>
+                        <CellEditTemplate Context="GrdContext">
+                            <DxButton CssClass="btncmdgroup m-1" Click="@(() => GridCT.SaveChangesAsync())" Text="@Lap["Save"].ToString()" />
+                            <DxButton CssClass="btncmdgroup m-1" Click="@(() => GridCT.CancelEditAsync())" Text="@Lap["Cancel"].ToString()" />
+                        </CellEditTemplate>
+                    </DxGridCommandColumn>
+
+                    <DxGridDataColumn FieldName="Tag" Caption="@Lap["Select"]" MinWidth="40" Width="40pt">
+                        <CellEditTemplate Context="GrdContext">
+                            @{
+                                var _Dmct = (Dmctks)GrdContext.EditModel;
+                            }
+                            <DxCheckBox @bind-Checked="@_Dmct.Tag" Id="Stt1"></DxCheckBox>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ma_phan_he" Caption="@Lap["Subsystem"].ToString()" MinWidth="100" Width="100pt">
+                        <CellEditTemplate Context="GrdContext">
+                            @{
+                                var _Dmct = (Dmctks)GrdContext.EditModel;
+                            }
+                            <DxTextBox @bind-Text="@_Dmct.Ma_phan_he" Id="Subsystem" Enabled="false"></DxTextBox>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ma_ct" Caption="@Lap["Voucher ID"].ToString()" MinWidth="100" Width="100pt">
+                        <CellEditTemplate Context="GrdContext">
+                            @{
+                                var _Dmct = (Dmctks)GrdContext.EditModel;
+                            }
+                            <DxTextBox @bind-Text="@_Dmct.Ma_ct" Id="VoucherID" Enabled="false"></DxTextBox>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ten_ct" Caption="@Lap["Voucher name"].ToString()" Width="200pt">
+                        <CellEditTemplate Context="GrdContext">
+                            @{
+                                var _Dmct = (Dmctks)GrdContext.EditModel;
+                            }
+                            <DxTextBox @bind-Text="@_Dmct.Ten_ct" Id="VoucherName" Enabled="false"></DxTextBox>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Ngay_ks" Caption="@Lap["Lock data entry until the end of the day"].ToString()" Width="120pt">
+                        <CellEditTemplate Context="GrdContext">
+                            @{
+                                var _Dmct = (Dmctks)GrdContext.EditModel;
+                            }
+                            <DxDateEdit @bind-Date="@_Dmct.Ngay_ks" Id="Ngayks" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="true"></DxDateEdit>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Date1" Caption="@Lap["Modified date"].ToString()" Width="100pt">
+                        <CellEditTemplate Context="GrdContext">
+                            @{
+                                var _Dmct = (Dmctks)GrdContext.EditModel;
+                            }
+                            <DxDateEdit @bind-Date="@_Dmct.Date1" Id="Date1" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" Enabled="false"></DxDateEdit>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Time1" Caption="@Lap["Modified time"]" MinWidth="100" Width="100pt">
+                        <CellEditTemplate Context="GrdContext">
+                            @{
+                                var _Dmct = (Dmctks)GrdContext.EditModel;
+                            }
+                            <DxTextBox @bind-Text="@_Dmct.Time1" Id="Time1" Enabled="false"></DxTextBox>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="User_name1" Caption="@Lap["User modified"]" MinWidth="100" Width="100pt">
+                        <CellEditTemplate Context="GrdContext">
+                            @{
+                                var _Dmct = (Dmctks)GrdContext.EditModel;
+                            }
+                            <DxTextBox @bind-Text="@_Dmct.User_name1" Id="User_name1" Enabled="false"></DxTextBox>
+                        </CellEditTemplate>
+                    </DxGridDataColumn>
+                </Columns>
+            </DxGrid>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="row m-0 p-1">
+            @* <DxButton CssClass="col-2 popup-button my-1" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["Save"].ToString()" Click="@BtnOK"/> *@
+            <DxButton CssClass="col-2 popup-button my-1" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"].ToString()" Click="@BtnCancel"/>
+        </div>
+    </FooterTemplate>
+</DxPopup>
+<style>
+    .btncmdgroup {
+        width:40px!important;
+        min-width: 40px!important;
+    }
+</style>
+@code {
+    [Parameter] public string Menu_id { get; set; }
+    [Parameter] public bool pVisible { get; set; }
+
+    public DxPopup popDmct;
+    public bool ShowPop = false;
+    public DxGrid GridCT;
+    public List<Dmctks> LSDMCT = new List<Dmctks>();
+    public object SelectedDataItemCT = new Dmctks();
+    public Dmctks CurEditModel;
+    private const int _pagesize = 20;
+    private bool AllowEditMode = true;
+    private const string end_GridCt = "end_GridCt";
+
+    public string Title = "";
+    public SasNamksModel Model = new SasNamksModel();
+    public Command curCommand = new Command();
+    private DateTime oldNgay_ks;
+    private bool IsEditMode = false;
+    private string ValidationMessage = "";
+    public DataTable dt = new DataTable();
+    public bool IsLangEn = false;
+    public string UserLang = "";
+
+    private int? Year
+    {
+        get => Model.Ngay_dong_so?.Year ?? Model.Ngay_ks?.Year ?? DateTime.Now.Year;
+        set
+        {
+            if (value.HasValue)
+            {
+                int m = Month ?? (Model.Ngay_dong_so?.Month ?? Model.Ngay_ks?.Month ?? 1);
+                Model.Ngay_dong_so = EndOfPeriod(value.Value, m);
+                // if (Model.Ngay_ks.HasValue && Model.Ngay_ks < Model.Ngay_dong_so)
+                // {
+                //     Model.Ngay_ks = Model.Ngay_dong_so;
+                // }
+                StateHasChanged();
+            }
+        }
+    }
+
+    private int? Month
+    {
+        get => Model.Ngay_dong_so?.Month ?? Model.Ngay_ks?.Month ?? 1;
+        set
+        {
+            if (value.HasValue)
+            {
+                int y = Year ?? (Model.Ngay_dong_so?.Year ?? Model.Ngay_ks?.Year ?? DateTime.Now.Year);
+                Model.Ngay_dong_so = EndOfPeriod(y, value.Value);
+                // if (Model.Ngay_ks.HasValue && Model.Ngay_ks < Model.Ngay_dong_so)
+                // {
+                //     Model.Ngay_ks = Model.Ngay_dong_so;
+                // }
+                StateHasChanged();
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Title = Lap["Khóa nhập số liệu"];
+            Model = new SasNamksModel
+            {
+                Ngay_ks = DateTime.Now.Date,
+                Ngay_dong_so = EndOfPeriod(DateTime.Now.Year, DateTime.Now.Month)
+            };
+
+            await Language();
+            curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+            if (curCommand != null)
+            {
+                Title = !IsLangEn ? curCommand.Bar : curCommand.Bar2;
+            }
+            string strsql = "SELECT * from dmstt";
+            dt = myDb.GetTable(strsql);
+            if (dt != null && dt.Rows.Count > 0)
+            { 
+                oldNgay_ks = (DateTime)(dt.Rows[0]["ngay_ks"]);
+                Model.Ngay_ks = oldNgay_ks;
+                DateTime Ngay_dong_so = (DateTime)(dt.Rows[0]["ngay_dong_so"]);
+                Year = SisLib.Ctrl.NgayTC.GetYearOfDate(mySysvar,Ngay_dong_so);
+                Month = SisLib.Ctrl.NgayTC.GetPeriodOfDate(mySysvar,Ngay_dong_so);
+            }
+            else
+            {
+                oldNgay_ks = Model.Ngay_ks ?? default;
+                ValidationMessage = Lap["Data error"] + " !";
+            }
+            IsEditMode = false;
+
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            StateHasChanged();
+        }
+    }
+    protected override void OnParametersSet()
+    {        
+
+    }
+
+    private async Task OnOkClicked()
+    {
+        ValidationMessage = "";
+        if (Model.Ngay_ks == null || Model.Ngay_ks == default(DateTime))
+        {
+            ValidationMessage = Lap["Incorrect date declaration"] + " !";
+            return;
+        }
+
+        if (Model.Ngay_ks < Model.Ngay_dong_so)
+        {
+            Model.Ngay_ks = Model.Ngay_dong_so;
+        }
+        string strsq = $"UPDATE dmstt SET ngay_ks = '{Model.Ngay_ks:yyyyMMdd}', ngay_dong_so = '{Model.Ngay_dong_so:yyyyMMdd}'";
+        await myDb.ExecuteSqlQueryAsync(strsq);
+        await ClosePopup();        
+    }
+
+    private void OnEditClicked()
+    {
+        IsEditMode = true;
+    }
+
+    private async Task OnCancelClicked()
+    {
+        IsEditMode = false;
+        ValidationMessage = "";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnCloseClicked()
+    {
+        await ClosePopup();
+    }
+
+    private async Task OnDetailClicked()
+    {        
+        string CommandText = "SELECT CASE WHEN ngay_ks = @ngay_ks THEN cast( 0 as bit) ELSE cast( 1 as bit) END AS tag,ma_ct, ma_phan_he, ten_ct, ten_ct2, ngay_ks, date1, time1, user_name1 FROM dmct WHERE ngay_ks IS NOT NULL order by stt";
+        DataSet dataSet = await myDb.LoadDataset(CommandText, new Dictionary<string, object>{{ "@ngay_ks", Model.Ngay_ks }});        
+        string strmd = SisFunc.Converts.DataTable2Model(dataSet.Tables[0], "Dmctks");
+        if (dataSet.Tables.Count > 0)
+        {
+            LSDMCT = myDb.ConvertDataTable<Dmctks>(dataSet.Tables[0]);
+            ShowPop = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClosePopup()
+    {
+        IsEditMode = false;
+        pVisible = false;
+        StateHasChanged();
+    }
+
+    private DateTime EndOfPeriod(int year, int month)
+    {        
+        try
+        {
+            return SisLib.Ctrl.NgayTC.EndOfPeriod(mySysvar, year, month);
+        }
+        catch
+        {
+            return new DateTime(year, 12, 31);
+        }
+    }
+    private async Task Back()
+    {
+        await JS.InvokeVoidAsync("goBack");
+    }
+    public virtual async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+    private void OnClosed()
+    {
+        ShowPop = false;
+        StateHasChanged();
+    }
+    #region GridCT Events
+    async void StartEditDataItemByClickCT()
+    {
+        if (SelectedDataItemCT != null)
+            await GridCT.StartEditDataItemAsync(SelectedDataItemCT);
+    }
+    void Grid_CustomizeEditModelCT(GridCustomizeEditModelEventArgs e)
+    {
+        CurEditModel = (Dmctks)e.EditModel;        
+    }
+    async Task Grid_EditModelSavingCT(GridEditModelSavingEventArgs e)
+    {
+        CurEditModel = (Dmctks)e.EditModel;
+        Dmctks cts = null;
+        if (!string.IsNullOrEmpty(CurEditModel.Ma_ct))
+        {
+            cts = LSDMCT.Where(a => a.Ma_ct.Equals(CurEditModel.Ma_ct)).FirstOrDefault();
+        }
+        if (cts != null)
+        {
+            cts.Tag = CurEditModel.Tag;
+            cts.Ngay_ks = CurEditModel.Ngay_ks;
+            cts.Date1 = DateTime.Now.Date;
+            cts.Time1 = DateTime.Now.ToString("HH:MM:ss");
+            cts.User_name1 = myStateMN.GetCurUser().User_name.Trim();
+            string strsql = $@"UPDATE dmct SET ngay_ks = '{cts.Ngay_ks:yyyyMMdd}', date1 = '{cts.Date1:yyyyMMdd}', time1 = '{cts.Time1}', user_name1 = '{cts.User_name1}' WHERE ma_ct = '{cts.Ma_ct}'";
+            await myDb.ExecuteSqlQueryAsync(strsql);
+        }       
+    }
+
+    void Grid_CustomizeSummaryDisplayText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        string str = IsLangEn ? "Total: {0:N0}" : "Tổng: {0:N0}";
+        e.DisplayText = string.Format(str, e.Value);
+    }
+    async void BtnOK()
+    {
+        ShowPop = false;
+    }
+    async void BtnCancel()
+    {
+        ShowPop = false;
+    }
+    #endregion
+    #region Models
+    public class SasNamksModel
+    {        
+        public DateTime? Ngay_ks { get; set; }        
+        public DateTime? Ngay_dong_so { get; set; }
+    }
+    public class Dmctks
+    {
+        public Boolean Tag { get; set; }
+        public String Ma_ct { get; set; }
+        public String Ma_phan_he { get; set; }
+        public String Ten_ct { get; set; }
+        public String Ten_ct2 { get; set; }
+        public DateTime? Ngay_ks { get; set; }
+        public DateTime? Date1 { get; set; }
+        public String Time1 { get; set; }
+        public String User_name1 { get; set; }
+    }
+    #endregion
+}

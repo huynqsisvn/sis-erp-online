@@ -1,0 +1,723 @@
+﻿@using System.Data
+@inject XmlStringLocalizer Lap
+@inject IDbManager myDb
+@inject Statemanagerment myStateMN
+@inject IWebHostEnvironment myHost
+@inject IOptionsManager myOption
+
+<div class="m-0 p-0 w-100 invoice-view-container" style="overflow:auto; height:100%;">
+@if (IsLoading)
+{
+    <div class="text-center p-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+}
+else if (InvoiceData != null)
+{
+    <div class="invoice-content">
+        <DxFormLayout CssClass="frm-header" SizeMode="SizeMode.Small">
+                <DxFormLayoutGroup ColSpanMd="12" Caption="@Lap["Invoice Information"]" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box" ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start" AnimationType="LayoutAnimationType.Slide">
+                    <DxFormLayoutGroup ColSpanMd="8" Decoration="FormLayoutGroupDecoration.None" SizeMode="SizeMode.Small" CssClass="mt-3">
+                        <DxFormLayoutItem Caption="@Lap["Dvcs code"]" ColSpanMd="6">
+                            <DxTextBox Text="@GetStringValue("ma_dvcs")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Seller tax number"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("mst_ban")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Seller name"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("ten_dv_ban")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Buyer tax number"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("mst_mua")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Buyer name"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("ten_dv_mua")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Tax office code"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("ma_cqt")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+                    
+                    <DxFormLayoutGroup Caption="@Lap["Invoice"]" ColSpanMd="4" Decoration="FormLayoutGroupDecoration.None" SizeMode="SizeMode.Small" CssClass="mt-3">
+                        <DxFormLayoutItem Caption="@Lap["Invoice number"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("so_ct0")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Denominator"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("kh_mau_hd0")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Symbol"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("so_seri0")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Invoice date"]" ColSpanMd="12">
+                            <DxDateEdit Date="@GetDateValue("ngay_ct0")" ReadOnly="true" DisplayFormat="dd-MM-yyyy" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Currency code"]" ColSpanMd="6">
+                            <DxTextBox Text="@GetStringValue("ma_nt")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Ex. rate"]" ColSpanMd="6">
+                            <DxTextBox Text="@GetDecimalValue("ty_gia")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Invoice status"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetInvoiceStatus()" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Verification status"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetValidationStatus()" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+                </DxFormLayoutGroup>
+                
+                <DxFormLayoutTabPages ColSpanMd="12" CssClass="css-detail" @bind-ActiveTabIndex="@ActiveTabIndex">
+                    <DxFormLayoutTabPage Caption="@Lap["Details"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template Context="detailContext">
+                                <div class="mt-2 mb-2">
+                                    <DxGrid Data="@DetailData" 
+                                            CssClass="grd-detail" 
+                                            SizeMode="SizeMode.Small"
+                                            AllowSelectRowByClick="true"
+                                            KeyboardNavigationEnabled="true"
+                                            ShowAllRows="true" 
+                                            TextWrapEnabled="false"
+                                            AllowSort="false" 
+                                            ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                            HighlightRowOnHover="true">
+                                        <Columns>
+                                            <DxGridDataColumn FieldName="ma_vt_inv" Caption="@Lap["Item code NCC"]" Width="8%" />
+                                            <DxGridDataColumn FieldName="ten_vt_inv" Caption="@Lap["Item name"]" Width="30%" />
+                                            <DxGridDataColumn FieldName="tinh_chat" Caption="@Lap["Property"]" Width="6%" />
+                                            <DxGridDataColumn FieldName="dvt_inv" Caption="@Lap["UOM"]" Width="5%" />
+                                            <DxGridDataColumn FieldName="so_luong" Caption="@Lap["Quantity"]" Width="8%" DisplayFormat="@M_IP_SL" />
+                                            <DxGridDataColumn FieldName="gia0" Caption="@Lap["Price"]" Width="10%" DisplayFormat="@M_IP_GIA" />
+                                            <DxGridDataColumn FieldName="tien0" Caption="@Lap["Amount"]" Width="11%" DisplayFormat="@M_IP_TIEN" />
+                                            <DxGridDataColumn FieldName="tl_ck" Caption="@Lap["Discount rate"]" Width="7%" DisplayFormat="@M_IP_SL" />
+                                            <DxGridDataColumn FieldName="ck" Caption="@Lap["Discount amount"]" Width="10%" DisplayFormat="@M_IP_TIEN" />
+                                            <DxGridDataColumn FieldName="thue_suati" Caption="@Lap["Tax rate"]" Width="5%" DisplayFormat="@M_IP_SL" />
+                                        </Columns>
+                                        <TotalSummary>
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="tien0" ValueDisplayFormat="@M_IP_TIEN" />
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="ck" ValueDisplayFormat="@M_IP_TIEN" />
+                                        </TotalSummary>
+                                    </DxGrid>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutTabPage>
+                    
+                    <DxFormLayoutTabPage Caption="@Lap["Tax"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template Context="taxContext">
+                                <div class="mt-2 mb-2">
+                                    <DxGrid Data="@TaxData" 
+                                            CssClass="grd-detail" 
+                                            SizeMode="SizeMode.Small"
+                                            AllowSelectRowByClick="true"
+                                            KeyboardNavigationEnabled="true"
+                                            ShowAllRows="true"
+                                            TextWrapEnabled="false" 
+                                            AllowSort="false"
+                                            ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                            HighlightRowOnHover="true">
+                                        <Columns>
+                                            <DxGridDataColumn FieldName="tien" Caption="@Lap["Amount"]" Width="40%" DisplayFormat="@M_IP_TIEN" />
+                                            <DxGridDataColumn FieldName="thue_suat" Caption="@Lap["Tax rate"]" Width="20%" DisplayFormat="@M_IP_SL" />
+                                            <DxGridDataColumn FieldName="thue" Caption="@Lap["Tax money"]" Width="40%" DisplayFormat="@M_IP_TIEN" />
+                                        </Columns>
+                                        <TotalSummary>
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="tien" ValueDisplayFormat="@M_IP_TIEN" />
+                                            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="thue" ValueDisplayFormat="@M_IP_TIEN" />
+                                        </TotalSummary>
+                                    </DxGrid>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutTabPage>
+                    
+                    <DxFormLayoutTabPage Caption="@Lap["Seller"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template Context="sellerContext">
+                                <div class="tab-content-container">
+                                    <DxFormLayout SizeMode="SizeMode.Small">
+                                        <DxFormLayoutItem Caption="@Lap["Seller address"]" ColSpanMd="12">
+                                            <DxTextBox Text="@GetStringValue("dia_chi_ban")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Seller phone"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("dien_thoai_ban")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Seller fax"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("fax_ban")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Seller email"]" ColSpanMd="12">
+                                            <DxTextBox Text="@GetStringValue("e_mail_ban")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Seller bank account"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("tk_nh_ban")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Seller bank name"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("ten_tk_nh_ban")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                    </DxFormLayout>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutTabPage>
+                    
+                    <DxFormLayoutTabPage Caption="@Lap["Buyer"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template Context="buyerContext">
+                                <div class="tab-content-container">
+                                    <DxFormLayout SizeMode="SizeMode.Small">
+                                        <DxFormLayoutItem Caption="@Lap["Buyer code"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("ma_kh_mua")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Buyer name"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("nguoi_mua")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Buyer address"]" ColSpanMd="12">
+                                            <DxTextBox Text="@GetStringValue("dia_chi_mua")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Buyer phone"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("dien_thoai_mua")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Buyer fax"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("fax_mua")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Buyer email"]" ColSpanMd="12">
+                                            <DxTextBox Text="@GetStringValue("e_mail_mua")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Buyer bank account"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("tk_nh_mua")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Buyer bank name"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("ten_tk_nh_mua")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                    </DxFormLayout>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutTabPage>
+                    
+                    <DxFormLayoutTabPage Caption="@Lap["Digital signature"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template Context="signatureContext">
+                                <div class="tab-content-container">
+                                    <DxFormLayout SizeMode="SizeMode.Small">
+                                        <DxFormLayoutItem Caption="@Lap["Seller signature"]" ColSpanMd="8">
+                                            <DxTextBox Text="@GetStringValue("cks_nguoi_ban")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Seller signature date"]" ColSpanMd="4">
+                                            <DxDateEdit Date="@GetDateValue("ngay_ks_ban")" ReadOnly="true" DisplayFormat="dd-MM-yyyy" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Tax office signature"]" ColSpanMd="8">
+                                            <DxTextBox Text="@GetStringValue("cks_cqt")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Tax office signature date"]" ColSpanMd="4">
+                                            <DxDateEdit Date="@GetDateValue("ngay_ks_cqt")" ReadOnly="true" DisplayFormat="dd-MM-yyyy" />
+                                        </DxFormLayoutItem>
+                                    </DxFormLayout>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutTabPage>
+                    
+                    <DxFormLayoutTabPage Caption="@Lap["Check"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template Context="checkContext">
+                                <div class="tab-content-container">
+                                    <DxFormLayout SizeMode="SizeMode.Small">
+                                        <DxFormLayoutItem Caption="@Lap["Error content"]" ColSpanMd="12">
+                                            <DxTextBox Text="@GetStringValue("noi_dung_loi")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12">
+                                            <DxTextBox Text="@GetStringValue("ghi_chu_loi")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                    </DxFormLayout>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutTabPage>
+                    
+                    <DxFormLayoutTabPage Caption="@Lap["Accounting voucher"]" CaptionCssClass="fw-bold" HeaderCssClass="rounded-pill">
+                        <DxFormLayoutItem ColSpanMd="12">
+                            <Template Context="voucherContext">
+                                <div class="tab-content-container">
+                                    <DxFormLayout SizeMode="SizeMode.Small">
+                                        <DxFormLayoutItem Caption="@Lap["Voucher code"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("ma_ct_kt")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Voucher book"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("ma_qs_kt")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Voucher number"]" ColSpanMd="6">
+                                            <DxTextBox Text="@GetStringValue("so_ct_kt")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Voucher date"]" ColSpanMd="6">
+                                            <DxDateEdit Date="@GetDateValue("ngay_ct_kt")" ReadOnly="true" DisplayFormat="dd-MM-yyyy" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Posting status"]" ColSpanMd="12">
+                                            <DxTextBox Text="@GetStringValue("ten_gs_kt")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                        <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12">
+                                            <DxTextBox Text="@GetStringValue("ghi_chu")" ReadOnly="true" />
+                                        </DxFormLayoutItem>
+                                    </DxFormLayout>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutTabPage>
+                </DxFormLayoutTabPages>
+
+                <DxFormLayoutGroup Caption="@Lap["Summary"]" ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" CssClass="dx-total-box" ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start" AnimationType="LayoutAnimationType.Slide">
+                    <DxFormLayoutGroup ColSpanMd="6" Decoration="FormLayoutGroupDecoration.None">
+                        <DxFormLayoutItem Caption="@Lap["Invoice type"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("loai_hd")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Payment method"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("hinh_thuc_tt")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Read amount"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetStringValue("doc_tien")" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+                    
+                    <DxFormLayoutGroup ColSpanMd="6" Decoration="FormLayoutGroupDecoration.None">
+                        <DxFormLayoutItem Caption="@Lap["Amount before tax"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetDecimalValue("t_tien0")" ReadOnly="true" CssClass="text-end-custom" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Discount amount"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetDecimalValue("t_ck")" ReadOnly="true" CssClass="text-end-custom" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Amount after discount"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetDecimalValue("t_tien_sau_ck")" ReadOnly="true" CssClass="text-end-custom" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Tax money GTGT"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetDecimalValue("t_thue")" ReadOnly="true" CssClass="text-end-custom" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="@Lap["Total amount"]" ColSpanMd="12">
+                            <DxTextBox Text="@GetDecimalValue("t_tt")" ReadOnly="true" CssClass="text-end-custom fw-bold-input" />
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+                </DxFormLayoutGroup>
+            </DxFormLayout>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning m-3">@Lap["No data"]</div>
+    }
+</div>
+
+<style>
+    /* Main container styling */
+    .invoice-view-container {
+        background-color: #f8f9fa;
+        padding: 0;
+    }
+
+    .invoice-content {
+        background-color: #ffffff;
+        margin: 8px;
+        padding: 12px;
+    }
+
+    /* Detail section styling */
+    .css-detail {
+        height: 280px;
+        min-height: 280px;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        background-color: #fafafa;
+        padding: 4px;
+        margin-bottom: 8px;
+    }
+
+    .grd-detail {
+        height: 230px;
+        padding: 0px;
+        margin: 0px;
+        border: none;
+    }
+
+    .tab-content-container {
+        padding: 10px 8px 8px 8px;
+        min-height: 230px;
+        height: 230px;
+        overflow-y: auto;
+        margin-top: 3px;
+        background-color: #ffffff;
+        border-radius: 3px;
+    }
+
+    .css-detail .dxbl-formlayout-tabpage {
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+        min-height: 280px;
+    }
+
+        .css-detail .dxbl-formlayout-tabpage .dxbl-formlayout,
+        .css-detail .dxbl-formlayout-tabpage .dxbl-formlayout-group {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .css-detail .dxbl-formlayout-tabpage > div,
+        .css-detail .dxbl-formlayout-tabpage .dxbl-grid {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+        }
+
+    /* Form header styling */
+    .frm-header {
+        background-color: #ffffff;
+    }
+
+    .frm-header .dxbl-fl-item {
+        margin-bottom: 2px !important;
+        padding-bottom: 1px !important;
+    }
+
+    .frm-header .dxbl-fl-item-caption {
+        margin-bottom: 2px !important;
+        padding-bottom: 1px !important;
+        font-weight: 500;
+        color: #495057;
+        font-size: 13px;
+    }
+
+    .frm-header .dxbl-fl-group {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+    }
+
+    .frm-header .mt-3 {
+        margin-top: 0.5rem !important;
+    }
+
+    /* Input styling */
+    .text-end-custom ::deep input {
+        text-align: right !important;
+    }
+
+    .fw-bold-input ::deep input {
+        font-weight: bold !important;
+        text-align: right !important;
+        color: #0d6efd;
+    }
+
+    /* Card styling - Minimal borders */
+    .dx-total-box {
+        margin-bottom: 0.3rem;
+        border: none !important;
+        border-radius: 0 !important;
+        background-color: transparent !important;
+    }
+
+        .dx-total-box .dxbl-fl-group-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+            padding: 5px 8px;
+            font-size: 14px;
+        }
+
+        .dx-total-box .dxbl-fl-group {
+            padding: 4px 6px !important;
+        }
+
+        .dx-total-box .dxbl-fl-item {
+            margin-bottom: 2px !important;
+            padding-bottom: 1px !important;
+        }
+
+        .dx-total-box .dxbl-fl-item-caption {
+            font-weight: 500;
+            color: #495057;
+            font-size: 13px;
+        }
+
+    /* Tab styling */
+    .dxbl-fl .dxbl-fl-tab-content {
+        padding: 6px 6px 6px 12px !important;
+        background-color: #ffffff;
+    }
+
+    .dxbl-formlayout-tabpages {
+        min-height: 280px;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        background-color: #ffffff;
+    }
+
+    .dxbl-formlayout-tabpages .dxbl-fl-tab-content {
+        height: 280px;
+        min-height: 280px;
+        overflow: hidden;
+    }
+
+    /* Tab headers */
+    .dxbl-formlayout-tabpages .dxbl-fl-tab-header {
+        border-bottom: 2px solid #e0e0e0;
+        background-color: #f8f9fa;
+    }
+
+    .dxbl-formlayout-tabpages .dxbl-fl-tab-header .dxbl-fl-tab-item {
+        border-radius: 4px 4px 0 0;
+        margin-right: 4px;
+    }
+
+    .dxbl-formlayout-tabpages .dxbl-fl-tab-header .dxbl-fl-tab-item.active {
+        background-color: #ffffff;
+        border-bottom: 2px solid #0d6efd;
+    }
+
+    /* Consistent spacing for form items in tabs */
+    .tab-content-container .dxbl-fl-item {
+        margin-bottom: 5px !important;
+        margin-top: 1px !important;
+    }
+
+    .tab-content-container .dxbl-formlayout {
+        padding: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .tab-content-container .dxbl-fl-item:first-child {
+        margin-top: 5px !important;
+    }
+
+    .tab-content-container .dxbl-fl-item-caption {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    /* Grid styling */
+    .grd-detail ::deep .dxbl-grid {
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+    }
+
+    .grd-detail ::deep .dxbl-grid-header {
+        background-color: #f0f0f0;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .grd-detail ::deep .dxbl-grid-row:hover {
+        background-color: #f8f9fa;
+    }
+
+    /* Alert styling */
+    .alert-warning {
+        border: 1px solid #ffc107;
+        border-radius: 6px;
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 12px;
+        margin: 12px;
+    }
+
+    /* Summary section */
+    .dx-total-box .dxbl-fl-item-caption {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .invoice-content {
+            margin: 8px;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .css-detail {
+            height: auto;
+            min-height: 250px;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string Id_hd { get; set; }
+    [Parameter] public ActionTask curActionTask { get; set; }
+    [Parameter] public bool IsLangEn { get; set; } = false;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool IsLoading = true;
+    private DataRow InvoiceData;
+    private DataTable DetailData;
+    private DataTable TaxData;
+    private DataTable DmTThaiHd;
+    private int ActiveTabIndex = 0;
+
+    // Format variables from Options
+    private string M_IP_SL = "N2";
+    private string M_IP_GIA = "N2";
+    private string M_IP_GIA_NT = "N2";
+    private string M_IP_TIEN = "N2";
+    private string M_IP_TIEN_NT = "N2";
+    private string M_IP_TY_GIA = "N2";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load format settings from Options
+        try
+        {
+            M_IP_SL = myOption.GetOptionsValue("M_IP_SL") ?? "N2";
+            M_IP_GIA = myOption.GetOptionsValue("M_IP_GIA") ?? "N2";
+            M_IP_GIA_NT = myOption.GetOptionsValue("M_IP_GIA_NT") ?? "N2";
+            M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN") ?? "N2";
+            M_IP_TIEN_NT = myOption.GetOptionsValue("M_IP_TIEN_NT") ?? "N2";
+            M_IP_TY_GIA = myOption.GetOptionsValue("M_IP_TY_GIA") ?? "N2";
+        }
+        catch
+        {
+            // Use default formats if options not available
+        }
+
+        // Load invoice status master data
+        await LoadDmTThaiHd();
+        
+        await LoadInvoiceData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(Id_hd))
+        {
+            await LoadInvoiceData();
+        }
+    }
+
+    private async Task LoadDmTThaiHd()
+    {
+        try
+        {
+            string sql = "SELECT * FROM dmtthaihd ORDER BY stt";
+            DataSet ds = await myDb.LoadDataset(sql, null);
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                DmTThaiHd = ds.Tables[0];
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't break the form
+            DmTThaiHd = null;
+        }
+    }
+
+    private async Task LoadInvoiceData()
+    {
+        IsLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            Func.CheckCt(Id_hd, myDb, myHost);
+            string cmd = $"EXEC POImexInv_LoadVc '{Id_hd}'";
+           
+            DataSet ds = myDb.LoadDataSet(cmd);
+            if (ds == null || curActionTask == ActionTask.New)
+                return;
+                
+            InvoiceData = ds.Tables[0].Rows.Count > 0 ? ds.Tables[0].Rows[0] : null;
+            DetailData = ds.Tables.Count > 1 ? ds.Tables[1] : null;
+            TaxData = ds.Tables.Count > 2 ? ds.Tables[2] : null;
+        }
+        catch (Exception ex)
+        {
+            myStateMN?.SetNewThongbao($"Lỗi tải dữ liệu: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetStringValue(string fieldName)
+    {
+        if (InvoiceData != null && InvoiceData.Table.Columns.Contains(fieldName))
+        {
+            return InvoiceData[fieldName]?.ToString() ?? "";
+        }
+        return "";
+    }
+
+    private DateTime? GetDateValue(string fieldName)
+    {
+        if (InvoiceData != null && InvoiceData.Table.Columns.Contains(fieldName))
+        {
+            var value = InvoiceData[fieldName];
+            if (value != null && value != DBNull.Value)
+            {
+                return Convert.ToDateTime(value);
+            }
+        }
+        return null;
+    }
+
+    private string GetDecimalValue(string fieldName)
+    {
+        if (InvoiceData != null && InvoiceData.Table.Columns.Contains(fieldName))
+        {
+            var value = InvoiceData[fieldName];
+            if (value != null && value != DBNull.Value)
+            {
+                return Convert.ToDecimal(value).ToString(M_IP_TIEN);
+            }
+        }
+        return "0.00";
+    }
+
+    private string GetInvoiceStatus()
+    {
+        var statusCode = GetStringValue("trang_thai_hd");
+        
+        if (string.IsNullOrEmpty(statusCode) || DmTThaiHd == null)
+            return statusCode;
+
+        try
+        {
+            // Find status in dmtthaihd table
+            var rows = DmTThaiHd.Select($"ma_tthai = '{statusCode}'");
+            if (rows.Length > 0)
+            {
+                var row = rows[0];
+                // Return Vietnamese or English name based on IsLangEn
+                if (IsLangEn && DmTThaiHd.Columns.Contains("ten_tthai2"))
+                {
+                    return row["ten_tthai2"]?.ToString() ?? statusCode;
+                }
+                else if (DmTThaiHd.Columns.Contains("ten_tthai"))
+                {
+                    return row["ten_tthai"]?.ToString() ?? statusCode;
+                }
+            }
+        }
+        catch
+        {
+            // Return code if error
+        }
+        
+        return statusCode;
+    }
+
+    private string GetValidationStatus()
+    {
+        var value = GetStringValue("tinh_trang_hd");
+        return value switch
+        {
+            "1" => IsLangEn ? "Correct information" : "Đúng thông tin",
+            "2" => IsLangEn ? "Wrong information" : "Sai thông tin",
+            _ => ""
+        };
+    }
+}

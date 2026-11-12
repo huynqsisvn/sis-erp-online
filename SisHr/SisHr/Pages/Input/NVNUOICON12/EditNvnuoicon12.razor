@@ -1,0 +1,419 @@
+﻿@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.NVNUOICON12
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveRecord" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                @* --- TYPE --- *@
+                <DxFormLayoutItem Caption="@Lap["Female worker type"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxComboBox Id="loai_input"
+                                    Data="@LoaiItems"
+                                    ValueFieldName="Value"
+                                    TextFieldName="Text"
+                                    Value="@CurRecord.Loai"
+                                    ValueExpression="@(() => CurRecord.Loai)"
+                                    Enabled="@AllowEditMode"
+                                    ValueChanged="@((int? v) => { CurRecord.Loai = v; OnLoaiChanged(v); StateHasChanged(); })" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- EMPLOYEE CODE --- *@
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" Filter="status = 1"
+                                               @bind-Value="@CurRecord.Ma_ns"
+                                               IsEnable="@AllowEditMode"
+                                               SelectChanged="Ma_ns_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- EMPLOYEE NAME --- *@
+                <DxFormLayoutItem Caption="@Lap["Employee name"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@TenNs" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- BIRTH DATE --- *@
+                <DxFormLayoutItem Caption="@Lap["Birth date"]" ColSpanMd="12">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurRecord.Ngay_sinh" Enabled="false" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- DEPARTMENT --- *@
+                <DxFormLayoutItem Caption="@Lap["HR department"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRecord.Ten_bpns" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- CALCULATION DATE --- *@
+                <DxFormLayoutItem Caption="@Lap["Calculation date"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="thoi_diem_tinh_input"
+                                    Date="@CurRecord.Thoi_diem_tinh"
+                                    Enabled="@AllowEditMode" DisplayFormat="dd/MM/yyyy"
+                                    DateChanged="@((DateTime? v) => { CurRecord.Thoi_diem_tinh = v; OnThoiDiemTinhChanged(v); StateHasChanged(); })" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- BREASTFEEDING END DATE (type 1 only) --- *@
+                @if (CurRecord?.Loai != 2)
+                {
+                    <DxFormLayoutItem Caption="@Lap["Breastfeeding end date"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                        <Template>
+                            <DxDateEdit @bind-Date="@CurRecord.Ngay_het_gio_con_tho"
+                                        Enabled="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+                        </Template>
+                    </DxFormLayoutItem>
+                }
+
+                @* --- PREGNANCY DATE (type 2 only) --- *@
+                @if (CurRecord?.Loai == 2)
+                {
+                    <DxFormLayoutItem Caption="@Lap["Pregnancy date"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                        <Template>
+                            <DxDateEdit @bind-Date="@CurRecord.Ngay_mang_thai"
+                                        Enabled="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+                        </Template>
+                    </DxFormLayoutItem>
+                }
+
+                @* --- REST TIME (type 1 only) --- *@
+                @if (CurRecord?.Loai != 2)
+                {
+                    <DxFormLayoutItem Caption="@Lap["Rest time (hours)"]" ColSpanMd="12">
+                        <Template>
+                            <DxComboBox Data="@ThoiGianNghiItems"
+                                        ValueFieldName="Value"
+                                        TextFieldName="Text"
+                                        Value="@CurRecord.Thoi_gian_nghi"
+                                        ValueExpression="@(() => CurRecord.Thoi_gian_nghi)"
+                                        Enabled="@AllowEditMode"
+                                        ValueChanged="@((double? v) => { CurRecord.Thoi_gian_nghi = v; StateHasChanged(); })" />
+                        </Template>
+                    </DxFormLayoutItem>
+                }
+
+                @* --- NOTE --- *@
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRecord.Ghi_chu"
+                                   maxlength="@(tblLength.ContainsKey("ghi_chu") ? tblLength["ghi_chu"] : 500)"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- STATUS --- *@
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12">
+                    <Template>
+                        <DxSpinEdit Value="@(CurRecord.Status ?? 1)"
+                                    ValueChanged="@((int v) => { CurRecord.Status = v; StateHasChanged(); })"
+                                    MinValue="0" MaxValue="9"
+                                    Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Nvnuoicon12 CurRecord;
+    private string menu_id = "wr.ct.17";
+
+    private string TenNs = "";
+
+    private List<object> LoaiItems = new()
+    {
+        new { Value = 1, Text = "1 - LĐ nữ nuôi con dưới 12 tháng" },
+        new { Value = 2, Text = "2 - LĐ nữ mang bầu tháng thứ 7" }
+    };
+
+    private List<object> ThoiGianNghiItems = new()
+    {
+        new { Value = 0.5, Text = "0.5 giờ" },
+        new { Value = 1.0, Text = "1 giờ" },
+        new { Value = 1.5, Text = "1.5 giờ" },
+        new { Value = 2.0, Text = "2 giờ" },
+        new { Value = 2.5, Text = "2.5 giờ" },
+        new { Value = 3.0, Text = "3 giờ" }
+    };
+
+    protected override void OnInitialized()
+    {
+        sqlTableName     = "dmnvnuoicon12";
+        sqlTableView     = "v_dmnvnuoicon12";
+        SqlTableKey      = "idts";
+        CheckSqlTableKey = "idts";
+        ParentPage       = string.IsNullOrEmpty(ParentPage) ? "NVNUOICON12" : ParentPage;
+        CurRecord        = new Nvnuoicon12();
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord();
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task ViewRecord(string key)
+    {
+        CurRecord     = new Nvnuoicon12();
+        AllowEditMode = false;
+        AllowEditMa   = false;
+        await LoadData(key);
+    }
+
+    async Task EditRecord(string key)
+    {
+        CurRecord     = new Nvnuoicon12();
+        AllowEditMode = true;
+        AllowEditMa   = false;
+        await LoadData(key);
+    }
+
+    async Task NewRecord()
+    {
+        CurRecord                = new Nvnuoicon12();
+        CurRecord.Status         = 1;
+        CurRecord.Loai           = 1;
+        CurRecord.Thoi_diem_tinh = DateTime.Now.Date;
+        CurRecord.Thoi_gian_nghi = 1.0;
+        AllowEditMode = true;
+        AllowEditMa   = true;
+        StateHasChanged();
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {SqlTableKey} = @{SqlTableKey}";
+            DataSet ds = await myDb.LoadDataset(sql, SqlTableKey, key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                List<Nvnuoicon12> list = myDb.ConvertDataTable<Nvnuoicon12>(ds.Tables[0]);
+                if (list != null && list.Count > 0)
+                {
+                    CurRecord = list[0];
+                    TenNs = IsLangEn ? (CurRecord.Ten_ns2 ?? CurRecord.Ten_ns ?? "") : (CurRecord.Ten_ns ?? "");
+                    
+                    // Ensure Loai is set (default to 1 if null)
+                    if (CurRecord.Loai == null)
+                        CurRecord.Loai = 1;
+                    
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data load error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Ma_ns_Changed(ExpandoObject value)
+    {
+        if (value == null) { TenNs = ""; return; }
+        var dict = (IDictionary<string, object>)value;
+        TenNs = IsLangEn
+            ? (dict.ContainsKey("ten_ns2") ? dict["ten_ns2"]?.ToString() ?? "" : "")
+            : (dict.ContainsKey("ten_ns")  ? dict["ten_ns"]?.ToString()  ?? "" : "");
+
+        // Load ngay_sinh and ma_bpns from dict
+        if (dict.ContainsKey("ngay_sinh") && dict["ngay_sinh"] != null && dict["ngay_sinh"] != DBNull.Value)
+        {
+            if (DateTime.TryParse(dict["ngay_sinh"]?.ToString(), out DateTime ngaySinh))
+                CurRecord.Ngay_sinh = ngaySinh;
+        }
+        if (dict.ContainsKey("ma_bpns"))
+            CurRecord.Ten_bpns = dict["ma_bpns"]?.ToString() ?? "";
+
+        StateHasChanged();
+    }
+
+    void OnLoaiChanged(int? loai)
+    {
+        if (loai == 2)
+        {
+            // For type 2: auto-calculate pregnancy date = calculation date - 7 months
+            CurRecord.Ngay_het_gio_con_tho = null;
+            CurRecord.Thoi_gian_nghi = null;
+            if (CurRecord.Thoi_diem_tinh.HasValue)
+                CurRecord.Ngay_mang_thai = CurRecord.Thoi_diem_tinh.Value.AddMonths(-7).Date;
+            else
+            {
+                CurRecord.Thoi_diem_tinh = DateTime.Now.Date;
+                CurRecord.Ngay_mang_thai = DateTime.Now.Date.AddMonths(-7);
+            }
+        }
+        else
+        {
+            CurRecord.Ngay_mang_thai = null;
+            if (CurRecord.Thoi_gian_nghi == null)
+                CurRecord.Thoi_gian_nghi = 1.0;
+        }
+    }
+
+    void OnThoiDiemTinhChanged(DateTime? date)
+    {
+        if (CurRecord.Loai == 2 && date.HasValue)
+            CurRecord.Ngay_mang_thai = date.Value.AddMonths(-7).Date;
+    }
+
+    async Task SaveRecord()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            CurRecord.Ghi_chu = CurRecord.Ghi_chu ?? "";
+
+            if (curActionTask == ActionTask.New)
+            {
+                string newId  = Guid.NewGuid().ToString();
+                DateTime now  = DateTime.Now;
+                CurRecord.Idts      = newId;
+                CurRecord.Date0     = now.Date;
+                CurRecord.Time0     = now.ToString("HH:mm:ss");
+                CurRecord.Date      = now.Date;
+                CurRecord.Time      = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurRecord.User_id0   = curUser.User_id;
+                    CurRecord.User_name0 = curUser.User_name;
+                    CurRecord.User_id    = curUser.User_id;
+                    CurRecord.User_name  = curUser.User_name;
+                }
+
+                // Clear fields not used by the selected type
+                if (CurRecord.Loai == 1)
+                    CurRecord.Ngay_mang_thai = null;
+                else
+                    CurRecord.Ngay_het_gio_con_tho = null;
+
+                await myDb.InsertOneRow<Nvnuoicon12>(CurRecord, sqlTableName);
+                myStateMN.SetNewThongbao($"{Lap["Successfully added new"]}: {CurRecord.Ma_ns}");
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                DateTime now = DateTime.Now;
+                CurRecord.Date  = now.Date;
+                CurRecord.Time  = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurRecord.User_id   = curUser.User_id;
+                    CurRecord.User_name = curUser.User_name;
+                }
+
+                // Clear fields not used by the selected type
+                if (CurRecord.Loai == 1)
+                    CurRecord.Ngay_mang_thai = null;
+                else
+                    CurRecord.Ngay_het_gio_con_tho = null;
+
+                string safeMa      = Ma_ma.Trim().Replace("'", "''");
+                string whereClause = $"idts = '{safeMa}'";
+                await myDb.UpdateOneRow1<Nvnuoicon12>(CurRecord, sqlTableName, "", whereClause);
+                myStateMN.SetNewThongbao($"{Lap["Edit successfully"]}: {CurRecord.Ma_ns}");
+            }
+
+            if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo(ParentPage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed"]}: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrWhiteSpace(CurRecord.Ma_ns))
+        {
+            myStateMN.SetNewThongbao(Lap["Employee code is required"] + "!");
+            return false;
+        }
+
+        // Check the correct date field based on Loai
+        if (CurRecord.Loai == 2)
+        {
+            if (CurRecord.Ngay_mang_thai == null)
+            {
+                myStateMN.SetNewThongbao(Lap["Pregnancy date is required"] + "!");
+                return false;
+            }
+        }
+        else // Loai == 1 or null
+        {
+            if (CurRecord.Ngay_het_gio_con_tho == null)
+            {
+                myStateMN.SetNewThongbao(Lap["Breastfeeding end date is required"] + "!");
+                return false;
+            }
+        }
+
+        return true;
+    }
+}

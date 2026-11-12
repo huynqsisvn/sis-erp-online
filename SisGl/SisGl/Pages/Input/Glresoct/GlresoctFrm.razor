@@ -1,0 +1,391 @@
+﻿@inherits FrmListBaseComponent
+@using SisGl.Pages.Input.Glresoct
+
+<div style="width:auto;">
+    <DxFormLayout CssClass="frm-header sis-form p-2" SizeMode="SizeMode.Medium">
+
+        @* ====== Nhóm 1: Thông tin c.từ ====== *@
+        <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start" AnimationType="LayoutAnimationType.Slide"
+                           Caption="@Lap["Voucher filter info"]" CssClass="dx-total-box mb-2">
+
+            <DxFormLayoutItem Caption="@Lap["From date"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxDateEdit @bind-Date="@Model.NgayCt1" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy"/>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["To date"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxDateEdit @bind-Date="@Model.NgayCt2" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy"/>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Book code"]" ColSpanMd="12" BeginRow="true">
+                <Template>
+                    <AutocompleteComponent Ma_dm="dmqs" @bind-Value="@Model.MaQs" IsEnable="true"
+                                          SelectChanged="OnMaQsChanged" IsLangEn="@IsLangEn" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Voucher list"]" ColSpanMd="12">
+                <Template>
+                    <div class="d-flex gap-1">
+                        <DxTextBox @bind-Text="@Model.DsCt" ReadOnly="true" CssClass="flex-grow-1" />
+                        <DxButton Text="@Lap["Select ..."]" RenderStyle="ButtonRenderStyle.Secondary"
+                                  Click="@ShowVoucherPicker" />
+                    </div>
+                </Template>
+            </DxFormLayoutItem>
+
+        </DxFormLayoutGroup>
+
+        @* ====== Nhóm 2: Định dạng số c.từ mới ====== *@
+        <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.Card" 
+                           Caption="@Lap["New voucher number format"]" CssClass="dx-total-box mb-2">
+
+            <DxFormLayoutItem Caption="@Lap["Starting number"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxSpinEdit Value="@Model.SoCt1" MinValue="1" DisplayFormat="N0"
+                                ValueChanged="@((decimal v) => { Model.SoCt1 = v; OnFormatChanged(); })" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Prefix"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxTextBox Text="@Model.Expr1"
+                               TextChanged="@((string s) => { Model.Expr1 = s; OnFormatChanged(); })" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Suffix"]" ColSpanMd="6" BeginRow="true">
+                <Template>
+                    <DxTextBox Text="@Model.Expr2"
+                               TextChanged="@((string s) => { Model.Expr2 = s; OnFormatChanged(); })" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Append zero"]" ColSpanMd="6">
+                <Template>
+                    <div class="d-flex align-items-center gap-2">
+                        <DxSpinEdit Value="@Model.AppendZero" MinValue="0" MaxValue="1" DisplayFormat="N0"
+                                    ValueChanged="@((decimal v) => { Model.AppendZero = v; OnFormatChanged(); })" style="width:80px;" />
+                        <span class="text-muted small">@Lap["0 - No, 1 - Yes"]</span>
+                    </div>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Number length"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxSpinEdit Value="@Model.Transform" MinValue="1" MaxValue="50" DisplayFormat="N0"
+                                ValueChanged="@((decimal v) => { Model.Transform = v; OnFormatChanged(); })" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Example"]" ColSpanMd="6">
+                <Template>
+                    <div class="d-flex align-items-center gap-2">
+                        <DxSpinEdit Value="@Model.SoCtEx" MinValue="1" DisplayFormat="N0"
+                                    ValueChanged="@((decimal v) => { Model.SoCtEx = v; OnFormatChanged(); })" style="width:100px;" />
+                        <span class="fw-bold text-primary">@ExampleText</span>
+                    </div>
+                </Template>
+            </DxFormLayoutItem>
+
+        </DxFormLayoutGroup>
+
+    </DxFormLayout>
+
+    @if (!string.IsNullOrEmpty(ValidationMessage))
+    {
+        <div class="alert alert-danger mx-2 py-1">@ValidationMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(InfoMessage))
+    {
+        <div class="alert alert-info mx-2 py-1">@InfoMessage</div>
+    }
+</div>
+
+@if (IsShowVoucherPicker)
+{
+    <div class="modal" tabindex="-1" role="dialog" aria-hidden="true" style="display:block">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info">
+                    <h5 class="modal-title text-white">@Lap["Voucher list"]</h5>
+                </div>
+                <div class="modal-body">
+                    <MultiChooseGridComponent Page_size="@_pagesize" EnableCheck="@_enableCheck"
+                                             SelectCol="@_checkCol"
+                                             CheckChangedCallBack="@OnCheckMaCtChanged"
+                                             TblData="@TblDataMaCt"
+                                             Fbrowse="@_fbrowseCt" />
+                </div>
+                <div class="modal-footer">
+                    <DxButton CssClass="btn btn-danger text-white" Click="@CloseVoucherPicker"
+                              Text="@Lap["Close"]" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _defaultMenuId = "wg.ct.14";
+    public GlresoctModel Model = new();
+    public string ten_dvcs = "";
+    public string ExampleText = "";
+    public string ValidationMessage = "";
+    public string InfoMessage = "";
+    private bool IsShowVoucherPicker = false;
+    private DataTable TblDataMaCt = null;
+    private string _checkCol = "checkcol";
+    private string _fbrowseCt = "ma_ct:100:h=Mã c.từ;ten_ct:350:h=Tên c.từ";
+    private bool _enableCheck = true;
+    private int _pagesize = 20;
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "ct11";
+        sqlTableView = "ct11";
+        SqlTableKey = "stt_rec";
+        ParentPage = "glresoct";
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = _defaultMenuId;
+
+        base.OnInitialized();
+
+        _fbrowseCt = IsLangEn
+            ? "ma_ct:100:h=Voucher code;ten_ct2:350:h=Voucher name"
+            : "ma_ct:100:h=Mã c.từ;ten_ct:350:h=Tên c.từ";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            DateTime dateTime = myStateMN.GetStartDate();
+            Model.NgayCt1 = new DateTime(dateTime.Year, dateTime.Month, 1);
+            Model.NgayCt2 = myStateMN.GetEndDate();
+            Model.MaDvcs = myStateMN.GetDvcs()?.Ma_dvcs ?? "";
+            Model.SoCt1 = 1;
+            Model.SoCtEx = 1;
+            Model.Transform = 8;
+            Model.AppendZero = 1;
+
+            await LoadDvcsInfo();
+            await LoadVoucherList();
+            OnFormatChanged();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("GlresoctFrm.OnInitializedAsync: " + ex.Message);
+        }
+    }
+
+    void OnFormatChanged()
+    {
+        ExampleText = GenTransform(Model.Expr1, Model.Expr2, Model.AppendZero, (int)Model.Transform, (int)Model.SoCtEx);
+        StateHasChanged();
+    }
+
+    string GenTransform(string expr1, string expr2, decimal appendZero, int transform, int soCtEx)
+    {
+        string num = appendZero == 1
+            ? soCtEx.ToString().PadLeft(transform, '0')
+            : soCtEx.ToString();
+        return (expr1?.Trim() ?? "") + num + (expr2?.Trim() ?? "");
+    }
+
+    string BuildTransformParam()
+    {
+        string pad = Model.AppendZero == 1
+            ? "".PadLeft((int)Model.Transform, '0')
+            : "";
+        return (Model.Expr1?.Trim() ?? "") + "{#" + pad + "}" + (Model.Expr2?.Trim() ?? "");
+    }
+
+    async Task LoadDvcsInfo()
+    {
+        ten_dvcs = "";
+        if (!string.IsNullOrEmpty(Model.MaDvcs))
+        {
+            string col = IsLangEn ? "ten_dvcs2" : "ten_dvcs";
+            ten_dvcs = myDb.GetValue($"SELECT {col} FROM dmdvcs WHERE ma_dvcs = '{Model.MaDvcs.Trim()}'")?.ToString() ?? "";
+        }
+    }
+
+    async Task LoadVoucherList()
+    {
+        try
+        {
+            DataSet ds = await myDb.LoadDataset(
+                IsLangEn
+                    ? "SELECT '0' AS checkcol, ma_ct, ten_ct2 FROM dmct WHERE ISNULL(ma_ct,'') <> ''"
+                    : "SELECT '0' AS checkcol, ma_ct, ten_ct  FROM dmct WHERE ISNULL(ma_ct,'') <> ''");
+            if (ds?.Tables.Count > 0)
+                TblDataMaCt = myDb.SetNoneReadOnlyDataTable(ds.Tables[0]);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("LoadVoucherList: " + ex.Message);
+        }
+    }
+
+    void OnMaQsChanged(ExpandoObject value)
+    {
+        if (!string.IsNullOrEmpty(Model.MaQs))
+        {
+            try
+            {
+                string sql = $"SELECT ma_cts, so_ct1, expr1, expr2, append_zero, transform FROM dmqs WHERE ma_qs = '{Model.MaQs.Trim()}'";
+                DataSet ds = myDb.LoadDataSet(sql);
+                if (ds?.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+                {
+                    var row = ds.Tables[0].Rows[0];
+                    Model.DsCt = String.IsNullOrEmpty(Model.DsCt) ? row["ma_cts"]?.ToString() ?? "" : Model.DsCt;
+                    if (decimal.TryParse(row["so_ct1"]?.ToString(), out decimal sc1)) Model.SoCt1 = sc1;
+                    Model.Expr1 = row["expr1"]?.ToString() ?? "";
+                    Model.Expr2 = row["expr2"]?.ToString() ?? "";
+                    if (decimal.TryParse(row["append_zero"]?.ToString(), out decimal az)) Model.AppendZero = az;
+                    string transformStr = row["transform"]?.ToString() ?? "";
+                    string innerStr = transformStr
+                        .Replace(Model.Expr1?.Trim() ?? "", "")
+                        .Replace(Model.Expr2?.Trim() ?? "", "");
+                    Model.Transform = innerStr.Length > 0 ? innerStr.Length : 1;
+                    OnFormatChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("OnMaQsChanged: " + ex.Message);
+            }
+        }
+        StateHasChanged();
+    }
+
+    void ShowVoucherPicker()
+    {
+        if (TblDataMaCt != null && TblDataMaCt.Rows.Count > 0)
+        {
+            foreach (DataRow row in TblDataMaCt.Rows)
+                row[_checkCol] = (object)"0";
+
+            if (!string.IsNullOrEmpty(Model.DsCt))
+            {
+                string[] arr = Model.DsCt.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (string maCt in arr)
+                {
+                    DataRow row = TblDataMaCt.Select("ma_ct = '" + maCt.Trim() + "'").FirstOrDefault();
+                    if (row != null)
+                        row[_checkCol] = (object)"1";
+                }
+            }
+        }
+        IsShowVoucherPicker = true;
+    }
+
+    void OnCheckMaCtChanged(bool changed)
+    {
+        string maCts = "";
+        if (TblDataMaCt != null)
+        {
+            DataRow[] rows = TblDataMaCt.Select("checkcol=1");
+            if (rows != null && rows.Length > 0)
+            {
+                foreach (DataRow row in rows)
+                    maCts += row["ma_ct"].ToString().TrimEnd() + ";";
+            }
+        }
+        Model.DsCt = maCts.Length > 0 ? maCts[..^1] : "";
+    }
+
+    void CloseVoucherPicker()
+    {
+        IsShowVoucherPicker = false;
+    }
+
+    public bool CheckValid()
+    {
+        ValidationMessage = "";
+        if (Model.NgayCt1 == null)
+        {
+            ValidationMessage = Lap["From date"] + " " + Lap["Error"];
+            return false;
+        }
+        if (Model.NgayCt2 == null || Model.NgayCt2 < Model.NgayCt1)
+        {
+            ValidationMessage = Lap["To date"] + " " + Lap["Error"];
+            return false;
+        }
+        if (string.IsNullOrEmpty(Model.DsCt))
+        {
+            ValidationMessage = Lap["No data selected"] + "!";
+            return false;
+        }
+        if (Model.SoCt1 <= 0)
+        {
+            ValidationMessage = Lap["Starting number"] + " " + Lap["Error"];
+            return false;
+        }
+        return true;
+    }
+
+    public async Task OnExecute()
+    {
+        ValidationMessage = "";
+        InfoMessage = "";
+
+        if (!CheckValid())
+        {
+            StateHasChanged();
+            return;
+        }
+        myStateMN.SetStartDate(Model.NgayCt1.Value);
+        myStateMN.SetEndDate(Model.NgayCt2.Value);
+
+        string ngay1 = Model.NgayCt1!.Value.ToString("yyyyMMdd");
+        string ngay2 = Model.NgayCt2!.Value.ToString("yyyyMMdd");
+        string condition = $"1=1 AND ma_dvcs LIKE '{Model.MaDvcs.Trim()}%'";
+        string transform = BuildTransformParam();
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "@ngay_ct1",  ngay1 },
+            { "@ngay_ct2",  ngay2 },
+            { "@ma_qs",     Model.MaQs ?? "" },
+            { "@so_ct1",    Model.SoCt1 },
+            { "@so_ct2",    0m },
+            { "@dsct",      Model.DsCt ?? "" },
+            { "@transform", transform },
+            { "@condition", condition }
+        };
+
+        string spName = curCommand?.Store_proc?.Split('|')[0]?.Trim() ?? "GlreSoct";
+        await myDb.LoadDataset($"EXEC {spName} @ngay_ct1, @ngay_ct2, @ma_qs, @so_ct1, @so_ct2, @dsct, @transform, @condition", parameters);
+
+        InfoMessage = Lap["Operation completed"] + " !";
+        myStateMN.SetNewThongbao(InfoMessage);
+        StateHasChanged();
+    }
+
+    public class GlresoctModel
+    {
+        public DateTime? NgayCt1 { get; set; }
+        public DateTime? NgayCt2 { get; set; }
+        public string MaQs { get; set; } = "";
+        public string DsCt { get; set; } = "";
+        public string MaDvcs { get; set; } = "";
+        public decimal SoCt1 { get; set; } = 1;
+        public decimal SoCtEx { get; set; } = 1;
+        public string Expr1 { get; set; } = "";
+        public string Expr2 { get; set; } = "";
+        public decimal AppendZero { get; set; } = 1;
+        public decimal Transform { get; set; } = 1;
+    }
+
+}

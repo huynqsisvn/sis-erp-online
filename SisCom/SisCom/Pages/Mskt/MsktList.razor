@@ -1,0 +1,82 @@
+﻿@using System.Dynamic;
+@using System.Timers
+
+@inject Statemanagerment myStatemanagerment
+@inject NavigationManager navigation
+@inject IDbManager myDb
+@inject IJSRuntime JavacriptS
+@inject ILocalStorageService Localstore
+@inject IChatService SisChatService
+@inject IOptionsManager myoptions
+@inject IStringLocalizer<App> Lap
+
+@if (TblData != null)
+{
+    if (TblData.Rows.Count > 0)
+    {
+        <DxStackLayout CssClass="w-100" Orientation="Orientation.Vertical">
+            <Items>
+                @foreach (DataRow row in TblData.Rows)
+                {
+                    if (row.RowState != DataRowState.Deleted && row.RowState != DataRowState.Detached)
+                    {
+                        <DxStackLayoutItem>
+                            <Template>
+                                <div class="css-ms">
+                                    <h6>@row["ngayct"].ToString().Trim() - @row["user_name0"].ToString().Trim() - @row["ten_nhsp"].ToString().Trim()</h6>
+                                    <h9>@row["inv_id"].ToString()</h9> <br/>
+                                    <h8>@row["ten_kh"].ToString() =>> </h8>
+                                    @if (String.IsNullOrEmpty(row["user_kq"].ToString()))
+                                    {
+                                        <DxButton RenderStyle="ButtonRenderStyle.Danger" RenderStyleMode="ButtonRenderStyleMode.Outline" Text="Duyệt" @onclick="@(()=>{ MsktReaded(@row["inv_id"].ToString());})"></DxButton>
+                                    }
+                                    else
+                                    {
+                                        <h8 style="color:orangered">@row["user_kq"].ToString().Trim() </h8>
+                                    }
+                                    
+                                </div>
+                            </Template>
+                        </DxStackLayoutItem>
+                    }
+                }                
+            </Items>
+        </DxStackLayout>
+    }
+    else
+    {
+        <h4 class="text-primary text-center">@Lap["No data"]</h4>
+    }
+}
+else
+{
+    <h4 class="text-primary text-center">@Lap["No data"]</h4>
+}
+<style>    
+    .css-ms{
+        box-shadow: 0 0 5px gray;
+        border-radius:5px;
+        border-width:1px;
+        padding:2px;
+        overflow:hidden;       
+    }        
+</style>
+
+@code {
+    [Parameter]
+    public DataTable TblData { get; set; } = new DataTable();
+    [Parameter]
+    public EventCallback<string> Readed { get; set; }
+
+    public string ma_kh { get; set; } = "";  
+    private string Pagetitle = "Danh sách tra mã số kiểm tra";
+    private string curTen_kh = "";
+    private Dmmskt CurItem;
+    private bool IsLangEn = false;
+    Users CurUser = null;
+    void MsktReaded(string nitiID)
+    {
+        Readed.InvokeAsync(nitiID);
+    }
+   
+}

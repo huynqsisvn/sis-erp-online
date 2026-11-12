@@ -1,0 +1,163 @@
+@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRTEREQ
+@using DevExpress.Blazor
+@using System.Data
+@using System.Dynamic
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveData" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                <DxFormLayoutItem Caption="@Lap["Recruitment request number"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="so_yeu_cau_input"
+                                   Enabled="@(AllowEditMode && AllowEditMa)"
+                                   @bind-Text="@CurRow.So_yeu_cau"
+                                   CssClass="text-uppercase" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Request date"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_yeu_cau_input"
+                                    Enabled="@AllowEditMode"
+                                    @bind-Date="@CurRow.Ngay_yeu_cau"
+                                    DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Department code"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmbpns"
+                                               @bind-Value="@CurRow.Ma_bpns"
+                                               IsEnable="@AllowEditMode"
+                                               SelectChanged="@((ExpandoObject v) => MaBpns_Changed(v))"
+                                               IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Major"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmcn"
+                                               @bind-Value="@CurRow.Ma_cn"
+                                               IsEnable="@AllowEditMode"
+                                               SelectChanged="@((ExpandoObject v) => MaCn_Changed(v))"
+                                               IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Quantity"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurRow.So_luong"
+                                    Enabled="@AllowEditMode"
+                                    MinValue="0" MaxValue="5000" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Qualification"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmvh"
+                                               @bind-Value="@CurRow.Ma_vh"
+                                               IsEnable="@AllowEditMode"
+                                               SelectChanged="@((ExpandoObject v) => MaVh_Changed(v))"
+                                               IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Position code"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmcv"
+                                               @bind-Value="@CurRow.Ma_cv"
+                                               IsEnable="@AllowEditMode"
+                                               SelectChanged="@((ExpandoObject v) => MaCv_Changed(v))"
+                                               IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Gender"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmgioitinh"
+                                               @bind-Value="@CurRow.Ma_gioitinh"
+                                               IsEnable="@AllowEditMode"
+                                               SelectChanged="@((ExpandoObject v) => MaGioitinh_Changed(v))"
+                                               IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Age from"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurRow.Tuoi_tu"
+                                    Enabled="@AllowEditMode"
+                                    MinValue="0" MaxValue="200" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Age to"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurRow.Tuoi_den"
+                                    Enabled="@AllowEditMode"
+                                    MinValue="0" MaxValue="200" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Household registration"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmtinhthanh"
+                                               @bind-Value="@CurRow.Ho_khau"
+                                               IsEnable="@AllowEditMode"
+                                               SelectChanged="@((ExpandoObject v) => HoKhau_Changed(v))"
+                                               IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Workplace"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmtinhthanh"
+                                               @bind-Value="@CurRow.Noi_lam_viec"
+                                               IsEnable="@AllowEditMode"
+                                               SelectChanged="@((ExpandoObject v) => NoiLamViec_Changed(v))"
+                                               IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Experience months"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurRow.So_thang_kinh_nghiem"
+                                    Enabled="@AllowEditMode"
+                                    MinValue="0" MaxValue="100" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Other requirements"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRow.Yeu_cau_khac"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRow.Ghi_chu"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <div class="d-flex align-items-center gap-2">
+                            <DxSpinEdit Id="status_input" Enabled="@AllowEditMode"
+                                        Value="@(CurRow.Status ?? 1)"
+                                        ValueChanged="@((int v) => { CurRow.Status = v; StateHasChanged(); })"
+                                        MinValue="0" MaxValue="1" Increment="1" DisplayFormat="N0" />
+                            <span class="text-muted small">@Lap["1 - In use, 0 - Not in use"]</span>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>

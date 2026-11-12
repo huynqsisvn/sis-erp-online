@@ -1,0 +1,539 @@
+﻿@page "/Cactpt1"
+@page "/Cactpt1/{Menu_id}"
+@inherits TransBaseComponent
+@attribute [Authorize(Roles = "admin,cactpt1")]
+
+@if (ShowLoaddingVoucher)
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    CssClass="w-100"
+                    IndicatorVisible="true"
+                    IndicatorAreaVisible="true"
+                    Visible="true"
+                    Text="Processing..."
+                    TextAlignment="LoadingPanelTextAlignment.Right">
+        <div style="min-height: 250px;"></div>
+    </DxLoadingPanel>
+}
+else if (TblPH != null)
+{
+    <div class="row" onkeydown="_handleFunctionKeys(event);">
+        <div class="row m-0 p-0">
+            <FrmBrowseComponent @ref="@oBrowsePH" TblData="@TblPH" Page_size="@pageSize" IsPageSize="@IsPageSize" CssClass="grid-frm-height" Fbrowse="@FbrowsePH" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+        </div>
+        <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+        <div class="row my-1 mx-0 p-0">
+            <h8 class="fw-bold bg-light text-warning rounded-pill mb-1"> @Lap["Detail"] </h8>
+            <FrmBrowseComponent @ref="@oBrowseCT" TblData="@TblCT" CssClass="grid-frmct-height" Fbrowse="@FbrowseCT" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+        </div>
+    </div>
+}
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@popFilterVisible"
+         Width="500px"
+         ShowFooter="true" Context="windowContext"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Book code"]">
+                        <Template>
+                            <AutocompleteComponent CssClass="col p-0" Ma_dm="dmqs" @bind-Value="@Ma_qs" Filter="@_filter_qs" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From number"]">
+                        <DxTextBox CssClass="col" @bind-Text="@So_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idTu_so" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To number"]">
+                        <DxTextBox CssClass="col" @bind-Text="@So_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idDen_so" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idTu_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    InputId="idDen_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Account"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmtk1" @bind-Value="@Tk_i" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Customer code"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmkh_thue" @bind-Value="@Ma_kh" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Credit/debit"]">
+                        <DxTextBox CssClass="col" @bind-Text="@Ghi_no_co" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idGhi_no_co" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Status"]">
+                        <AutocompleteComponent CssClass="col p-0" Ma_dm="dmpost" Filter="@filter_status" @bind-Value="@Status" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Dvcs code"]">
+                        <DxTextBox CssClass="col" @bind-Text="@Ma_dvcs" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idMa_dvcs"></DxTextBox>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Filter by user"]">
+                        <DxTextBox CssClass="col" @bind-Text="@NSD" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idNSD" />
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+            </div>
+        }
+
+    </BodyTemplate>
+
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@BtnFilterOK" />
+                <DxButton CssClass="col " RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnFilterCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportCT CurDmimex="@CurDmimex" @bind-IsImportPopupVisible="@IsImportPopupVisible" OnImportCompleted="@ImportOK" ShowError="@ShowError" Menu_id="@Menu_id" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm" CloseOnEscape="true" Width="70vw"
+              MinWidth="700px"
+              MinHeight="500px" Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+<style>
+    .grid-frm-height {
+        height: 55vh;
+    }
+
+    .grid-frmct-height {
+        height: 30vh;
+    }
+</style>
+
+@code {
+    public string Ma_kh = "";
+    public string Ma_qs = "";
+    public string Ghi_no_co = "";
+    public string Tk_i = "";
+    public string Status = "";
+    public string Ps_no = "";
+    public string Ps_co = "";
+    public string So_ct1 = "";
+    public string So_ct2 = "";
+    public string Ma_dvcs = "";
+    public string NSD = "";
+
+    string _filter_qs = "";
+    string filter_status = "ma_ct like '%PT1%' and status = 1 ";
+
+    public DotNetObjectReference<Cactpt1Component> Pageobj;
+    private string ActiveComponentId = "oBrowse";
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+        if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowse"))
+        {
+            oBrowseHotKeyFunction(value);
+        }
+        else if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowseCT"))
+        {
+
+        }
+    }
+    void oBrowseHotKeyFunction(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Equals("F2"))
+            {
+                V_Xem();
+            }
+            if (value.Equals("F3"))
+            {
+                V_Sua();
+            }
+            if (value.Equals("F4"))
+            {
+                V_Moi();
+            }
+            if (value.Equals("F5"))
+            {
+
+            }
+            else if (value.Equals("F7"))
+            {
+                try
+                {
+                    V_In();
+                    StateHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            else if (value.Equals("F8"))
+            {
+
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+
+            }
+        }
+    }
+    private async Task SetActiveComponentIdAsync(string id)
+    {
+        try
+        {
+            ActiveComponentId = id ?? ActiveComponentId;
+            if (Pageobj != null)
+            {
+                await JavacriptS.InvokeVoidAsync("SetPageFModeObj", Pageobj, ActiveComponentId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SetActiveComponentIdAsync error: " + ex.Message);
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            base.OnAfterRenderAsync(firstRender);
+            Pageobj = DotNetObjectReference.Create(this);
+            await SetActiveComponentIdAsync("oBrowse");
+            if (string.IsNullOrEmpty(M_IP_TIEN))
+                M_IP_TIEN = "#,0;-#,0";
+            if (string.IsNullOrEmpty(M_IP_TIEN_NT))
+                M_IP_TIEN_NT = "#,0.000;-#,0.000";
+        }
+    }
+    protected override void OnInitialized()
+    {
+        Menu_id = (String.IsNullOrEmpty(Menu_id) ? "wa.ct.02" : Menu_id);
+        FrmType = typeof(Input.CACTPT1.FrmCactpt1);
+        IsShowImport = true;
+        LanguageID = "";
+        _filter_qs = String.Format("ma_cts like '%{0}%'", "PT1");
+
+        base.OnInitialized();
+    }
+
+    private async void BtnFilterOK()
+    {
+        ShowLoadding = true;
+
+        myStateMN.SetStartDate((DateTime)Ngay_ct1);
+        myStateMN.SetEndDate((DateTime)Ngay_ct2);
+        phFilter = "1=1";
+        if (!string.IsNullOrEmpty(Ma_dvcs))
+            myStateMN.SetDvcs(Ma_dvcs, Ma_dvcs);
+        if (Ngay_ct1 != null)
+        {
+            phFilter = phFilter + " AND ngay_ct >= ''" + Ngay_ct1.ToString("yyyyMMdd") + "''";
+        }
+        if (Ngay_ct2 != null)
+        {
+            phFilter = phFilter + " AND ngay_ct <= ''" + Ngay_ct2.ToString("yyyyMMdd") + "''";
+        }
+        if (!String.IsNullOrEmpty(So_ct1))
+        {
+            phFilter = phFilter + " AND so_ct >= ''" + So_ct1.ToString() + "''";
+        }
+        if (!String.IsNullOrEmpty(So_ct2))
+        {
+            phFilter = phFilter + " AND so_ct <= ''" + So_ct2.ToString() + "''";
+        }
+
+        if (!String.IsNullOrEmpty(Ma_qs))
+        {
+            phFilter = phFilter + " AND ma_qs LIKE ''" + Ma_qs.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(Status))
+        {
+            phFilter = phFilter + " AND status  LIKE ''" + Status.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(Tk_i))
+        {
+            phFilter = phFilter + " AND tk  LIKE ''" + Tk_i.Trim() + "%''";
+        }
+        if (!String.IsNullOrEmpty(Ps_no) && Ghi_no_co.Trim().Equals("1"))
+        {
+            phFilter = phFilter + " AND ps_no <> 0 ";
+        }
+        if (!String.IsNullOrEmpty(Ps_no) && Ghi_no_co.Trim().Equals("2"))
+        {
+            phFilter = phFilter + " AND ps_co<>0";
+        }
+        if (!String.IsNullOrEmpty(NSD) && NSD.Trim().Equals("1"))
+        {
+            phFilter = phFilter + " AND user_id  = " + curUser.User_id + " ";
+        }
+        if (!String.IsNullOrEmpty(Ma_kh))
+        {
+            phFilter = phFilter + " AND ma_kh LIKE ''" + Ma_kh.Trim() + "%''";
+        }
+        await Loaddata(false);
+
+        ShowLoadding = false;
+        popFilterVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+    public override async void V_In()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview == null)
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }
+        DataSet DataSource = CopyVoucherToDataSet(SqlTableKeyValue);
+        DataTable ds = AddTbTkPs(DataSource.Tables[0].Rows[0]["stt_rec"].ToString());
+        string tk_co = "";
+        string ps_no = "";
+        decimal tong_tien = 0;
+        string ps_co = "";
+        string ps_no_nt = "";
+        decimal tong_tien_nt = 0;
+        string ps_co_nt = "";
+        foreach (DataRow row in ds.Rows)
+        {
+            if (!string.IsNullOrEmpty(row["tk"].ToString()))
+            {
+                tk_co += row["tk"].ToString() + "\n";
+                ps_no += string.Format("{0:" + M_IP_TIEN + "}", row["tien"]) + "\n";
+                tong_tien += Convert.ToDecimal(row["tien"].ToString());
+                ps_no_nt += string.Format("{0:" + M_IP_TIEN_NT + "}", row["tien_nt"]) + "\n";
+                tong_tien_nt += Convert.ToDecimal(row["tien_nt"].ToString());
+            }
+        }
+        ps_co = string.Format("{0:" + M_IP_TIEN + "}", tong_tien);
+        ps_co_nt = string.Format("{0:" + M_IP_TIEN_NT + "}", tong_tien_nt);
+        TkPs tkPs = new TkPs
+        {
+            Tk_co = tk_co,
+            Ps_no = ps_no,
+            Ps_co = ps_co,
+            Ps_no_nt = ps_no_nt,
+            Ps_co_nt = ps_co_nt,
+        };
+        if (DataSource != null && DataSource.Tables.Count > 0)
+        {
+            LSData = new List<PT1Model>();
+            PT1Model _curModel = new PT1Model();
+            _curModel.LSPh = myDb.ConvertDataTable<Ph41>(DataSource.Tables[0]);
+            _curModel.LSCt = myDb.ConvertDataTable<Ct41>(DataSource.Tables[1]);
+            _curModel.LSTkPs = tkPs;
+            _curModel.TotalString = DocSo.Doc_so(_curModel.LSPh[0].T_tt, myOption, myDb, false);
+            _curModel.DateString = ToDateString(_curModel.LSPh[0].Ngay_ct);
+            _curModel.TotalStringVi = DocSo.Doc_so(_curModel.LSPh[0].T_tt, myOption, myDb, false, M_ma_nt0);
+            _curModel.TotalStringEn = DocSo.Doc_so(_curModel.LSPh[0].T_tt, myOption, myDb, true, M_ma_nt0);
+            _curModel.TotalStringVi_nt = DocSo.Doc_so(_curModel.LSPh[0].T_tt_nt, myOption, myDb, false, _curModel.LSPh[0].Ma_nt);
+            _curModel.TotalStringEn_nt = DocSo.Doc_so(_curModel.LSPh[0].T_tt_nt, myOption, myDb, true, _curModel.LSPh[0].Ma_nt);
+            _curModel.Ma_nt0 = M_ma_nt0;
+            LSData.Add(_curModel);
+        }
+        ShowReport(LSData, typeof(PT1Model));
+    }
+
+    public DataTable AddTbTkPs(string sttrec)
+    {
+        string str = "ct41";
+        string sql = string.Format("select tk_i as tk,MIN(stt_rec0) as stt_rec0, case when abs(sum(tien_tt))> 0 then sum(tien_tt) else sum(tien) end as tien, sum(tien_nt) as tien_nt from " + str + " where stt_rec='" + sttrec + "' group by tk_i order by stt_rec0");
+        DataTable ds = myDb.LoadDataSet(sql).Tables[0].Copy();
+        return ds;
+
+    }
+    public string ToDateString(DateTime date)
+    {
+        return $"ngày {date.Day} tháng {date.Month} năm {date.Year}";
+    }
+    public bool ShowError(DataErrArgs Args)
+    {
+        DataSet DataErr = Args.DataErr;
+        bool IsShowErr = false;
+        foreach (DataTable tblErr in DataErr.Tables)
+        {
+            if (tblErr.Rows.Count > 0)
+            {
+                string strbrowse = "", strTitle = "";
+                switch (tblErr.Columns[0].ColumnName)
+                {
+                    case "ma_kh":
+                        strbrowse = @"ma_kh:100:H=Mã khách hàng;ten_kh:200:H=Tên khách hàng";
+                        strTitle = "Danh sách mã khách hàng không có trong danh mục khách hàng";
+                        break;
+                    case "ma_kh_hddt":
+                        strbrowse = @"ma_kh_hddt:200:H=Mã khách hàng";
+                        strTitle = "Danh sách mã khách hàng không có trong danh mục khách hàng hóa đơn điện tử";
+                        break;
+                    case "ma_kh_hddt_tt":
+                        strbrowse = @"ma_kh_hddt_tt:200:H=Trạng thái khách hàng hóa đơn điện tử";
+                        strTitle = "Trạng thái khách hàng hóa đơn điện tử không hợp lệ";
+                        break;
+                    case "sd_hddt_yn":
+                        strbrowse = @"sd_hddt_yn:200:H=Sử dụng hóa đơn điện tử";
+                        strTitle = "Chưa khai báo sử dụng hóa đơn điện tử";
+                        break;
+                    case "sd_hddt_yn_2":
+                        strbrowse = @"sd_hddt_yn_2:200:H=Sử dụng hóa đơn điện tử";
+                        strTitle = "Giá trị khai báo sử dụng hóa đơn điện tử không hợp lệ";
+                        break;
+                    case "ma_kho":
+                        strbrowse = @"ma_kho:100:H=Mã kho;ma_dvcs:100:H=Mã ĐVCS";
+                        strTitle = "Danh sách mã kho không có trong danh mục kho hoặc không thuộc mã ĐVCS của chứng từ";
+                        break;
+                    case "ma_vt":
+                        strbrowse = @"ma_vt:100:H=Mã vật tư;ten_vt:200:H=Tên vật tư";
+                        strTitle = "Danh sách mã vật tư không có trong danh mục vật tư";
+                        break;
+                    case "ma_nx":
+                        strbrowse = @"ma_nx:200:H=Mã nhập xuất (Tk nợ);ten_tk:200:H=Tên nhập xuất";
+                        strTitle = "Danh sách tk nợ không có trong danh mục tài khoản hoặc là tài khoản tổng hợp";
+                        break;
+                    case "ma_qs":
+                        strbrowse = @"ma_qs:200:H=Mã quyển chứng từ";
+                        strTitle = "Danh sách quyển chứng từ không có trong danh mục quyển chứng từ hoặc chứng từ không thuộc quyển chứng từ này";
+                        break;
+                    case "so_ct":
+                        strbrowse = @"ma_qs:200:H=Quyển c.từ;so_ct:200:H=Số chứng từ";
+                        strTitle = "Danh sách số chứng từ trùng số";
+                        break;
+                    case "so_ct_hddt":
+                        strbrowse = @"ma_qs:200:H=Quyển c.từ;so_ct_hddt:200:H=Số hđ";
+                        strTitle = "Danh sách những chứng từ đã phát hành hóa đơn điện tử không sao chép được";
+                        break;
+                    case "tk_dt":
+                        strbrowse = @"tk_dt:200:H=Tk dt;ten_tk:200:H=Tên tk";
+                        strTitle = "Danh sách tài khoản doanh thu không có trong danh mục tài khoản hoặc là tài khoản tổng hợp";
+                        break;
+                    case "tk_vt":
+                        strbrowse = @"tk_vt:200:H=Tk vt;ten_tk:200:H=Tên tk";
+                        strTitle = "Danh sách tài khoản vật tư không có trong danh mục tài khoản hoặc là tài khoản tổng hợp";
+                        break;
+                    case "tk_gv":
+                        strbrowse = @"tk_gv:200:H=Tk gv;ten_tk:200:H=Tên tk";
+                        strTitle = "Danh sách tài khoản giá vốn không có trong danh mục tài khoản hoặc là tài khoản tổng hợp";
+                        break;
+                    case "tk_ck":
+                        strbrowse = @"tk_ck:200:H=Tk ck;ten_tk:200:H=Tên tk";
+                        strTitle = "Danh sách tài khoản chiết khấu không có trong danh mục tài khoản hoặc là tài khoản tổng hợp";
+                        break;
+                    case "ma_gd":
+                        strbrowse = @"ma_gd:200:H=Mã giao dịch";
+                        strTitle = "Danh sách mã giao dịch không hợp lệ";
+                        break;
+                    case "ma_dvcs":
+                        strbrowse = @"ma_dvcs:200:H=Mã ĐVCS";
+                        strTitle = "Danh sách mã ĐVCS không có trong danh mục ĐVCS";
+                        break;
+                    case "ngay_ct":
+                        strbrowse = @"ngay_ct:200:H=Ngày chứng từ:D";
+                        strTitle = "Danh sách ngày chứng từ nhỏ hơn ngày mở sổ";
+                        break;
+                    case "tk_thue_co":
+                        strbrowse = @"tk_thue_co:200:H=Tk thuế;ten_tk:200:H=Tên tk";
+                        strTitle = "Danh sách tài khoản thuế không có trong danh mục tài khoản hoặc là tài khoản tổng hợp";
+                        break;
+                    case "tk_km_i":
+                        strbrowse = @"tk_km_i:200:H=Tài khoản cp km;ten_tk:200:H=Tên tài khoản";
+                        strTitle = "Danh sách tài khoản cp km không có trong danh mục tài khoản hoặc là tài khoản tổng hợp";
+                        break;
+                    case "ma_vv_i":
+                        strbrowse = @"ma_vv_i:200:H=Mã dự án";
+                        strTitle = "Danh sách mã dự án không có trong danh mục dự án";
+                        break;
+                    case "so_ct_khac_ngay":
+                        strbrowse = @"so_ct_khac_ngay:200:H=Số c.từ;ma_qs:200:H=Mã quyển c.từ";
+                        strTitle = "Danh sách c.từ có ngày c.từ khác nhau";
+                        break;
+                    case "ma_phi_i":
+                        strbrowse = @"ma_phi_i:200:H=Mã phí";
+                        strTitle = "Danh sách mã phí không có trong danh mục phí";
+                        break;
+                    case "ngay_ct_ks":
+                        strbrowse = @"ngay_ct_ks:200:H=Ngày chứng từ khóa sổ:D";
+                        strTitle = "Danh sách ngày chứng từ nhỏ hơn ngày khóa sổ";
+                        break;
+                    case "ma_px_i":
+                        strbrowse = @"ma_px_i:200:H=Mã phân xưởng";
+                        strTitle = "Danh sách mã phân xưởng không có trong danh mục phân xưởng";
+                        break;
+                    case "ma_bpht_i":
+                        strbrowse = @"ma_bpht_i:200:H=Mã bộ phận hạch toán";
+                        strTitle = "Danh sách mã bộ phận hạch toán không có trong danh mục bộ phận hạch toán";
+                        break;
+                    case "dvt1":
+                        strbrowse = @"ma_vt:200:H=Mã vật tư; dvt1:200:H=Đơn vị tính";
+                        strTitle = "Danh sách đơn vị tính không có trong danh mục đơn vị tính quy đổi";
+                        break;
+                    case "ma_td_i":
+                        strbrowse = @"ma_td_i:200:H=Mã tự do 1";
+                        strTitle = "Danh sách mã tự do 1 không có trong danh mục tự do 1";
+                        break;
+                    case "ma_td2_i":
+                        strbrowse = @"ma_td2_i:200:H=Mã tự do 2";
+                        strTitle = "Danh sách mã tự do 2 không có trong danh mục tự do 2";
+                        break;
+                    case "ma_td3_i":
+                        strbrowse = @"ma_td3_i:200:H=Mã tự do 3";
+                        strTitle = "Danh sách mã tự do 3 không có trong danh mục tự do 3";
+                        break;
+                }
+                if (!string.IsNullOrEmpty(strbrowse))
+                {
+                    IsShowErr = true;
+                    SisLib.ReportLib.BrowTable(myModal, tblErr, strbrowse, " : " + strTitle, Lap["Cancel"]);
+                }
+            }
+        }
+        return IsShowErr;
+    }
+
+}

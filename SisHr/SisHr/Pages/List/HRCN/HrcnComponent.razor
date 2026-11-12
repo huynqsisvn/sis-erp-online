@@ -1,0 +1,180 @@
+@page "/hrcn"
+@page "/hrcn/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,hrcn")]
+
+<div class="row mt-1" @onkeydown="OnoBrowseKeyDown" tabindex="0">
+    <FrmBrowseComponent @ref="oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@fbrowse"
+                        Page_size="@Page_size"
+                        SelectItem="CurItem"
+                        OnRowDbClick="@OnRDBClick"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="40vw"
+              MinWidth="500px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible"
+                                 List_ID="@sqlTableName"
+                                 Ma_ma="@SqlTableKeyValue"
+                                 Title="@Lap["Change major code"]"
+                                 Ten_item="@Ten_item"
+                                 OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible"
+                             CurDmimex="@CurDmimex"
+                             OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        mPage = "hrcn";
+        IsShowCopy = true;
+        IsShowImport = true;
+        Is_doi_ma = true;
+        sqlTableName = "DMCN";
+        sqlTableView = "v_DMCN";
+        SqlTableKey = "ma_cn";
+        SqlItemName = "ten_cn";
+        FrmType = typeof(SisHr.Pages.List.HRCN.EditHrcn);
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wr.dm.28";
+
+        base.OnInitialized();
+    }
+
+    public override async Task PageLoad()
+    {
+        await base.PageLoad();
+        Is_doi_ma = true;
+        SqlItemName = "ten_cn";
+        sqlTableName = "DMCN";
+        sqlTableView = "v_DMCN";
+        SqlTableKey = "ma_cn";
+    }
+
+    public override async void ChangeOK(string newID)
+    {
+        await Loaddata();
+        myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], newID));
+        StateHasChanged();
+    }
+
+    public override async void V_Xoa()
+    {
+        if (SelectedItem == null) return;
+
+        System.Data.DataRowView row = SelectedItem as System.Data.DataRowView;
+        if (row == null) return;
+
+        string maCn = row["ma_cn"]?.ToString()?.Trim() ?? "";
+
+        int checkResult = await CheckDeleteListIdAsync(maCn);
+        if (checkResult <= 0)
+        {
+            myStateMN.SetNewThongbao(Lap["Unremoved data has been generated"]);
+            StateHasChanged();
+            return;
+        }
+
+        base.V_Xoa();
+    }
+
+    private async Task<int> CheckDeleteListIdAsync(string maCn)
+    {
+        int result = 0;
+        try
+        {
+            string sql = $"SET NOCOUNT ON; exec dbo.CheckDeleteListId 'DMCN', '{maCn}'";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                result = Convert.ToInt32(ds.Tables[0].Rows[0][0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("CheckDeleteListIdAsync error: " + ex.Message);
+        }
+        return result;
+    }
+
+    public override async Task Loaddata()
+    {
+        string sql = $"SELECT * FROM {sqlTableView}";
+
+        try
+        {
+            System.Data.DataSet dsList = await myDb.LoadDataset(sql);
+            if (dsList != null && dsList.Tables.Count > 0)
+            {
+                TblData = dsList.Tables[0];
+                if (TblData.DefaultView.Count > 0)
+                    SelectedItem = TblData.DefaultView[0];
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Loaddata error: " + ex.Message);
+        }
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+
+        StateHasChanged();
+    }
+}

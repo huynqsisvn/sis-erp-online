@@ -1,0 +1,257 @@
+@inherits FrmListBaseComponent
+@using SisSo.Pages.List.Arbp
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmbp" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                <DxFormLayoutItem Caption="@Lap["Salesman code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="ma_bp_input" @bind-Text="@CurDmbp.Ma_bp" maxlength="@tblLength["ma_bp"]" Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Salesman name"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmbp.Ten_bp" maxlength="@tblLength["ten_bp"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@(Lap["Name"] + " 2")" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmbp.Ten_bp2" maxlength="@tblLength["ten_bp2"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>                
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmbp CurDmbp { get; set; }
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmbp";
+        SqlTableKey = "ma_bp";
+        CheckSqlTableKey = "ma_bp";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "arbp" : ParentPage;
+        CurDmbp = new Dmbp();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "ws_dm_03";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            ViewDM(Ma_ma);
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            EditDM(Ma_ma);
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        CreateCopyDM(Ma_ma);
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            ViewDM(Ma_ma);
+                        break;
+                    }
+            }
+        }
+    }
+
+    void ViewDM(string SqlTableKeyValue)
+    {
+        CurDmbp = new Dmbp();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    void EditDM(string SqlTableKeyValue)
+    {
+        CurDmbp = new Dmbp();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        CreateCopyDM(CurDmbp.Ma_bp);
+    }
+
+    async Task SaveDM()
+    {
+        if (!CheckValid())
+            return;
+
+        CurDmbp.Ma_bp = CurDmbp.Ma_bp.ToUpper().Trim().Replace(" ", "");
+        SqlTableKeyValue = CurDmbp.Ma_bp;
+        SqlTableKeyValueOld = (curActionTask == ActionTask.New ? "" : Ma_ma);
+
+        if (curActionTask == ActionTask.New)
+        {
+            if (!CheckValidCode())
+                return;
+
+            CurDmbp.Date = DateTime.Now.Date;
+            CurDmbp.Date0 = DateTime.Now.Date;
+            CurDmbp.Time = DateTime.Now.ToString("HH:MM:ss");
+            CurDmbp.Time0 = DateTime.Now.ToString("HH:MM:ss");
+            if (curUser != null)
+            {
+                CurDmbp.User_id = curUser.User_id;
+                CurDmbp.User_id0 = curUser.User_id;
+                CurDmbp.User_name = curUser.User_name;
+                CurDmbp.User_name0 = curUser.User_name;
+            }
+            CheckSqlTableKeyValue = CurDmbp.Ma_bp.Trim();
+            string[] strKey = CheckSqlTableKey.Split(';');
+            string[] strKeyValue = CheckSqlTableKeyValue.Split(';');
+            string condition = "";
+            if (strKey.Length > 0)
+            {
+                for (int x = 0; x < strKey.Length; x++)
+                {
+                    condition += strKey[x] + " = '" + strKeyValue[x] + "' and ";
+                }
+                if (!string.IsNullOrEmpty(condition))
+                    condition = condition.Substring(0, condition.Length - 4);
+            }
+            string check = "Select " + SqlTableKey + " from " + sqlTableName + " where " + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0} ] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmbp>(CurDmbp, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmbp.Date = DateTime.Now.Date;
+            CurDmbp.Time = DateTime.Now.ToString("HH:MM:ss");
+            if (curUser != null)
+            {
+                CurDmbp.User_id = curUser.User_id;
+                CurDmbp.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmbp>(CurDmbp, sqlTableName, SqlTableKey, Ma_ma, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmbp.Ma_bp))
+        {
+            myStateMN.SetNewThongbao(Lap["Empty code"] + " !");
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurDmbp.Ten_bp))
+        {
+            myStateMN.SetNewThongbao(Lap["No name entered"] + " !");
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = "Select * from " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmbp> lsdetai = myDb.ConvertDataTable<Dmbp>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurDmbp = lsdetai[0];
+        }
+    }
+
+    public async void CreateNewDM()
+    {
+        CurDmbp = new Dmbp();
+        CurDmbp.Status = "1";
+        CurDmbp.Ma_bp = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+
+        if (!String.IsNullOrEmpty(Ma_ma))
+        {
+            string sql = "Select Ten_bp,Ten_bp2 from " + sqlTableName + " where " + SqlTableKey + " = '" + Ma_ma + "'";
+            DataSet DsTrans = await myDb.LoadDataset(sql);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                CurDmbp.Ten_bp = DsTrans.Tables[0].Rows[0]["Ten_bp"].ToString();
+                CurDmbp.Ten_bp2 = DsTrans.Tables[0].Rows[0]["Ten_bp2"].ToString();
+            }
+        }
+        StateHasChanged();
+    }
+
+    public async void CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmbp = new Dmbp();
+        await LoadData(SqlTableKeyValue);
+
+        CurDmbp.Status = "1";
+        CurDmbp.Ma_bp = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+}

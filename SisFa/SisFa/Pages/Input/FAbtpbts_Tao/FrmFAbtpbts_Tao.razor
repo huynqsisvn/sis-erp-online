@@ -1,0 +1,160 @@
+﻿@using SisFa.Pages.Input.FAbtpbts_Tao
+@using DevExpress.Blazor
+@using System.Data
+@using System.Dynamic
+
+@* ================================================================
+   POPUP TẠO BÚT TOÁN (F4)
+   ================================================================ *@
+<DxPopup CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         Visible="@ShowDlgTaoBt"
+         VisibleChanged="@ShowDlgTaoBtChanged"
+         Width="520px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="Tạo bút toán chi phí khấu hao">
+    <BodyTemplate>
+        @if (DlgLoading)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Mã quyển sổ (*):">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <AutocompleteComponent Ma_dm="dmqs"
+                                                       Filter="(ma_cts like '%PK5%' and status = 1)"
+                                                       @bind-Value="@DlgTaoBt.Ma_qs"
+                                                       SelectChanged="@OnMaQsChangedInternal"
+                                                       IsLangEn="@IsLangEn"
+                                                       CssClass="flex-grow-1">
+                                </AutocompleteComponent>
+                                <span>@DlgTaoBt.Ten_qs</span>
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Số chứng từ từ (*):">
+                        <DxTextBox @bind-Text="@DlgTaoBt.So_ct"
+                                   MaxLength="@DlgTaoBt.So_ct_length"
+                                   NullText="Nhập số chứng từ..." />
+                    </DxFormLayoutItem>
+                    @if (!string.IsNullOrEmpty(DlgSoCt2))
+                    {
+                        <DxFormLayoutItem ColSpanMd="12" Caption="Số chứng từ đến:">
+                            <DxTextBox Text="@DlgSoCt2" ReadOnly="true" Enabled="false" />
+                        </DxFormLayoutItem>
+                    }
+                    <DxFormLayoutItem ColSpanMd="12" Caption="Diễn giải:">
+                        <DxTextBox @bind-Text="@DlgTaoBt.Dien_giai" NullText="Nhập diễn giải..." />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+                <div class="mt-2">
+                    Sẽ tạo <strong>@PendingTaggedRows.Count</strong> bút toán
+                    cho @FilterKy1/@FilterNam – @FilterKy2/@FilterNam.
+                </div>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!DlgLoading)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success" Text="Xác nhận tạo" Click="@(() => OnDlgTaoBtOK.InvokeAsync())" />
+                <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Danger" Text="Đóng" Click="@(() => OnDlgTaoBtCancel.InvokeAsync())" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@* ================================================================
+   POPUP XÁC NHẬN XÓA (F8)
+   ================================================================ *@
+<DxPopup CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         Visible="@ShowConfirmDelete"
+         VisibleChanged="@ShowConfirmDeleteChanged"
+         Width="460px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="Xác nhận xóa bút toán">
+    <BodyTemplate>
+        <div class="container pt-1">
+            <p>Có chắc chắn xóa <strong>@PendingTaggedRows.Count</strong> bút toán đã đánh dấu không?</p>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="row justify-content-end align-content-end m-2">
+            <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Danger" Text="Có, xóa" Click="@(() => OnConfirmDelete.InvokeAsync())" />
+            <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Secondary" Text="Không" Click="@(() => OnCancelDelete.InvokeAsync())" />
+        </div>
+    </FooterTemplate>
+</DxPopup>
+
+@* ================================================================
+   POPUP GHI ĐÈ
+   ================================================================ *@
+<DxPopup CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         Visible="@ShowConfirmOverwrite"
+         VisibleChanged="@ShowConfirmOverwriteChanged"
+         Width="480px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="Cảnh báo ghi đè dữ liệu">
+    <BodyTemplate>
+        <div class="container pt-1">
+            <p>Các bút toán phân bổ như vậy đã có.</p>
+            <p class="text-danger">Có phân bổ lại không?</p>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="row justify-content-end align-content-end m-2">
+            <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Warning" Text="Có, phân bổ lại" Click="@(() => OnConfirmOverwrite.InvokeAsync())" />
+            <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Secondary" Text="Không, bỏ qua" Click="@(() => OnCancelOverwrite.InvokeAsync())" />
+        </div>
+    </FooterTemplate>
+</DxPopup>
+
+@code {
+// ===== Popup TẠO BÚT TOÁN =====
+    [Parameter] public bool ShowDlgTaoBt { get; set; }
+    [Parameter] public EventCallback<bool> ShowDlgTaoBtChanged { get; set; }
+    [Parameter] public TaoBtModel DlgTaoBt { get; set; } = new();
+    [Parameter] public bool DlgLoading { get; set; }
+    [Parameter] public string DlgSoCt2 { get; set; } = "";
+    [Parameter] public List<DataRowView> PendingTaggedRows { get; set; } = new();
+    [Parameter] public int FilterNam { get; set; }
+    [Parameter] public int FilterKy1 { get; set; }
+    [Parameter] public int FilterKy2 { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+
+    [Parameter] public EventCallback<ExpandoObject> OnDlgMaQsChanged { get; set; }
+    [Parameter] public EventCallback OnDlgTaoBtOK { get; set; }
+    [Parameter] public EventCallback OnDlgTaoBtCancel { get; set; }
+
+    // ===== Popup XÓA =====
+    [Parameter] public bool ShowConfirmDelete { get; set; }
+    [Parameter] public EventCallback<bool> ShowConfirmDeleteChanged { get; set; }
+    [Parameter] public EventCallback OnConfirmDelete { get; set; }
+    [Parameter] public EventCallback OnCancelDelete { get; set; }
+
+    // ===== Popup GHI ĐÈ =====
+    [Parameter] public bool ShowConfirmOverwrite { get; set; }
+    [Parameter] public EventCallback<bool> ShowConfirmOverwriteChanged { get; set; }
+    [Parameter] public EventCallback OnConfirmOverwrite { get; set; }
+    [Parameter] public EventCallback OnCancelOverwrite { get; set; }
+
+    private void OnMaQsChangedInternal(ExpandoObject value)
+    {
+        if (OnDlgMaQsChanged.HasDelegate)
+            OnDlgMaQsChanged.InvokeAsync(value);
+    }
+}

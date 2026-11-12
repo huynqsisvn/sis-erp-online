@@ -1,0 +1,415 @@
+@inherits FrmListBaseComponent
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2">
+            <DxFormLayout Data="@CurCohsqd" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <DxFormLayoutItem Caption="@Lap["Product code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_sp_input" Ma_dm="dmvt" @bind-Value="@CurCohsqd.Ma_sp" AllowNull="false" IsEnable="@AllowEditMa" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>              
+
+                <DxFormLayoutItem Caption="@Lap["Standard product code"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_sp0_input" Ma_dm="dmvt" @bind-Value="@CurCohsqd.Ma_sp0" AllowNull="false" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>               
+                <DxFormLayoutItem Caption="" ColSpanMd="12">
+                    <Template>
+                        <hr />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="" ColSpanMd="12">
+                    <Template>
+                        <div class="text-muted small">@Lap["Enter conversion coefficient for each period"]</div>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutGroup Caption="" ColSpanMd="12" CssClass="my-2">
+                    <DxFormLayoutItem Caption="@Caption01" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so01" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption02" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so02" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption03" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so03" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption04" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so04" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption05" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so05" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption06" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so06" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption07" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so07" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption08" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so08" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption09" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so09" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption10" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so10" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption11" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so11" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    <DxFormLayoutItem Caption="@Caption12" ColSpanMd="4">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@CurCohsqd.He_so12" Enabled="@AllowEditMode" DisplayFormat="n2" />
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayoutGroup>
+
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurCohsqd.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    [Parameter] public int Nam { get; set; }
+    [Parameter] public string Ma_sp { get; set; }
+    [Parameter] public string Ma_sp0 { get; set; }
+    
+    public Cohsqd CurCohsqd;
+    private string menu_id = "wo.gc.02";
+
+    private string Caption01 => $"{Lap["Period"]} 01";
+    private string Caption02 => $"{Lap["Period"]} 02";
+    private string Caption03 => $"{Lap["Period"]} 03";
+    private string Caption04 => $"{Lap["Period"]} 04";
+    private string Caption05 => $"{Lap["Period"]} 05";
+    private string Caption06 => $"{Lap["Period"]} 06";
+    private string Caption07 => $"{Lap["Period"]} 07";
+    private string Caption08 => $"{Lap["Period"]} 08";
+    private string Caption09 => $"{Lap["Period"]} 09";
+    private string Caption10 => $"{Lap["Period"]} 10";
+    private string Caption11 => $"{Lap["Period"]} 11";
+    private string Caption12 => $"{Lap["Period"]} 12";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "[cosxlt-dmhssp]";
+        sqlTableView = "[v_cosxlt-dmhssp]";
+        SqlTableKey = "";
+        CheckSqlTableKey = "";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "cohsqd" : ParentPage;
+        CurCohsqd = new Cohsqd();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_sp) && Nam > 0)
+                            await ViewDM();
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_sp) && Nam > 0)
+                            await EditDM();
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        await CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_sp) && Nam > 0)
+                            await CreateCopyDM();
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_sp) && Nam > 0)
+                            await ViewDM();
+                        break;
+                    }
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_sp_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM()
+    {
+        CurCohsqd = new Cohsqd();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData();
+        StateHasChanged();
+    }
+
+    async Task EditDM()
+    {
+        CurCohsqd = new Cohsqd();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData();
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM();
+    }
+
+    async Task SaveDM()
+    {
+        if (!CheckValid())
+            return;
+
+        CurCohsqd.Ma_sp = CurCohsqd.Ma_sp?.ToUpper().Trim();
+        CurCohsqd.Ma_sp0 = CurCohsqd.Ma_sp0?.ToUpper().Trim();
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurCohsqd.Date0 = DateTime.Now.Date;
+            CurCohsqd.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurCohsqd.User_id0 = curUser.User_id;
+                CurCohsqd.User_name0 = curUser.User_name;
+            }
+
+            string check = $"SELECT ma_sp FROM {sqlTableName} WHERE nam = {CurCohsqd.Nam} AND ma_sp = N'{CurCohsqd.Ma_sp}'";
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], $"{CurCohsqd.Ma_sp} - {CurCohsqd.Nam}"));
+                StateHasChanged();
+                return;
+            }
+            
+            await myDb.InsertOneRow<Cohsqd>(CurCohsqd, sqlTableName);
+            myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], $"{CurCohsqd.Ma_sp}"));
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurCohsqd.Date2 = DateTime.Now.Date;
+            CurCohsqd.Time2 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurCohsqd.User_id2 = curUser.User_id;                
+            }
+
+            string oldMaSp = Ma_sp;
+            string oldMaSp0 = Ma_sp0;
+            int oldNam = Nam;
+
+            if (oldMaSp != CurCohsqd.Ma_sp || oldNam != CurCohsqd.Nam || oldMaSp0 != CurCohsqd.Ma_sp0)
+            {
+                string checkDuplicate = $"SELECT ma_sp FROM {sqlTableName} WHERE nam = {CurCohsqd.Nam} AND ma_sp = N'{CurCohsqd.Ma_sp}' AND ma_sp0 = N'{CurCohsqd.Ma_sp0}'";
+                DataSet ds = await myDb.LoadDataset(checkDuplicate);
+                if (ds != null && ds.Tables[0].Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], $"{CurCohsqd.Ma_sp} - {CurCohsqd.Ma_sp0} - {CurCohsqd.Nam}"));
+                    StateHasChanged();
+                    return;
+                }
+            }           
+            
+            string updateSql = $"UPDATE {sqlTableName} SET " +
+                $"ma_sp = N'{CurCohsqd.Ma_sp}', " +
+                $"nam = {CurCohsqd.Nam}, " +
+                $"ma_sp0 = N'{CurCohsqd.Ma_sp0}', " +
+                $"he_so01 = {(CurCohsqd.He_so01?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so02 = {(CurCohsqd.He_so02?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so03 = {(CurCohsqd.He_so03?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so04 = {(CurCohsqd.He_so04?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so05 = {(CurCohsqd.He_so05?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so06 = {(CurCohsqd.He_so06?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so07 = {(CurCohsqd.He_so07?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so08 = {(CurCohsqd.He_so08?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so09 = {(CurCohsqd.He_so09?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so10 = {(CurCohsqd.He_so10?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so11 = {(CurCohsqd.He_so11?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"he_so12 = {(CurCohsqd.He_so12?.ToString().Replace(",", ".") ?? "0")}, " +
+                $"status = '{CurCohsqd.Status}', " +
+                $"date2 = '{CurCohsqd.Date2?.ToString("yyyyMMdd")}', " +
+                $"time2 = '{CurCohsqd.Time2}', " +
+                $"user_id2 = {CurCohsqd.User_id2} " +                              
+                $"WHERE nam = {oldNam} AND ma_sp = N'{oldMaSp}' AND ma_sp0 = N'{oldMaSp0}'";
+            
+            await myDb.ExecuteSqlQueryAsync(updateSql);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], $"{CurCohsqd.Ma_sp}"));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurCohsqd.Ma_sp))
+        {
+            myStateMN.SetNewThongbao(Lap["Product code is required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurCohsqd.Ma_sp0))
+        {
+            myStateMN.SetNewThongbao(Lap["Standard product code is required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (!CurCohsqd.Nam.HasValue || CurCohsqd.Nam <= 0)
+        {
+            myStateMN.SetNewThongbao(Lap["Year is required"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    public async Task LoadData()
+    {
+        if (string.IsNullOrEmpty(Ma_sp) || Nam <= 0) return;
+
+        string sql = $@"SELECT h.*, 
+                       v1.ten_vt as ten_sp, v1.ten_vt2 as ten_sp2,
+                       v2.ten_vt as ten_sp0, v2.ten_vt2 as ten_sp02
+                       FROM {sqlTableView} h
+                       LEFT JOIN dmvt v1 ON h.ma_sp = v1.ma_vt
+                       LEFT JOIN dmvt v2 ON h.ma_sp0 = v2.ma_vt
+                       WHERE h.ma_sp = '{Ma_sp}' AND h.ma_sp0 = '{Ma_sp0}' AND h.nam = {Nam}";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Cohsqd> lsdetai = myDb.ConvertDataTable<Cohsqd>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurCohsqd = lsdetai[0];
+        }
+    }
+
+    public async Task CreateNewDM()
+    {
+        CurCohsqd = new Cohsqd();
+        CurCohsqd.Status = "1";
+        CurCohsqd.Nam = Nam > 0 ? Nam : DateTime.Now.Year;
+        CurCohsqd.He_so01 = 0;
+        CurCohsqd.He_so02 = 0;
+        CurCohsqd.He_so03 = 0;
+        CurCohsqd.He_so04 = 0;
+        CurCohsqd.He_so05 = 0;
+        CurCohsqd.He_so06 = 0;
+        CurCohsqd.He_so07 = 0;
+        CurCohsqd.He_so08 = 0;
+        CurCohsqd.He_so09 = 0;
+        CurCohsqd.He_so10 = 0;
+        CurCohsqd.He_so11 = 0;
+        CurCohsqd.He_so12 = 0;
+        
+        AllowEditMode = true;
+        AllowEditMa = true;
+
+        if (!String.IsNullOrEmpty(Ma_sp))
+        {
+            CurCohsqd.Ma_sp = Ma_sp;
+            CurCohsqd.Ma_sp0 = Ma_sp0;
+        }
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM()
+    {
+        CurCohsqd = new Cohsqd();
+        await LoadData();
+
+        CurCohsqd.Status = "1";
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }   
+}

@@ -1,0 +1,438 @@
+﻿@inherits FrmListBaseComponent
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveArsd0" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurArsd0" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                <DxFormLayoutItem Caption="@Lap["Unit"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurArsd0.Ma_dvcs" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Account number"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>                        
+                        <AutocompleteComponent Id="tk_input" Ma_dm="dmtk2" @bind-Value="@CurArsd0.Tk" Filter="loai_tk=1" IsEnable="@AllowEditMode" SelectChanged="TkCNo_LostFocus" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Customer"]" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_kh_input" Ma_dm="dmkh" @bind-Value="@CurArsd0.Ma_kh" IsEnable="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Currency"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurArsd0.Ma_nt" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Dr. balance in [M_MA_NT0]"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Enabled="@AllowEditMode" Value="@CurArsd0.Du_no00" Id="Du_no00" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newValue) => Du_no00_ValueChanged(newValue))"></DxSpinEdit>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["[M_MA_NT0] year-opening Dr. balance"]" ColSpanMd="6" >
+                    <Template>
+                        <DxSpinEdit Enabled="@(AllowEditMode && IsNotNgayDN)" @bind-Value="@CurArsd0.Du_no1" Id="Du_no1" DisplayFormat="@M_IP_TIEN"></DxSpinEdit>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Cr. balance in [M_MA_NT0]"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Enabled="@AllowEditMode" Value="@CurArsd0.Du_co00" Id="Du_co00" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newValue) => Du_co00_ValueChanged(newValue))"></DxSpinEdit>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["[M_MA_NT0] year-opening Cr. balance"]" ColSpanMd="6" >
+                    <Template>
+                        <DxSpinEdit Enabled="@(AllowEditMode && IsNotNgayDN)" @bind-Value="@CurArsd0.Du_co1" Id="Du_co1" DisplayFormat="@M_IP_TIEN"></DxSpinEdit>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Dr. balance"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Enabled="@(AllowEditMode && NotMaNt0Voucher)" Value="@CurArsd0.Du_no_nt00" Id="Du_no_nt00" DisplayFormat="@M_IP_TIEN_NT" ValueChanged="@((decimal newValue) => Du_no_nt00_ValueChanged(newValue))"></DxSpinEdit>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Year-opening FC Dr. balance"]" ColSpanMd="6" >
+                    <Template>
+                        <DxSpinEdit Enabled="@(AllowEditMode && NotMaNt0Voucher && IsNotNgayDN)" @bind-Value="@CurArsd0.Du_no_nt1" Id="Du_no_nt1" DisplayFormat="@M_IP_TIEN_NT"></DxSpinEdit>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Cr. balance"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Enabled="@(AllowEditMode && NotMaNt0Voucher)" Value="@CurArsd0.Du_co_nt00" Id="Du_co_nt00" DisplayFormat="@M_IP_TIEN_NT" ValueChanged="@((decimal newValue) => Du_co_nt00_ValueChanged(newValue))"></DxSpinEdit>
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lap["Year-opening FC Cr. balance"]" ColSpanMd="6">
+                    <Template>
+                        <DxSpinEdit Enabled="@(AllowEditMode && NotMaNt0Voucher && IsNotNgayDN)" @bind-Value="@CurArsd0.Du_co_nt1" Id="Du_co_nt1" DisplayFormat="@M_IP_TIEN_NT"></DxSpinEdit>
+                    </Template>
+                </DxFormLayoutItem>                
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    [Inject] public ISysVarManager mySysvar { get; set; }
+    public IEnumerable<string> Tags { get; set; }
+    public Arsd0 CurArsd0;
+    private string menu_id = "wg.sd.02";
+    public bool NotMaNt0Voucher { get; set; } = false;
+    public bool IsNotNgayDN { get; set; } = false;
+    public string M_IP_TIEN = "";
+    public string M_IP_TIEN_NT = "";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "Cdkh";
+        sqlTableView = "v_cdkh";
+        SqlTableKey = "ma_dvcs;ma_kh;tk;nam";
+        CheckSqlTableKey = "ma_kh";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "Arsd0" : ParentPage;
+        DateTime dateTime = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_KY1"));
+        IsNotNgayDN = (SisLib.Ctrl.NgayTC.GetPeriodOfDate(mySysvar,dateTime) != 1);
+        CurArsd0 = new Arsd0();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewArsd0(Ma_ma);                   
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditGlsd0Record(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewGlsd0Record(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewArsd0(Ma_ma);
+                    break;
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao(Lap["Connection to server failed, please try again"]);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["System failed: {ex.Message}"]);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                Lap.UpdateTranslation("Dr. balance in [M_MA_NT0]", Lap["Dr. balance in [M_MA_NT0]"].ToString().Replace("[M_MA_NT0]", myOption.GetOptionsValue("M_MA_NT0")));
+                Lap.UpdateTranslation("Cr. balance in [M_MA_NT0]", Lap["Cr. balance in [M_MA_NT0]"].ToString().Replace("[M_MA_NT0]", myOption.GetOptionsValue("M_MA_NT0")));
+                Lap.UpdateTranslation("[M_MA_NT0] year-opening Dr. balance", Lap["[M_MA_NT0] year-opening Dr. balance"].ToString().Replace("[M_MA_NT0]", myOption.GetOptionsValue("M_MA_NT0")));
+                Lap.UpdateTranslation("[M_MA_NT0] year-opening Cr. balance", Lap["[M_MA_NT0] year-opening Cr. balance"].ToString().Replace("[M_MA_NT0]", myOption.GetOptionsValue("M_MA_NT0")));
+
+                if(String.IsNullOrEmpty(CurArsd0.Tk))
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('tk_input')?.focus()");
+                else
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_kh_input')?.focus()");
+                StateHasChanged();
+            }            
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao(Lap["Connection to server failed, please try again"]);
+            StateHasChanged();
+        }
+    }
+    async Task OnNew()
+    {
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+
+    async Task ViewArsd0(string SqlTableKeyValue)
+    {
+        CurArsd0 = new Arsd0();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task EditGlsd0Record(string SqlTableKeyValue)
+    {
+        CurArsd0 = new Arsd0();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        await LoadData(SqlTableKeyValue);
+    }
+    async Task NewGlsd0Record(string SqlTableKeyValue)
+    {
+        CurArsd0 = new Arsd0();
+        CurArsd0.Ma_dvcs = myStateMN.GetDvcs().Ma_dvcs;
+       
+        if (SqlTableKeyValue.Split(";").Length > 1)
+        {
+            CurArsd0.Nam = int.Parse(SqlTableKeyValue.Split(";")[1]);
+            CurArsd0.Tk = SqlTableKeyValue.Split(";")[0];
+            CurArsd0.Tk = myDb.GetValue($"select top 1 tk from dmtk where tk like '{CurArsd0.Tk.Trim()}%' order by tk")?.ToString();
+            string Mant = CurArsd0.Tk.Trim();
+            Mant = myDb.GetValue($"select ma_nt from dmtk where tk = '{Mant}'")?.ToString().Trim();
+            Mant = String.IsNullOrEmpty(Mant) ? myOption.GetOptionsValue("M_MA_NT0") : Mant;
+            CurArsd0.Ma_nt = Mant;
+            NotMaNt0Voucher = (CurArsd0.Ma_nt.Trim() != myOption.GetOptionsValue("M_MA_NT0").Trim());
+            M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN");
+            M_IP_TIEN_NT = NotMaNt0Voucher ? myOption.GetOptionsValue("M_IP_TIEN_NT") : M_IP_TIEN;
+        }
+        else if (SqlTableKeyValue.Split(";").Length == 1)
+            CurArsd0.Nam = int.Parse(SqlTableKeyValue.Split(";")[0]);
+        else
+            CurArsd0.Nam = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_DN")).Year;
+        
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task SaveArsd0()
+    {
+        try
+        { 
+            if(!CheckValid())
+            {
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('tk_input')?.focus()");
+                return;
+            }
+            if (curActionTask == ActionTask.Edit)
+            {
+                CurArsd0.Date = DateTime.Now.Date;
+                CurArsd0.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurArsd0.User_id = curUser.User_id.ToString();                       
+                }
+                string _where = "";
+                string[] strkey = SqlTableKey.Split(';');
+                string[] strvalue = Ma_ma.Split(';');
+                if (strkey.Length == strvalue.Length)
+                {
+                    for (int x = 0; x < strkey.Length; x++)
+                    {
+                        string str = strkey[x];
+                        _where += str + " = '" + strvalue[x] + "' and ";
+                    }
+                }
+                if (_where.Length > 0)
+                {
+                    _where = _where.Substring(0, _where.Length - 4);
+                    await myDb.UpdateOneRow1<Arsd0>(CurArsd0, sqlTableName, "", _where);
+                    myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurArsd0.Ma_kh));
+                }
+                else
+                {
+                    myStateMN.SetNewThongbao(Lap["Error. can not save"] + " !");
+                }
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                string strsql = $"Select ma_kh from {sqlTableName} where ma_dvcs='{CurArsd0.Ma_dvcs.Trim()}' AND nam={CurArsd0.Nam.ToString().Trim()} AND tk='{CurArsd0.Tk.Trim()}' AND ma_kh='{CurArsd0.Ma_kh.Trim()}'";
+                DataTable dt = myDb.GetTable(strsql);
+                if(dt.Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["This record already exists, can not add new"] + " !");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_kh_input')?.focus()");
+                    return;
+                }
+
+                CurArsd0.Date = DateTime.Now.Date;
+                CurArsd0.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurArsd0.Date0 = DateTime.Now.Date;
+                CurArsd0.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurArsd0.User_id = curUser.User_id.ToString();
+                    CurArsd0.User_id0 = curUser.User_id.ToString();
+                }
+                await myDb.InsertOneRow<Arsd0>(CurArsd0, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurArsd0.Ma_kh));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo(ParentPage);
+            }            
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao(Lap["Connection to server failed, please try again"]);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Save failed: {ex.Message}"]);
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {       
+        if(String.IsNullOrEmpty(CurArsd0.Ma_dvcs))
+        {
+            myStateMN.SetNewThongbao(Lap["Unit is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurArsd0.Tk))
+        {
+            myStateMN.SetNewThongbao(Lap["Account is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurArsd0.Ma_kh))
+        {
+            myStateMN.SetNewThongbao(Lap["Customer is required"] + " !");            
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {            
+            string[] strarr = SqlTableKey.Split(";");
+            string strwhere = string.Join(" AND ", strarr.Select(c => $"{c} = @{c}"));
+            string sql = $"Select * from {sqlTableView} where {strwhere}";
+            DataSet DsTrans = await myDb.LoadDataset(sql, SqlTableKey, SqlTableKeyValue);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<Arsd0> lsdetai = myDb.ConvertDataTable<Arsd0>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurArsd0 = lsdetai[0];					
+                }
+            }
+            string Mant = CurArsd0.Tk.Trim();
+            Mant = myDb.GetValue($"select ma_nt from dmtk where tk = '{Mant}'").ToString().Trim();
+            Mant = String.IsNullOrEmpty(Mant) ? myOption.GetOptionsValue("M_MA_NT0") : Mant;
+            CurArsd0.Ma_nt = Mant;
+            NotMaNt0Voucher = (CurArsd0.Ma_nt.Trim() != myOption.GetOptionsValue("M_MA_NT0").Trim());
+            M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN");
+            M_IP_TIEN_NT = NotMaNt0Voucher ? myOption.GetOptionsValue("M_IP_TIEN_NT") : M_IP_TIEN;
+            // if (!IsNotNgayDN)
+            // {
+            //     CurArsd0.Du_co1 = CurArsd0.Du_no1 = CurArsd0.Du_co_nt1 = CurArsd0.Du_no_nt1 = 0;
+            // }
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao(Lap["Connection to server failed, please try again"]);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Data error"]+ ":" + ex.Message);
+            StateHasChanged();
+        }
+    } 
+    void TkCNo_LostFocus(ExpandoObject value)
+    {
+        string Mant = value.Where(a => a.Key.Equals("tk")).FirstOrDefault().Value?.ToString() ?? "";
+        Mant = myDb.GetValue($"select ma_nt from dmtk where tk = '{Mant}'").ToString().Trim();
+        Mant = String.IsNullOrEmpty(Mant) ? myOption.GetOptionsValue("M_MA_NT0") : Mant;
+        CurArsd0.Ma_nt = Mant;
+        NotMaNt0Voucher = (CurArsd0.Ma_nt.Trim() != myOption.GetOptionsValue("M_MA_NT0").Trim());
+        StateHasChanged();
+    }
+    void Du_no00_ValueChanged(decimal newValue)
+    {
+        CurArsd0.Du_no00 = newValue;
+        if (newValue != 0)
+        {
+            CurArsd0.Du_co00 = 0;
+        }
+        if (newValue != 0 && !IsNotNgayDN)
+        {
+            CurArsd0.Du_no1 = newValue;
+            CurArsd0.Du_co1 = 0;
+        }
+        StateHasChanged();
+    }
+    void Du_co00_ValueChanged(decimal newValue)
+    {
+        CurArsd0.Du_co00 = newValue;
+        if (newValue != 0)
+        {
+            CurArsd0.Du_no00 = 0;
+        }
+        if (newValue != 0 && !IsNotNgayDN)
+        {
+            CurArsd0.Du_co1 = newValue;
+            CurArsd0.Du_no1 = 0;
+        }
+        StateHasChanged();
+    }
+    void Du_no_nt00_ValueChanged(decimal newValue)
+    {
+        CurArsd0.Du_no_nt00 = newValue;
+        if (newValue != 0)
+        {
+            CurArsd0.Du_co_nt00 = 0;
+        }
+        if (newValue != 0 && !IsNotNgayDN)
+        {
+            CurArsd0.Du_no_nt1 = newValue;
+            CurArsd0.Du_co_nt1 = 0;
+        }
+        StateHasChanged();
+    }
+    void Du_co_nt00_ValueChanged(decimal newValue)
+    {
+        CurArsd0.Du_co_nt00 = newValue;
+        if (newValue != 0)
+        {
+            CurArsd0.Du_no_nt00 = 0;
+        }
+        if (newValue != 0 && !IsNotNgayDN)
+        {
+            CurArsd0.Du_co_nt1 = newValue;
+            CurArsd0.Du_no_nt1 = 0;
+        }
+        StateHasChanged();
+    }
+}

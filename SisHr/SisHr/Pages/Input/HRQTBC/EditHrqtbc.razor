@@ -1,0 +1,311 @@
+﻿@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRQTBC
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveHrqtbc" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurHrqtbc" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                <!-- Employee code / Mã nhân viên -->
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" Filter="status = 1" @bind-Value="@CurHrqtbc.Ma_ns" IsEnable="@AllowEditMa" SelectChanged="Ma_ns_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Graduation year / Năm tốt nghiệp -->
+                <DxFormLayoutItem Caption="@Lap["Graduation year"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Id="nam_tot_nghiep_input" Enabled="@AllowEditMode"
+                                    Value="@(int.TryParse(CurHrqtbc.Nam_tot_nghiep, out int y) ? y : DateTime.Now.Year)"
+                                    DisplayFormat="0" MinValue="1900" MaxValue="2500"
+                                    ValueChanged="@((int v) => { CurHrqtbc.Nam_tot_nghiep = v.ToString(); StateHasChanged(); })" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Major / Chuyên ngành -->
+                <DxFormLayoutItem Caption="@Lap["Major code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_cn_input" Ma_dm="dmcn" @bind-Value="@CurHrqtbc.Ma_cn" IsEnable="@AllowEditMode" SelectChanged="Ma_cn_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Country / Quốc gia -->
+                <DxFormLayoutItem Caption="@Lap["Country code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_qg_input" Ma_dm="dmqg" @bind-Value="@CurHrqtbc.Ma_qg" IsEnable="@AllowEditMode" SelectChanged="Ma_qg_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Issued place / Nơi cấp -->
+                <DxFormLayoutItem Caption="@Lap["Issued place"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox Id="noi_cap_input" @bind-Text="@CurHrqtbc.Noi_cap" maxlength="@tblLength["noi_cap"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Certificate level / Trình độ bằng cấp -->
+                <DxFormLayoutItem Caption="@Lap["Certificate level code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_tdbc_input" Ma_dm="dmxlbc" @bind-Value="@CurHrqtbc.Ma_tdbc" IsEnable="@AllowEditMode" SelectChanged="Ma_tdbc_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Education type / Hình thức đào tạo -->
+                <DxFormLayoutItem Caption="@Lap["Education type code"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_htdt_input" Ma_dm="dmhtdt" @bind-Value="@CurHrqtbc.Ma_htdt" IsEnable="@AllowEditMode" SelectChanged="Ma_htdt_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Classification / Xếp loại -->
+                <DxFormLayoutItem Caption="@Lap["Classification"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    Data="@LsXepLoai"
+                                    @bind-Value="@CurHrqtbc.Xep_loai">
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Note / Ghi chú -->
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurHrqtbc.Ghi_chu" maxlength="@tblLength["ghi_chu"]" Rows="3" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Status / Trạng thái -->
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never" Data="LSStatus" TextFieldName="Ten" ValueFieldName="Ma" @bind-Value="@CurHrqtbc.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+
+    public HRQTBC CurHrqtbc;
+    private string menu_id = "wr.ct.08";
+
+    private static readonly List<string> LsXepLoai = new List<string>
+    {
+        "Xuất sắc", "Giỏi", "Khá", "Trung bình khá", "Trung bình", "Phổ thông"
+    };
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmqtbc";
+        sqlTableView = "v_dmqtbc";
+        SqlTableKey = "ma_qtbc";
+        CheckSqlTableKey = "ma_qtbc";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "hrqtbc" : ParentPage;
+        CurHrqtbc = new HRQTBC();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = false;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task ViewRecord(string SqlTableKeyValue)
+    {
+        CurHrqtbc = new HRQTBC();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task EditRecord(string SqlTableKeyValue)
+    {
+        CurHrqtbc = new HRQTBC();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task NewRecord(string SqlTableKeyValue)
+    {
+        CurHrqtbc = new HRQTBC();
+        CurHrqtbc.Ma_qtbc = Guid.NewGuid().ToString();
+        CurHrqtbc.Ma_ns = SqlTableKeyValue;
+        CurHrqtbc.Status = "1";
+        CurHrqtbc.Nam_tot_nghiep = DateTime.Now.Year.ToString();
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task SaveHrqtbc()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            CurHrqtbc.Ma_cn = CurHrqtbc.Ma_cn ?? "";
+            CurHrqtbc.Ma_qg = CurHrqtbc.Ma_qg ?? "";
+            CurHrqtbc.Noi_cap = CurHrqtbc.Noi_cap ?? "";
+            CurHrqtbc.Ma_tdbc = CurHrqtbc.Ma_tdbc ?? "";
+            CurHrqtbc.Ma_htdt = CurHrqtbc.Ma_htdt ?? "";
+            CurHrqtbc.Xep_loai = CurHrqtbc.Xep_loai ?? "";
+            CurHrqtbc.Ghi_chu = CurHrqtbc.Ghi_chu ?? "";
+
+            if (curActionTask == ActionTask.Edit)
+            {
+                CurHrqtbc.Date = DateTime.Now.Date;
+                CurHrqtbc.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrqtbc.User_id = curUser.User_id;
+                    CurHrqtbc.User_name = curUser.User_name;
+                }
+
+                await myDb.UpdateOneRow1<HRQTBC>(CurHrqtbc, sqlTableName, "", "ma_qtbc = '" + Ma_ma + "'");
+                myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurHrqtbc.Ma_ns));
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                CurHrqtbc.Date = DateTime.Now.Date;
+                CurHrqtbc.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurHrqtbc.Date0 = DateTime.Now.Date;
+                CurHrqtbc.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurHrqtbc.User_id = curUser.User_id;
+                    CurHrqtbc.User_id0 = curUser.User_id;
+                    CurHrqtbc.User_name = curUser.User_name;
+                    CurHrqtbc.User_name0 = curUser.User_name;
+                }
+                await myDb.InsertOneRow<HRQTBC>(CurHrqtbc, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurHrqtbc.Ma_ns));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo(ParentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Save failed: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (String.IsNullOrEmpty(CurHrqtbc.Ma_ns))
+        {
+            myStateMN.SetNewThongbao(Lap["Employee code is required"] + " !");
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {
+            string sql = $"Select * from {sqlTableView} where {SqlTableKey} = @{SqlTableKey}";
+            DataSet DsTrans = await myDb.LoadDataset(sql, SqlTableKey, SqlTableKeyValue);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<HRQTBC> lsdetai = myDb.ConvertDataTable<HRQTBC>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurHrqtbc = lsdetai[0];
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Ma_ns_Changed(ExpandoObject value) => StateHasChanged();
+    void Ma_cn_Changed(ExpandoObject value) => StateHasChanged();
+    void Ma_qg_Changed(ExpandoObject value) => StateHasChanged();
+    void Ma_tdbc_Changed(ExpandoObject value) => StateHasChanged();
+    void Ma_htdt_Changed(ExpandoObject value) => StateHasChanged();
+}

@@ -1,0 +1,1020 @@
+﻿@page "/gltcb200"
+@page "/gltcb200/{Menu_id}"
+@using SisGl.Pages.Reports
+@inject IOptionsManager OptionsManager
+@inherits RepoBaseComponent
+@attribute [Authorize(Roles = "admin,gltcb200")]
+<div class="row" onkeydown="_handleFunctionKeys(event);">
+    @if (!IsDetail)
+    {
+        <div class="row">
+            <FrmBrowseComponent @ref="@_FrmBrowse" TblData="@TblData" SelectItem="@SelectItems" RowStyleFunc="@GetRowStyle" CustomSummaryTextFormatter="@FormatSummaryText" Fbrowse="@fbrowse" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+        </div>
+        <DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+                 @bind-Visible="@PopupVisible"
+                 Width="60%"
+                 Height="auto"
+                 ShowFooter="true" Context="windowContext"
+                 HeaderText="@Title">
+            <BodyTemplate>
+                @if (ShowLoadding)
+                {
+                    <div class="row m-0 p-0 justify-content-center">
+                        <div class="spinner-border text-primary" role="status" style="width: 4rem; height:4rem;border-width:3px;">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="p-3">
+                        <DxFormLayout CssClass="w-100">
+
+                            <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Ngày báo cáo"]">
+                                <DxDateEdit @bind-Date="Den_ngay" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Unit"]">
+                                <DxTextBox @bind-Text="MaDVCS" NullText="" />
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Mẫu VND/Ngoại tệ"]">
+                                <DxComboBox Data="@ReportStyles" @bind-Value="@Mau_bc" TextFieldName="Label" ValueFieldName="Value" />
+                            </DxFormLayoutItem>
+                            <DxFormLayoutItem ColSpanMd="12">
+                                <hr />
+                            </DxFormLayoutItem>
+
+                            <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Mẫu báo cáo"]">
+                                <DxComboBox Data="@ReportTemplate" @bind-Value="@Report_index" TextFieldName="Label" ValueFieldName="Value" />
+                            </DxFormLayoutItem>
+
+                        </DxFormLayout>
+
+                        @if (Errors.Any())
+                        {
+                            <div class="mt-2 alert alert-danger p-2">
+                                <ul class="mb-0">
+                                    @foreach (var err in Errors)
+                                    {
+                                        <li>@err</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                }
+            </BodyTemplate>
+
+            <FooterTemplate>
+                @if (!ShowLoadding)
+                {
+                    <div class="row m-0 justify-content-end align-content-end">
+                        <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@ConfirmGridView_OnOk" />
+                        <DxButton CssClass="popup-button-footer" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnCancel" />
+                    </div>
+                }
+            </FooterTemplate>
+        </DxPopup>
+    }
+    else if (IsDetail)
+    {
+        <div class="row">
+            <div class="row mx-1">
+                <h7 style="color:dodgerblue">@TitleDetails</h7>
+                <hr />
+            </div>
+            @if (ShowLoadding)
+            {
+                <div class="row m-0 p-0 justify-content-center">
+                    <div class="spinner-border text-primary" role="status" style="width: 4rem; height:4rem;border-width:3px;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    <FrmBrowseComponent @ref="@_FrmBrowseDetails" TblData="@TblDataDetails" Fbrowse="@fbrowsedetails" CustomSummaryTextFormatter="@FormatSummaryText" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+                </div>
+            }
+        </div>
+    }
+</div>
+@if (ShowPrint)
+{
+    <DxPopup @ref="popPrint" CloseOnOutsideClick="false" CssClass="dxPopup"
+             @bind-Visible="@ShowPrint"
+             Width="80%" Height="90%"
+             ShowFooter="false" Context="windowContext"
+             HeaderText="Printer">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="LsData" Menu_id="@Menu_id.Replace('_', '.')" OnBack="@(() => { ShowPrint = false; })"></ReportOptionComponent>
+        </BodyTemplate>
+    </DxPopup>
+}
+
+<style>
+    .popup-button-footer {
+        width: 100px;
+        margin-right: 20px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+</style>
+
+@code {
+    // UI state
+    bool IsDetail { get; set; } = false;
+    DxPopup popDetails { get; set; }
+
+    // runtime
+    private string fbrowse = "";
+    private string fbrowsedetails = "";
+    private Command curCommand = new Command();
+    private string _store_proc = "";
+    DataSet dsGltcb;
+    private DataTable TblDataDetails { get; set; }
+    private FrmBrowseComponent _FrmBrowse { get; set; }
+    private FrmBrowseComponent _FrmBrowseDetails { get; set; }
+    private DateTime Tu_ngay = DateTime.Now.Date;
+    private DateTime Den_ngay = DateTime.Now.Date;
+    private DateTime Ngay_ct = DateTime.Now.Date;
+    private string Condition = "";
+    private string MaDVCS = "";
+    private string M_CHON_MAU = "";
+    private int Mau_bc = 0;
+    string m_maubc = "GLTCB200";
+    private int Report_index = 0;
+    string M_TT_QD = "";
+    ReportStyle _curReportStyle;
+    private string sTong_ts = "270";
+    private string sTong_nv = "440";
+    string[] sFieldArrays = new string[] { };
+    // Print payload
+    private List<Gltcb200Model> LsData;
+
+    // Localization / toolbar
+    private string Title = "Bảng cân đối kế toán";
+    private string TitleDetails = "";
+
+    private IEnumerable<ReportStyle> ReportStyles = new List<ReportStyle>()
+    {
+        new ReportStyle(){ Label = "VND", Value = 0 },
+        new ReportStyle(){ Label = "Ngoại tệ", Value = 1 }
+    };
+
+    IList<ReportStyle> ReportTemplate = new List<ReportStyle>();
+
+    private List<string> Errors { get; set; } = new();
+
+    object SelectedDataItem { get; set; }
+    void SelectItems(object item) => SelectedDataItem = item;
+
+    // Multi-choose helpers
+    string CheckCol = "checkcol";
+    private string fbrowseTk = "ma:120:h=Mã tk;ten:350:h=Tên tk";
+    private bool EnableCheck = true;
+    int _pagesize = 20;
+    public DotNetObjectReference<Gltcb200Cpn> Pageobj;
+    private string ActiveComponentId = "oBrowse";
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+        if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowse"))
+        {
+            oBrowseHotKeyFunction(value);
+        }
+        else if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowseCT"))
+        {
+            oBrowseCTHotKeyFunction(value);
+        }
+    }
+    void oBrowseHotKeyFunction(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Equals("F2"))
+            {
+
+            }
+            if (value.Equals("F3"))
+            {
+
+            }
+            if (value.Equals("F4"))
+            {
+
+            }
+            if (value.Equals("F5"))
+            {
+                _browser_F5();
+                StateHasChanged();
+            }
+            else if (value.Equals("F7"))
+            {
+                try
+                {
+                    Print();
+                    StateHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            else if (value.Equals("F8"))
+            {
+
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+               
+            }
+        }
+    }
+    void oBrowseCTHotKeyFunction(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Equals("F2"))
+            {
+
+            }
+            if (value.Equals("F3"))
+            {
+
+            }
+            if (value.Equals("F4"))
+            {
+
+            }
+            if (value.Equals("F5"))
+            {
+
+            }
+            else if (value.Equals("F7"))
+            {
+
+            }
+            else if (value.Equals("F8"))
+            {
+
+            }
+            else if (value.ToUpper().Equals("ESCAPE"))
+            {
+                HideDetail();
+                StateHasChanged();
+            }
+        }
+    }
+    private async Task SetActiveComponentIdAsync(string id)
+    {
+        try
+        {
+            ActiveComponentId = id ?? ActiveComponentId;
+            if (Pageobj != null)
+            {
+                await JavacriptS.InvokeVoidAsync("SetPageFModeObj", Pageobj, ActiveComponentId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SetActiveComponentIdAsync error: " + ex.Message);
+        }
+    }
+
+    public async Task ShowDetailToolBar()
+    {
+        myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+        myStateMN.SetToolBar(new MyToolbar("Quit", true));
+        myStateMN.SetToolBar(new MyToolbar("Export", true));
+    }
+    public async Task ShowToolBar()
+    {
+        if (CurUser.Is_admin == 1 || CurUser.CheckRight(Menu_id.Replace("_", "."), "VIEW"))
+        {
+            myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+            myStateMN.SetToolBar(new MyToolbar("Search", true));
+            myStateMN.SetToolBar(new MyToolbar("Print", true));
+            myStateMN.SetToolBar(new MyToolbar("Export", true));
+            myStateMN.AddOrderToolBarButton("button1", "Chi tiết", 1);
+        }
+        else
+        {
+            myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+        }
+    }
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e is null) return;
+        if (string.Equals(e.Key, "F5", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F5", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                _browser_F5();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        if (string.Equals(e.Key, "F5", StringComparison.OrdinalIgnoreCase) && e.CtrlKey)
+        {
+            try
+            {
+                // oBrowse_Ctrl_F5();
+                // StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+    private async Task OnKeyDownCT(KeyboardEventArgs e)
+    {
+        if (e is null) return;
+        if (string.Equals(e.Key, "Escape", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Key, "Esc", StringComparison.OrdinalIgnoreCase))
+        {
+            HideDetail();
+        }
+    }
+
+    void HideDetail()
+    {
+        _ = SetActiveComponentIdAsync("oBrowse");
+        IsDetail = false;
+        ShowToolBar();
+        StateHasChanged();
+    }
+    string GetRowStyle(DataRowView row)
+    {
+        if (row.Row.Table.Columns.Contains("Bold") && row["Bold"].ToString().Trim() == "1")
+        {
+            return "bold-item";
+        }
+        return "";
+    }
+    string FormatSummaryText(GridCustomizeSummaryDisplayTextEventArgs e)
+    {
+        if (e.Item.Name == "ten_tk")
+        {
+            return Lap["Summary"];
+        }
+        else if (e.Item.Name == "dien_giai01")
+        {
+            return Lap["Opening Balance"];
+        }
+        else if (e.Item.Name == "dien_giai02")
+        {
+            return Lap["Occurred during the period"];
+        }
+        else if (e.Item.Name == "dien_giai03")
+        {
+            return Lap["Closing Balance"];
+        }
+        else if (e.Item.Name == "ps_no01")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = CurItem as DataRowView;
+                decimal totalPsNo = totalRow != null && totalRow["no_dk"] != DBNull.Value ? Convert.ToDecimal(totalRow["no_dk"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "ps_no02")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = CurItem as DataRowView;
+                decimal totalPsNo = totalRow != null && totalRow["ps_no"] != DBNull.Value ? Convert.ToDecimal(totalRow["ps_no"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "ps_no03")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = CurItem as DataRowView;
+                decimal totalPsNo = totalRow != null && totalRow["no_ck"] != DBNull.Value ? Convert.ToDecimal(totalRow["no_ck"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "ps_co01")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = CurItem as DataRowView;
+                decimal totalPsNo = totalRow != null && totalRow["co_dk"] != DBNull.Value ? Convert.ToDecimal(totalRow["co_dk"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "ps_co02")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = CurItem as DataRowView;
+                decimal totalPsNo = totalRow != null && totalRow["ps_co"] != DBNull.Value ? Convert.ToDecimal(totalRow["ps_co"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "ps_co03")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = CurItem as DataRowView;
+                decimal totalPsNo = totalRow != null && totalRow["co_ck"] != DBNull.Value ? Convert.ToDecimal(totalRow["co_ck"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "no_dk")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = dsGltcb.Tables[1].Rows[0];
+                decimal totalPsNo = totalRow != null && totalRow["no_dk"] != DBNull.Value ? Convert.ToDecimal(totalRow["no_dk"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "co_dk")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = dsGltcb.Tables[1].Rows[0];
+                decimal totalPsNo = totalRow != null && totalRow["co_dk"] != DBNull.Value ? Convert.ToDecimal(totalRow["co_dk"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "ps_no")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = dsGltcb.Tables[1].Rows[0];
+                decimal totalPsNo = totalRow != null && totalRow["ps_no"] != DBNull.Value ? Convert.ToDecimal(totalRow["ps_no"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "ps_co")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = dsGltcb.Tables[1].Rows[0];
+                decimal totalPsNo = totalRow != null && totalRow["ps_co"] != DBNull.Value ? Convert.ToDecimal(totalRow["ps_co"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "no_ck")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = dsGltcb.Tables[1].Rows[0];
+                decimal totalPsNo = totalRow != null && totalRow["no_ck"] != DBNull.Value ? Convert.ToDecimal(totalRow["no_ck"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        else if (e.Item.Name == "co_ck")
+        {
+            if (dsGltcb.Tables.Count > 1)
+            {
+                var totalRow = dsGltcb.Tables[1].Rows[0];
+                decimal totalPsNo = totalRow != null && totalRow["co_ck"] != DBNull.Value ? Convert.ToDecimal(totalRow["co_ck"]) : 0m;
+                return string.Format(GetOptInt("M_IP_TIEN"), totalPsNo);
+            }
+        }
+        return null;
+    }
+    string GetOpt(string name) => myOption.GetOptionsValue(name) ?? "";
+    string GetOptInt(string name)
+    {
+        string f = GetOpt(name).ToString();
+        if (GetOpt("M_KIEU_SO_AM").ToString().Equals("2"))
+            f = NormalizeOptionNegativeFormat(f);
+        return "{0:" + f + "}";
+    }
+    string NormalizeOptionNegativeFormat(string s)
+    {
+        if (s == null) return s;
+        var parts = s.Split(';');
+        if (parts.Length > 1 && parts[1].StartsWith("-"))
+        {
+            parts[1] = "(" + parts[1].Substring(1).Trim() + ")";
+            return string.Join(";", parts);
+        }
+        return s;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        Menu_id = Menu_id ?? "wg.bc.02";
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            _store_proc = curCommand.Store_proc?.Split('|')[0] ?? "";
+            sFieldArrays = !(IsLangEn == false) ? (Mau_bc != 0 ? curCommand.Ebrowse2.Split("|".ToCharArray()) : curCommand.Ebrowse1.Split("|".ToCharArray())) : (Mau_bc != 0 ? curCommand.Vbrowse2.Split("|".ToCharArray()) : curCommand.Vbrowse1.Split("|".ToCharArray()));
+            fbrowse = sFieldArrays[0];
+            Title = StartupTitle(curCommand) ?? Title;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            CurUser = myStateMN.GetCurUser();
+            MaDVCS = myStateMN.GetMa_Dvcs();
+            Den_ngay = myStateMN.GetEndDate();
+            ShowToolBar();
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+            Pageobj = DotNetObjectReference.Create(this);
+            await SetActiveComponentIdAsync(IsDetail ? "oBrowseCT" : "oBrowse");
+            await LoadTemplate();
+            await Language();
+            _curReportStyle = ReportTemplate[Report_index];
+            Show(_curReportStyle);
+        }
+        else if (needApplyFilter)
+        {
+            needApplyFilter = false;
+            _ = ApplyFilterWhenGridReady();
+        }
+    }
+    bool needApplyFilter = true;
+    async Task ApplyFilterWhenGridReady()
+    {
+        while (_FrmBrowse.Grid.GetColumns() == null ||
+               !_FrmBrowse.Grid.GetColumns().Any(c => c.Name == "in_ck"))
+        {
+            await Task.Delay(10);
+        }
+        _FrmBrowse.Grid.FilterBy("in_ck", GridFilterRowOperatorType.Equal, "1");
+    }
+
+    void OnDvcsChanged(string ma_dvcs)
+    {
+        MaDVCS = ma_dvcs;
+        myStateMN.SetDvcs(ma_dvcs, "");
+        _curReportStyle = ReportTemplate[Report_index];
+        Show(_curReportStyle);
+        StateHasChanged();
+    }
+    private void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Search:
+                PopupVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Print:
+                Print();
+                StateHasChanged();
+                break;
+            case ActionTask.Quit:
+                HideDetail();
+                myStateMN.SetCurrentActionTask(ActionTask.None);
+                ShowPrint = false;
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+            case ActionTask.Button1:
+                _browser_F5();
+                break;
+        }
+    }
+    async void _browser_F5()
+    {
+        if (SelectedDataItem == null)
+        {
+            myStateMN.SetNewThongbao("Chưa chọn dòng cần xem chi tiết");
+            return;
+        }
+        DataRowView rview = (DataRowView)SelectedDataItem;
+        if (string.IsNullOrEmpty(rview["tk"].ToString()))
+        {
+            myStateMN.SetNewAlertMessage("Chưa chọn tài khoản.");
+            return;
+        }
+        ShowLoadding = true;
+        string str1 = rview["tk"].ToString().Trim();
+        DateTime dateTime = (DateTime)dsGltcb.Tables[1].Rows[0][0];
+        if (str1.Length == 0)
+            return;
+
+        TitleDetails = (!IsLangEn ? "Chi tiết: " : "Details: ") + str1;
+        fbrowsedetails = sFieldArrays[1];
+        string CommandText = "SELECT ROW_NUMBER() OVER(ORDER BY ct00.ngay_ct, stt_ct_nkc, ct00.so_ct) as stt, ct00.* , dmct.ma_ct_in AS ma_ct0, dmkh.ten_kh, dmkh.ten_kh2  FROM ct00 INNER JOIN dmct ON ct00.ma_ct = dmct.ma_ct LEFT JOIN dmkh ON ct00.ma_kh = dmkh.ma_kh WHERE ngay_ct BETWEEN '" + dateTime.ToString("yyyyMMdd") + "' AND '" + Ngay_ct.ToString("yyyyMMdd") + "' AND ct00.tk LIKE '" + str1 + "%' AND ct00.ma_dvcs LIKE '" + MaDVCS + "%' ORDER BY ct00.ngay_ct, stt_ct_nkc, ct00.so_ct;";
+        DataSet dataSet1 = myDb.LoadDataSet(CommandText);
+        if (dataSet1 != null && dataSet1.Tables.Count != 0)
+            TblDataDetails = dataSet1.Tables[0].Copy();
+
+        IsDetail = true;
+        ShowLoadding = false;
+        await ShowDetailToolBar();
+        StateHasChanged();
+    }
+    async void ExportData(int type)
+    {
+        _FrmBrowse?.ExPortGrid(type);
+        myStateMN.SetNewThongbao("Export successfully");
+    }
+
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+            await Language();
+    }
+
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang) && UserLang.Equals("En"))
+                IsLangEn = true;
+
+            if (curCommand != null)
+                fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    // WPF -> Blazor: ConfirmGridView_OnOk equivalent
+    private async void ConfirmGridView_OnOk()
+    {
+        if (!CheckValid()) return;
+
+        myStateMN.SetEndDate(Den_ngay);
+        _curReportStyle = ReportTemplate[Report_index];
+        Show(_curReportStyle);
+    }
+    async void Show(ReportStyle _rpstyle)
+    {
+        ShowLoadding = true;
+        Ngay_ct = Den_ngay;
+        Condition = GetCondition();
+
+        M_CHON_MAU = _rpstyle.File_mau;
+        M_TT_QD = _rpstyle.Tt_qd;
+        string _ky_bc = _rpstyle.Nh_bc.ToUpper().StartsWith("GND") ? "2" : "4";
+        string _sql_check = string.Format("select DISTINCT ma_so, kind, cach_tinh, cong_no,khong_am,ts_nv, tk from dmmaubcct where ma_so IS NOT NULL and mau_bc = '{0}' AND ngoai_bang != 2", _rpstyle.File_mau);
+        DataSet _ds = await myDb.LoadDataset(_sql_check);
+        if (_ds != null && _ds.Tables.Count != 0)
+            this.CheckTemplate(_ds.Tables[0]);
+        myDb.ExecuteSqlQueryAsync(string.Format("UPDATE Dmmaubc SET [default] = CASE WHEN file_maubc = '{0}' THEN 1 ELSE 0 END WHERE ma_maubc = '{1}'", _rpstyle.File_mau, _rpstyle.Ma_maubc));
+
+        switch (_ky_bc)
+        {
+            case "1":
+                Ngay_ct1 = this.GetBeginPeriod(1, Ngay_ct);
+                break;
+            case "2":
+                Ngay_ct1 = this.GetBeginPeriod(3, Ngay_ct);
+                break;
+            case "3":
+                Ngay_ct1 = this.GetBeginPeriod(6, Ngay_ct);
+                break;
+            case "4":
+                Ngay_ct1 = this.GetBeginPeriod(12, Ngay_ct);
+                break;
+        }
+        await Loaddata();
+        ShowLoadding = false;
+        PopupVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private bool CheckTemplate(DataTable data)
+    {
+        DataTable dataTable = data;
+        DataTable data1 = dataTable.Copy();
+        string str1 = "";
+        string str2 = "";
+        foreach (DataRow row in (InternalDataCollectionBase)dataTable.Rows)
+        {
+            object obj1 = row["cach_tinh"];
+            object obj2 = row["ma_so"];
+            if (row["kind"].ToString() == "3" && (obj1 is DBNull || obj1.ToString().Trim().Length == 0))
+            {
+                if (!this.IsInFomula(data1.DefaultView.ToTable(true, "cach_tinh"), obj2.ToString()))
+                    str1 = str1 + "," + obj2.ToString().Trim();
+            }
+            else
+            {
+                if (!CheckNorm(data1.DefaultView.ToTable(true, "ma_so"), obj1.ToString(), false))
+                    str2 = str2 + "," + obj2.ToString().Trim();
+            }
+        }
+        if (str1.Length > 0)
+        {
+            myStateMN.SetNewAlertMessage(string.Format("Chỉ tiêu [{0}] chưa khai báo công thức tính!", (object)str1.Substring(1)));
+        }
+        if (str2.Length > 0)
+        {
+            myStateMN.SetNewAlertMessage(string.Format("Khai báo sai chỉ tiêu: [{0}]!", (object)str2.Substring(1)));
+        }
+        return this.Check2SideAcounts(data1) && str1.Length == 0 && str2.Length == 0;
+    }
+    private bool Check2SideAcounts(DataTable data)
+    {
+        var source = data.AsEnumerable().Where<DataRow>((Func<DataRow, bool>)(t =>
+         {
+             Decimal? nullable = t.Field<Decimal?>("khong_am");
+             return (!(nullable.GetValueOrDefault() == new Decimal(1)) ? 0 : (nullable.HasValue ? 1 : 0)) != 0 && t.Field<string>("kind") == "1";
+         })).GroupBy(t =>
+         {
+             var data1 = new
+             {
+                 tk = t.Field<string>("tk").Trim(),
+                 ts_nv = t.Field<Decimal>("ts_nv")
+             };
+             return data1;
+         }).Select(tk =>
+         {
+             var data1 = new
+             {
+                 Tk = tk.Key.tk,
+                 Ts_nv = tk.Key.ts_nv
+             };
+             return data1;
+         });
+        string str = "";
+        foreach (var data1 in source)
+        {
+            string tk = data1.Tk;
+            if (data1.Ts_nv == new Decimal(1))
+            {
+                if (source.Where(t => t.Tk == tk && t.Ts_nv == new Decimal(2)).Select(t => t.Tk).Count<string>() == 0)
+                    str = str + "," + data1.Tk.Trim();
+            }
+            else if (source.Where(t => t.Tk == tk && t.Ts_nv == new Decimal(1)).Select(t => t.Tk).Count<string>() == 0)
+                str = str + "," + data1.Tk.Trim();
+        }
+        if (str.Length > 0)
+        {
+            myStateMN.SetNewAlertMessage(string.Format("Tk ở 2 vế (tk lưỡng tính): [{0}] nhưng chỉ khai báo 1 vế!", (object)str.Substring(1)));
+        }
+        return str.Length == 0;
+    }
+    private bool IsInFomula(DataTable data, string code)
+    {
+        foreach (DataRow row in (InternalDataCollectionBase)data.Rows)
+        {
+            object obj = row["cach_tinh"];
+            if (!(obj is DBNull) && obj.ToString().Trim().Length != 0 && obj.ToString().Contains(code.Trim()))
+                return true;
+        }
+        return false;
+    }
+
+    public bool CheckNorm(DataTable data, string norm, bool notify)
+    {
+        norm = norm.Trim();
+        if (norm.Length == 0)
+            return true;
+        try
+        {
+            data.PrimaryKey = new DataColumn[1]
+            {
+          data.Columns["ma_so"]
+            };
+        }
+        catch (Exception ex)
+        {
+            return true;
+        }
+        foreach (object key in norm.Split("+-*/".ToCharArray()))
+        {
+            if (!data.Rows.Contains(key))
+            {
+                if (notify)
+                {
+                    myStateMN.SetNewAlertMessage("Khai báo công thức sai!");
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public DateTime GetBeginPeriod(int nMonthForward, DateTime Ngay_ct)
+    {
+        DateTime _ngaytc = DateTime.Now;
+        string _sql = "Select [value] from sysvar where [name] like 'M_NGAY_DN'";
+        DataSet _ds = myDb.LoadDataSet(_sql);
+        if (_ds == null || _ds.Tables[0].Rows.Count == 0)
+            _ngaytc = new DateTime(DateTime.Now.Year, 1, 1);
+        if (string.IsNullOrEmpty(_ds.Tables[0].Rows[0]["value"].ToString()))
+            _ngaytc = new DateTime(DateTime.Now.Year, 1, 1);
+        else
+            _ngaytc = DateTime.Parse(_ds.Tables[0].Rows[0]["value"].ToString());
+
+        SisGl.Model.NgayTC.SetStartDate(_ngaytc);
+        DateTime dateTime1 = SisGl.Model.NgayTC.GetStartDate(Ngay_ct);
+        for (DateTime dateTime2 = dateTime1.AddMonths(nMonthForward).AddDays(-1.0); Ngay_ct.CompareTo(dateTime1) < 0 || Ngay_ct.CompareTo(dateTime2) > 0; dateTime2 = dateTime1.AddMonths(nMonthForward).AddDays(-1.0))
+            dateTime1 = dateTime1.AddMonths(nMonthForward);
+        return dateTime1;
+    }
+    public string GetCondition()
+    {
+        string cond = " 1=1 ";
+        if (!string.IsNullOrEmpty(MaDVCS) && !MaDVCS.Equals("ALL"))
+            cond = (string.IsNullOrEmpty(cond) ? "" : cond + " and ") + $"ma_dvcs like '{MaDVCS.Trim()}%'";
+        return cond;
+    }
+
+    public string GetCondition2()
+    {
+        string cond = " 1=1 ";
+        if (!string.IsNullOrEmpty(MaDVCS) && !MaDVCS.Equals("ALL"))
+            cond = (string.IsNullOrEmpty(cond) ? "" : cond + " and ") + $"ma_dvcs like '{MaDVCS.Trim()}%'";
+        return cond;
+    }
+
+    private bool CheckValid()
+    {
+        Errors.Clear();
+        bool flag = true;        
+        if (flag && Den_ngay == default)
+        {
+            Errors.Add("Invalid date!");
+            flag = false;
+        }      
+
+        StateHasChanged();
+        return flag;
+    }
+
+    void BtnCloseDetails()
+    {
+        IsDetail = false;
+        StateHasChanged();
+    }
+    void BtnCancel()
+    {
+        PopupVisible = false;
+        StateHasChanged();
+    }
+
+    async Task Loaddata()
+    {
+        try
+        {
+            sFieldArrays = !(IsLangEn == false) ? (Mau_bc != 0 ? curCommand.Ebrowse2.Split("|".ToCharArray()) : curCommand.Ebrowse1.Split("|".ToCharArray())) : (Mau_bc != 0 ? curCommand.Vbrowse2.Split("|".ToCharArray()) : curCommand.Vbrowse1.Split("|".ToCharArray()));
+            fbrowse = sFieldArrays[0];
+            string parram_name = "Ngay_ct1;Ngay_ct2;Mau;Ma_dvcs;Advance";
+            string _Ma_dvcs = (MaDVCS == "ALL" ? "%" : MaDVCS);
+            string parram_value = $"{(Tu_ngay != null ? Tu_ngay.ToString("yyyyMMdd") : "")};{(Den_ngay != null ? Den_ngay.ToString("yyyyMMdd") : "")};{M_CHON_MAU};{_Ma_dvcs};{Condition}";
+            dsGltcb = await myDb.LoadStoreProcedure(_store_proc, parram_name, parram_value);
+            if (dsGltcb != null && dsGltcb.Tables.Count != 0)
+            {
+                TblData = dsGltcb.Tables[0].Copy();
+                string[] strArray1 = M_TT_QD.Split(':');
+                if (strArray1.Length > 1)
+                {
+                    string[] strArray2 = strArray1[1].Split('/');
+                    if (strArray2.Length > 1)
+                    {
+                        this.sTong_ts = strArray2[0].Trim();
+                        this.sTong_nv = strArray2[1].Trim();
+                    }
+                }
+                DataRow[] dataRowArray1 = TblData.Select("ma_so LIKE '" + this.sTong_ts + "%'");
+                DataRow[] dataRowArray2 = TblData.Select("ma_so LIKE '" + this.sTong_nv + "%'");
+                if (((IEnumerable<DataRow>)dataRowArray1).Any<DataRow>() && ((IEnumerable<DataRow>)dataRowArray2).Any<DataRow>())
+                {
+                    Decimal num1 = (Decimal)dataRowArray1[0]["tien"];
+                    Decimal num2 = (Decimal)dataRowArray2[0]["tien"];
+                    Decimal num3 = (Decimal)dataRowArray1[0]["tien0"];
+                    Decimal num4 = (Decimal)dataRowArray2[0]["tien0"];
+                    if (num1 != num2 || num3 != num4)
+                    {
+                        myStateMN.SetNewAlertMessage("Tổng tài sản không bằng tổng nguồn vốn!");
+                    }
+                }
+                TblData.DefaultView.Sort = "stt, ma_so";
+            }
+            else
+            {
+                TblData = new DataTable();
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    // Print - prepare payload and show print popup (port of oBrowse_F7 behaviour)
+    void Print()
+    {
+        LsData = new List<Gltcb200Model>();
+        Gltcb200Model model = new Gltcb200Model();
+        DataTable _tblFilter = _FrmBrowse.GetFilterTable();
+        if (_tblFilter != null)
+        {
+            _tblFilter.DefaultView.Sort = "stt, ma_so";
+            DataTable TblPrint = _tblFilter.Select("in_ck = 1").CopyToDataTable();
+            List<Gltcb200> listObj = myDb.ConvertDataTable<Gltcb200>(TblPrint);
+            model.LsData = listObj;
+        }
+        else
+        {
+            DataTable TblPrint = TblData.Select("in_ck = 1").CopyToDataTable();
+            TblPrint.DefaultView.Sort = "stt, ma_so";
+            List<Gltcb200> listObj = myDb.ConvertDataTable<Gltcb200>(TblPrint);
+            model.LsData = listObj;
+        }
+        model.Tu_ngay = Tu_ngay;
+        model.Den_ngay = Den_ngay;
+        model.MaDVCS = MaDVCS;
+        model.Mau_bc = Mau_bc;
+        model.Dvt = M_ma_nt0;
+        if (model.Den_ngay.Month >= 1 && model.Den_ngay.Month <= 3)
+            model.Tu_ngay_Den_ngay = "QUÝ 1 NĂM " + model.Den_ngay.Year.ToString("0000");
+        if (model.Den_ngay.Month >= 4 && model.Den_ngay.Month <= 6)
+            model.Tu_ngay_Den_ngay = "QUÝ 2 NĂM " + model.Den_ngay.Year.ToString("0000");
+        if (model.Den_ngay.Month >= 7 && model.Den_ngay.Month <= 9)
+            model.Tu_ngay_Den_ngay = "QUÝ 3 NĂM " + model.Den_ngay.Year.ToString("0000");
+        if (model.Den_ngay.Month >= 10 && model.Den_ngay.Month <= 12)
+            model.Tu_ngay_Den_ngay = "QUÝ 4 NĂM " + model.Den_ngay.Year.ToString("0000");
+
+        LsData.Add(model);
+        ShowPrint = true;
+    }
+    async Task LoadTemplate()
+    {
+        try
+        {
+            DataSet ds = await GetMauBC(m_maubc);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                int index = 0;
+                foreach (DataRow row in ds.Tables[0].Rows)
+                {
+                    ReportTemplate.Add(new ReportStyle() { Label = row["ten_maubc"].ToString(), Value = index, File_mau = row["file_maubc"].ToString().Trim(), Ma_maubc = row["ma_maubc"].ToString(), Nh_bc = row["nh_bc"].ToString().Trim(), Tt_qd = row["tt_qd"].ToString() });
+                    index++;
+                }
+            }
+            else
+            {
+                ReportTemplate.Add(new ReportStyle() { Label = "", Value = 0 });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private string StartupTitle(Command cmd)
+    {
+        if (cmd == null) return Title;
+        return IsLangEn ? (cmd.Bar2 ?? cmd.Bar) : (cmd.Bar ?? cmd.Bar2);
+    }
+
+    async Task<DataSet> GetMauBC(string ma_maubc)
+    {
+        string[] strArray = OptionsManager.GetOptionsValue("M_MAU_TT_QD").ToString().Split(';');
+        string str = "1=1";
+        if (strArray.Length > 1)
+            str = !(strArray[1].Trim() == "2") ? string.Format("(nh_dh={0} OR isnull(nh_dh,'')='') AND (mau_ttqd like '{1}' OR isnull(mau_ttqd,'')='')", (object)strArray[1].Trim(), (object)strArray[0].Trim()) : string.Format("(nh_dh={0} OR isnull(nh_dh,'')='') AND (mau_ttqd like '{1}' OR isnull(mau_ttqd,'')='')", (object)strArray[1].Trim(), (object)strArray[0].Trim());
+        string cmdText = string.Format("SELECT file_maubc, ten_maubc, ten_maubc2, tt_qd, nh_bc, ma_maubc, [default] FROM {0} WHERE ma_maubc = '{1}' AND {2} ORDER BY [order]", (object)"dmmaubc", (object)ma_maubc, (object)str);
+        DataSet ds = await myDb.LoadDataset(cmdText);
+        return ds;
+    }
+
+    class ReportStyle
+    {
+        public string Label { get; set; }
+        public int Value { get; set; }
+        public string File_mau { get; set; }
+        public string Ma_maubc { get; set; }
+        public string Nh_bc { get; set; }
+        public string Tt_qd { get; set; }
+    }
+}

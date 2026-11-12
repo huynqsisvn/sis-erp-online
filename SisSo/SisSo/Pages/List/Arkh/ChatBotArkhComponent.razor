@@ -1,0 +1,2758 @@
+﻿@using System.Text
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using System.Text.RegularExpressions
+@using System.Net
+@using System.IO
+@using Newtonsoft.Json
+
+@inject IJSRuntime JavacriptS
+@inject IDbManager myDb
+<DxLayoutBreakpoint MaxWidth="1200" @bind-IsActive="@IsMobile" />
+<div id="@(IsMobile ? "ChatContainner" : "ChatContainner1")" class="@_containerClass">
+    <div id="chat-header">
+        <div class="chat-header-top">
+            <div class="d-flex align-items-center gap-1" style="flex: 0 0 auto;">
+                <img id="gemini_logo" src=".\Images\sbot_icon.jpg" alt="AI">
+            </div>
+            <div class="flex-grow-1 px-2">
+                <h4 class="text-white mb-0">Trợ lý AI</h4>
+            </div>
+            <div class="d-flex align-items-center gap-1" style="flex: 0 0 auto;">
+                <button class="btn-icon" @onclick="@MinisizeChatBox" title="Thu nhỏ">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8z" />
+                    </svg>
+                </button>
+                <button class="btn-icon" @onclick="@CloseChatBox" title="Đóng">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="box-input">
+            <input class="chatinput" type="text" placeholder="VD: Mã KH001, Công ty ABC..." @bind="@_input" @bind:event="oninput" @onkeyup="@EnterAI" />
+            <button class="btnsend" @onclick="@SendChat" title="Gửi"></button>
+        </div>
+    </div>
+    @if (ShowLoadding)
+    {
+        <div class="row justify-content-center">
+            <div class="spinner-grow text-success" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="spinner-grow text-warning mx-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="spinner-grow text-danger" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    <div id="chatbox-container">
+        @if (LSmessage.Count > 0)
+        {
+            @foreach (ChatContent value in LSmessage)
+            {
+                @if (value.Role.Equals("user") && !string.IsNullOrEmpty(value.Text))
+                {
+                    <div class="justify-content-sm-end rounded-3 p-2 m-2 text-end bg-light">
+                        <div class="justify-content-sm-end text-end fw-bold">
+                            @value.Name
+                        </div>
+                        <div class="justify-content-sm-end text-end chat-time">
+                            @value.Time.ToLocalTime()
+                        </div>
+                        <div class="justify-content-sm-end text-end">
+                            @value.Text
+                        </div>
+                    </div>
+                }
+                else if (value.Role.Equals("assistant") && !string.IsNullOrEmpty(value.Text))
+                {
+                    <div class="justify-content-sm-start my-2 m-2 p-2 rounded-3 text-start bg-info">
+                        <div class="justify-content-sm-start fw-bold">
+                            @value.Name
+                        </div>
+                        <div class="justify-content-sm-start chat-time">
+                            @value.Time.ToLocalTime()
+                        </div>
+                        <div class="justify-content-sm-start">
+                            @((MarkupString)FormatMarkdown(value.Text))
+                        </div>
+                        @if (value.CustomerData != null)
+                        {
+                            <div class="mt-2 p-2 bg-white rounded">
+                                <strong>📋 Thông tin khách hàng:</strong>
+                                <div class="customer-info-list">
+                                    @if (!string.IsNullOrEmpty(value.CustomerData.Ma_kh))
+                                    {
+                                        <div class="info-row">
+                                            <span class="field-label">Mã KH:</span>
+                                            <span class="field-value">@value.CustomerData.Ma_kh</span>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(value.CustomerData.Ten_kh))
+                                    {
+                                        <div class="info-row">
+                                            <span class="field-label">Tên KH:</span>
+                                            <span class="field-value">@value.CustomerData.Ten_kh</span>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(value.CustomerData.Ma_so_thue))
+                                    {
+                                        <div class="info-row">
+                                            <span class="field-label">MST:</span>
+                                            <span class="field-value">@value.CustomerData.Ma_so_thue</span>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(value.CustomerData.Dia_chi))
+                                    {
+                                        <div class="info-row">
+                                            <span class="field-label">Địa chỉ:</span>
+                                            <span class="field-value">@value.CustomerData.Dia_chi</span>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(value.CustomerData.Dien_thoai))
+                                    {
+                                        <div class="info-row">
+                                            <span class="field-label">Điện thoại:</span>
+                                            <span class="field-value">@value.CustomerData.Dien_thoai</span>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(value.CustomerData.Doi_tac))
+                                    {
+                                        <div class="info-row">
+                                            <span class="field-label">Đại diện:</span>
+                                            <span class="field-value">@value.CustomerData.Doi_tac</span>
+                                        </div>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(value.MissingFields))
+                                {
+                                    <div class="missing-fields">
+                                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-right:5px">
+                                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                                            <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
+                                        </svg>
+                                        <span>@value.MissingFields</span>
+                                    </div>
+                                }
+                                <div class="action-buttons">
+                                    @if (value.CustomerData.Status == "DELETE_READY")
+                                    {
+                                        <button class="btn-action btn-delete" @onclick="@(() => ExecuteDeleteCustomer(value.CustomerData))" title="Xóa khách hàng">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                                            </svg>
+                                            <span>Xóa</span>
+                                        </button>
+                                    }
+                                    else if (value.CustomerData.Status == "DELETE_CONFIRM")
+                                    {
+                                        <button class="btn-action btn-delete" @onclick="@(() => CheckAndConfirmDelete(value.CustomerData.Ma_kh, value.CustomerData.Ten_kh, value.CustomerData.Ma_so_thue))" title="Xác nhận xóa">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                                            </svg>
+                                            <span>Xác nhận</span>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn-action btn-confirm" @onclick="@(() => ConfirmCreateCustomer(value.CustomerData))" disabled="@(!string.IsNullOrEmpty(value.MissingFields))" title="@(_isEditingExistingCustomer && _editingCustomer == value.CustomerData ? "Cập nhật" : "Xác nhận tạo")">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z" />
+                                            </svg>
+                                            <span>@(_isEditingExistingCustomer && _editingCustomer == value.CustomerData ? "Cập nhật" : "Tạo")</span>
+                                        </button>
+                                        <button class="btn-action btn-edit" @onclick="@(() => EditCustomerBeforeCreate(value.CustomerData))" title="Chỉnh sửa thông tin">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z" />
+                                            </svg>
+                                            <span>Sửa</span>
+                                        </button>
+                                        @if (_editingCustomer != null && _editingCustomer == value.CustomerData)
+                                        {
+                                            <button class="btn-action btn-done" @onclick="@(() => CancelEdit())" title="Hoàn tất chỉnh sửa">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                                                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
+                                                </svg>
+                                                <span>Xong</span>
+                                            </button>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        }
+        <div id="chat-bottom">  </div>
+    </div>
+</div>
+@if (IsMinisizeChatBox)
+{
+    <div id="ggemini">
+        <img id="btngemini" src=".\Images\sbot_icon_hide.jpg" @onclick="MaxnimizeChatBox">
+    </div>
+}
+
+<style>
+    /* Floating button khi thu nhỏ */
+    #ggemini {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        margin: 0;
+        padding: 0;
+        z-index: 999999;
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    #btngemini {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 3px solid white;
+    }
+
+        #btngemini:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.5);
+        }
+
+    /* Nút gửi tin nhắn - Minimal */
+    .btnsend {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-image: url('.\\Images\\send_icon.png');
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 14px 14px;
+        border: none;
+        border-radius: 5px;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+    }
+
+        .btnsend:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btnsend:active {
+            transform: translateY(0);
+        }
+
+    /* Container chính - Desktop */
+    #ChatContainner {
+        width: 420px;
+        max-width: 90vw;
+        height: 650px;
+        max-height: 90vh;
+        z-index: 99999;
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Container chính - Mobile */
+    #ChatContainner1 {
+        width: 100vw;
+        height: 100vh;
+        z-index: 99999;
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        border-radius: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+        #ChatContainner h4,
+        #ChatContainner1 h4 {
+            align-content: center;
+            text-align: start;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 0;
+            padding: 0;
+            line-height: 1;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+    /* Header - Minimal */
+    .chat-header-top {
+        display: flex;
+        align-items: center;
+        padding: 3px 8px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        min-height: 28px;
+        height: 28px;
+    }
+
+    .btn-icon {
+        background: transparent;
+        border: none;
+        color: white;
+        padding: 2px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+    }
+
+        .btn-icon svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+    .field-label {
+        font-weight: 600;
+        color: #667eea;
+        min-width: 85px;
+        display: inline-block;
+    }
+
+    .missing-fields {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin: 10px 0;
+        font-size: 0.85rem;
+        color: #856404;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Animation ẩn/hiện */
+    .ChatContainner-hide {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        pointer-events: none;
+        transition: all 0.3s ease;
+    }
+
+    .ChatContainner-show {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        transition: all 0.3s ease;
+    }
+
+    /* Header container */
+    #chat-header {
+        width: 100%;
+        background: transparent;
+    }
+
+    /* Chat messages container - Maximum space */
+    #chatbox-container {
+        height: calc(100% - 80px);
+        background: #f8f9fa;
+        overflow-y: auto;
+        padding: 10px 8px;
+        scroll-behavior: smooth;
+    }
+
+        #chatbox-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #chatbox-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        #chatbox-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+
+            #chatbox-container::-webkit-scrollbar-thumb:hover {
+                background: #764ba2;
+            }
+
+    /* User message */
+    .justify-content-sm-end.bg-light {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border-radius: 18px 18px 4px 18px !important;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        padding: 12px 16px !important;
+        margin: 8px 0 !important;
+        max-width: 80%;
+        margin-left: auto !important;
+        animation: slideInRight 0.3s ease;
+    }
+
+    /* AI message */
+    .justify-content-sm-start.bg-info {
+        background: white !important;
+        color: #333 !important;
+        border-radius: 18px 18px 18px 4px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 12px 16px !important;
+        margin: 8px 0 !important;
+        max-width: 85%;
+        border-left: 4px solid #667eea;
+        animation: slideInLeft 0.3s ease;
+    }
+
+    @@keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @@keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* Customer info box */
+    .mt-2.p-2.bg-white.rounded {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+        border: 2px solid #667eea !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+        margin-top: 15px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+        .mt-2.p-2.bg-white.rounded strong {
+            color: #667eea;
+            font-size: 1rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+    .customer-info-list {
+        margin: 10px 0;
+    }
+
+    .info-row {
+        display: flex;
+        padding: 8px 0;
+        color: #495057;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #e9ecef;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+    .field-value {
+        flex: 1;
+        word-break: break-word;
+        color: #212529;
+        font-weight: 500;
+    }
+
+    /* Buttons */
+    .btn-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3) !important;
+    }
+
+        .btn-success:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(40, 167, 69, 0.4) !important;
+        }
+
+    .btn-warning {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%) !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3) !important;
+    }
+
+        .btn-warning:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(255, 193, 7, 0.4) !important;
+        }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3) !important;
+    }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(108, 117, 125, 0.4) !important;
+        }
+
+    /* Compact Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+        flex-wrap: nowrap;
+    }
+
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 6px 10px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        flex: 1;
+        min-width: 0;
+    }
+
+        .btn-action svg {
+            flex-shrink: 0;
+            width: 14px;
+            height: 14px;
+        }
+
+        .btn-action span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+    .btn-confirm {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+    }
+
+        .btn-confirm:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(40, 167, 69, 0.4);
+        }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: white;
+        box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+    }
+
+        .btn-edit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(255, 193, 7, 0.4);
+        }
+
+    .btn-done {
+        background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        color: white;
+        box-shadow: 0 2px 4px rgba(108, 117, 125, 0.3);
+    }
+
+        .btn-done:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(108, 117, 125, 0.4);
+        }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+    }
+
+        .btn-delete:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(220, 53, 69, 0.4);
+        }
+
+    .btn-action:active {
+        transform: translateY(0);
+    }
+
+    #chat-bottom {
+        width: 100%;
+        height: 20px;
+        background-color: transparent;
+    }
+
+    /* Input box - Minimal */
+    .box-input {
+        height: auto;
+        padding: 6px 8px;
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .chatinput {
+        padding: 6px 10px;
+        height: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 6px;
+        font-size: 0.8rem;
+        flex: 1;
+        transition: all 0.3s ease;
+        outline: none;
+    }
+
+        .chatinput:focus {
+            border-color: white;
+            background: white;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+        }
+
+        .chatinput::placeholder {
+            color: #999;
+            font-size: 0.75rem;
+        }
+
+    /* Logo - Minimal */
+    #gemini_logo {
+        height: 20px;
+        width: 20px;
+        border-radius: 50%;
+        vertical-align: middle;
+        border: 1px solid white;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        object-fit: cover;
+    }
+
+    /* Chat time */
+    .chat-time {
+        font-size: 0.75rem;
+        font-style: italic;
+        color: rgba(255, 255, 255, 0.7);
+        margin-top: 4px;
+    }
+
+    .bg-info .chat-time {
+        color: #999;
+    }
+
+    /* Loading spinner */
+    .spinner-grow {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        #ChatContainner {
+            width: calc(100vw - 20px);
+            height: calc(100vh - 80px);
+            bottom: 10px;
+            right: 10px;
+            border-radius: 15px;
+        }
+
+        .justify-content-sm-end.bg-light,
+        .justify-content-sm-start.bg-info {
+            max-width: 90%;
+        }
+    }
+</style>
+
+@code
+{
+    [Parameter]
+    public EventCallback<bool> CloseWindow { get; set; }
+
+    [Parameter]
+    public EventCallback<Dmkh> OnCustomerCreated { get; set; }
+
+    [Parameter]
+    public EventCallback<Dmkh> OnCustomerUpdated { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnCustomerDeleted { get; set; }
+
+    string _input { get; set; } = "";
+    bool IsMinisizeChatBox = false;
+    string _containerClass = "ChatContainner-show";
+    List<ChatContent> LSmessage = new List<ChatContent>();
+    private Dmkh _editingCustomer = null;
+    private bool _isEditingExistingCustomer = false;
+    private string _originalMaKh = "";
+    private Dmkh _lastDeletedCustomer = null; // Lưu khách hàng vừa xóa để có thể khôi phục
+    private List<GptMessage> chatHistory = new List<GptMessage>
+    {
+        new GptMessage {
+            role = "system",
+            content = ChatBotConfig.SystemPrompt
+        }
+    };
+
+    string apiKey = ChatBotConfig.OpenAI_ApiKey;
+    bool ShowLoadding = false;
+    bool _IsMobile = true;
+    bool IsMobile
+    {
+        get => _IsMobile;
+        set
+        {
+            _IsMobile = !value;
+        }
+    }
+
+    private DotNetObjectReference<ChatBotArkhComponent> Pageobj;
+
+    async void SendChat()
+    {
+        await ChatFunc();
+        StateHasChanged();
+    }
+
+    public async Task EnterAI(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            await ChatFunc();
+        }
+    }
+
+    void MaxnimizeChatBox()
+    {
+        IsMinisizeChatBox = false;
+        _containerClass = "ChatContainner-show";
+    }
+
+    void CloseChatBox()
+    {
+        CloseWindow.InvokeAsync(true);
+    }
+
+    void MinisizeChatBox()
+    {
+        IsMinisizeChatBox = true;
+        _containerClass = "ChatContainner-hide";
+    }
+
+    async Task ChatFunc()
+    {
+        if (string.IsNullOrEmpty(_input))
+        {
+            return;
+        }
+
+        ShowLoadding = true;
+        StateHasChanged();
+        await Task.Delay(100);
+
+        ChatContent userMsg = new ChatContent();
+        userMsg.Name = "Bạn";
+        userMsg.Time = DateTime.Now;
+        userMsg.Text = _input.Trim();
+        userMsg.Role = "user";
+        LSmessage.Add(userMsg);
+
+        string inputLower = _input.ToLower().Trim();
+        
+        // ========== STEP 1: Auto-correct typos bằng ChatGPT ==========
+        string correctedInput = await NormalizeInputWithChatGPT(_input);
+        inputLower = correctedInput.ToLower();
+        
+        // Update input for further processing
+        _input = correctedInput;
+        
+        // ========== STEP 2: Check các pattern nhận dạng ==========
+        
+        // Check từ khóa "khách"
+        bool isCustomerCommand = inputLower.Contains("khách") || inputLower.Contains("khach") || 
+                                 inputLower.Contains("customer");
+        
+        // Check từ khóa đặc biệt: MST, tên + công ty
+        bool hasSpecialKeyword = 
+            inputLower.Contains("mst") ||
+            (inputLower.Contains("tên") && (inputLower.Contains("công ty") || inputLower.Contains("cong ty")));
+        
+        // Check pattern "khách" + số (sau khi auto-correct)
+        bool hasDirectNumberPattern = 
+            System.Text.RegularExpressions.Regex.IsMatch(inputLower, @"(khách|khach)\s+\d+", RegexOptions.IgnoreCase);
+        
+        // ========== STEP 3: Check action commands ==========
+        bool hasActionCommand = 
+            inputLower.StartsWith("tìm") || inputLower.StartsWith("tim") || 
+            inputLower.StartsWith("sửa") || inputLower.StartsWith("sua") || 
+            inputLower.StartsWith("xóa") || inputLower.StartsWith("xoa") || 
+            inputLower.StartsWith("delete") || inputLower.StartsWith("edit");
+        
+        // Check CREATE command
+        bool isCreateCommand = 
+            inputLower.StartsWith("tạo") || inputLower.StartsWith("tao") || 
+            inputLower.StartsWith("create") || inputLower.StartsWith("thêm") || 
+            inputLower.StartsWith("them") || inputLower.StartsWith("add");
+        
+        // Check RESTORE command (Tạo lại khách hàng vừa xóa)
+        bool isRestoreCommand = 
+            (inputLower.Contains("tạo lại") || inputLower.Contains("tao lai") || 
+             inputLower.Contains("khôi phục") || inputLower.Contains("khoi phuc") ||
+             inputLower.Contains("restore") || inputLower.Contains("undo")) &&
+            (inputLower.Contains("khách") || inputLower.Contains("khach") || 
+             inputLower.Contains("vừa xóa") || inputLower.Contains("vua xoa") ||
+             inputLower.Contains("đã xóa") || inputLower.Contains("da xoa"));
+        
+        // ========== STEP 4: Validation ==========
+        // Nếu có action (TÌM/SỬA/XÓA) NHƯNG KHÔNG có từ khóa → Reject
+        if (hasActionCommand && !isCustomerCommand && !hasSpecialKeyword && !hasDirectNumberPattern)
+        {
+            AddMessage("⚠️ **Thiếu từ khóa phân loại!**\n\nĐể thao tác với **khách hàng**, vui lòng thêm:\n\n✅ **Cách gõ đúng:**\n• 'Tìm khách ABC'\n• 'Xóa khách 009'\n• 'Sửa khách KH001'\n• 'Tìm kh 009' (tự động sửa)\n• 'Xóa MST 0123456789'\n\n❌ Cách gõ sai:\n• 'Tìm ABC' → Thiếu 'khách'\n• 'Xóa 009' → Thiếu 'khách'\n\n💡 Lý do: Hệ thống có nhiều danh mục khác nhau.");
+            _input = "";
+            ShowLoadding = false;
+            StateHasChanged();
+            return;
+        }
+        
+        // ========== STEP 4.1: Xử lý lệnh KHÔI PHỤC KHÁCH HÀNG VỪA XÓA ==========
+        if (isRestoreCommand)
+        {
+            await ProcessRestoreCustomer();
+            _input = "";
+            ShowLoadding = false;
+            StateHasChanged();
+            return;
+        }
+        
+        // ========== STEP 4.2: Xử lý lệnh TẠO KHÁCH HÀNG ==========
+        if (isCreateCommand)
+        {
+            await ProcessCreateCustomer(_input.Trim());
+            _input = "";
+            ShowLoadding = false;
+            StateHasChanged();
+            return;
+        }
+        
+        // ========== STEP 5: Process commands ==========
+        bool acceptCommand = isCustomerCommand || hasSpecialKeyword || hasDirectNumberPattern;
+        
+        // Xóa khách hàng
+        if (acceptCommand && (inputLower.StartsWith("xóa") || inputLower.StartsWith("xoa") || inputLower.StartsWith("delete")))
+        {
+            await ProcessDeleteRequest(_input.Trim());
+            _input = "";
+            ShowLoadding = false;
+            StateHasChanged();
+            return;
+        }
+
+        // Tìm/Sửa khách hàng
+        if (acceptCommand && (inputLower.StartsWith("tìm") || inputLower.StartsWith("tim") || 
+            inputLower.StartsWith("sửa") || inputLower.StartsWith("sua") || inputLower.StartsWith("edit")))
+        {
+            await SearchCustomer(_input.Trim());
+            _input = "";
+            ShowLoadding = false;
+            StateHasChanged();
+            return;
+        }
+
+        // ========== STEP 6: Direct MST lookup (no action verb needed) ==========
+        // VD: "MST 0101218690" → Tự động tra cứu API + hiển thị thông tin
+        if (hasSpecialKeyword && !hasActionCommand)
+        {
+            // Extract MST number
+            var mstMatch = System.Text.RegularExpressions.Regex.Match(inputLower, @"mst\s*:?\s*([0-9\-]+)", RegexOptions.IgnoreCase);
+            if (mstMatch.Success)
+            {
+                string mstNumber = mstMatch.Groups[1].Value.Trim();
+                
+                // Gọi SIS API tra cứu MST
+                try
+                {
+                    Console.WriteLine($"[SIS API] Calling for MST: {mstNumber}");
+                    
+                    ClassMasothue apiResult = await GetDatafromSISAPIAsync(mstNumber);
+
+                    Console.WriteLine($"[SIS API] Response received: {(apiResult != null ? "SUCCESS" : "NULL")}");
+
+                    // ========== Tìm khách hàng có MST trong DB ==========
+                    List<Dmkh> existingCustomers = new List<Dmkh>();
+                    try
+                    {
+                        string sqlCheck = $"SELECT * FROM dmkh WHERE ma_so_thue = '{mstNumber}'";
+                        var dsCheck = await myDb.LoadDataset(sqlCheck);
+                        
+                        if (dsCheck != null && dsCheck.Tables[0].Rows.Count > 0)
+                        {
+                            Console.WriteLine($"[MST DB] Found {dsCheck.Tables[0].Rows.Count} existing customer(s) with MST {mstNumber}");
+                            foreach (System.Data.DataRow row in dsCheck.Tables[0].Rows)
+                            {
+                                existingCustomers.Add(new Dmkh
+                                {
+                                    Ma_kh = row["Ma_kh"]?.ToString() ?? "",
+                                    Ten_kh = row["Ten_kh"]?.ToString() ?? "",
+                                    Ma_so_thue = row["Ma_so_thue"]?.ToString() ?? "",
+                                    Dia_chi = row["Dia_chi"]?.ToString() ?? "",
+                                    Dien_thoai = row["Dien_thoai"]?.ToString() ?? "",
+                                    Doi_tac = row["Doi_tac"]?.ToString() ?? ""
+                                });
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[MST DB] No existing customer with MST {mstNumber}");
+                        }
+                    }
+                    catch (Exception dbEx)
+                    {
+                        Console.WriteLine($"[MST DB] Error checking existing customers: {dbEx.Message}");
+                    }
+
+                    if (apiResult != null && !string.IsNullOrEmpty(apiResult.TenChinhThuc))
+                    {
+                        // ========== CONSOLE LOGGING để debug ==========
+                        Console.WriteLine($"=== SIS API Response for MST {mstNumber} ===");
+                        Console.WriteLine($"TenChinhThuc: {apiResult.TenChinhThuc ?? "(null)"}");
+                        Console.WriteLine($"ChuDoanhNghiep: {apiResult.ChuDoanhNghiep ?? "(null)"}");
+                        Console.WriteLine($"DiaChiGiaoDichChinh: {apiResult.DiaChiGiaoDichChinh ?? "(null)"}");
+                        Console.WriteLine($"DiaChiGiaoDichPhu: {apiResult.DiaChiGiaoDichPhu ?? "(null)"}");
+                        Console.WriteLine($"SoDienThoai: {apiResult.SoDienThoai ?? "(null)"}");
+                        Console.WriteLine($"TrangThaiHoatDong: {apiResult.TrangThaiHoatDong ?? "(null)"}");
+                        Console.WriteLine("=====================================");
+
+                        // Priority: DiaChiGiaoDichChinh (primary) → DiaChiGiaoDichPhu (fallback)
+                        string diaChiFinal = !string.IsNullOrEmpty(apiResult.DiaChiGiaoDichChinh) 
+                            ? apiResult.DiaChiGiaoDichChinh 
+                            : apiResult.DiaChiGiaoDichPhu ?? "";
+
+                        // Tạo customer object từ SIS API
+                        var customer = new Dmkh
+                        {
+                            Ma_kh = mstNumber,  // Mặc định Mã KH = MST
+                            Ma_so_thue = mstNumber,
+                            Ten_kh = apiResult.TenChinhThuc ?? "",
+                            Dia_chi = diaChiFinal,
+                            Dien_thoai = apiResult.SoDienThoai ?? "",
+                            Doi_tac = apiResult.ChuDoanhNghiep ?? "",
+                            Status = "1",
+                            Date = DateTime.Now.Date,
+                            Date0 = DateTime.Now.Date
+                        };
+
+                        // Tạo message hiển thị với thông tin chi tiết
+                        string infoDetails = "";
+                        if (!string.IsNullOrEmpty(apiResult.TenChinhThuc))
+                            infoDetails += $"• Tên: {apiResult.TenChinhThuc}\n";
+                        if (!string.IsNullOrEmpty(apiResult.ChuDoanhNghiep))
+                            infoDetails += $"• Chủ doanh nghiệp: {apiResult.ChuDoanhNghiep}\n";
+                        if (!string.IsNullOrEmpty(diaChiFinal))
+                            infoDetails += $"• Địa chỉ: {diaChiFinal}\n";
+                        if (!string.IsNullOrEmpty(apiResult.SoDienThoai))
+                            infoDetails += $"• Điện thoại: {apiResult.SoDienThoai}\n";
+                        if (!string.IsNullOrEmpty(apiResult.TrangThaiHoatDong))
+                            infoDetails += $"• Trạng thái: {apiResult.TrangThaiHoatDong}\n";
+
+                        // Check nếu thiếu thông tin quan trọng
+                        List<string> missingInfo = new List<string>();
+                        if (string.IsNullOrEmpty(diaChiFinal))
+                            missingInfo.Add("Địa chỉ");
+                        if (string.IsNullOrEmpty(apiResult.SoDienThoai))
+                            missingInfo.Add("Điện thoại");
+                        if (string.IsNullOrEmpty(apiResult.ChuDoanhNghiep))
+                            missingInfo.Add("Người đại diện");
+
+                        string warningText = missingInfo.Count > 0
+                            ? $"\n\n⚠️ **Lưu ý:** API không trả về: {string.Join(", ", missingInfo)}\n💡 Bạn có thể **chỉnh sửa** để bổ sung."
+                            : "\n\n💡 Bạn có thể **chỉnh sửa** thông tin trước khi lưu.";
+
+                        // Thêm thông tin khách hàng đã tồn tại
+                        string existingCustomerText = "";
+                        if (existingCustomers.Count > 0)
+                        {
+                            existingCustomerText = $"\n\n🔍 **Tìm thấy {existingCustomers.Count} khách hàng với MST này trong hệ thống:**\n";
+                            for (int i = 0; i < Math.Min(existingCustomers.Count, 3); i++)
+                            {
+                                var ec = existingCustomers[i];
+                                existingCustomerText += $"{i + 1}. **{ec.Ma_kh}** - {ec.Ten_kh}\n";
+                            }
+                            if (existingCustomers.Count > 3)
+                            {
+                                existingCustomerText += $"... và {existingCustomers.Count - 3} khách hàng khác\n";
+                            }
+                            existingCustomerText += "\n💡 Gõ 'Tìm MST [số]' để xem chi tiết các khách hàng này.";
+                        }
+
+                        // Tạo message hiển thị
+                        ChatContent apiMsg = new ChatContent
+                        {
+                            Name = "Trợ lý AI",
+                            Time = DateTime.Now,
+                            Role = "assistant",
+                            Text = $"✅ **Đã tra cứu thành công MST {mstNumber}**\n\n" +
+                                   $"🏢 **Thông tin doanh nghiệp từ SIS API:**\n" +
+                                   (string.IsNullOrEmpty(infoDetails) 
+                                       ? "⚠️ API không trả về thông tin chi tiết\n" 
+                                       : infoDetails) +
+                                   warningText +
+                                   existingCustomerText,
+                            CustomerData = customer,
+                            MissingFields = "" // Đã đủ thông tin bắt buộc (Mã KH + Tên KH)
+                        };
+
+                        LSmessage.Add(apiMsg);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[SIS API] NULL response for {mstNumber}");
+                        AddMessage($"⚠️ Không tìm thấy thông tin cho MST: **{mstNumber}**\n\n" +
+                                   $"💡 Gợi ý:\n" +
+                                   $"• Kiểm tra lại mã số thuế\n" +
+                                   $"• MST phải là số hợp lệ (10-13 chữ số)\n" +
+                                   $"• Doanh nghiệp phải đang hoạt động\n" +
+                                   $"• SIS API có thể không có dữ liệu cho MST này");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[SIS API] Exception: {ex.GetType().Name} - {ex.Message}");
+                    Console.WriteLine($"[SIS API] Stack trace: {ex.StackTrace}");
+                    AddMessage($"❌ Lỗi khi tra cứu MST: {ex.Message}\n\n" +
+                               $"💡 Vui lòng thử lại hoặc kiểm tra kết nối.\n" +
+                               $"Chi tiết lỗi: {ex.GetType().Name}");
+                }
+
+                _input = "";
+                ShowLoadding = false;
+                StateHasChanged();
+                await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+                return;
+            }
+        }
+
+        // Nếu đang trong chế độ edit, xử lý update thông tin
+        if (_editingCustomer != null)
+        {
+            UpdateCustomerInfo(_input.Trim());
+            _input = "";
+            ShowLoadding = false;
+            StateHasChanged();
+            return;
+        }
+
+        // ========== STEP 7: Xử lý câu hỏi chung bằng ChatGPT ==========
+        // Đến đây nghĩa là không phải lệnh CRUD → Xử lý như câu hỏi thông thường
+        await ProcessGeneralQuestion(_input.Trim());
+        _input = "";
+        ShowLoadding = false;
+        StateHasChanged();
+        await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+    }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(_containerClass))
+            _containerClass = "ChatContainner-show";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            ChatContent welcome = new ChatContent();
+            welcome.Name = "Trợ lý AI";
+            welcome.Time = DateTime.Now;
+            welcome.Text = "Xin chào! Tôi có thể giúp bạn:\n\n🆕 **Tạo khách hàng mới:**\n• **'Tạo kh Mã:00123, tên: Công ty ABC'** ✅\n• **'Tạo khách: Công ty XYZ, MST 0123456789'** ✅\n• **'Thêm kh Mã KH001, Tên: Công ty TNHH'** ✅\n• Mã KH + Tên KH (bắt buộc)\n• Hệ thống tự sinh mã nếu không nhập\n\n🔄 **Khôi phục khách hàng vừa xóa:**\n• **'Tạo lại khách hàng vừa xóa'** ✅\n• **'Khôi phục khách hàng'** ✅\n• **'Undo'** ✅\n• Hoạt động ngay sau khi xóa (trong cùng phiên)\n• Khôi phục toàn bộ thông tin đã xóa\n\n🔍 **Tra cứu MST tự động:**\n• **'MST 0123456789'** ← Nhập trực tiếp, tự động tìm!\n• Không cần thêm 'Tìm' hay 'Khách'\n• Mã KH = MST nếu chưa có\n• Thông tin được load tự động từ API\n\n💬 **Hỏi về thông tin công ty (MỚI!):**\n• **'Cho tôi thông tin công ty MST 0101218690'** ✅\n• **'Mã số thuế 0123456789 là công ty gì?'** ✅\n• **'Tìm hiểu về công ty có MST 0101218690'** ✅\n• **ChatGPT tự động tra API** và phân tích thông tin!\n• Thông tin THỰC từ Cục Thuế\n\n🔎 **Tìm & sửa khách hàng (nhiều cách):**\n\n**Cách 1:** Dùng từ 'khách' đầy đủ\n• 'Tìm khách ABC'\n• 'Sửa khách KH001'\n\n**Cách 2:** Viết tắt 'kh' + số\n• 'Tìm kh 009' ✅\n• 'Sửa kh 010' ✅\n\n**Cách 3:** Thiếu chữ 'kh' (tự động sửa)\n• 'Tìm ách 009' → Tự động hiểu là 'khách 009' ✅\n\n**Cách 4:** Dùng MST trực tiếp (không cần động từ)\n• '**MST 0101218690**' ✅ Tự động tìm!\n• 'Tìm MST 0123456789' ✅\n• 'Tìm tên Công ty XYZ' ✅\n\n🗑️ **Xóa khách hàng:**\n• 'Xóa khách KH001' ✅\n• 'Xóa kh 009' ✅\n• 'Xóa ách 010' ✅ (tự động sửa)\n• 'Xóa MST 0123456789' ✅\n• AI tự động tìm khách hàng phù hợp nhất\n• Kiểm tra phát sinh tự động trước khi xóa\n• **Có thể khôi phục** ngay sau khi xóa!\n\n💬 **Hỏi đáp & Hướng dẫn:**\n• Hỏi bất kỳ về hệ thống, chức năng\n• VD: 'Làm sao để tạo khách hàng?'\n• VD: 'MST là gì?'\n• VD: 'Hệ thống có những chức năng nào?'\n• AI sẽ trả lời và hướng dẫn chi tiết\n\n💡 **Lưu ý:**\n• Hệ thống tự động sửa lỗi đánh máy\n• VD: 'ách 009' → tự động thành 'khách 009'\n• **Gõ nhanh MST:** Chỉ cần 'MST [số]' - không cần thêm gì!\n• **Xóa nhầm?** Gõ 'Undo' để khôi phục!\n• **Hỏi về công ty?** ChatGPT tự tra cứu thông tin thực!\n• **Hỏi thoải mái:** Tôi sẽ cố gắng trả lời mọi câu hỏi!";
+            welcome.Role = "assistant";
+            LSmessage.Add(welcome);
+
+            Pageobj = DotNetObjectReference.Create(this);
+            StateHasChanged();
+        }
+    }
+
+    async void AddMessage(string message)
+    {
+        ChatContent errorMsg = new ChatContent();
+        errorMsg.Name = "Hệ thống";
+        errorMsg.Time = DateTime.Now;
+        errorMsg.Text = message;
+        errorMsg.Role = "assistant";
+        LSmessage.Add(errorMsg);
+        StateHasChanged();
+        await Task.Delay(100);
+        await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+    }
+
+    public async Task<string> CallChatGPT(string prompt)
+    {
+        try
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            chatHistory.Add(new GptMessage { role = "user", content = prompt });
+
+            var requestBody = new
+            {
+                model = ChatBotConfig.ModelName,
+                messages = chatHistory,
+                max_tokens = ChatBotConfig.MaxTokens,
+                temperature = ChatBotConfig.Temperature
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("https://api.openai.com/v1/chat/completions", content);
+            var resultJson = await response.Content.ReadAsStringAsync();
+
+            using var doc = JsonDocument.Parse(resultJson);
+            var reply = doc.RootElement
+                   .GetProperty("choices")[0]
+                   .GetProperty("message")
+                   .GetProperty("content")
+                   .GetString();
+            chatHistory.Add(new GptMessage { role = "assistant", content = reply });
+
+            return reply;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            return "";
+        }
+    }
+
+    private Dmkh ParseCustomerFromResponse(string response, out string message, out string missingFields)
+    {
+        message = response;
+        missingFields = "";
+        try
+        {
+            int jsonStart = response.IndexOf("{");
+            int jsonEnd = response.LastIndexOf("}");
+
+            if (jsonStart >= 0 && jsonEnd > jsonStart)
+            {
+                string jsonStr = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                using var doc = JsonDocument.Parse(jsonStr);
+                var root = doc.RootElement;
+
+                var customer = new Dmkh();
+
+                if (root.TryGetProperty("ma_kh", out var maKh) && !string.IsNullOrEmpty(maKh.GetString()))
+                    customer.Ma_kh = maKh.GetString();
+
+                if (root.TryGetProperty("ten_kh", out var tenKh) && !string.IsNullOrEmpty(tenKh.GetString()))
+                    customer.Ten_kh = tenKh.GetString();
+
+                if (root.TryGetProperty("ma_so_thue", out var mst) && !string.IsNullOrEmpty(mst.GetString()))
+                {
+                    customer.Ma_so_thue = mst.GetString();
+                    // MST sẽ được xử lý sau khi parse xong - không gọi API ở đây
+                }
+
+                if (root.TryGetProperty("dia_chi", out var diaChi) && !string.IsNullOrEmpty(diaChi.GetString()))
+                    customer.Dia_chi = diaChi.GetString();
+
+                if (root.TryGetProperty("dien_thoai", out var dienThoai) && !string.IsNullOrEmpty(dienThoai.GetString()))
+                    customer.Dien_thoai = dienThoai.GetString();
+
+                if (root.TryGetProperty("doi_tac", out var doiTac) && !string.IsNullOrEmpty(doiTac.GetString()))
+                    customer.Doi_tac = doiTac.GetString();
+
+                if (root.TryGetProperty("message", out var msg))
+                    message = msg.GetString();
+
+                customer.Status = "1";
+                customer.Date = DateTime.Now.Date;
+                customer.Date0 = DateTime.Now.Date;
+
+                // Kiểm tra missing fields - sẽ được tự động enable sau khi API load xong
+                List<string> missing = new List<string>();
+                if (string.IsNullOrEmpty(customer.Ma_kh))
+                    missing.Add("Mã khách hàng");
+                if (string.IsNullOrEmpty(customer.Ten_kh))
+                    missing.Add("Tên khách hàng");
+
+                if (missing.Count > 0)
+                {
+                    missingFields = "⚠ Thiếu: " + string.Join(", ", missing);
+                }
+
+                return customer;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Parse error: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    private async void ConfirmCreateCustomer(Dmkh customer)
+    {
+        if (customer != null)
+        {
+            // Validate required fields
+            if (string.IsNullOrEmpty(customer.Ma_kh) || string.IsNullOrEmpty(customer.Ten_kh))
+            {
+                AddMessage("⚠ Không thể lưu: Thiếu thông tin bắt buộc (Mã KH và Tên KH).");
+                return;
+            }
+
+            ChatContent confirmMsg = new ChatContent();
+            confirmMsg.Name = "Hệ thống";
+            confirmMsg.Time = DateTime.Now;
+            confirmMsg.Role = "assistant";
+
+            if (_isEditingExistingCustomer)
+            {
+                // Update existing customer
+                await OnCustomerUpdated.InvokeAsync(customer);
+                confirmMsg.Text = $"✓ Đã cập nhật khách hàng: {customer.Ten_kh} (Mã: {customer.Ma_kh})";
+                _isEditingExistingCustomer = false;
+                _originalMaKh = "";
+            }
+            else
+            {
+                // Create new customer (or restore deleted customer)
+                bool isRestore = (_lastDeletedCustomer != null && 
+                                 _lastDeletedCustomer.Ma_kh == customer.Ma_kh);
+                
+                await OnCustomerCreated.InvokeAsync(customer);
+                
+                if (isRestore)
+                {
+                    confirmMsg.Text = $"✅ **ĐÃ KHÔI PHỤC THÀNH CÔNG**\n\nKhách hàng: **{customer.Ten_kh}**\nMã KH: {customer.Ma_kh}\n\nDữ liệu đã được khôi phục vào hệ thống.";
+                    _lastDeletedCustomer = null; // Clear backup sau khi khôi phục
+                    Console.WriteLine($"[RESTORE SUCCESS] Cleared backup for {customer.Ma_kh}");
+                }
+                else
+                {
+                    confirmMsg.Text = $"✓ Đã gửi yêu cầu tạo khách hàng: {customer.Ten_kh} (Mã: {customer.Ma_kh})";
+                }
+            }
+
+            LSmessage.Add(confirmMsg);
+
+            // Reset editing state
+            _editingCustomer = null;
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task SearchCustomer(string searchText)
+    {
+        try
+        {
+            // Input đã được auto-correct từ ChatFunc() - không cần correct lại
+            
+            // Parse search keyword
+            string keyword = searchText.ToLower()
+                .Replace("tìm", "").Replace("tim", "")
+                .Replace("sửa", "").Replace("sua", "")
+                .Replace("edit", "").Replace("search", "")
+                .Replace("mã", "").Replace("ma", "")
+                .Replace("khách", "").Replace("khach", "")
+                .Replace("customer", "")
+                .Trim();
+
+            if (string.IsNullOrEmpty(keyword))
+            {
+                AddMessage("⚠ Vui lòng nhập mã hoặc tên khách hàng cần tìm.\n\n📝 **Cú pháp đúng:**\n• 'Tìm khách KH001'\n• 'Tìm khách Công ty ABC'\n• 'Sửa khách hàng KH001'\n\n⚠️ Lưu ý: Phải có từ **'khách'** hoặc **'KH'**");
+                await Task.Delay(100);
+                await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+                return;
+            }
+
+            // ========== SMART SEARCH với Priority Ranking ==========
+            string sql = $@"
+                SELECT TOP 10 *, 
+                    CASE 
+                        -- Exact match (highest priority)
+                        WHEN ma_kh = '{keyword}' THEN 1000
+                        WHEN LOWER(ten_kh) = N'{keyword.ToLower()}' THEN 950
+                        
+                        -- Start with (high priority)
+                        WHEN ma_kh LIKE '{keyword}%' THEN 900
+                        WHEN LOWER(ten_kh) LIKE N'{keyword.ToLower()}%' THEN 850
+                        
+                        -- End with (medium priority)
+                        WHEN ma_kh LIKE '%{keyword}' THEN 800
+                        WHEN LOWER(ten_kh) LIKE N'%{keyword.ToLower()}' THEN 750
+                        
+                        -- Contains (lower priority)
+                        WHEN ma_kh LIKE '%{keyword}%' THEN 700
+                        WHEN LOWER(ten_kh) LIKE N'%{keyword.ToLower()}%' THEN 650
+                        
+                        -- MST match (medium priority)
+                        WHEN ma_so_thue = '{keyword}' THEN 880
+                        WHEN ma_so_thue LIKE '{keyword}%' THEN 780
+                        WHEN ma_so_thue LIKE '%{keyword}%' THEN 680
+                        
+                        ELSE 500
+                    END AS MatchScore
+                FROM dmkh
+                WHERE ma_kh LIKE '%{keyword}%'
+                   OR LOWER(ten_kh) LIKE N'%{keyword.ToLower()}%'
+                   OR ma_so_thue LIKE '%{keyword}%'
+                ORDER BY MatchScore DESC, ma_kh";
+
+            var ds = await myDb.LoadDataset(sql);
+
+            if (ds == null || ds.Tables[0].Rows.Count == 0)
+            {
+                AddMessage($"❌ Không tìm thấy khách hàng với từ khóa: **'{keyword}'**\n\n💡 Gợi ý:\n• Kiểm tra lại mã/tên khách hàng\n• Thử tìm với từ khóa khác");
+                await Task.Delay(100);
+                await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+                return;
+            }
+
+            // ========== SMART SELECTION LOGIC ==========
+            
+            var rows = ds.Tables[0].Rows;
+            int bestScore = rows[0]["MatchScore"] != DBNull.Value ? Convert.ToInt32(rows[0]["MatchScore"]) : 0;
+            int secondScore = rows.Count > 1 && rows[1]["MatchScore"] != DBNull.Value 
+                ? Convert.ToInt32(rows[1]["MatchScore"]) 
+                : 0;
+
+            // ========== Auto-select nếu có EXACT MATCH hoặc BEST MATCH rõ ràng ==========
+            bool autoSelect = false;
+            string reason = "";
+
+            if (bestScore >= 1000)
+            {
+                // Exact match found → Always auto-select
+                autoSelect = true;
+                reason = "Tìm thấy khách hàng **khớp chính xác**";
+            }
+            else if (bestScore >= 900 && secondScore < 850)
+            {
+                // Best match có score cao hơn rõ ràng (gap >= 50)
+                autoSelect = true;
+                reason = "Tìm thấy khách hàng **phù hợp nhất**";
+            }
+            else if (rows.Count == 1)
+            {
+                // Chỉ có 1 kết quả → Auto-select
+                autoSelect = true;
+                reason = "Tìm thấy **1 khách hàng duy nhất**";
+            }
+
+            // Display results
+            ChatContent resultMsg = new ChatContent();
+            resultMsg.Name = "Trợ lý AI";
+            resultMsg.Time = DateTime.Now;
+            resultMsg.Role = "assistant";
+
+            if (autoSelect)
+            {
+                // ========== AUTO-SELECT: Show customer detail ==========
+                var row = rows[0];
+                var customer = new Dmkh
+                {
+                    Ma_kh = row["Ma_kh"]?.ToString() ?? "",
+                    Ten_kh = row["Ten_kh"]?.ToString() ?? "",
+                    Ma_so_thue = row["Ma_so_thue"]?.ToString() ?? "",
+                    Dia_chi = row["Dia_chi"]?.ToString() ?? "",
+                    Dien_thoai = row["Dien_thoai"]?.ToString() ?? "",
+                    Doi_tac = row["Doi_tac"]?.ToString() ?? "",
+                    Status = row["Status"]?.ToString() ?? "1",
+                    Date = row["Date"] != DBNull.Value ? Convert.ToDateTime(row["Date"]) : DateTime.Now.Date,
+                    Date0 = row["Date0"] != DBNull.Value ? Convert.ToDateTime(row["Date0"]) : DateTime.Now.Date
+                };
+
+                resultMsg.Text = $"✅ {reason} cho từ khóa **'{keyword}'**:\n\n" +
+                                $"📋 Bạn có thể **chỉnh sửa** thông tin hoặc xem chi tiết.";
+                resultMsg.CustomerData = customer;
+            }
+            else
+            {
+                // ========== SHOW LIST: Multiple similar matches ==========
+                string resultText = $"🔍 Tìm thấy **{rows.Count} khách hàng** phù hợp với **'{keyword}'**:\n\n";
+                
+                // Show top 5 results với score
+                for (int i = 0; i < Math.Min(rows.Count, 5); i++)
+                {
+                    var row = rows[i];
+                    int score = row["MatchScore"] != DBNull.Value ? Convert.ToInt32(row["MatchScore"]) : 0;
+                    string matchType = score >= 1000 ? "✅ Khớp chính xác" :
+                                      score >= 900 ? "🎯 Bắt đầu với" :
+                                      score >= 800 ? "🔚 Kết thúc với" :
+                                      "🔎 Chứa từ khóa";
+                    
+                    resultText += $"{i + 1}. **{row["Ma_kh"]}** - {row["Ten_kh"]}\n";
+                    if (i == 0) resultText += $"   {matchType}\n";
+                }
+                
+                if (rows.Count > 5)
+                {
+                    resultText += $"\n... và {rows.Count - 5} khách hàng khác.\n";
+                }
+                
+                resultText += $"\n💡 **Để xem chi tiết:**\n";
+                resultText += $"• Nhập **chính xác** mã KH: 'Tìm {rows[0]["Ma_kh"]}'\n";
+                resultText += $"• Hoặc nhập **đầy đủ** tên công ty\n";
+                resultText += $"\n⚡ **Gợi ý nhanh:** 'Sửa {rows[0]["Ma_kh"]}'";
+
+                resultMsg.Text = resultText;
+            }
+
+            LSmessage.Add(resultMsg);
+            StateHasChanged();
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+        catch (Exception ex)
+        {
+            AddMessage($"❌ Lỗi khi tìm kiếm: {ex.Message}");
+            Console.WriteLine($"Search error: {ex.Message}");
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+    }
+
+    private async void CancelEdit()
+    {
+        _editingCustomer = null;
+        _isEditingExistingCustomer = false;
+        _originalMaKh = "";
+
+        ChatContent cancelMsg = new ChatContent();
+        cancelMsg.Name = "Trợ lý AI";
+        cancelMsg.Time = DateTime.Now;
+        cancelMsg.Text = "✓ Đã hoàn tất chỉnh sửa. Bạn có thể:\n• Tạo khách hàng mới\n• Tìm kiếm: 'Tìm mã ABC'\n• Chỉnh sửa khách hàng khác";
+        cancelMsg.Role = "assistant";
+        LSmessage.Add(cancelMsg);
+
+        StateHasChanged();
+        await Task.Delay(100);
+        await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+    }
+
+    private async void EditCustomerBeforeCreate(Dmkh customer)
+    {
+        // Lưu customer đang edit vào biến tạm
+        _editingCustomer = customer;
+
+        // Check if editing existing customer (has original data in database)
+        if (!string.IsNullOrEmpty(customer.Ma_kh) && customer.Date != default(DateTime))
+        {
+            _isEditingExistingCustomer = true;
+            _originalMaKh = customer.Ma_kh;
+        }
+
+        string customerInfo = $"📝 Chế độ chỉnh sửa khách hàng:\n\n";
+        customerInfo += $"Thông tin hiện tại:\n";
+        customerInfo += $"• Mã KH: {customer.Ma_kh}\n";
+        customerInfo += $"• Tên KH: {customer.Ten_kh}\n";
+        customerInfo += $"• MST: {customer.Ma_so_thue ?? "(chưa có)"}\n";
+        customerInfo += $"• Địa chỉ: {customer.Dia_chi ?? "(chưa có)"}\n";
+        customerInfo += $"• Điện thoại: {customer.Dien_thoai ?? "(chưa có)"}\n";
+        customerInfo += $"• Đại diện: {customer.Doi_tac ?? "(chưa có)"}\n\n";
+        customerInfo += $"Vui lòng nhập thông tin cần thay đổi:\n";
+        customerInfo += $"VD: 'MST 0123456789' hoặc 'Địa chỉ: 123 ABC, HN' hoặc 'Điện thoại: 0987654321'";
+
+        ChatContent editMsg = new ChatContent();
+        editMsg.Name = "Trợ lý AI";
+        editMsg.Time = DateTime.Now;
+        editMsg.Text = customerInfo;
+        editMsg.Role = "assistant";
+        LSmessage.Add(editMsg);
+        StateHasChanged();
+        await Task.Delay(100);
+        await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+    }
+
+    private async void UpdateCustomerInfo(string input)
+    {
+        if (_editingCustomer == null) return;
+
+        string inputLower = input.ToLower();
+        bool hasUpdate = false;
+        List<string> updates = new List<string>();
+
+        // Parse và update các trường - Priority order matters!
+
+        // 1. MST (highest priority - always numeric)
+        if (inputLower.Contains("mst") || inputLower.Contains("mã số thuế"))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(input, @"(?:mst|mã\s*số\s*thuế)\s*:?\s*([0-9\-]+)", RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                _editingCustomer.Ma_so_thue = match.Groups[1].Value.Trim();
+
+                // Mặc định Mã KH = MST nếu chưa có
+                if (string.IsNullOrEmpty(_editingCustomer.Ma_kh))
+                {
+                    _editingCustomer.Ma_kh = _editingCustomer.Ma_so_thue;
+                    updates.Add($"Mã KH → {_editingCustomer.Ma_kh} (tự động từ MST)");
+                }
+
+                updates.Add($"MST → {_editingCustomer.Ma_so_thue}");
+                hasUpdate = true;
+
+                // Tự động tra cứu thông tin từ API khi có MST
+                await LoadFromTaxCodeApi(_editingCustomer.Ma_so_thue);
+            }
+        }
+
+        // 2. Điện thoại (extract before processing text fields)
+        if (inputLower.Contains("điện thoại") || inputLower.Contains("dien thoai") || inputLower.Contains("sdt") || inputLower.Contains("phone"))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(input, @"(?:điện\s*thoại|dien\s*thoai|sdt|phone)\s*:?\s*([0-9\+\-\s]+)", RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                _editingCustomer.Dien_thoai = match.Groups[1].Value.Trim();
+                updates.Add($"Điện thoại → {_editingCustomer.Dien_thoai}");
+                hasUpdate = true;
+            }
+        }
+
+        // 3. Mã KH
+        if (inputLower.Contains("mã") && (inputLower.Contains("kh") || inputLower.Contains("khách")))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(input, @"(?:mã\s*(?:kh|khách)\s*:?\s*)([A-Za-z0-9_\-]+)", RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                _editingCustomer.Ma_kh = match.Groups[1].Value.Trim();
+                updates.Add($"Mã KH → {_editingCustomer.Ma_kh}");
+                hasUpdate = true;
+            }
+        }
+
+        // 4. Tên KH - Extract carefully
+        if (inputLower.Contains("tên"))
+        {
+            // Find "tên" keyword position
+            int tenPos = inputLower.IndexOf("tên");
+            // Find next field keyword after "tên"
+            var keywords = new[] { "địa", "dia", "mst", "sdt", "điện", "phone", "đại", "dai" };
+            int nextKeyPos = input.Length;
+
+            foreach (var kw in keywords)
+            {
+                int pos = inputLower.IndexOf(kw, tenPos + 3);
+                if (pos > tenPos && pos < nextKeyPos)
+                {
+                    nextKeyPos = pos;
+                }
+            }
+
+            // Extract text between "tên:" and next keyword
+            var match = System.Text.RegularExpressions.Regex.Match(
+                input.Substring(tenPos),
+                @"^tên\s*(?:kh|khách|công\s*ty)?\s*:?\s*(.+)",
+                RegexOptions.IgnoreCase
+            );
+
+            if (match.Success)
+            {
+                string fullText = match.Groups[1].Value;
+                int endPos = fullText.Length;
+
+                // Find where next field starts
+                foreach (var kw in keywords)
+                {
+                    int kwPos = fullText.ToLower().IndexOf(kw);
+                    if (kwPos > 0 && kwPos < endPos)
+                    {
+                        endPos = kwPos;
+                    }
+                }
+
+                string tenValue = fullText.Substring(0, endPos).Trim().TrimEnd(',', ';', '.', '|');
+                if (!string.IsNullOrEmpty(tenValue))
+                {
+                    _editingCustomer.Ten_kh = tenValue;
+                    updates.Add($"Tên KH → {_editingCustomer.Ten_kh}");
+                    hasUpdate = true;
+                }
+            }
+        }
+        else if (!inputLower.Contains("mst") && !inputLower.Contains("địa") && !inputLower.Contains("điện")
+                 && !inputLower.Contains("đại") && !inputLower.Contains("sdt") && !inputLower.Contains("phone")
+                 && !inputLower.Contains("mã") && input.Length > 3 && !input.All(char.IsDigit))
+        {
+            // Plain text without any keyword - treat as name
+            _editingCustomer.Ten_kh = input.Trim();
+            updates.Add($"Tên KH → {_editingCustomer.Ten_kh}");
+            hasUpdate = true;
+        }
+
+        // 5. Địa chỉ - Extract carefully
+        if (inputLower.Contains("địa chỉ") || inputLower.Contains("dia chi"))
+        {
+            int diaPos = inputLower.IndexOf("địa");
+            if (diaPos < 0) diaPos = inputLower.IndexOf("dia");
+
+            if (diaPos >= 0)
+            {
+                // Keywords that end address
+                var endKeywords = new[] { "điện", "phone", "sdt", "mst", "đại", "dai" };
+                int nextKeyPos = input.Length;
+
+                foreach (var kw in endKeywords)
+                {
+                    int pos = inputLower.IndexOf(kw, diaPos + 6);
+                    if (pos > diaPos && pos < nextKeyPos)
+                    {
+                        nextKeyPos = pos;
+                    }
+                }
+
+                // Extract from "địa chỉ:" to next keyword
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    input.Substring(diaPos),
+                    @"^(?:địa\s*chỉ|dia\s*chi)\s*:?\s*(.+)",
+                    RegexOptions.IgnoreCase
+                );
+
+                if (match.Success)
+                {
+                    string fullText = match.Groups[1].Value;
+                    int endPos = fullText.Length;
+
+                    // Find where next field starts
+                    foreach (var kw in endKeywords)
+                    {
+                        int kwPos = fullText.ToLower().IndexOf(kw);
+                        if (kwPos > 0 && kwPos < endPos)
+                        {
+                            endPos = kwPos;
+                        }
+                    }
+
+                    string diaValue = fullText.Substring(0, endPos).Trim().TrimEnd(',', ';', '|');
+                    if (!string.IsNullOrEmpty(diaValue))
+                    {
+                        _editingCustomer.Dia_chi = diaValue;
+                        updates.Add($"Địa chỉ → {_editingCustomer.Dia_chi}");
+                        hasUpdate = true;
+                    }
+                }
+            }
+        }
+
+        // 6. Đại diện
+        if (inputLower.Contains("đại diện") || inputLower.Contains("dai dien") || inputLower.Contains("đại tác") || inputLower.Contains("doi tac"))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(input, @"(?:đại\s*diện|dai\s*dien|đại\s*tác|doi\s*tac)\s*:?\s*([^,;|]+?)(?:\s*(?:,|;|\||điện|phone|sdt|mst)|$)", RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                _editingCustomer.Doi_tac = match.Groups[1].Value.Trim();
+                updates.Add($"Đại diện → {_editingCustomer.Doi_tac}");
+                hasUpdate = true;
+            }
+        }
+
+        // Tạo response message
+        ChatContent responseMsg = new ChatContent();
+        responseMsg.Name = "Trợ lý AI";
+        responseMsg.Time = DateTime.Now;
+        responseMsg.Role = "assistant";
+
+        if (hasUpdate)
+        {
+            responseMsg.Text = $"✅ Đã cập nhật:\n{string.Join("\n", updates)}\n\nBạn có thể tiếp tục chỉnh sửa hoặc xác nhận tạo.";
+            responseMsg.CustomerData = _editingCustomer;
+
+            // Check missing fields
+            List<string> missing = new List<string>();
+            if (string.IsNullOrEmpty(_editingCustomer.Ma_kh))
+                missing.Add("Mã khách hàng");
+            if (string.IsNullOrEmpty(_editingCustomer.Ten_kh))
+                missing.Add("Tên khách hàng");
+
+            if (missing.Count > 0)
+                responseMsg.MissingFields = "⚠ Thiếu: " + string.Join(", ", missing);
+        }
+        else
+        {
+            responseMsg.Text = "⚠ Không nhận diện được thông tin cần cập nhật.\n\nVD hợp lệ:\n• MST 0123456789\n• Địa chỉ: 123 ABC, HN\n• Điện thoại: 0987654321\n• Tên: Công ty XYZ";
+            responseMsg.CustomerData = _editingCustomer;
+        }
+
+        LSmessage.Add(responseMsg);
+        StateHasChanged();
+        await Task.Delay(100);
+        await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+    }
+
+    private string FormatMarkdown(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        text = text.Replace("\n", "<br/>");
+        text = Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        text = Regex.Replace(text, @"\*(.+?)\*", "<em>$1</em>");
+
+        return text;
+    }
+
+    /// <summary>
+    /// Tra cứu thông tin doanh nghiệp từ SIS API dựa vào MST và cập nhật vào customer đang edit
+    /// URL: http://help.sis.vn:7785/AP/getmasothue/{mst}
+    /// </summary>
+    private async Task LoadFromTaxCodeApi(string taxCode)
+    {
+        if (string.IsNullOrEmpty(taxCode) || _editingCustomer == null)
+            return;
+
+        try
+        {
+            // Gọi SIS API
+            Console.WriteLine($"[SIS API EDIT] Calling API for MST {taxCode}");
+            var sisApiResult = await GetDatafromSISAPIAsync(taxCode);
+
+            if (sisApiResult != null && !string.IsNullOrEmpty(sisApiResult.TenChinhThuc))
+            {
+                Console.WriteLine($"[SIS API EDIT] SUCCESS: {sisApiResult.TenChinhThuc}");
+                
+                // Mặc định Mã KH = MST nếu chưa có
+                if (string.IsNullOrEmpty(_editingCustomer.Ma_kh))
+                    _editingCustomer.Ma_kh = taxCode.Trim();
+
+                // Cập nhật thông tin từ SIS API
+                if (!string.IsNullOrEmpty(sisApiResult.TenChinhThuc) && string.IsNullOrEmpty(_editingCustomer.Ten_kh))
+                    _editingCustomer.Ten_kh = sisApiResult.TenChinhThuc;
+
+                if (!string.IsNullOrEmpty(sisApiResult.ChuDoanhNghiep) && string.IsNullOrEmpty(_editingCustomer.Doi_tac))
+                    _editingCustomer.Doi_tac = sisApiResult.ChuDoanhNghiep;
+
+                // Priority: DiaChiGiaoDichChinh → DiaChiGiaoDichPhu
+                if (string.IsNullOrEmpty(_editingCustomer.Dia_chi))
+                {
+                    if (!string.IsNullOrEmpty(sisApiResult.DiaChiGiaoDichChinh))
+                        _editingCustomer.Dia_chi = sisApiResult.DiaChiGiaoDichChinh;
+                    else if (!string.IsNullOrEmpty(sisApiResult.DiaChiGiaoDichPhu))
+                        _editingCustomer.Dia_chi = sisApiResult.DiaChiGiaoDichPhu;
+                }
+
+                if (!string.IsNullOrEmpty(sisApiResult.SoDienThoai) && string.IsNullOrEmpty(_editingCustomer.Dien_thoai))
+                    _editingCustomer.Dien_thoai = sisApiResult.SoDienThoai;
+
+                // Thông báo thành công
+                AddMessage($"✅ Đã tra cứu thành công MST {taxCode}:\n• Mã KH: {_editingCustomer.Ma_kh}\n• Tên: {sisApiResult.TenChinhThuc}\n• Địa chỉ: {sisApiResult.DiaChiGiaoDichChinh ?? sisApiResult.DiaChiGiaoDichPhu}\n• Điện thoại: {sisApiResult.SoDienThoai}\n• Chủ doanh nghiệp: {sisApiResult.ChuDoanhNghiep}");
+            }
+            else
+            {
+                Console.WriteLine($"[SIS API EDIT] No data returned for MST {taxCode}");
+                AddMessage($"⚠ Không tìm thấy thông tin cho MST: {taxCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SIS API EDIT] EXCEPTION: {ex.Message}");
+            AddMessage($"❌ Lỗi khi tra cứu MST: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Tra cứu thông tin doanh nghiệp từ SIS API dựa vào MST và cập nhật customer object
+    /// URL: http://help.sis.vn:7785/AP/getmasothue/{mst}
+    /// </summary>
+    private async Task LoadFromTaxCodeApiAndUpdateCustomer(Dmkh customer, string taxCode)
+    {
+        if (string.IsNullOrEmpty(taxCode) || customer == null)
+            return;
+
+        try
+        {
+            // Gọi SIS API để lấy thông tin
+            Console.WriteLine($"[SIS API LOOKUP] Calling API for MST {taxCode}");
+            var sisApiResult = await GetDatafromSISAPIAsync(taxCode);
+
+            if (sisApiResult != null && !string.IsNullOrEmpty(sisApiResult.TenChinhThuc))
+            {
+                Console.WriteLine($"[SIS API LOOKUP] SUCCESS for MST {taxCode}: {sisApiResult.TenChinhThuc}");
+                
+                // Mặc định Mã KH = MST nếu chưa có
+                if (string.IsNullOrEmpty(customer.Ma_kh))
+                    customer.Ma_kh = taxCode.Trim();
+
+                // Cập nhật thông tin từ SIS API (chỉ cập nhật nếu trống)
+                if (!string.IsNullOrEmpty(sisApiResult.TenChinhThuc) && string.IsNullOrEmpty(customer.Ten_kh))
+                    customer.Ten_kh = sisApiResult.TenChinhThuc;
+
+                if (!string.IsNullOrEmpty(sisApiResult.ChuDoanhNghiep) && string.IsNullOrEmpty(customer.Doi_tac))
+                    customer.Doi_tac = sisApiResult.ChuDoanhNghiep;
+
+                // Priority: DiaChiGiaoDichChinh → DiaChiGiaoDichPhu
+                if (string.IsNullOrEmpty(customer.Dia_chi))
+                {
+                    if (!string.IsNullOrEmpty(sisApiResult.DiaChiGiaoDichChinh))
+                        customer.Dia_chi = sisApiResult.DiaChiGiaoDichChinh;
+                    else if (!string.IsNullOrEmpty(sisApiResult.DiaChiGiaoDichPhu))
+                        customer.Dia_chi = sisApiResult.DiaChiGiaoDichPhu;
+                }
+
+                if (!string.IsNullOrEmpty(sisApiResult.SoDienThoai) && string.IsNullOrEmpty(customer.Dien_thoai))
+                    customer.Dien_thoai = sisApiResult.SoDienThoai;
+
+                Console.WriteLine($"[SIS API LOOKUP] Data loaded successfully");
+            }
+            else
+            {
+                Console.WriteLine($"[SIS API LOOKUP] No data returned for MST {taxCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SIS API LOOKUP] EXCEPTION: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Gọi API để lấy thông tin doanh nghiệp từ MST (thongtindoanhnghiep.co)
+    /// </summary>
+    private async Task<Customerinfo> GetDataFromApi(string url)
+    {
+        Customerinfo custom = null;
+        try
+        {
+            WebRequest request = WebRequest.Create(url);
+            WebResponse response = await request.GetResponseAsync();
+            string status = ((HttpWebResponse)response).StatusDescription;
+
+            using (Stream dataStream = response.GetResponseStream())
+            {
+                StreamReader reader = new StreamReader(dataStream);
+                string responseFromServer = await reader.ReadToEndAsync();
+                custom = JsonConvert.DeserializeObject<Customerinfo>(responseFromServer);
+            }
+            response.Close();
+            return custom;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetDataFromApi error: {ex.Message}");
+            return custom;
+        }
+    }
+
+    /// <summary>
+    /// Gọi API SIS để lấy thông tin doanh nghiệp từ MST (help.sis.vn)
+    /// Tương tự như GetDatafromSISAPI trong EditArkh.razor
+    /// </summary>
+    private ClassMasothue GetDatafromSISAPI(string url)
+    {
+        ClassMasothue custom = null;
+        try
+        {
+            WebRequest request = WebRequest.Create(url);
+            WebResponse response = request.GetResponse();
+            string status = ((HttpWebResponse)response).StatusDescription;
+            using (Stream dataStream = response.GetResponseStream())
+            {
+                StreamReader reader = new StreamReader(dataStream);
+                string responseFromServer = reader.ReadToEnd();
+                custom = JsonConvert.DeserializeObject<ClassMasothue>(responseFromServer);
+            }
+            response.Close();
+            return custom;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetDatafromSISAPI error: {ex.Message}");
+            return custom;
+        }
+    }
+
+    /// <summary>
+    /// Gọi API SIS async để lấy thông tin doanh nghiệp từ MST
+    /// URL: http://help.sis.vn:7785/AP/getmasothue/{mst}
+    /// </summary>
+    private async Task<ClassMasothue> GetDatafromSISAPIAsync(string mst)
+    {
+        if (string.IsNullOrEmpty(mst))
+            return null;
+
+        try
+        {
+            string url = @"http://help.sis.vn:7785/AP/getmasothue/" + mst;
+            Console.WriteLine($"[SIS API] Calling: {url}");
+            
+            WebRequest request = WebRequest.Create(url);
+            WebResponse response = await request.GetResponseAsync();
+            string status = ((HttpWebResponse)response).StatusDescription;
+            
+            using (Stream dataStream = response.GetResponseStream())
+            {
+                StreamReader reader = new StreamReader(dataStream);
+                string responseFromServer = await reader.ReadToEndAsync();
+                Console.WriteLine($"[SIS API] Response: {responseFromServer}");
+                var custom = JsonConvert.DeserializeObject<ClassMasothue>(responseFromServer);
+                response.Close();
+                return custom;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SIS API] Error: {ex.Message}");
+            return null;
+        }
+    }
+
+    #region Delete Customer Functions
+
+    /// <summary>
+    /// Xử lý yêu cầu xóa khách hàng - AI tự nhận dạng
+    /// VD: "Xóa khách Công ty ABC", "Delete khách KH001", "Xóa KH MST 0123456789"
+    /// </summary>
+    private async Task ProcessDeleteRequest(string input)
+    {
+        try
+        {
+            // Input đã được auto-correct từ ChatFunc() - không cần correct lại
+            
+            // Extract keyword từ input
+            string keyword = input.ToLower()
+                .Replace("xóa", "").Replace("xoa", "")
+                .Replace("delete", "").Replace("remove", "")
+                .Replace("mã", "").Replace("ma", "")
+                .Replace("khách", "").Replace("khach", "")
+                .Replace("customer", "")
+                .Replace("mst", "").Replace("công ty", "").Replace("cong ty", "")
+                .Trim();
+
+            if (string.IsNullOrEmpty(keyword) || keyword.Length < 2)
+            {
+                AddMessage("⚠ Vui lòng cung cấp thêm thông tin:\n\n📝 **Cú pháp đúng:**\n• 'Xóa khách KH001' - xóa theo mã\n• 'Xóa khách 0123456789' - xóa theo MST\n• 'Xóa khách Công ty ABC' - xóa theo tên\n\n⚠️ Lưu ý: Phải có từ **'khách'** hoặc **'KH'**");
+                await Task.Delay(100);
+                await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+                return;
+            }
+
+            // ========== SMART SEARCH với Priority Ranking (giống SearchCustomer) ==========
+            string sql = $@"
+                SELECT TOP 10 *, 
+                    CASE 
+                        -- Exact match (highest priority)
+                        WHEN ma_kh = '{keyword}' THEN 1000
+                        WHEN LOWER(ten_kh) = N'{keyword.ToLower()}' THEN 950
+                        
+                        -- Start with (high priority)
+                        WHEN ma_kh LIKE '{keyword}%' THEN 900
+                        WHEN LOWER(ten_kh) LIKE N'{keyword.ToLower()}%' THEN 850
+                        
+                        -- End with (medium priority)
+                        WHEN ma_kh LIKE '%{keyword}' THEN 800
+                        WHEN LOWER(ten_kh) LIKE N'%{keyword.ToLower()}' THEN 750
+                        
+                        -- Contains (lower priority)
+                        WHEN ma_kh LIKE '%{keyword}%' THEN 700
+                        WHEN LOWER(ten_kh) LIKE N'%{keyword.ToLower()}%' THEN 650
+                        
+                        -- MST match (medium priority)
+                        WHEN ma_so_thue = '{keyword}' THEN 880
+                        WHEN ma_so_thue LIKE '{keyword}%' THEN 780
+                        WHEN ma_so_thue LIKE '%{keyword}%' THEN 680
+                        
+                        ELSE 500
+                    END AS MatchScore
+                FROM dmkh
+                WHERE ma_kh LIKE '%{keyword}%'
+                   OR LOWER(ten_kh) LIKE N'%{keyword.ToLower()}%'
+                   OR ma_so_thue LIKE '%{keyword}%'
+                ORDER BY MatchScore DESC, ma_kh";
+
+            var ds = await myDb.LoadDataset(sql);
+
+            if (ds == null || ds.Tables[0].Rows.Count == 0)
+            {
+                AddMessage($"❌ Không tìm thấy khách hàng phù hợp với: **'{keyword}'**\n\n💡 Gợi ý:\n• Kiểm tra lại mã/tên khách hàng\n• Dùng lệnh 'Tìm {keyword}' để xem danh sách");
+                await Task.Delay(100);
+                await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+                return;
+            }
+
+            // ========== SMART SELECTION LOGIC ==========
+            var rows = ds.Tables[0].Rows;
+            int bestScore = rows[0]["MatchScore"] != DBNull.Value ? Convert.ToInt32(rows[0]["MatchScore"]) : 0;
+            int secondScore = rows.Count > 1 && rows[1]["MatchScore"] != DBNull.Value 
+                ? Convert.ToInt32(rows[1]["MatchScore"]) 
+                : 0;
+
+            string maKh = rows[0]["Ma_kh"]?.ToString() ?? "";
+            string tenKh = rows[0]["Ten_kh"]?.ToString() ?? "";
+            string mst = rows[0]["Ma_so_thue"]?.ToString() ?? "";
+
+            // ========== Auto-proceed nếu có EXACT MATCH hoặc BEST MATCH rõ ràng ==========
+            bool autoSelect = false;
+
+            if (bestScore >= 1000)
+            {
+                // Exact match → Auto-proceed to delete check
+                autoSelect = true;
+            }
+            else if (bestScore >= 900 && secondScore < 850)
+            {
+                // Best match rõ ràng (gap >= 50) → Auto-proceed
+                autoSelect = true;
+            }
+            else if (rows.Count == 1)
+            {
+                // Chỉ có 1 kết quả → Auto-proceed
+                autoSelect = true;
+            }
+
+            if (autoSelect)
+            {
+                // ========== AUTO-SELECT: Proceed to delete check ==========
+                await CheckAndConfirmDelete(maKh, tenKh, mst);
+            }
+            else
+            {
+                // ========== SHOW LIST: User needs to choose ==========
+                string resultText = $"🔍 Tìm thấy **{rows.Count} khách hàng** phù hợp với **'{keyword}'**:\n\n";
+                
+                for (int i = 0; i < Math.Min(rows.Count, 5); i++)
+                {
+                    var row = rows[i];
+                    int score = row["MatchScore"] != DBNull.Value ? Convert.ToInt32(row["MatchScore"]) : 0;
+                    string matchType = score >= 1000 ? "✅ Khớp chính xác" :
+                                      score >= 900 ? "🎯 Bắt đầu với" :
+                                      score >= 800 ? "🔚 Kết thúc với" :
+                                      "🔎 Chứa từ khóa";
+                    
+                    resultText += $"{i + 1}. **{row["Ma_kh"]}** - {row["Ten_kh"]}\n";
+                    if (i == 0) resultText += $"   {matchType}\n";
+                }
+                
+                if (rows.Count > 5)
+                {
+                    resultText += $"\n... và {rows.Count - 5} khách hàng khác.\n";
+                }
+                
+                resultText += $"\n⚠️ **Để xóa khách hàng cụ thể:**\n";
+                resultText += $"• Nhập **chính xác** mã KH: 'Xóa {rows[0]["Ma_kh"]}'\n";
+                resultText += $"• Hoặc nhập **đầy đủ** tên công ty\n";
+                resultText += $"\n⚡ **Gợi ý nhanh:** 'Xóa {rows[0]["Ma_kh"]}'";
+
+                ChatContent confirmMsg = new ChatContent();
+                confirmMsg.Name = "Trợ lý AI";
+                confirmMsg.Time = DateTime.Now;
+                confirmMsg.Text = resultText;
+                confirmMsg.Role = "assistant";
+
+                LSmessage.Add(confirmMsg);
+                StateHasChanged();
+                await Task.Delay(100);
+                await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddMessage($"❌ Lỗi khi xử lý yêu cầu xóa: {ex.Message}");
+            Console.WriteLine($"ProcessDeleteRequest error: {ex.Message}");
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+    }
+
+    /// <summary>
+    /// Kiểm tra phát sinh và yêu cầu xác nhận xóa
+    /// Stored procedure trả về: 1 = được phép xóa, 0 = đã có phát sinh
+    /// </summary>
+    private async Task CheckAndConfirmDelete(string maKh, string tenKh, string mst)
+    {
+        try
+        {
+            // Gọi stored procedure để kiểm tra phát sinh
+            string checkSql = $"EXEC [dbo].[CheckDeleteListId] @ma_dm = 'dmkh', @value = '{maKh}', @notvalue = ''";
+            var checkDs = await myDb.LoadDataset(checkSql);
+
+            bool canDelete = true;
+            string transactionInfo = "";
+
+            if (checkDs != null && checkDs.Tables.Count > 0 && checkDs.Tables[0].Rows.Count > 0)
+            {
+                var row = checkDs.Tables[0].Rows[0];
+                
+                // Stored Procedure trả về 1 = được xóa, 0 = có phát sinh
+                if (checkDs.Tables[0].Columns.Contains("CanDelete"))
+                {
+                    int canDeleteValue = Convert.ToInt32(row["CanDelete"]);
+                    canDelete = (canDeleteValue == 1);  // 1 = OK, 0 = Blocked
+                    transactionInfo = row["Message"]?.ToString() ?? "";
+                }
+                else if (checkDs.Tables[0].Columns.Count > 0)
+                {
+                    // Fallback: Nếu có column đầu tiên chứa kết quả số
+                    try
+                    {
+                        int result = Convert.ToInt32(row[0]);
+                        canDelete = (result == 1);  // 1 = OK, 0 = Blocked
+                        
+                        // Nếu có column thứ 2 = message
+                        if (checkDs.Tables[0].Columns.Count > 1 && row[1] != DBNull.Value)
+                        {
+                            transactionInfo = row[1].ToString();
+                        }
+                    }
+                    catch
+                    {
+                        // Nếu không parse được số → có data = có phát sinh
+                        canDelete = false;
+                        transactionInfo = row[0]?.ToString() ?? "Khách hàng đã có phát sinh giao dịch";
+                    }
+                }
+            }
+
+            ChatContent resultMsg = new ChatContent();
+            resultMsg.Name = "Trợ lý AI";
+            resultMsg.Time = DateTime.Now;
+            resultMsg.Role = "assistant";
+
+            if (!canDelete)
+            {
+                // Không cho phép xóa (return 0)
+                resultMsg.Text = $"⛔ **KHÔNG THỂ XÓA KHÁCH HÀNG**\n\n";
+                resultMsg.Text += $"**{tenKh}**\n";
+                resultMsg.Text += $"• Mã KH: {maKh}\n";
+                if (!string.IsNullOrEmpty(mst))
+                    resultMsg.Text += $"• MST: {mst}\n";
+                
+                if (!string.IsNullOrEmpty(transactionInfo))
+                {
+                    resultMsg.Text += $"\n❌ **Lý do:** {transactionInfo}\n\n";
+                }
+                else
+                {
+                    resultMsg.Text += $"\n❌ **Lý do:** Khách hàng đã có phát sinh giao dịch\n\n";
+                }
+                
+                resultMsg.Text += $"📊 **Khách hàng này đã có phát sinh:**\n";
+                resultMsg.Text += $"• Hóa đơn bán hàng\n";
+                resultMsg.Text += $"• Chứng từ kế toán\n";
+                resultMsg.Text += $"• Phiếu thu/chi\n";
+                resultMsg.Text += $"• Phiếu nhập/xuất kho\n\n";
+                resultMsg.Text += $"💡 **Khuyến nghị:**\n";
+                resultMsg.Text += $"• Đặt trạng thái 'Ngừng hoạt động'\n";
+                resultMsg.Text += $"• Lưu trữ thay vì xóa để giữ dữ liệu lịch sử\n";
+                resultMsg.Text += $"• Liên hệ quản trị viên nếu thực sự cần xóa";
+            }
+            else
+            {
+                // Cho phép xóa (return 1) - Yêu cầu xác nhận
+                resultMsg.Text = $"⚠️ **XÁC NHẬN XÓA KHÁCH HÀNG**\n\n";
+                resultMsg.Text += $"📋 **Thông tin khách hàng:**\n";
+                resultMsg.Text += $"• Tên: **{tenKh}**\n";
+                resultMsg.Text += $"• Mã KH: {maKh}\n";
+                if (!string.IsNullOrEmpty(mst))
+                    resultMsg.Text += $"• MST: {mst}\n";
+                resultMsg.Text += $"\n✅ Khách hàng này **chưa có phát sinh** giao dịch.\n\n";
+                resultMsg.Text += $"⚠️ **Cảnh báo:** Hành động này **KHÔNG THỂ HOÀN TÁC**!\n\n";
+                resultMsg.Text += $"Nhấn nút **'Xóa'** bên dưới để xác nhận.";
+
+                // Attach customer data for delete button
+                resultMsg.CustomerData = new Dmkh
+                {
+                    Ma_kh = maKh,
+                    Ten_kh = tenKh,
+                    Ma_so_thue = mst,
+                    Status = "DELETE_READY"  // Ready to delete
+                };
+            }
+
+            LSmessage.Add(resultMsg);
+            StateHasChanged();
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+        catch (Exception ex)
+        {
+            AddMessage($"❌ Lỗi khi kiểm tra phát sinh: {ex.Message}");
+            Console.WriteLine($"CheckAndConfirmDelete error: {ex.Message}");
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+    }
+
+    /// <summary>
+    /// Thực hiện xóa khách hàng sau khi đã xác nhận
+    /// </summary>
+    private async Task ExecuteDeleteCustomer(Dmkh customer)
+    {
+        if (customer == null || string.IsNullOrEmpty(customer.Ma_kh))
+        {
+            AddMessage("❌ Thông tin khách hàng không hợp lệ");
+            return;
+        }
+
+        try
+        {
+            // Lưu thông tin khách hàng trước khi xóa để có thể khôi phục
+            // Load full customer data from database
+            string sqlLoad = $"SELECT * FROM dmkh WHERE ma_kh = '{customer.Ma_kh}'";
+            var dsLoad = await myDb.LoadDataset(sqlLoad);
+            
+            if (dsLoad != null && dsLoad.Tables[0].Rows.Count > 0)
+            {
+                var row = dsLoad.Tables[0].Rows[0];
+                _lastDeletedCustomer = new Dmkh
+                {
+                    Ma_kh = row["Ma_kh"]?.ToString() ?? "",
+                    Ten_kh = row["Ten_kh"]?.ToString() ?? "",
+                    Ten_kh2 = row["Ten_kh2"]?.ToString() ?? "",
+                    Ma_so_thue = row["Ma_so_thue"]?.ToString() ?? "",
+                    Dia_chi = row["Dia_chi"]?.ToString() ?? "",
+                    Dien_thoai = row["Dien_thoai"]?.ToString() ?? "",
+                    Doi_tac = row["Doi_tac"]?.ToString() ?? "",
+                    Fax = row["Fax"]?.ToString() ?? "",
+                    Status = row["Status"]?.ToString() ?? "1",
+                    Date = row["Date"] != DBNull.Value ? Convert.ToDateTime(row["Date"]) : DateTime.Now.Date,
+                    Date0 = row["Date0"] != DBNull.Value ? Convert.ToDateTime(row["Date0"]) : DateTime.Now.Date,
+                    Time = row["Time"]?.ToString() ?? DateTime.Now.ToString("HH:mm:ss"),
+                    Time0 = row["Time0"]?.ToString() ?? DateTime.Now.ToString("HH:mm:ss"),
+                    User_id = row["User_id"] != DBNull.Value ? Convert.ToInt32(row["User_id"]) : 0,
+                    User_id0 = row["User_id0"] != DBNull.Value ? Convert.ToInt32(row["User_id0"]) : 0,
+                    User_name = row["User_name"]?.ToString() ?? "",
+                    User_name0 = row["User_name0"]?.ToString() ?? ""
+                };
+                
+                Console.WriteLine($"[DELETE BACKUP] Saved customer data for restore: {_lastDeletedCustomer.Ma_kh} - {_lastDeletedCustomer.Ten_kh}");
+            }
+
+            // Call parent component to delete
+            await OnCustomerDeleted.InvokeAsync(customer.Ma_kh);
+
+            // Success message with restore hint
+            ChatContent successMsg = new ChatContent();
+            successMsg.Name = "Hệ thống";
+            successMsg.Time = DateTime.Now;
+            successMsg.Text = $"✅ **ĐÃ XÓA THÀNH CÔNG**\n\nKhách hàng: **{customer.Ten_kh}**\nMã KH: {customer.Ma_kh}\n\nDữ liệu đã được xóa khỏi hệ thống.\n\n💡 **Lưu ý:** Nếu xóa nhầm, bạn có thể khôi phục bằng lệnh:\n• **'Tạo lại khách hàng vừa xóa'**\n• **'Khôi phục khách hàng'**\n• **'Undo'**";
+            successMsg.Role = "assistant";
+            LSmessage.Add(successMsg);
+
+            StateHasChanged();
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+        catch (Exception ex)
+        {
+            AddMessage($"❌ Lỗi khi xóa khách hàng: {ex.Message}");
+            Console.WriteLine($"ExecuteDeleteCustomer error: {ex.Message}");
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Xử lý lệnh KHÔI PHỤC khách hàng vừa xóa
+    /// VD: "Tạo lại khách hàng vừa xóa", "Khôi phục khách hàng", "Undo"
+    /// </summary>
+    private async Task ProcessRestoreCustomer()
+    {
+        try
+        {
+            if (_lastDeletedCustomer == null)
+            {
+                AddMessage("⚠️ **Không có khách hàng nào để khôi phục**\n\nChưa có khách hàng nào bị xóa trong phiên làm việc này.\n\n💡 **Gợi ý:**\n• Chức năng khôi phục chỉ hoạt động ngay sau khi xóa\n• Nếu đã đóng chatbot hoặc reload trang → không thể khôi phục\n• Liên hệ quản trị viên để khôi phục từ backup");
+                return;
+            }
+
+            // Check if customer with same code already exists
+            string checkSql = $"SELECT ma_kh FROM dmkh WHERE ma_kh = '{_lastDeletedCustomer.Ma_kh}'";
+            var checkDs = await myDb.LoadDataset(checkSql);
+            
+            if (checkDs != null && checkDs.Tables[0].Rows.Count > 0)
+            {
+                AddMessage($"⚠️ **Không thể khôi phục**\n\nKhách hàng với mã **{_lastDeletedCustomer.Ma_kh}** đã tồn tại trong hệ thống.\n\n💡 Có thể khách hàng đã được tạo lại với cùng mã.");
+                return;
+            }
+
+            // Show confirmation message with customer data
+            ChatContent confirmMsg = new ChatContent();
+            confirmMsg.Name = "Trợ lý AI";
+            confirmMsg.Time = DateTime.Now;
+            confirmMsg.Role = "assistant";
+            confirmMsg.Text = $"🔄 **XÁC NHẬN KHÔI PHỤC KHÁCH HÀNG**\n\n📋 **Thông tin khách hàng sẽ được khôi phục:**\n\n✅ Sẵn sàng khôi phục khách hàng vừa xóa.\n\nNhấn nút **'Tạo'** bên dưới để xác nhận khôi phục.";
+            confirmMsg.CustomerData = _lastDeletedCustomer;
+            confirmMsg.MissingFields = ""; // Đã đủ thông tin
+
+            LSmessage.Add(confirmMsg);
+            StateHasChanged();
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ProcessRestoreCustomer error: {ex.Message}");
+            AddMessage($"❌ Lỗi khi xử lý yêu cầu khôi phục: {ex.Message}");
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+    }
+
+    /// <summary>
+    /// Xử lý lệnh TẠO KHÁCH HÀNG bằng ChatGPT
+    /// VD: "Tạo kh Mã:00123, tên: Công ty TNHH", "Tạo khách MST 0123456789"
+    /// </summary>
+    private async Task ProcessCreateCustomer(string input)
+    {
+        try
+        {
+            // Tạo prompt cho ChatGPT để parse thông tin khách hàng
+            string prompt = $@"
+Người dùng muốn tạo khách hàng mới với thông tin sau:
+
+""{input}""
+
+Hãy trích xuất thông tin khách hàng theo định dạng JSON sau:
+{{
+  ""ma_kh"": ""[Mã khách hàng - bỏ khoảng trắng, chữ hoa]"",
+  ""ten_kh"": ""[Tên khách hàng đầy đủ]"",
+  ""ma_so_thue"": ""[Mã số thuế nếu có]"",
+  ""dia_chi"": ""[Địa chỉ nếu có]"",
+  ""dien_thoai"": ""[Số điện thoại nếu có]"",
+  ""doi_tac"": ""[Tên người đại diện nếu có]"",
+  ""message"": ""[Thông báo ngắn gọn về khách hàng này]""
+}}
+
+QUY TẮC:
+- Bỏ khoảng trắng trong mã khách hàng
+- Chuyển mã khách hàng thành chữ HOA
+- VD: 'Mã:00123' → ma_kh = '00123', 'Mã: KH 001' → ma_kh = 'KH001'
+- Nếu không có mã → để trống (hệ thống tự sinh)
+- Nếu có MST → tự động điền vào ma_kh nếu chưa có
+- Trích xuất CHÍNH XÁC tên công ty từ input
+- Không bịa đặt thông tin không có trong input";
+
+            string response = await CallChatGPT(prompt);
+
+            if (string.IsNullOrEmpty(response))
+            {
+                AddMessage("❌ Không thể kết nối AI để xử lý yêu cầu.");
+                return;
+            }
+
+            string message = "";
+            string missingFields = "";
+            var customer = ParseCustomerFromResponse(response, out message, out missingFields);
+
+            if (customer != null)
+            {
+                // Nếu có MST trong input → Gọi API tra cứu để bổ sung thông tin
+                if (!string.IsNullOrEmpty(customer.Ma_so_thue))
+                {
+                    await LoadFromTaxCodeApiAndUpdateCustomer(customer, customer.Ma_so_thue);
+                }
+
+                ChatContent resultMsg = new ChatContent();
+                resultMsg.Name = "Trợ lý AI";
+                resultMsg.Time = DateTime.Now;
+                resultMsg.Role = "assistant";
+                resultMsg.Text = message;
+                resultMsg.CustomerData = customer;
+                resultMsg.MissingFields = missingFields;
+
+                LSmessage.Add(resultMsg);
+                StateHasChanged();
+                await Task.Delay(100);
+                await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+            }
+            else
+            {
+                AddMessage($"⚠️ Không thể trích xuất thông tin khách hàng.\n\n💡 **Cách gõ đúng:**\n• 'Tạo kh Mã:00123, tên: Công ty ABC'\n• 'Tạo khách: Mã KH001, Tên Công ty XYZ'\n• 'Tạo kh MST 0123456789'\n• 'Thêm khách: Công ty ABC, MST 0123456789'\n\nResponse: {response}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ProcessCreateCustomer error: {ex.Message}");
+            AddMessage($"❌ Lỗi khi xử lý yêu cầu tạo khách hàng: {ex.Message}");
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+    }
+
+    /// <summary>
+    /// Xử lý câu hỏi chung bằng ChatGPT (không phải lệnh CRUD)
+    /// Hỗ trợ trả lời câu hỏi về hệ thống, hướng dẫn, giải thích...
+    /// ChatGPT có thể gọi API tra cứu MST nếu cần
+    /// </summary>
+    private async Task ProcessGeneralQuestion(string question)
+    {
+        try
+        {
+            // ========== BƯỚC 1: Tạo system context ==========
+            string systemContext = @"
+Bạn là trợ lý AI của hệ thống quản lý khách hàng (ERP) với khả năng tra cứu thông tin công ty.
+
+THÔNG TIN HỆ THỐNG:
+- Quản lý danh mục khách hàng (Mã KH, Tên KH, MST, Địa chỉ, Điện thoại, Người đại diện)
+- **Có khả năng tra cứu thông tin công ty THỰC từ API** khi người dùng hỏi về MST
+- Kiểm tra phát sinh trước khi xóa khách hàng
+- Tự động sửa lỗi đánh máy và chuẩn hóa câu lệnh
+
+CHỨC NĂNG ĐẶC BIỆT:
+📋 **Tra cứu thông tin công ty:**
+- Khi người dùng hỏi về thông tin công ty/MST → BẠN SẼ TRẢ LỜI 'SEARCH_MST:[số MST]'
+- VD: 'cho tôi thông tin công ty có MST 0101218690' → Trả lời: 'SEARCH_MST:0101218690'
+- VD: 'tìm hiểu về công ty 0123456789' → Trả lời: 'SEARCH_MST:0123456789'
+- VD: 'mã số thuế 0101218690 là công ty gì' → Trả lời: 'SEARCH_MST:0101218690'
+- Sau đó hệ thống sẽ tự động gọi API và trả thông tin thực
+
+CHỨC NĂNG KHÁC:
+1. 🆕 Tạo khách hàng: 'Tạo kh Mã:00123, tên: Công ty ABC'
+2. 🔍 Tìm kiếm: 'Tìm khách ABC'
+3. ✏️ Sửa thông tin: 'Sửa khách KH001'
+4. 🗑️ Xóa khách hàng: 'Xóa khách KH001'
+
+LƯU Ý:
+- Trả lời ngắn gọn, dễ hiểu
+- Sử dụng emoji phù hợp
+- Format markdown: **in đậm**, *in nghiêng*
+- Nếu người dùng hỏi về thông tin công ty/MST → PHẢI trả lời 'SEARCH_MST:[số]'
+";
+
+            // ========== BƯỚC 2: Gọi ChatGPT để phân tích câu hỏi ==========
+            string analysisPrompt = $"{systemContext}\n\nCÂU HỎI CỦA NGƯỜI DÙNG:\n{question}\n\nNẾU câu hỏi về thông tin công ty/MST → Trả lời: 'SEARCH_MST:[số MST]'\nNẾU KHÔNG → Trả lời câu hỏi bình thường.";
+
+            string response = await CallChatGPTWithContext(analysisPrompt);
+
+            if (string.IsNullOrEmpty(response))
+            {
+                AddMessage("⚠️ Không thể kết nối đến AI. Vui lòng thử lại sau.");
+                return;
+            }
+
+            // ========== BƯỚC 3: Kiểm tra nếu ChatGPT yêu cầu search MST ==========
+            if (response.Contains("SEARCH_MST:"))
+            {
+                // Extract MST từ response
+                var match = System.Text.RegularExpressions.Regex.Match(response, @"SEARCH_MST:([0-9\-]+)");
+                if (match.Success)
+                {
+                    string mstNumber = match.Groups[1].Value.Trim();
+                    Console.WriteLine($"[ChatGPT] Requested MST lookup: {mstNumber}");
+
+                    // ========== BƯỚC 4: Gọi SIS API tra cứu MST ==========
+                    try
+                    {
+                        ClassMasothue apiResult = await GetDatafromSISAPIAsync(mstNumber);
+
+                        if (apiResult != null && !string.IsNullOrEmpty(apiResult.TenChinhThuc))
+                        {
+                            // ========== BƯỚC 5: Format kết quả từ SIS API ==========
+                            string companyInfo = $"🏢 **Thông tin công ty MST {mstNumber}:**\n\n";
+                            
+                            if (!string.IsNullOrEmpty(apiResult.TenChinhThuc))
+                                companyInfo += $"📌 **Tên công ty:** {apiResult.TenChinhThuc}\n";
+                            
+                            if (!string.IsNullOrEmpty(apiResult.ChuDoanhNghiep))
+                                companyInfo += $"👤 **Chủ doanh nghiệp:** {apiResult.ChuDoanhNghiep}\n";
+                            
+                            if (!string.IsNullOrEmpty(apiResult.DiaChiGiaoDichChinh))
+                                companyInfo += $"📍 **Địa chỉ:** {apiResult.DiaChiGiaoDichChinh}\n";
+                            else if (!string.IsNullOrEmpty(apiResult.DiaChiGiaoDichPhu))
+                                companyInfo += $"📍 **Địa chỉ:** {apiResult.DiaChiGiaoDichPhu}\n";
+                            
+                            if (!string.IsNullOrEmpty(apiResult.SoDienThoai))
+                                companyInfo += $"☎️ **Điện thoại:** {apiResult.SoDienThoai}\n";
+                            
+                            if (!string.IsNullOrEmpty(apiResult.TrangThaiHoatDong))
+                                companyInfo += $"📊 **Trạng thái:** {apiResult.TrangThaiHoatDong}\n";
+
+                            // ========== BƯỚC 6: Gọi ChatGPT để phân tích & trả lời ==========
+                            string contextWithData = $@"
+Người dùng hỏi: ""{question}""
+
+Thông tin công ty từ API:
+{companyInfo}
+
+Hãy phân tích và trả lời câu hỏi của người dùng dựa trên thông tin trên.
+- Trả lời TỰ NHIÊN, không copy nguyên văn
+- Làm nổi bật thông tin quan trọng
+- Sử dụng emoji phù hợp
+- Format markdown đẹp
+- Nếu thiếu thông tin nào → nói rõ
+";
+
+                            string finalResponse = await CallChatGPTWithContext(contextWithData);
+                            
+                            ChatContent aiMsg = new ChatContent
+                            {
+                                Name = "Trợ lý AI",
+                                Time = DateTime.Now,
+                                Role = "assistant",
+                                Text = finalResponse
+                            };
+
+                            LSmessage.Add(aiMsg);
+                        }
+                        else
+                        {
+                            AddMessage($"⚠️ Không tìm thấy thông tin cho MST: **{mstNumber}**\n\n💡 Có thể MST không tồn tại hoặc API không có dữ liệu.");
+                        }
+                    }
+                    catch (Exception apiEx)
+                    {
+                        Console.WriteLine($"[ChatGPT MST Lookup] API Error: {apiEx.Message}");
+                        AddMessage($"❌ Lỗi khi tra cứu MST: {apiEx.Message}");
+                    }
+                }
+            }
+            else
+            {
+                // ========== Câu hỏi thông thường - không cần API ==========
+                ChatContent aiMsg = new ChatContent
+                {
+                    Name = "Trợ lý AI",
+                    Time = DateTime.Now,
+                    Role = "assistant",
+                    Text = response
+                };
+
+                LSmessage.Add(aiMsg);
+            }
+
+            StateHasChanged();
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ProcessGeneralQuestion error: {ex.Message}");
+            AddMessage($"❌ Lỗi khi xử lý câu hỏi: {ex.Message}");
+            await Task.Delay(100);
+            await JavacriptS.InvokeVoidAsync("MoveIntoView", "chat-bottom");
+        }
+    }
+
+    /// <summary>
+    /// Gọi ChatGPT với context cụ thể (không lưu vào chat history chính)
+    /// </summary>
+    private async Task<string> CallChatGPTWithContext(string prompt)
+    {
+        try
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            var requestBody = new
+            {
+                model = ChatBotConfig.ModelName,
+                messages = new[]
+                {
+                    new { role = "system", content = "Bạn là trợ lý AI thông minh, thân thiện và hữu ích. Trả lời ngắn gọn, rõ ràng." },
+                    new { role = "user", content = prompt }
+                },
+                max_tokens = ChatBotConfig.MaxTokens,
+                temperature = ChatBotConfig.Temperature
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("https://api.openai.com/v1/chat/completions", content);
+            var resultJson = await response.Content.ReadAsStringAsync();
+
+            using var doc = JsonDocument.Parse(resultJson);
+            var reply = doc.RootElement
+                   .GetProperty("choices")[0]
+                   .GetProperty("message")
+                   .GetProperty("content")
+                   .GetString();
+
+            return reply;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"CallChatGPTWithContext error: {ex.Message}");
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// Sử dụng ChatGPT để chuẩn hóa câu lệnh nhập vào
+    /// Tự động sửa lỗi chính tả, viết tắt và các lỗi đánh máy thường gặp
+    /// </summary>
+    private async Task<string> NormalizeInputWithChatGPT(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        try
+        {
+            // Tạo prompt cho ChatGPT để chuẩn hóa câu lệnh
+            string normalizationPrompt = $@"
+Bạn là trợ lý chuẩn hóa văn bản tiếng Việt. Nhiệm vụ: Sửa lỗi chính tả và chuẩn hóa câu sau đây.
+
+QUY TẮC CHUẨN HÓA:
+1. Sửa lỗi đánh máy phổ biến:
+   - 'ách' → 'khách'
+   - 'kh' + số → 'khách' + số
+   - 'tim' → 'tìm'
+   - 'sua' → 'sửa'
+   - 'xoa' → 'xóa'
+   - 'dia chi' → 'địa chỉ'
+   - 'dien thoai' → 'điện thoại'
+   - 'cong ty' → 'công ty'
+
+2. Chuẩn hóa viết tắt:
+   - 'kh' hoặc 'KH' (khi đứng một mình) → 'khách'
+   - 'mst' hoặc 'MST' → giữ nguyên 'MST'
+   - 'sdt' → 'điện thoại'
+
+3. GIỮ NGUYÊN:
+   - Mã số (VD: KH001, 009, 0123456789)
+   - Tên riêng, tên công ty
+   - Số điện thoại
+   - Ký tự đặc biệt trong mã
+
+4. Trả về ĐÚNG câu đã sửa, KHÔNG thêm giải thích, KHÔNG thêm dấu ngoặc kép.
+
+CÂU CẦN CHUẨN HÓA:
+{input}
+
+CHỈ TRẢ VỀ CÂU ĐÃ SỬA:";
+
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            var requestBody = new
+            {
+                model = "gpt-3.5-turbo",  // Dùng model nhẹ để xử lý nhanh
+                messages = new[]
+                {
+                    new { role = "system", content = "Bạn là trợ lý chuẩn hóa văn bản. Chỉ trả về câu đã sửa, không giải thích." },
+                    new { role = "user", content = normalizationPrompt }
+                },
+                max_tokens = 150,
+                temperature = 0.1  // Nhiệt độ thấp để có kết quả ổn định
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("https://api.openai.com/v1/chat/completions", content);
+            var resultJson = await response.Content.ReadAsStringAsync();
+
+            using var doc = JsonDocument.Parse(resultJson);
+            var normalizedText = doc.RootElement
+                   .GetProperty("choices")[0]
+                   .GetProperty("message")
+                   .GetProperty("content")
+                   .GetString()
+                   ?.Trim() ?? input;
+
+            // Log để debug
+            if (input != normalizedText)
+            {
+                Console.WriteLine($"[INPUT NORMALIZATION]");
+                Console.WriteLine($"Original: {input}");
+                Console.WriteLine($"Normalized: {normalizedText}");
+            }
+
+            return normalizedText;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"NormalizeInputWithChatGPT error: {ex.Message}");
+            // Nếu có lỗi, trả về input gốc
+            return input;
+        }
+    }
+
+    public class ChatContent
+    {
+        public DateTime Time { get; set; }
+        public string Name { get; set; }
+        public string Text { get; set; }
+        public string Role { get; set; }
+        public Dmkh CustomerData { get; set; }
+        public string MissingFields { get; set; }
+    }
+
+    public class GptMessage
+    {
+        public string role { get; set; }
+        public string content { get; set; }
+    }
+
+    public class ClassMasothue
+    {
+        public string MaSoThue { get; set; }
+        public string TenChinhThuc { get; set; }
+        public string DiaChiGiaoDichChinh { get; set; }
+        public string DiaChiGiaoDichPhu { get; set; }
+        public string TrangThaiHoatDong { get; set; }
+        public string SoDienThoai { get; set; }
+        public string ChuDoanhNghiep { get; set; }
+        public string LastUpdate { get; set; }
+    }
+}
+

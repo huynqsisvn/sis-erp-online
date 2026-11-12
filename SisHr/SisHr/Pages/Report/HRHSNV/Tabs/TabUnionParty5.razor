@@ -1,0 +1,102 @@
+﻿@namespace SisHr.Pages.Report.HRHSNV.Tabs
+
+@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using SisCom.Model
+@using SisLib.Lib
+@using Microsoft.AspNetCore.Components
+
+@* ===== 5. UNION/PARTY (Đoàn / Đảng) ===== *@
+<DxFormLayoutGroup id="section-5" Caption="@Lap["Union/Party"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+    @* Row 1: Đoàn *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Join union date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_vao_doan" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Union enrollment place"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Noi_ket_nap_doan" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Union position"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@CurRow.Ma_chucvu_doan" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 2: Đảng *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Join party date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_vao_dang" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Party official date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_chinh_thuc_vao_dang" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Party enrollment place"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Noi_ket_nap_dang" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 3 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Party position"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@CurRow.Ma_chucvu_dang" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Party committee date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_thamgia_cm" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4"></DxFormLayoutItem>
+
+    @* Row 4: Quân đội *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Military enlist date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_nhap_ngu" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Military discharge date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_xuat_ngu" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Military position"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@CurRow.Ma_chucvu_quandoi" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 5: Trình độ *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Political theory level"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Trinh_do_trinh_tri" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Management level"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Trinh_do_quan_ly" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+@code {
+    [Parameter] public HsnvDetailModel CurRow { get; set; }
+    [Parameter] public bool AllowEditMode { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public dynamic Lap { get; set; }
+}

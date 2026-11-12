@@ -1,0 +1,361 @@
+﻿@inject IDbManager myDb
+@inject ILocalStorageService Localstore
+@inject Statemanagerment myStatemanagerment
+@inject NavigationManager navigation
+@inject ICommandManager Commands
+@inject IWebHostEnvironment hostEnvironment;
+@inject IOptionsManager Options
+@inject IStringLocalizer<EditFormNoti> Lat
+@inject IJSRuntime JavacriptS
+@inject IChatService SisChatService
+@inject HttpClient Http
+<div class="row m-2">
+    <DxFormLayout>
+        <DxFormLayoutGroup ColSpanMd="12" Decoration="FormLayoutGroupDecoration.None">
+            <DxFormLayout CssClass="w-100">
+                <DxFormLayoutItem ColSpanMd="12">                    
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["From Date"]" ColSpanMd="6">
+                    <DxDateEdit @bind-Date="@CurNotification.Ngay1" Enabled="@AllowEditMode"></DxDateEdit>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["To Date"]" ColSpanMd="6">
+                    <DxDateEdit @bind-Date="@CurNotification.Ngay2" Enabled="@AllowEditMode"></DxDateEdit>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["Title"]" ColSpanMd="12">
+                    <DxMemo Rows="1" @bind-Text="@CurNotification.Tieu_de" Enabled="@AllowEditMode"></DxMemo>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["Content"]" ColSpanMd="12">
+                    <DxMemo Rows="3" @bind-Text="@CurNotification.Noi_dung" Enabled="@AllowEditMode"></DxMemo>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["Note"]" ColSpanMd="12">
+                    <DxMemo Rows="2" @bind-Text="@CurNotification.Ghi_chu" Enabled="@AllowEditMode"></DxMemo>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["Link"]" ColSpanMd="12">
+                    <DxMemo Rows="2" @bind-Text="@CurNotification.No_link" Enabled="@AllowEditMode"></DxMemo>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="@Lat["User list"]" ColSpanMd="12">
+                    <DxMemo Rows="2" @bind-Text="@CurNotification.Users_show" ReadOnly="true"></DxMemo>
+                </DxFormLayoutItem>
+                @if (TblData != null)
+                {
+                    <DxFormLayoutItem Caption="@Lat["User list"]" ColSpanMd="12">
+                        <MultiChooseGridComponent Page_size="6" EnableCheck="@AllowEditMode" SelectCol="@CheckCol" CheckChangedCallBack="@OnCheckChanged" TblData="@TblData" Fbrowse="@fbrowse" IsLangEn="@IsLangEn"></MultiChooseGridComponent>
+                    </DxFormLayoutItem>
+                }
+                <DxFormLayoutItem Caption="@Lat["Attach file"]" ColSpanMd="12" >
+                    <div id="overviewDemoDropZone" class="card custom-drop-zone bg-light rounded-3 w-100 m-0 p-2">
+                        <div class="row">
+                            <span class="drop-file-icon col-2"></span>
+                            <span class="col-3">Kéo và thả tệp vào đây. <b class="m-2">hoặc</b>  </span>
+                            <button id="overviewDemoSelectButton" class="btn border-primary btn-primary m-1 col">Chọn tệp</button>
+                        </div>
+                    </div>
+                    <DxUpload Name="myFile" Visible="true" 
+                        ExternalSelectButtonCssSelector="#overviewDemoSelectButton"
+                              AllowedFileExtensions="@(new List<string> { ".jpg",".png" })"
+                              ExternalDropZoneCssSelector="#overviewDemoDropZone"
+                              AllowMultiFileUpload="false" MaxFileSize="5242880" 
+                              ExternalDropZoneDragOverCssClass="bg-light border-secondary text-dark"
+                              UploadUrl="@GetUploadUrl(apidUrl)" SelectedFilesChanged="@SelectedFilesChanged" CssClass="w-100">
+                    </DxUpload>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </DxFormLayoutGroup>
+    </DxFormLayout>
+
+    <div class="row justify-content-end">
+        <div class="row justify-content-end">
+            @if (curActionTask == ActionTask.New || curActionTask == ActionTask.Copy || curActionTask == ActionTask.Edit)
+            {
+                <DxButton CssClass="btnokcancel col" RenderStyle="ButtonRenderStyle.Primary" Text="@Lat["Save"].ToString()" Click="@SaveData" />
+            }
+            <DxButton CssClass="btnokcancel col" RenderStyle="ButtonRenderStyle.Danger" Text="@Lat["Cancel"].ToString()" Click="@HideVoucher" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string notificationID { get; set; }
+    [CascadingParameter(Name = "Menu_id")]
+    public string Menu_id { get; set; }
+
+    public ActionTask actTask { get; set; }
+    Notification CurNotification = new Notification();
+    private ActionTask curActionTask { get; set; }
+    private string SqlTableView = "v_notification";
+    private string SqlTableName = "notification";
+    private string SqlTableKey = "notificationID";
+    private static string SqlTableKeyValue = "";
+    private bool AllowEditMode;   
+    private string UserLang = "";
+    [CascadingParameter(Name = "IsLangEn")]
+    public bool IsLangEn { get; set; }
+    private Users _curUser;
+    private Command curCommand;
+    private string message = "";
+    private string ToastMessage { get; set; } = "";
+    private string ToastId = "EditfrmNoti01ID";
+    private string fbrowse = "stt:50:h=Stt;user_name:120:h=User;comment:200:h=Họ tên";
+    DataTable TblData = null;
+    ColumnLength columnLength = new ColumnLength();
+    private DateTime Ngay_ct = DateTime.Now;
+    string CheckCol = "checkcol";
+    string saveUrl = "api/Upload/SaveImagesFiles";
+    string apidUrl = "api/Upload/UploadFile";
+    string deleteUrl = "api/Upload/DeleteFile";
+    string uploadFileFullPath = "";
+    string gui_file = "";
+    void OnCheckChanged(bool changed)
+    {
+        DataRow[] rows = TblData.Select("checkcol=1");
+        CurNotification.Users_show = string.Join(";", rows.Select(a => a["user_name"].ToString()));
+        StateHasChanged();
+    }
+
+    private async Task<string> SaveFiles(string file_name)
+    {
+        Http.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/json");
+        string url = Path.Combine(GetUploadUrl(saveUrl), file_name);
+        HttpResponseMessage ResponseMessage = Http.GetAsync(url).Result;
+        using (HttpContent Content = ResponseMessage.Content)
+        {
+            var data = await Content.ReadAsStringAsync();
+            if (data.ToString().Equals("Ok"))
+                return "Ok";
+            else
+                return "";
+        }
+    }
+    protected void SelectedFilesChanged(IEnumerable<UploadFileInfo> files)
+    {
+        foreach (UploadFileInfo f in files)
+        {
+            CurNotification.Img_link = string.Format("{0}_{1}", gui_file,f.Name );
+        }
+    }
+    protected string GetUploadUrl(string url)
+    {
+        return navigation.ToAbsoluteUri(url).AbsoluteUri;
+    }
+    private void Hidemessage(bool state)
+    {
+        if (state)
+        {
+            message = "";
+            StateHasChanged();
+        }
+    }
+    void HideVoucher()
+    {
+        GoBackToParent();
+    }
+    void GoBackToParent()
+    {
+        ParentPages _parentPage = myStatemanagerment.GetParentPage();
+        if (_parentPage != null)
+        {
+            myStatemanagerment.ResetParentPage();
+            navigation.NavigateTo(_parentPage.CurPage);
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        CurNotification = new Notification();
+        curActionTask = myStatemanagerment.GetCurrentActionTask();
+        _curUser = myStatemanagerment.GetCurUser();
+        curCommand = await Commands.GetSubMenuBymenuId(Menu_id.Replace('_', '.'));
+        LoadUserinfo();
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                {
+                    if (!string.IsNullOrEmpty(notificationID))
+                        ViewData(notificationID);
+                    break;
+                }
+            case ActionTask.Edit:
+                {
+                    if (!string.IsNullOrEmpty(notificationID))
+                        EditData(notificationID);
+                    break;
+                }
+            case ActionTask.New:
+                {
+                    CreateNew();
+                    break;
+                }
+            case ActionTask.Copy:
+                {
+                    if (String.IsNullOrEmpty(notificationID))
+                    {
+                        CreateNew();
+                    }
+                    else
+                        CreateCopy();
+
+                    break;
+                }
+            default:
+                {
+                    if (!string.IsNullOrEmpty(notificationID))
+                        ViewData(notificationID);
+                    break;
+                }
+        }
+    }
+    void ViewData(string notificationID)
+    {
+        AllowEditMode = false;
+        LoadData(notificationID);
+    }
+
+    void EditData(string notificationID)
+    {
+        AllowEditMode = true;
+        LoadData(notificationID);
+    }
+    void CreateNew()
+    {
+        gui_file = Guid.NewGuid().ToString();
+        apidUrl = string.Format("api/Upload/UploadFiles/{0}", gui_file);
+        CurNotification = new Notification();
+        CurNotification.Ngay1 = DateTime.Now;
+        CurNotification.Ngay2 = DateTime.Now;        
+        AllowEditMode = true;
+        StateHasChanged();
+    }
+
+    async Task CreateCopy()
+    {
+        string sql = String.Format("Select * from " + SqlTableName + " where {0} = '{1}' ", SqlTableKey, notificationID);
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Notification> lshdld = myDb.ConvertDataTable<Notification>(DsTrans.Tables[0]);
+            if (lshdld != null && lshdld.Count > 0)
+            {
+                CurNotification = lshdld[0];
+            }
+        }
+
+        gui_file = Guid.NewGuid().ToString();
+        apidUrl = string.Format("api/Upload/UploadFiles/{0}", gui_file);    
+        CurNotification.Ngay1 = DateTime.Now;
+        CurNotification.Ngay2 = DateTime.Now;
+        CurNotification.Date0 = DateTime.Now.Date;
+        CurNotification.Date2 = DateTime.Now.Date;
+        AllowEditMode = true;
+        StateHasChanged();
+    }
+    async Task SaveData()
+    {
+        if (!CheckValid())
+            return;
+
+        if (curActionTask == ActionTask.New || curActionTask == ActionTask.Copy)
+        {
+            if (!string.IsNullOrEmpty(CurNotification.Img_link))
+            {
+                string result = await SaveFiles(CurNotification.Img_link);
+                if (string.IsNullOrEmpty(result))               
+                    myStatemanagerment.SetNewThongbao("Lỗi upload file.");  
+            }
+            CurNotification.Ngay1 = CurNotification.Ngay1.Date;
+            CurNotification.Ngay2 = CurNotification.Ngay2.Date;
+            CurNotification.NotificationID = Guid.NewGuid();
+            CurNotification.Status = "1";
+            CurNotification.No_type = "1";
+            CurNotification.Date2 = DateTime.Now.Date;
+            CurNotification.Date0 = DateTime.Now.Date;
+            CurNotification.Time2 = DateTime.Now.ToString("HH:mm:ss");
+            CurNotification.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (_curUser != null)
+            {
+                CurNotification.User_id2 = _curUser.User_id;
+                CurNotification.User_id0 = _curUser.User_id;
+            }
+            await myDb.InsertOneRow<Notification>(CurNotification, SqlTableName);
+            SisChatService.SendNotification(_curUser.User_name, CurNotification.Users_show, "You have new message");
+            GoBackToParent();
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurNotification.Date2 = DateTime.Now.Date;
+            CurNotification.Time2 = DateTime.Now.ToString("HH:mm:ss");
+            if (_curUser != null)
+            {
+                CurNotification.User_id2 = _curUser.User_id;
+            }
+            string condition = String.Format(" {0} = '{1}'", CurNotification.NotificationID);
+            await myDb.UpdateOneRow1<Notification>(CurNotification, SqlTableName, SqlTableKey, condition);
+            myStatemanagerment.SetNewThongbao(String.Format("Sửa thành công {0}", CurNotification.NotificationID));
+            GoBackToParent();
+        }
+    }
+  
+    bool CheckValid()
+    {
+        if (CurNotification.Ngay1 < new DateTime(1900,1,1))
+        {
+            message = "Từ ngày không hợp lệ.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        if (CurNotification.Ngay2 < new DateTime(1900, 1, 1))
+        {
+            message = "Đến ngày không hợp lệ.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        if (CurNotification.Ngay2 < CurNotification.Ngay1)
+        {
+            message = "Đến ngày phải >= từ ngày.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurNotification.Tieu_de))
+        {
+            message = "Chưa vào tiêu đề.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurNotification.Noi_dung))
+        {
+            message = "Chưa vào nội dung.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurNotification.Users_show))
+        {
+            message = "Chưa có người nhận.";
+            myStatemanagerment.SetNewAlertMessage(message);
+            return false;
+        }
+        return true;
+    }
+    void LoadUserinfo()
+    {
+        string sql = string.Format("Select '0' as {0}, row_number() over(order by user_name) as stt , user_name, comment from userinfo where user_name is not null", CheckCol);
+        DataSet ds = myDb.LoadDataSet(sql);
+        if (ds != null && ds.Tables.Count > 0)
+        {
+            TblData = myDb.SetNoneReadOnlyDataTable(ds.Tables[0]);
+        }
+    }
+    async void LoadData(string notificationID)
+    {
+        string sql = String.Format("Select * from " + SqlTableName + " where {0} = '{1}' ", SqlTableKey, notificationID);
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Notification> lshdld = myDb.ConvertDataTable<Notification>(DsTrans.Tables[0]);
+            if (lshdld != null && lshdld.Count > 0)
+            {
+                CurNotification = lshdld[0];
+            }
+        }
+        StateHasChanged();
+    }
+}

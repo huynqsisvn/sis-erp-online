@@ -1,0 +1,22 @@
+﻿@using SisData.Model
+@using DevExpress.Blazor
+
+<DxMenu ItemClick="@(e => ((TextFormattingMenuItem)e.ItemInfo.Data).Click())"
+        Data="@MenuItems"
+        CssClass="text-white">
+    <DataMappings>
+        <DxMenuDataMapping Text="Text"
+                           NavigateUrl="Category"
+                           Children="Children"
+                           BeginGroup="BeginGroup"
+                           CssClass="CssClass"
+                           Enabled="Enabled" />
+    </DataMappings>
+</DxMenu>
+
+@code {
+
+    [Parameter]
+    public List<TextFormattingMenuItem> MenuItems { get; set; }
+   
+}

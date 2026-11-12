@@ -1,0 +1,105 @@
+﻿@page "/frmnoti/{menu_id}"
+@page "/frmnoti/{menu_id}/{notificationID}"
+@inject Statemanagerment myStatemanagerment
+@inject IStringLocalizer<FrmNoti> Lat
+@implements IDisposable
+@inject ILocalStorageService Localstore
+<DxWindow @bind-Visible="@PopupVisible"
+          ShowFooter="true" Width="520px"
+          AllowResize="false" ShowCloseButton="false" CloseOnEscape="true"
+          HeaderText="@Pagetitle">
+    <BodyTemplate>
+        <CascadingValue Name="IsLangEn" Value="@IsLangEn">
+            <CascadingValue Name="Menu_id" Value="@menu_id">
+                <EditFormNoti notificationID="@notificationID"></EditFormNoti>
+            </CascadingValue>
+        </CascadingValue>
+    </BodyTemplate>
+</DxWindow>
+@code {
+    [Parameter]
+    public string menu_id { get; set; }   
+    [Parameter]
+    public string notificationID { get; set; }
+  
+    public bool PopupVisible { get; set; } = true;
+    private ActionTask curActionTask { get; set; }
+    private string Pagetitle = "Notification";
+    private string userLang { get; set; } = "";
+    private bool IsLangEn = false;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            myStatemanagerment.OnLangguaChanged += OnLangguachange;
+        }
+    }
+    private async void OnLangguachange(MyLang lang)
+    {
+        if (lang.IsnewLang)
+        {
+            await Language();
+        }
+    }
+    async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            userLang = await Localstore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(userLang))
+            {
+                if (userLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+    public void Dispose()
+    {
+        myStatemanagerment.OnLangguaChanged -= OnLangguachange;
+    }
+    protected override void OnInitialized()
+    {
+        curActionTask = myStatemanagerment.GetCurrentActionTask();
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                {
+                    Pagetitle = Lat["View Notification"];
+                    break;
+                }
+            case ActionTask.Edit:
+                {
+                    Pagetitle = Lat["Edit Notification"];
+                    break;
+                }
+            case ActionTask.New:
+                {
+                    Pagetitle = Lat["New Notification"];
+                    break;
+                }
+            case ActionTask.Copy:
+                {
+                    Pagetitle = Lat["New Notification"];
+                    break;
+                }
+            case ActionTask.Delete:
+                {
+                    Pagetitle = Lat["Delete Notification"];
+                    break;
+                }
+            default:
+                {
+                    Pagetitle = Lat["View Notification"];
+                    break;
+                }
+        }
+    }
+}

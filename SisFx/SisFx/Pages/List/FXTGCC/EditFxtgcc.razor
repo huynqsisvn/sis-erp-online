@@ -1,0 +1,345 @@
+﻿@inherits FrmListBaseComponent
+@using SisFx.Pages.List.FXTGCC
+@using System.Dynamic
+
+<div class="popup-body-container w-100" style="overflow:auto;max-width:800px;">
+    <FormList Title="@Title"
+              @bind-curActionTask="@curActionTask"
+              OnSave="@SaveDM"
+              OnEdit="@OnEdit"
+              OnCopy="@OnCopy"
+              OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmtgcc"
+                          ItemSizeMode="@Itemsizemode"
+                          CssClass="frm-header sis-form"
+                          onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                <DxFormLayoutItem Caption="@Lap["Increase/Decrease type"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxComboBox Id="loai_tg_cc_input"
+                                    Enabled="@AllowEditLoai"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    Data="LSLoaiTgcc"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    NullText="1 - Tăng, 2 - Giảm"
+                                    FilteringMode="DataGridFilteringMode.Contains"
+                                    @bind-Value="@CurDmtgcc.Loai_tg_cc">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Reason code"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox Id="ma_tg_cc_input"
+                                   @bind-Text="@CurDmtgcc.Ma_tg_cc"
+                                   maxlength="@tblLength["ma_tg_cc"]"
+                                   InputCssClass="uppercase"
+                                   Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Reason name"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmtgcc.Ten_tg_cc"
+                                   maxlength="@tblLength["ten_tg_cc"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@(Lap["Name"] + " 2")" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmtgcc.Ten_tg_cc2"
+                                   maxlength="@tblLength["ten_tg_cc2"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem ColSpanMd="12">
+                    <Template>
+                        <hr />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+public Dmtgcc CurDmtgcc;
+private string menu_id = "wf.xd.05";
+private bool AllowEditLoai = false;
+
+    private List<Dmtk> LSLoaiTgcc = new List<Dmtk>()
+    {
+        new Dmtk { Ma = "1", Ten = "1 - Tăng" },
+        new Dmtk { Ma = "2", Ten = "2 - Giảm" }
+    };
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmtgcc";
+        SqlTableKey = "ma_tg_cc";
+        CheckSqlTableKey = "ma_tg_cc";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "fxtgcc" : ParentPage;
+        CurDmtgcc = new Dmtgcc();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+        string lang = IsLangEn ? "en" : "vi";
+        await Lap.LoadLocalizationAsync($"fx-{lang}");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    myStateMN.SetToolBar(new MyToolbar("save", false));
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditDM(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await CreateNewDM();
+                    break;
+                case ActionTask.Copy:
+                    await CreateCopyDM(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    break;
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('loai_tg_cc_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmtgcc = new Dmtgcc();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        AllowEditLoai = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmtgcc = new Dmtgcc();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        AllowEditLoai = true;
+        await LoadData(SqlTableKeyValue);
+
+        int checkResult = await CheckDeleteListIdAsync(SqlTableKeyValue);
+
+        // <= 0: đã có phát sinh → không cho sửa mã và loại
+        if (checkResult <= 0)
+        {
+            AllowEditMa = false;
+            AllowEditLoai = false;
+        }
+
+        StateHasChanged();
+    }
+
+    async Task<int> CheckDeleteListIdAsync(string maTgCc)
+    {
+        int result = 0;
+        try
+        {
+            string sql = $"SET NOCOUNT ON; exec dbo.CheckDeleteListId 'dmtgcc', '{maTgCc}'";
+            DataSet ds = await myDb.LoadDataset(sql);
+
+            if (ds != null && ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var val = ds.Tables[0].Rows[0][0];
+                if (val != DBNull.Value)
+                    result = Convert.ToInt32(val);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi kiểm tra sửa: " + ex.Message);
+        }
+        return result;
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(CurDmtgcc.Ma_tg_cc);
+    }
+
+    async Task SaveDM()
+    {
+        CurDmtgcc.Ma_tg_cc = CurDmtgcc.Ma_tg_cc.ToUpper().Trim().Replace(" ", "");
+        if (!CheckValid())
+            return;
+
+        SqlTableKeyValue = CurDmtgcc.Ma_tg_cc.ToUpper().Trim();
+        SqlTableKeyValueOld = (curActionTask == ActionTask.New ? "" : Ma_ma);
+        if (curCommand != null)
+        {
+            if (!CheckValidCode())
+                return;
+        }
+        else
+        {
+            if (curActionTask == ActionTask.Edit && SqlTableKeyValue != SqlTableKeyValueOld)
+            {
+                string chk = "Select " + SqlTableKey + " from " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+                DataSet dsChk = await myDb.LoadDataset(chk);
+                if (dsChk != null && dsChk.Tables[0].Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(String.Format(Lap["Mã [{0} ] đã tồn tại !"], SqlTableKeyValue));
+                    StateHasChanged();
+                    return;
+                }
+            }
+        }
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmtgcc.Date = DateTime.Now.Date;
+            CurDmtgcc.Date0 = DateTime.Now.Date;
+            CurDmtgcc.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmtgcc.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmtgcc.User_id = curUser.User_id;
+                CurDmtgcc.User_id0 = curUser.User_id;
+                CurDmtgcc.User_name = curUser.User_name;
+                CurDmtgcc.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmtgcc.Ma_tg_cc.Trim();
+            string check = "Select " + SqlTableKey + " from " + sqlTableName + " where " + SqlTableKey + " = '" + CheckSqlTableKeyValue + "'";
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Mã [{0} ] đã tồn tại !"], SqlTableKeyValue));
+                StateHasChanged();
+                return;
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmtgcc>(CurDmtgcc, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Thêm mới thành công : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmtgcc.Date = DateTime.Now.Date;
+            CurDmtgcc.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmtgcc.User_id = curUser.User_id;
+                CurDmtgcc.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmtgcc>(CurDmtgcc, sqlTableName, SqlTableKey, Ma_ma, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Cập nhật thành công : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmtgcc.Loai_tg_cc) || (CurDmtgcc.Loai_tg_cc != "1" && CurDmtgcc.Loai_tg_cc != "2"))
+        {
+            myStateMN.SetNewThongbao(Lap["Increase/decrease type must be 1 or 2"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(CurDmtgcc.Ma_tg_cc))
+        {
+            myStateMN.SetNewThongbao(Lap["Reason code is required"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(CurDmtgcc.Ten_tg_cc))
+        {
+            myStateMN.SetNewThongbao(Lap["Reason name is required"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = "Select * from " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmtgcc> lsdetai = myDb.ConvertDataTable<Dmtgcc>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+            {
+                CurDmtgcc = lsdetai[0];
+            }
+        }
+    }
+
+    async Task CreateNewDM()
+    {
+        CurDmtgcc = new Dmtgcc();
+        CurDmtgcc.Status = "1";
+        CurDmtgcc.Ma_tg_cc = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        AllowEditLoai = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmtgcc = new Dmtgcc();
+        await LoadData(SqlTableKeyValue);
+        CurDmtgcc.Status = "1";
+        CurDmtgcc.Ma_tg_cc = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        AllowEditLoai = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+}

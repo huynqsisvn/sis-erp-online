@@ -1,0 +1,208 @@
+﻿@page "/fanhomts"
+@page "/fanhomts/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,fanhomts")]
+
+<div class="row mt-1">
+    <FrmBrowseComponent @ref="oBrowse"
+                        TblData="@TblData"
+                        Fbrowse="@fbrowse"
+                        Page_size="@Page_size"
+                        SelectItem="CurItem"
+                        OnRowDbClick="@OnRDBClick"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true" Width="30vw"
+              MinWidth="300px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible"
+                                 List_ID="@sqlTableName"
+                                 Ma_ma="@SqlTableKeyValue"
+                                 Title="@Lap["Change asset group code"]"
+                                 Ten_item="@Ten_item"
+                                 OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="40vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible"
+                             CurDmimex="@CurDmimex"
+                             OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+    private const string DefaultFbrowseVN = "nh_ts:100:h=Mã nhóm ts;ten_nh_ts:250:h=Tên nhóm ts;ten_nh_ts2:250:h=Tên 2;date:100:h=Ngày sửa:D;time:80:h=Giờ sửa;user_name:100:h=Người sửa;date0:100:h=Ngày tạo:D;time0:80:h=Giờ tạo;user_name0:100:h=Người tạo";
+    private const string DefaultFbrowseEN = "nh_ts:100:h=Asset group code;ten_nh_ts:250:h=Asset group name;ten_nh_ts2:250:h=Name 2;date:100:h=Modified date:D;time:80:h=Modified time;user_name:100:h=Modified by;date0:100:h=Created date:D;time0:80:h=Created time;user_name0:100:h=Created by";
+
+    protected override void OnInitialized()
+    {
+        mPage = "fanhomts";
+        IsShowCopy = true;
+        IsShowImport = true;
+        sqlTableName = "dmnhomts";
+        sqlTableView = "dmnhomts";
+        SqlTableKey = "nh_ts";
+        FrmType = typeof(SisFa.Pages.List.FANHOMTS.EditFanhomts);
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wf.dm.05";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser != null && (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW")))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true, "F4"));
+                myStateMN.SetToolBar(new MyToolbar("Copy", IsShowCopy, ""));
+                myStateMN.SetToolBar(new MyToolbar("Import", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+                myStateMN.SetToolBar(new MyToolbar("Change", true));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            await Loaddata();
+            StateHasChanged();
+        }
+    }
+
+    public override async Task PageLoad()
+    {
+        try
+        {
+            curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+            if (curCommand != null)
+            {
+                fbrowse = IsLangEn ? curCommand.Vbrowse2 : curCommand.Vbrowse1;
+                string pSize = myOption.GetOptionsValue("M_GRID_NROW");
+                Page_size = string.IsNullOrEmpty(pSize) ? 50 : int.Parse(pSize.Trim());
+            }
+
+            if (string.IsNullOrEmpty(fbrowse))
+            {
+                fbrowse = IsLangEn ? DefaultFbrowseEN : DefaultFbrowseVN;
+                string pSize = myOption.GetOptionsValue("M_GRID_NROW");
+                Page_size = string.IsNullOrEmpty(pSize) ? 50 : int.Parse(pSize.Trim());
+            }
+        }
+        catch (Exception ex)
+        {
+            fbrowse = IsLangEn ? DefaultFbrowseEN : DefaultFbrowseVN;
+            Console.WriteLine("PageLoad error: " + ex.Message);
+        }
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        SelectedItem = null;
+        try
+        {
+            string sql = $"SELECT * FROM {sqlTableView} ORDER BY nh_ts";
+            DataSet dsList = await myDb.LoadDataset(sql);
+            TblData = dsList?.Tables[0];
+
+            if (TblData != null && TblData.DefaultView.Count > 0)
+                SelectedItem = TblData.DefaultView[0];
+
+            if (oBrowse != null)
+                await oBrowse.FocusGridAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Loaddata error: " + ex.Message);
+        }
+        StateHasChanged();
+    }
+
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public async void CloseForm()
+    {
+        IsShowFrm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+}

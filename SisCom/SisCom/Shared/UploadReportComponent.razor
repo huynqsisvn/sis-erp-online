@@ -1,0 +1,92 @@
+﻿@inject NavigationManager navigation
+@inject HttpClient Http
+<h4>Upload file report (*.repx)</h4>
+<div class="row">
+    <div id="overviewDemoDropZone" class="card custom-drop-zone bg-light rounded-3 w-100 m-0">
+        <div class="row">
+            <span class="drop-file-icon col-2"></span>
+            <span class="col-3">Kéo và thả tệp vào đây. <b class="m-2">hoặc</b>  </span>
+            <button id="overviewDemoSelectButton" class="btn border-primary btn-primary m-1 col">Chọn tệp</button>
+        </div>
+    </div>
+    <DxUpload Name="myFile" Visible="@UploadVisible" ExternalSelectButtonCssSelector="#overviewDemoSelectButton"
+              AllowedFileExtensions="@(new List<string> { ".repx" })"            
+              ExternalDropZoneCssSelector="#overviewDemoDropZone"
+              AllowMultiFileUpload="false" MaxFileSize="5242880" ExternalDropZoneDragOverCssClass="bg-light border-secondary text-dark"
+              UploadUrl="@GetUploadUrl(apidUrl)" SelectedFilesChanged="@SelectedFilesChanged" CssClass="w-100">
+    </DxUpload>
+    <DxButton Text="Upload" Click="@Uploadreportsfiles" RenderStyle="ButtonRenderStyle.Primary"></DxButton>
+</div>
+<MessageComponent Content="@Message" HideMessage="Hidemessage"></MessageComponent>
+@code {
+    [Parameter]
+    public string Mau { get; set; }
+    [Parameter]
+    public string Lang { get; set; }
+    bool UploadVisible { get; set; } = false;
+    string saveUrl = "api/Upload/SaveReportFiles";
+    string apidUrl = "api/Upload/UploadFile";
+    string strUploadfile = "";
+    string Message = "";
+    void Hidemessage()
+    {
+        Message = "";
+        StateHasChanged();
+    }
+    async void Uploadreportsfiles()
+    {
+        string result = await SaveFiles();
+        if (!string.IsNullOrEmpty(result))
+        {
+            Message = "Upload file thành công";
+            StateHasChanged();
+        }
+    }
+    private async Task<string> SaveFiles()
+    {
+        if (!string.IsNullOrEmpty(strUploadfile))
+        {
+            if (string.IsNullOrEmpty(Mau))
+                Mau = "VND";
+            if (string.IsNullOrEmpty(Lang))
+                Lang = "VN";
+
+            Http.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/json");
+            string url = Path.Combine(GetUploadUrl(saveUrl), strUploadfile, "Reports", Mau, Lang);
+            HttpResponseMessage ResponseMessage = Http.GetAsync(url).Result;
+            using (HttpContent Content = ResponseMessage.Content)
+            {
+                var data = await Content.ReadAsStringAsync();
+                if (data.ToString().Equals("Ok"))
+                    return strUploadfile;
+                else
+                    return "";
+            }
+        }
+        else
+            return "";
+    }
+
+    protected void SelectedFilesChanged(IEnumerable<UploadFileInfo> files)
+    {
+        UploadVisible = files.ToList().Count > 0;
+        strUploadfile = "";
+        foreach (UploadFileInfo f in files)
+        {
+            if (!f.Name.EndsWith(".repx"))
+            {
+                Message = "Không đúng định dạng file báo cáo. đuôi phải có định dạng (.repx)";
+                StateHasChanged();
+                return;
+            }
+            strUploadfile = f.Name + ",";
+            if (!string.IsNullOrEmpty(strUploadfile))
+                strUploadfile = strUploadfile.Substring(0, strUploadfile.Length - 1);
+        }
+        InvokeAsync(StateHasChanged);
+    }
+    protected string GetUploadUrl(string url)
+    {
+        return navigation.ToAbsoluteUri(url).AbsoluteUri;
+    }
+}

@@ -1,0 +1,536 @@
+﻿@inherits FrmListBaseComponent
+
+<FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveCtgs" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+    <div class="row m-2 me-2 rounded-1 border border-light shadow">
+        <DxFormLayout Data="@Cur" ItemSizeMode="@Itemsizemode" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+            <DxFormLayoutGroup Caption="@Lap["Voucher accounting"]" ColSpanMd="12"
+                               Decoration="FormLayoutGroupDecoration.Card"
+                               ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                               AnimationType="LayoutAnimationType.Slide"
+                               CssClass="dx-total-box mb-2">
+                <DxFormLayoutItem Caption="@Lap["Voucher from date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit @bind-Date="Cur.Ngay_ct1" @bind-Date:after="UpdateSo_lo" NullText="" Enabled="@AllowEditMode" Format="dd-MM-yyyy" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Voucher to date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit @bind-Date="Cur.Ngay_ct2" NullText="" Enabled="@AllowEditMode" Format="dd-MM-yyyy" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Voucher code list"]" ColSpanMd="12">
+                    <Template>
+                        <div class="d-flex gap-1">
+                            <DxTextBox @bind-Text="Cur.Ma_ct_gs" ReadOnly="true" CssClass="flex-grow-1" />
+                            <DxButton Text="@Lap["Select ..."]" RenderStyle="ButtonRenderStyle.Secondary"
+                                      Click="@OpenDsCtForm" Enabled="@AllowEditMode" />
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Account"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmtk" @bind-Value="Cur.Tk" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"/>                        
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Credit/debit"]" ColSpanMd="6">
+                    <Template>
+                        <div class="d-flex align-items-center gap-2">
+                            <DxSpinEdit @bind-Value="Cur.No_co" Min="1" Max="3" Enabled="@AllowEditMode" CssClass="w-auto" style="max-width:60px;" />
+                            <span class="text-muted small">@Lap["Debit credit hint"]</span>
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Account corresponding"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="Cur.Tk_du" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Department code"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmbpht" @bind-Value="Cur.Ma_bpht" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Project code"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmvv" @bind-Value="Cur.Ma_vv" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Unit"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmdvcs" @bind-Value="Cur.Ma_dvcs" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayoutGroup>
+
+            <DxFormLayoutGroup Caption="@Lap["Journal entry voucher"]" ColSpanMd="12"
+                               Decoration="FormLayoutGroupDecoration.Card"
+                               ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                               AnimationType="LayoutAnimationType.Slide"
+                               CssClass="dx-total-box mb-2">
+                <DxFormLayoutItem Caption="@Lap["No."]" ColSpanMd="4">
+                    <Template>
+                        <DxSpinEdit @bind-Value="Cur.Uu_tien" Min="0" Max="999" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Automatic get ID"]" ColSpanMd="4">
+                    <Template>
+                        <DxCheckBox @bind-Checked="Cur.So_tu_dong" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Prefix"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="Cur.Stt" @bind-Text:after="UpdateSo_lo" Enabled="@(AllowEditMode)" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Journal entry no."]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="Cur.So_lo" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Journal entry date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit @bind-Date="Cur.Ngay_lo" NullText="" Enabled="@AllowEditMode" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Journal entry description"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @ref="dienGiaiComponent" @bind-Text="Cur.Dien_giai" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayoutGroup>            
+        </DxFormLayout>
+    </div>
+</FormList>
+
+@if (ShowDsCt)
+{
+    <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.45);z-index:1050;"
+         @onclick="CloseDsCt">
+    </div>
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+                width:620px;max-width:96vw;max-height:80vh;
+                display:flex;flex-direction:column;
+                background:#fff;border-radius:6px;box-shadow:0 4px 24px rgba(0,0,0,0.25);z-index:1051;"
+         @onclick:stopPropagation>
+        <div class="modal-header bg-info" style="border-radius:6px 6px 0 0;flex-shrink:0;">
+            <h5 class="modal-title text-white">@Lap["Voucher list"]</h5>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:8px;">
+            <MultiChooseGridComponent Page_size="@_pagesize" EnableCheck="@_enableCheck"
+                                     SelectCol="@_checkCol"
+                                     CheckChangedCallBack="@OnCheckMaCtChanged"
+                                     TblData="@TblDsCt"
+                                     Fbrowse="@fbrowseDsCt" />
+        </div>
+        <div class="modal-footer" style="flex-shrink:0;border-radius:0 0 6px 6px;">
+            <DxButton CssClass="btn btn-danger text-white" Click="@CloseDsCt"
+                      Text="@Lap["Close"]" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public DateTime NgayCt1 { get; set; } = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    [Parameter] public DateTime NgayCt2 { get; set; } = new DateTime(DateTime.Now.Year, DateTime.Now.Month,
+        DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month));
+
+    DxTextBox dienGiaiComponent;
+    private CtgsModel Cur { get; set; } = new();
+    private string Title => Lap["Journal entry voucher declaration"];
+    private string LblTenTk = "";
+    private string LblTenDvcs = "";
+
+    private bool ShowDsCt = false;
+    private DataTable TblDsCt { get; set; }
+    private string fbrowseDsCt = "ma_ct:100:h=Mã c.từ;ten_ct:300:h=Tên chứng từ";
+    private string _checkCol = "checkcol";
+    private bool _enableCheck = true;
+    private int _pagesize = 20;
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "ctgs";
+        SqlTableKey = "stt_ctgs";
+        ParentPage = "glgsdmctgs";
+        Cur.Ngay_ct1 = NgayCt1;
+        Cur.Ngay_ct2 = NgayCt2;
+        Cur.Ngay_lo = NgayCt2;
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                if (!string.IsNullOrEmpty(Ma_ma))
+                    await LoadData(Ma_ma);
+                AllowEditMode = false;
+                AllowEditMa = false;
+                break;
+            case ActionTask.Edit:
+                AllowEditMode = true;
+                AllowEditMa = true;
+                await LoadData(Ma_ma);
+                break;
+            case ActionTask.New:
+                await CreateNew();
+                break;
+            case ActionTask.Copy:
+                await CreateCopy(Ma_ma);
+                break;
+            default:
+                if (!string.IsNullOrEmpty(Ma_ma))
+                    await LoadData(Ma_ma);
+                break;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        SqlTableKey = "stt_ctgs";
+        if (firstRender && dienGiaiComponent != null)
+        {
+            await dienGiaiComponent.FocusAsync();
+        }
+    }
+
+    void UpdateSo_lo()
+    {
+        if (!string.IsNullOrWhiteSpace(Cur.Stt) && Cur.Ngay_ct1 != default)
+            Cur.So_lo = GetSo_lo(Cur.Stt, Cur.Ngay_ct1);
+    }
+
+    async Task CreateNew()
+    {
+        Cur = new CtgsModel();
+        Cur.Ngay_ct1 = NgayCt1;
+        Cur.Ngay_ct2 = NgayCt2;
+        Cur.Ngay_lo = NgayCt2;
+        Cur.No_co = 1;
+        Cur.Uu_tien = 0;
+        Cur.So_tu_dong = false;
+        Cur.Loc = "2";
+        Cur.Status = "1";
+        Cur.Ma_dvcs = myStateMN.GetDvcs()?.Ma_dvcs ?? "";
+        if (Cur.Ma_dvcs == "ALL") Cur.Ma_dvcs = "";
+        Cur.Stt_ctgs = await GetNextSttCtgs();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task CreateCopy(string existingKey)
+    {
+        if (string.IsNullOrEmpty(existingKey)) { await CreateNew(); return; }
+        await LoadData(existingKey);
+        Cur.Stt_ctgs = await GetNextSttCtgs();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string sql = "SELECT * FROM ctgs WHERE stt_ctgs = @stt_ctgs";
+            DataSet ds = await myDb.LoadDataset(sql, "stt_ctgs", key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                var row = ds.Tables[0].Rows[0];
+                Cur = new CtgsModel
+                {
+                    Stt_ctgs = row["stt_ctgs"].ToString(),
+                    Stt = row["stt"].ToString(),
+                    So_lo = row["so_lo"].ToString(),
+                    Dien_giai = row["dien_giai"].ToString(),
+                    Tk = row["tk"].ToString(),
+                    No_co = row["no_co"] is DBNull ? 1 : Convert.ToInt32(row["no_co"]),
+                    Tk_du = row["tk_du"].ToString(),
+                    Ma_bpht = row["ma_bpht"].ToString(),
+                    Ma_vv = row["ma_vv"].ToString(),
+                    Ma_dvcs = row["ma_dvcs"].ToString(),
+                    Ma_ct_gs = row["ma_ct_gs"].ToString(),
+                    Uu_tien = row["uu_tien"] is DBNull ? 0 : Convert.ToDecimal(row["uu_tien"]),
+                    So_tu_dong = !(row["so_tu_dong"] is DBNull) && (row["so_tu_dong"].ToString() == "1"),
+                    Loc = row.Table.Columns.Contains("loc") && !(row["loc"] is DBNull) ? row["loc"].ToString() : "2",
+                    Status = row.Table.Columns.Contains("status") && !(row["status"] is DBNull) ? row["status"].ToString() : "1",
+                    Date = row.Table.Columns.Contains("date") && !(row["date"] is DBNull) ? Convert.ToDateTime(row["date"]) : (DateTime?)null,
+                    Time = row.Table.Columns.Contains("time") && !(row["time"] is DBNull) ? row["time"].ToString() : "",
+                    User_id = row.Table.Columns.Contains("user_id") && !(row["user_id"] is DBNull) ? row["user_id"].ToString() : "",
+                    Date0 = row.Table.Columns.Contains("date0") && !(row["date0"] is DBNull) ? Convert.ToDateTime(row["date0"]) : (DateTime?)null,
+                    Time0 = row.Table.Columns.Contains("time0") && !(row["time0"] is DBNull) ? row["time0"].ToString() : "",
+                    User_id0 = row.Table.Columns.Contains("user_id0") && !(row["user_id0"] is DBNull) ? row["user_id0"].ToString() : "",
+                    Ngay_ct1 = row["ngay_ct1"] is DBNull || string.IsNullOrEmpty(row["ngay_ct1"].ToString())
+                        ? NgayCt1 : Convert.ToDateTime(row["ngay_ct1"]),
+                    Ngay_ct2 = row["ngay_ct2"] is DBNull || string.IsNullOrEmpty(row["ngay_ct2"].ToString())
+                        ? NgayCt2 : Convert.ToDateTime(row["ngay_ct2"]),
+                    Ngay_lo = row["ngay_lo"] is DBNull || string.IsNullOrEmpty(row["ngay_lo"].ToString())
+                        ? NgayCt2 : Convert.ToDateTime(row["ngay_lo"]),
+                    Ngay_ctgs1 = row["ngay_ctgs1"] is DBNull || string.IsNullOrEmpty(row["ngay_ctgs1"].ToString())
+                        ? NgayCt1 : Convert.ToDateTime(row["ngay_ctgs1"]),
+                    Ngay_ctgs2 = row["ngay_ctgs2"] is DBNull || string.IsNullOrEmpty(row["ngay_ctgs2"].ToString())
+                        ? NgayCt2 : Convert.ToDateTime(row["ngay_ctgs2"]),
+                };
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi tải dữ liệu: {ex.Message}");
+        }
+    }
+
+    async Task<string> GetNextSttCtgs()
+    {
+        try
+        {
+            string Ws_id = myOption.GetOptionsValue("M_WS_ID").Trim();
+            string str = Ws_id + NgayCt1.ToString("yyyyMMdd").Substring(2, 2);
+            string sql = "SELECT CAST(MAX(RIGHT(stt_ctgs, 8)) as INT) FROM ctgs  WHERE '" + Ws_id + NgayCt1.ToString("yyyyMMdd").Substring(2, 2) + "' = LEFT(stt_ctgs, 3)";
+            var obj = myDb.GetValue(sql);
+            if (obj == null || obj is DBNull) return (str + "00000001");
+
+            string s = obj.ToString().Trim();
+            if (int.TryParse(s, out int n)) return str + string.Format("{0:00000000}", (object)(1 + n));
+            return (str + "00000001");
+        }
+        catch { return ("GS00000001"); }
+    }
+
+    async Task SaveCtgs()
+    {
+        try
+        {
+            if (!CheckValid()) return;
+
+            Cur.Stt_ctgs = (Cur.Stt_ctgs ?? "").Trim();
+            SqlTableKeyValue = Cur.Stt_ctgs;
+
+            if (curActionTask == ActionTask.New)
+            {
+                string checkSql = "SELECT stt_ctgs FROM ctgs WHERE stt_ctgs = @key";
+                DataSet ds = await myDb.LoadDataset(checkSql, "key", SqlTableKeyValue);
+                if (ds != null && ds.Tables[0].Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(String.Format(Lap["Code [{0} ] already exists !"], SqlTableKeyValue));
+                    StateHasChanged();
+                    return;
+                }
+                Cur.Date0 = DateTime.Now.Date;
+                Cur.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                Cur.User_id0 = curUser?.User_id.ToString() ?? "";
+                Cur.Date = DateTime.Now.Date;
+                Cur.Time = DateTime.Now.ToString("HH:mm:ss");
+                Cur.User_id = curUser?.User_id.ToString() ?? "";
+                Cur.User_name0 = curUser?.User_name ?? "";
+                Cur.User_name = curUser?.User_name ?? "";
+                Cur.Status = "1";
+                Cur.Ngay_lo = Cur.Ngay_ct2;
+                await myDb.InsertOneRow<CtgsModel>(Cur, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                Cur.Date = DateTime.Now.Date;
+                Cur.Time = DateTime.Now.ToString("HH:mm:ss");
+                Cur.User_id = curUser?.User_id.ToString() ?? "";
+                Cur.User_name = curUser?.User_name ?? "";
+                Cur.Ngay_lo = Cur.Ngay_ct2;
+                await myDb.UpdateOneRow<CtgsModel>(Cur, sqlTableName, SqlTableKey, Ma_ma);
+                myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+            }
+
+            if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo("/" + ParentPage);
+        }
+        catch (JSDisconnectedException)
+        {
+            myStateMN.SetNewThongbao(Lap["Connection to server failed, please try again"]);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(String.Format(Lap["Save failed: {ex.Message}"], ex.Message));
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (Cur.Ngay_ct1 == default || Cur.Ngay_ct2 == default)
+        {
+            myStateMN.SetNewThongbao(Lap["Voucher date invalid"]);
+            StateHasChanged();
+            return false;
+        }
+        if (Cur.Ngay_ct1 > Cur.Ngay_ct2)
+        {
+            myStateMN.SetNewThongbao(Lap["From date greater than to date"]);
+            StateHasChanged();
+            return false;
+        }
+        if (Cur.Ngay_lo == default)
+        {
+            myStateMN.SetNewThongbao(Lap["Journal entry date required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (Cur.So_tu_dong && string.IsNullOrWhiteSpace(Cur.Stt))
+        {
+            myStateMN.SetNewThongbao(Lap["Prefix required"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopy(Cur.Stt_ctgs);
+    }
+
+    void HideVoucher()
+    {
+        if (DxWindowmodel != null)
+            myModal.CloseModal(DxWindowmodel);
+
+        if (ShowAdd == true)
+            OnClose.InvokeAsync();
+        else
+            myNavi.NavigateTo(ParentPage);
+    }
+
+    void OpenDsCtForm()
+    {
+        if (TblDsCt == null)
+        {
+            try
+            {
+                string sql = IsLangEn
+                    ? "SELECT '0' AS checkcol, ma_ct, ten_ct2 FROM dmct WHERE ISNULL(ma_ct,'') <> '' ORDER BY stt"
+                    : "SELECT '0' AS checkcol, ma_ct, ten_ct  FROM dmct WHERE ISNULL(ma_ct,'') <> '' ORDER BY stt";
+                DataSet ds = myDb.LoadDataSet(sql);
+                if (ds != null && ds.Tables.Count > 0)
+                    TblDsCt = myDb.SetNoneReadOnlyDataTable(ds.Tables[0]);
+            }
+            catch (Exception ex)
+            {
+                myStateMN.SetNewThongbao($"Lỗi: {ex.Message}");
+                return;
+            }
+        }
+        // Reset check state
+        if (TblDsCt != null)
+        {
+            foreach (DataRow row in TblDsCt.Rows)
+                row[_checkCol] = (object)"0";
+
+            if (!string.IsNullOrEmpty(Cur.Ma_ct_gs))
+            {
+                string[] arr = Cur.Ma_ct_gs.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                foreach (string maCt in arr)
+                {
+                    DataRow row = TblDsCt.Select("ma_ct = '" + maCt.Trim() + "'").FirstOrDefault();
+                    if (row != null)
+                        row[_checkCol] = (object)"1";
+                }
+            }
+        }
+        ShowDsCt = true;
+        StateHasChanged();
+    }
+
+    void OnCheckMaCtChanged(bool changed)
+    {
+        string maCts = "";
+        if (TblDsCt != null)
+        {
+            DataRow[] rows = TblDsCt.Select("checkcol=1");
+            if (rows != null && rows.Length > 0)
+            {
+                foreach (DataRow row in rows)
+                    maCts += row["ma_ct"].ToString().TrimEnd() + ",";
+            }
+        }
+        Cur.Ma_ct_gs = maCts.Length > 0 ? maCts[..^1] : "";
+    }
+
+    void CloseDsCt()
+    {
+        ShowDsCt = false;
+        StateHasChanged();
+    }
+
+    public class CtgsModel
+    {
+        public string Stt_ctgs { get; set; } = "";
+        public string Stt { get; set; } = "";
+        public string So_lo { get; set; } = "";
+        public string Dien_giai { get; set; } = "";
+        public string Tk { get; set; } = "";
+        public int No_co { get; set; } = 1;
+        public string Tk_du { get; set; } = "";
+        public string Ma_bpht { get; set; } = "";
+        public string Ma_vv { get; set; } = "";
+        public string Ma_dvcs { get; set; } = "";
+        public string Ma_ct_gs { get; set; } = "";
+        public decimal Uu_tien { get; set; } = 0;
+        public bool So_tu_dong { get; set; } = false;
+        public string Loc { get; set; } = "2";
+        public string Status { get; set; } = "1";
+        public DateTime? Date { get; set; }
+        public string Time { get; set; } = "";
+        public string User_id { get; set; } = "";
+        public DateTime? Date0 { get; set; }
+        public string Time0 { get; set; } = "";
+        public string User_id0 { get; set; } = "";
+        public string User_name { get; set; } = "";
+        public string User_name0 { get; set; } = "";
+        public DateTime Ngay_ct1 { get; set; } = DateTime.Now;
+        public DateTime Ngay_ct2 { get; set; } = DateTime.Now;
+        public DateTime Ngay_lo { get; set; } = DateTime.Now;
+        public DateTime Ngay_ctgs1 { get; set; } = DateTime.Now;
+        public DateTime Ngay_ctgs2 { get; set; } = DateTime.Now;
+    }
+
+    static string GetSo_lo(string stt, DateTime ngay)
+    {
+        string s = stt.Trim();
+        string mm = ngay.Month.ToString().PadLeft(2, '0');
+        string yy = ngay.Year.ToString().Substring(2);
+        return $"{s}/{mm}{yy}".Trim();
+    }
+}

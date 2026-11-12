@@ -1,0 +1,327 @@
+@inherits FrmListBaseComponent
+
+<div class="w-100">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveDM" OnEdit="@OnEdit" OnCopy="@OnCopy" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmpx" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <DxFormLayoutItem Caption="@Lap["Workshop code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="ma_px_input" @bind-Text="@CurDmpx.Ma_px" Enabled="@AllowEditMa" maxlength="@tblLength["ma_px"]" InputCssClass="uppercase" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Reference code"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmpx.Ma_tra_cuu" maxlength="@tblLength["ma_tra_cuu"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Workshop name"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmpx.Ten_px" maxlength="@tblLength["ten_px"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@(Lap["Workshop name"] + " 2")" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmpx.Ten_px2" maxlength="@tblLength["ten_px2"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["CPSX depreciation account"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Id="tk_dd_input" Ma_dm="dmtk" @bind-Value="@CurDmpx.Tk_dd" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Accounting workshop code"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Id="ma_bpht_input" Ma_dm="dmbp" @bind-Value="@CurDmpx.Ma_bpht" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Company"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Id="ma_dvcs_input" Ma_dm="dmdvcs" @bind-Value="@CurDmpx.Ma_dvcs" IsEnable="@AllowEditMode" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Production method type"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSLoaiGT"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmpx.Loai_gt">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurDmpx.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ma)" Caption="@Lap["ID"]" Width="50px" />
+                                <DxListEditorColumn FieldName="@nameof(Dmtk.Ten)" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmpx CurDmpx;
+    private string menu_id = "wo.dm.01";
+
+    private List<Dmtk> LSLoaiGT = new List<Dmtk>();
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmpx";
+        sqlTableView = "v_dmpx";
+        SqlTableKey = "ma_px";
+        CheckSqlTableKey = "ma_px";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "codmpx" : ParentPage;
+        CurDmpx = new Dmpx();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        LSLoaiGT = new List<Dmtk>
+        {
+            new Dmtk { Ma = "1", Ten = Lap["Step-by-step phase"] },
+            new Dmtk { Ma = "2", Ten = Lap["Continuous flow"] },
+            new Dmtk { Ma = "0", Ten = Lap["No production method"] }
+        };
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        myStateMN.SetToolBar(new MyToolbar("save", false));
+                        break;
+                    }
+                case ActionTask.Edit:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await EditDM(Ma_ma);
+                        break;
+                    }
+                case ActionTask.New:
+                    {
+                        await CreateNewDM();
+                        break;
+                    }
+                case ActionTask.Copy:
+                    {
+                        await CreateCopyDM(Ma_ma);
+                        break;
+                    }
+                default:
+                    {
+                        if (!string.IsNullOrEmpty(Ma_ma))
+                            await ViewDM(Ma_ma);
+                        break;
+                    }
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_px_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmpx = new Dmpx();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmpx = new Dmpx();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(Ma_ma);
+    }
+
+    async Task SaveDM()
+    {
+        if (curActionTask == ActionTask.New)
+            if (!CheckValidCode())
+                return;
+
+        if (!CheckValid())
+            return;
+
+        CurDmpx.Ma_px = CurDmpx.Ma_px.ToUpper().Trim();
+        SqlTableKeyValue = CurDmpx.Ma_px;
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmpx.Date = DateTime.Now.Date;
+            CurDmpx.Date0 = DateTime.Now.Date;
+            CurDmpx.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmpx.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmpx.User_id = curUser.User_id;
+                CurDmpx.User_id0 = curUser.User_id;
+                CurDmpx.User_name = curUser.User_name;
+                CurDmpx.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmpx.Ma_px.Trim();
+            string[] strKey = CheckSqlTableKey.Split(';');
+            string[] strKeyValue = CheckSqlTableKeyValue.Split(';');
+            string condition = "";
+            if (strKey.Length > 0)
+            {
+                for (int x = 0; x < strKey.Length; x++)
+                {
+                    condition += strKey[x] + " = N'" + strKeyValue[x].ToUpper() + "' and ";
+                }
+                if (!string.IsNullOrEmpty(condition))
+                    condition = condition.Substring(0, condition.Length - 4);
+            }
+            string check = "Select " + strKey[0] + " from " + sqlTableName + " where " + condition;
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Code [{0}] already exists !"], SqlTableKeyValue));
+                StateHasChanged();
+            }
+            else
+            {
+                CurDmpx.Search = $"{CurDmpx.Ma_px} {CurDmpx.Ten_px} {CurDmpx.Ten_px2}";
+                await myDb.InsertOneRow<Dmpx>(CurDmpx, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmpx.Date = DateTime.Now.Date;
+            CurDmpx.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmpx.User_id = curUser.User_id;
+                CurDmpx.User_name = curUser.User_name;
+            }
+
+            CurDmpx.Search = $"{CurDmpx.Ma_px} {CurDmpx.Ten_px} {CurDmpx.Ten_px2}";
+            await myDb.UpdateOneRow<Dmpx>(CurDmpx, sqlTableName, SqlTableKey, Ma_ma);
+            myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmpx.Ma_px))
+        {
+            myStateMN.SetNewThongbao(Lap["Department code is required"]);
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurDmpx.Ten_px))
+        {
+            myStateMN.SetNewThongbao(Lap["Department name is required"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    public async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = $"Select * from {sqlTableView} where {SqlTableKey} = '{SqlTableKeyValue}'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmpx> lsdetai = myDb.ConvertDataTable<Dmpx>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+            {
+                CurDmpx = lsdetai[0];
+            }
+        }
+    }
+
+    public async Task CreateNewDM()
+    {
+        CurDmpx = new Dmpx();
+        CurDmpx.Status = "1";
+        CurDmpx.Loai_gt = "2";
+        CurDmpx.Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (CurDmpx.Ma_dvcs == "ALL") CurDmpx.Ma_dvcs = "";
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmpx = new Dmpx();
+        await LoadData(SqlTableKeyValue);
+
+        CurDmpx.Status = "1";
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+}

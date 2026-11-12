@@ -1,0 +1,556 @@
+﻿@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.DMQTBH
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveQtbh" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                @* --- NHÂN VIÊN --- *@
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns" Filter="status = 1"
+                            @bind-Value="@CurQtbh.Ma_ns" IsEnable="@AllowEditMa"
+                            SelectChanged="Ma_ns_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- HỌ VÀ TÊN --- *@
+                <DxFormLayoutItem Caption="@Lap["Full name"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Ten_ns" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NGÀY SINH --- *@
+                <DxFormLayoutItem Caption="@Lap["Birth date"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Ngay_sinh" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- DÂN TỘC --- *@
+                <DxFormLayoutItem Caption="@Lap["Ethnic code"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Ma_dantoc" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- QUỐC TỊCH --- *@
+                <DxFormLayoutItem Caption="@Lap["Nationality"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Quoc_tich" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- CMND --- *@
+                <DxFormLayoutItem Caption="@Lap["ID number"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Cmnd" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NGÀY CẤP --- *@
+                <DxFormLayoutItem Caption="@Lap["ID issued date"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Ngay_cmnd" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NƠI CẤP --- *@
+                <DxFormLayoutItem Caption="@Lap["ID issued place"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Nc_cmnd" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- HỘ KHẨU --- *@
+                <DxFormLayoutItem Caption="@Lap["Household registration"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Ho_khau" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- ĐỊA CHỈ --- *@
+                <DxFormLayoutItem Caption="@Lap["Address"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Dia_chi" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <Separator Margin="5" />
+
+                @* --- SỐ HDLĐ --- *@
+                <DxFormLayoutItem Caption="@Lap["Labor contract number"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Ma_hdld" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- NGÀY HDLĐ --- *@
+                <DxFormLayoutItem Caption="@Lap["Labor contract date"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Ngay_hdld" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- LOẠI HĐ --- *@
+                <DxFormLayoutItem Caption="@Lap["Contract type"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Ma_lhd" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- CHỨC VỤ --- *@
+                <DxFormLayoutItem Caption="@Lap["Position name"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Ten_cv" Enabled="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <Separator Margin="5" />
+
+                @* --- SỐ SỔ BHXH --- *@
+                <DxFormLayoutItem Caption="@Lap["Social insurance book number"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="so_the_bhxh_input" @bind-Text="@CurQtbh.So_the_bhxh"
+                            maxlength="@tblLength["so_the_bhxh"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- BHXH TỪ NGÀY --- *@
+                <DxFormLayoutItem Caption="@Lap["Social insurance from date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit Id="tu_ngay_input" Enabled="@AllowEditMode"
+                            @bind-Date="@CurQtbh.Tu_ngay" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- BHXH ĐẾN NGÀY --- *@
+                <DxFormLayoutItem Caption="@Lap["Social insurance to date"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxDateEdit Id="den_ngay_input" Enabled="@AllowEditMode"
+                            @bind-Date="@CurQtbh.Den_ngay" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- ĐƠN VỊ BH --- *@
+                <DxFormLayoutItem Caption="@Lap["Insurance unit"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Donvi_bh"
+                            maxlength="@tblLength["donvi_bh"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- C.VỤ/N.NGHIỆP --- *@
+                <DxFormLayoutItem Caption="@Lap["Occupation/Position"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurQtbh.Donvi_cv"
+                            maxlength="@tblLength["donvi_cv"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <Separator Margin="5" />
+
+                @* --- SỐ THẺ BHYT --- *@
+                <DxFormLayoutItem Caption="@Lap["Health insurance card number"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="so_the_bhyt_input" @bind-Text="@CurQtbh.So_the_bhyt"
+                            maxlength="@tblLength["so_the_bhyt"]" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- BHYT TỪ NGÀY --- *@
+                <DxFormLayoutItem Caption="@Lap["Health insurance from date"]" ColSpanMd="6">
+                    <Template>
+                        <DxDateEdit Id="bhyt_tungay_input" Enabled="@AllowEditMode"
+                            @bind-Date="@CurQtbh.Bhyt_tungay" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- BHYT ĐẾN NGÀY --- *@
+                <DxFormLayoutItem Caption="@Lap["Health insurance to date"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxDateEdit Id="bhyt_denngay_input" Enabled="@AllowEditMode"
+                            @bind-Date="@CurQtbh.Bhyt_denngay" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- GHI CHÚ --- *@
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxMemo @bind-Text="@CurQtbh.Ghi_chu"
+                            maxlength="@tblLength["ghi_chu"]"
+                            Rows="3"
+                            ReadOnly="@(!AllowEditMode)" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- TRẠNG THÁI --- *@
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxComboBox Data="@LSStatus" ValueFieldName="Ma" TextFieldName="Ten"
+                            @bind-Value="@CurQtbh.Status"
+                            ReadOnly="@(!AllowEditMode)" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="" ColSpanMd="6">
+                    <Template>
+                        <span class="text-muted">@Lap["1 - Active, 2 - Inactive"]</span>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Qtbh CurQtbh;
+    private string menu_id = "wr.ct.09";
+    private List<dynamic> LSStatus = new();
+
+    protected override void OnInitialized()
+    {
+        sqlTableName  = "DMQTBH";
+        sqlTableView  = "v_DMQTBH";
+        SqlTableKey   = "qtbhid";
+        CheckSqlTableKey = "qtbhid";
+        ParentPage    = string.IsNullOrEmpty(ParentPage) ? "DMQTBH" : ParentPage;
+        CurQtbh       = new Qtbh();
+
+        LSStatus.Add(new { Ma = "1", Ten = Lap["Active"] });
+        LSStatus.Add(new { Ma = "2", Ten = Lap["Inactive"] });
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord();
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_ns_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task ViewRecord(string key)
+    {
+        CurQtbh = new Qtbh();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(key);
+    }
+
+    async Task EditRecord(string key)
+    {
+        CurQtbh = new Qtbh();
+        AllowEditMode = true;
+        AllowEditMa = false;
+        await LoadData(key);
+    }
+
+    async Task NewRecord()
+    {
+        CurQtbh = new Qtbh();
+        CurQtbh.Qtbhid = Guid.NewGuid().ToString();
+        CurQtbh.Tu_ngay = DateTime.Now.Date;
+        CurQtbh.Den_ngay = DateTime.Now.Date;
+        CurQtbh.Bhyt_tungay = DateTime.Now.Date;
+        CurQtbh.Bhyt_denngay = DateTime.Now.Date;
+        CurQtbh.Status = "1";
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {SqlTableKey} = @{SqlTableKey}";
+            DataSet ds = await myDb.LoadDataset(sql, SqlTableKey, key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                List<Qtbh> list = myDb.ConvertDataTable<Qtbh>(ds.Tables[0]);
+                if (list != null && list.Count > 0)
+                {
+                    CurQtbh = list[0];
+                    LoadEmployeeInfo(CurQtbh.Ma_ns);
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data load error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void LoadEmployeeInfo(string ma_ns)
+    {
+        if (string.IsNullOrWhiteSpace(ma_ns)) return;
+        string safe = ma_ns.Trim().Replace("'", "''");
+        string sql = $"SELECT dmns.ngay_sinh, dmns.cmnd, dmns.nc_cmnd, dmns.ten_ns, dmns.ngay_cmnd, " +
+                     $"dmns.ma_dantoc, dmns.quoc_tich, dmns.ho_khau, dmns.dia_chi, " +
+                     $"dmhdld.ma_hdld, dmhdld.ma_lhd, dmhdld.ngay_hd, " +
+                     $"dmcv.ten_cv " +
+                     $"FROM dmns " +
+                     $"LEFT JOIN dmhdld ON dmns.ma_ns = dmhdld.ma_ns " +
+                     $"LEFT JOIN dmcv ON dmhdld.ma_cv = dmcv.ma_cv " +
+                     $"WHERE dmns.ma_ns = '{safe}'";
+
+        DataTable tbl = myDb.GetTable(sql);
+        if (tbl != null && tbl.Rows.Count > 0)
+        {
+            var r = tbl.Rows[0];
+            CurQtbh.Ten_ns     = r["ten_ns"].ToString();
+            CurQtbh.Ngay_sinh  = FormatDateOnly(r["ngay_sinh"].ToString());
+            CurQtbh.Cmnd       = r["cmnd"].ToString();
+            CurQtbh.Nc_cmnd    = r["nc_cmnd"].ToString();
+            CurQtbh.Ngay_cmnd  = FormatDateOnly(r["ngay_cmnd"].ToString());
+            CurQtbh.Ma_dantoc  = r["ma_dantoc"].ToString();
+            CurQtbh.Quoc_tich  = r["quoc_tich"].ToString();
+            CurQtbh.Ho_khau    = r["ho_khau"].ToString();
+            CurQtbh.Dia_chi    = r["dia_chi"].ToString();
+            CurQtbh.Ma_hdld    = r["ma_hdld"].ToString();
+            CurQtbh.Ma_lhd     = r["ma_lhd"].ToString();
+            CurQtbh.Ngay_hdld  = FormatDateOnly(r["ngay_hd"].ToString());
+            CurQtbh.Ten_cv     = r["ten_cv"].ToString();
+        }
+    }
+
+    void Ma_ns_Changed(ExpandoObject value)
+    {
+        CurQtbh.Ten_ns    = string.Empty;
+        CurQtbh.Ngay_sinh = string.Empty;
+        CurQtbh.Cmnd      = string.Empty;
+        CurQtbh.Nc_cmnd   = string.Empty;
+        CurQtbh.Ngay_cmnd = string.Empty;
+        CurQtbh.Ma_dantoc = string.Empty;
+        CurQtbh.Quoc_tich = string.Empty;
+        CurQtbh.Ho_khau   = string.Empty;
+        CurQtbh.Dia_chi   = string.Empty;
+        CurQtbh.Ma_hdld   = string.Empty;
+        CurQtbh.Ma_lhd    = string.Empty;
+        CurQtbh.Ngay_hdld = string.Empty;
+        CurQtbh.Ten_cv    = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(CurQtbh.Ma_ns))
+            LoadEmployeeInfo(CurQtbh.Ma_ns);
+
+        StateHasChanged();
+    }
+
+    async Task SaveQtbh()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            CurQtbh.Ghi_chu  = CurQtbh.Ghi_chu ?? "";
+            CurQtbh.Donvi_bh = CurQtbh.Donvi_bh ?? "";
+            CurQtbh.Donvi_cv = CurQtbh.Donvi_cv ?? "";
+
+            // Nếu không nhập số BHXH thì xóa các ngày BHXH
+            if (string.IsNullOrEmpty(CurQtbh.So_the_bhxh))
+            {
+                CurQtbh.Tu_ngay  = null;
+                CurQtbh.Den_ngay = null;
+            }
+            // Nếu không nhập số BHYT thì xóa các ngày BHYT
+            if (string.IsNullOrEmpty(CurQtbh.So_the_bhyt))
+            {
+                CurQtbh.Bhyt_tungay  = null;
+                CurQtbh.Bhyt_denngay = null;
+            }
+
+            if (curActionTask == ActionTask.New)
+            {
+                // Validate BHXH: kiểm tra trùng khoảng thời gian
+                if (!string.IsNullOrEmpty(CurQtbh.So_the_bhxh) && CurQtbh.Tu_ngay.HasValue)
+                {
+                    string safeNs = CurQtbh.Ma_ns.Trim().Replace("'", "''");
+                    string tuNgay = CurQtbh.Tu_ngay.Value.ToString("yyyy-MM-dd");
+                    string sqlChkBhxh1 = $"SELECT 1 AS soluong FROM {sqlTableName} WHERE '{tuNgay}' <= den_ngay AND ma_ns = '{safeNs}'";
+                    DataTable dtChk1 = myDb.GetTable(sqlChkBhxh1);
+                    if (dtChk1 != null && dtChk1.Rows.Count > 0)
+                    {
+                        myStateMN.SetNewThongbao($"{CurQtbh.Ten_ns} {Lap["Employee already has social insurance. BHXH start date must be after the end date of the previous period"]}");
+                        await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('tu_ngay_input')?.focus()");
+                        return;
+                    }
+                    string sqlChkBhxh2 = $"SELECT 1 AS soluong FROM {sqlTableName} WHERE den_ngay IS NULL AND '{tuNgay}' >= tu_ngay AND ma_ns = '{safeNs}'";
+                    DataTable dtChk2 = myDb.GetTable(sqlChkBhxh2);
+                    if (dtChk2 != null && dtChk2.Rows.Count > 0)
+                    {
+                        myStateMN.SetNewThongbao($"{CurQtbh.Ten_ns} {Lap["Last social insurance period has not ended"]}");
+                        await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('tu_ngay_input')?.focus()");
+                        return;
+                    }
+                }
+
+                // Validate BHYT: kiểm tra trùng khoảng thời gian
+                if (!string.IsNullOrEmpty(CurQtbh.So_the_bhyt) && CurQtbh.Bhyt_tungay.HasValue)
+                {
+                    string safeNs = CurQtbh.Ma_ns.Trim().Replace("'", "''");
+                    string tuNgay = CurQtbh.Bhyt_tungay.Value.ToString("yyyy-MM-dd");
+                    string sqlChkBhyt1 = $"SELECT 1 AS soluong FROM {sqlTableName} WHERE '{tuNgay}' <= bhyt_denngay AND ma_ns = '{safeNs}'";
+                    DataTable dtChkY1 = myDb.GetTable(sqlChkBhyt1);
+                    if (dtChkY1 != null && dtChkY1.Rows.Count > 0)
+                    {
+                        myStateMN.SetNewThongbao($"{CurQtbh.Ten_ns} {Lap["Employee already has health insurance. BHYT start date must be after the end date of the previous period"]}");
+                        await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('bhyt_tungay_input')?.focus()");
+                        return;
+                    }
+                    string sqlChkBhyt2 = $"SELECT 1 AS soluong FROM {sqlTableName} WHERE (bhyt_denngay IS NULL OR '{tuNgay}' >= bhyt_tungay) AND ma_ns = '{safeNs}'";
+                    DataTable dtChkY2 = myDb.GetTable(sqlChkBhyt2);
+                    if (dtChkY2 != null && dtChkY2.Rows.Count > 0)
+                    {
+                        myStateMN.SetNewThongbao($"{CurQtbh.Ten_ns} {Lap["Last health insurance period has not ended"]}");
+                        await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('bhyt_tungay_input')?.focus()");
+                        return;
+                    }
+                }
+
+                DateTime now = DateTime.Now;
+                CurQtbh.Date0      = now.Date;
+                CurQtbh.Time0      = now.ToString("HH:mm:ss");
+                CurQtbh.Date       = now.Date;
+                CurQtbh.Time       = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurQtbh.User_id0   = curUser.User_id;
+                    CurQtbh.User_name0 = curUser.User_name;
+                    CurQtbh.User_id    = curUser.User_id;
+                    CurQtbh.User_name  = curUser.User_name;
+                }
+
+                await myDb.InsertOneRow<Qtbh>(CurQtbh, sqlTableName);
+                myStateMN.SetNewThongbao($"{Lap["Successfully added new"]}: {CurQtbh.Ma_ns}");
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                DateTime now = DateTime.Now;
+                CurQtbh.Date      = now.Date;
+                CurQtbh.Time      = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurQtbh.User_id   = curUser.User_id;
+                    CurQtbh.User_name = curUser.User_name;
+                }
+
+                string safeMa = Ma_ma.Trim().Replace("'", "''");
+                string whereClause = $"qtbhid = '{safeMa}'";
+                await myDb.UpdateOneRow1<Qtbh>(CurQtbh, sqlTableName, "", whereClause);
+                myStateMN.SetNewThongbao($"{Lap["Edit successfully"]}: {CurQtbh.Ma_ns}");
+            }
+
+            if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo(ParentPage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed"]}: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrWhiteSpace(CurQtbh.Ma_ns))
+        {
+            myStateMN.SetNewThongbao(Lap["Employee code is required"] + "!");
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(CurQtbh.So_the_bhyt))
+        {
+            string invalid = CheckInvalidCode(CurQtbh.So_the_bhyt);
+            if (!string.IsNullOrEmpty(invalid))
+            {
+                myStateMN.SetNewThongbao($"{Lap["Health insurance card number contains invalid characters"]} [{invalid}]!");
+                return false;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(CurQtbh.So_the_bhxh))
+        {
+            string invalid = CheckInvalidCode(CurQtbh.So_the_bhxh);
+            if (!string.IsNullOrEmpty(invalid))
+            {
+                myStateMN.SetNewThongbao($"{Lap["Social insurance book number contains invalid characters"]} [{invalid}]!");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private string CheckInvalidCode(string code)
+    {
+        var invalidChars = new[] { "'", "\"", ";", "--", "/*", "*/" };
+        foreach (var c in invalidChars)
+            if (code.Contains(c)) return c;
+        return string.Empty;
+    }
+
+    private string FormatDateOnly(string dateValue)
+    {
+        if (string.IsNullOrWhiteSpace(dateValue)) return string.Empty;
+        if (DateTime.TryParse(dateValue.Trim(), out DateTime dt))
+            return dt.ToString("dd/MM/yyyy");
+        return dateValue;
+    }
+}

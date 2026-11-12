@@ -1,0 +1,343 @@
+﻿@using System.Data
+@inject XmlStringLocalizer Lap
+@inject IDbManager myDb
+@inject Statemanagerment myStateMN
+
+<DxPopup @bind-Visible="@IsVisible"
+         HeaderText="@Title"
+         Width="600px"
+         Height="auto"
+         ShowCloseButton="false" ShowFooter="true"
+         CloseOnEscape="false"
+         AllowResize="false">
+    <BodyContentTemplate Context="bodyContext">
+        <DxFormLayout CssClass="dialog-content">
+            <DxFormLayoutItem Caption="@Lap["Purchase book code"]" ColSpanMd="12">
+                <Template>
+                    <AutocompleteComponent Id="ma_qs_pnm_input" Ma_dm="dmqs" @bind-Value="@Ma_qs" SelectChanged="OnMaQsChanged" Filter="@FilterMaQs" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Payment voucher book code"]" ColSpanMd="12">
+                <Template>
+                    <AutocompleteComponent Id="ma_qs_pc_input" Ma_dm="dmqs" @bind-Value="@Ma_qs_pc" Filter="ma_cts like '%PC1%' and status=1" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Credit account"]" ColSpanMd="12">
+                <Template>
+                    <AutocompleteComponent Id="Tk_co_input" Ma_dm="dmtk1" @bind-Value="@Tk_co" IsLangEn="@IsLangEn" />
+                </Template>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="@Lap["Debit account"]" ColSpanMd="12">
+                <Template>
+                    <AutocompleteComponent Id="Tk_no_input" Ma_dm="dmtk1" @bind-Value="@Tk_no" IsLangEn="@IsLangEn"/>
+                </Template>
+            </DxFormLayoutItem>
+
+            @if (!IsServiceInvoice)
+            {
+                <DxFormLayoutItem Caption="@Lap["Warehouse code"]" ColSpanMd="12">
+                    <Template>
+                        <AutocompleteComponent Id="Ma_kho_input" Ma_dm="dmkho" @bind-Value="@Ma_kho" IsLangEn="@IsLangEn"/>
+                    </Template>
+                </DxFormLayoutItem>
+            }
+
+            <DxFormLayoutItem Caption="@Lap["Invoice numbers"]" ColSpanMd="12">
+                <Template>
+                    <DxMemo Text="@InvoiceNumbers" Rows="3" ReadOnly="true" />
+                </Template>
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </BodyContentTemplate>
+    <FooterContentTemplate>
+        <DxButton Text="@Lap["OK"]" 
+                  RenderStyle="ButtonRenderStyle.Primary" 
+                  Click="@OnOkClick"
+                  CssClass="me-2" />
+        <DxButton Text="@Lap["Cancel"]" 
+                  RenderStyle="ButtonRenderStyle.Secondary" 
+                  Click="@OnCancelClick" />
+    </FooterContentTemplate>
+</DxPopup>
+
+<style>
+    .dialog-content {
+        padding: 20px;
+    }
+
+    .form-group.row {
+        margin-bottom: 15px;
+    }
+
+    .col-form-label {
+        padding-top: 0.375rem;
+        padding-bottom: 0.375rem;
+        text-align: right;
+        font-weight: 500;
+    }
+</style>
+
+@code {
+    private bool IsVisible = false;
+    private string Title = "";
+    private TaskCompletionSource<Dictionary<string, object>> DialogResult; 
+
+    private string Ma_qs { get; set; } = "";
+    private string Ma_qs_pc { get; set; } = "";
+    private string Tk_co { get; set; } = "";
+    private string Tk_no { get; set; } = "";
+    private string Ma_kho { get; set; } = "";
+    private string InvoiceNumbers { get; set; } = "";
+    private string FilterMaQs { get; set; } = "";
+    private int UserId { get; set; }
+
+    private string TenTkCo { get; set; } = "";
+    private string TenTkNo { get; set; } = "";
+    private string TenKho { get; set; } = "";
+    private bool IsLangEn { get; set; } = false;
+    private bool IsServiceInvoice { get; set; } = false;
+
+    public async Task<Dictionary<string, object>> ShowAsync(Dictionary<string, object> parameters)
+    {
+        Ma_qs = parameters.ContainsKey("Ma_qs") ? parameters["Ma_qs"]?.ToString() ?? "" : "";
+        if(!string.IsNullOrEmpty(Ma_qs))
+        {
+            var maQsValue = myDb.GetValue($"Select ma_qs from dmqs where ma_qs = '{Ma_qs}'");
+            Ma_qs = maQsValue != null ? maQsValue.ToString() : "";
+        }
+        
+        Ma_qs_pc = parameters.ContainsKey("Ma_qs_pc") ? parameters["Ma_qs_pc"]?.ToString() ?? "" : "";
+        if(!string.IsNullOrEmpty(Ma_qs_pc))
+        {
+            var maQsPcValue = myDb.GetValue($"Select ma_qs from dmqs where ma_qs = '{Ma_qs_pc}'");
+            Ma_qs_pc = maQsPcValue != null ? maQsPcValue.ToString() : "";
+        }
+        
+        Tk_co = parameters.ContainsKey("Tk_co") ? parameters["Tk_co"]?.ToString() ?? "" : "";
+        if(!string.IsNullOrEmpty(Tk_co))
+        {
+            var tkCoValue = myDb.GetValue($"Select tk from dmtk where tk = '{Tk_co}'");
+            Tk_co = tkCoValue != null ? tkCoValue.ToString() : "";
+        }
+        
+        Tk_no = parameters.ContainsKey("Tk_no") ? parameters["Tk_no"]?.ToString() ?? "" : "";
+        if(!string.IsNullOrEmpty(Tk_no))
+        {
+            var tkNoValue = myDb.GetValue($"Select tk from dmtk where tk = '{Tk_no}'");
+            Tk_no = tkNoValue != null ? tkNoValue.ToString() : "";
+        }
+        
+        Ma_kho = parameters.ContainsKey("Ma_kho") ? parameters["Ma_kho"]?.ToString() ?? "" : "";
+        if(!string.IsNullOrEmpty(Ma_kho))
+        {
+            var maKhoValue = myDb.GetValue($"Select ma_kho from dmkho where ma_kho = '{Ma_kho}'");
+            Ma_kho = maKhoValue != null ? maKhoValue.ToString() : "";
+        }
+        InvoiceNumbers = parameters.ContainsKey("InvoiceNumbers") ? parameters["InvoiceNumbers"]?.ToString() ?? "" : "";
+        UserId = parameters.ContainsKey("UserId") ? Convert.ToInt32(parameters["UserId"]) : 0;
+        IsLangEn = parameters.ContainsKey("IsLangEn") && (bool)parameters["IsLangEn"];
+        IsServiceInvoice = parameters.ContainsKey("IsServiceInvoice") && (bool)parameters["IsServiceInvoice"];
+
+        if (IsServiceInvoice)
+        {
+            Title = IsLangEn ? "Create Service Invoice" : "Tạo hóa đơn mua dịch vụ";
+            FilterMaQs = $"ma_cts like '%PN1%' and status=1 " +
+                         $"AND ((NOT EXISTS(SELECT 1 FROM dmuserqs WHERE v_dmqs.ma_qs = dmuserqs.ma_qs) " +
+                         $"OR EXISTS (SELECT ma_qs FROM dmuserqs WHERE v_dmqs.ma_qs = dmuserqs.ma_qs " +
+                         $"AND [user_id] = {UserId})))";
+        }
+        else
+        {
+            Title = IsLangEn ? "Create Purchase Invoice" : "Tạo hóa đơn mua hàng";
+            FilterMaQs = $"ma_cts like '%PNA%' and status=1 " +
+                         $"AND ((NOT EXISTS(SELECT 1 FROM dmuserqs WHERE v_dmqs.ma_qs = dmuserqs.ma_qs) " +
+                         $"OR EXISTS (SELECT ma_qs FROM dmuserqs WHERE v_dmqs.ma_qs = dmuserqs.ma_qs " +
+                         $"AND [user_id] = {UserId})))";
+        }
+
+        await LoadAccountNames();
+        if (!IsServiceInvoice)
+        {
+            await LoadWarehouseName();
+        }
+
+        DialogResult = new TaskCompletionSource<Dictionary<string, object>>();
+        IsVisible = true;
+        StateHasChanged();
+
+        return await DialogResult.Task;
+    }
+
+    private async Task OnMaQsChanged(ExpandoObject value)
+    {
+        if (value == null)
+            return;     
+       
+    }
+
+    private async Task OnTkCoChanged(string value)
+    {
+        Tk_co = value;
+        await LoadAccountName(value, true);
+    }
+
+    private async Task OnTkNoChanged(string value)
+    {
+        Tk_no = value;
+        await LoadAccountName(value, false);
+    }
+
+    private async Task OnMaKhoChanged(string value)
+    {
+        Ma_kho = value;
+        await LoadWarehouseName();
+    }
+
+    private async Task LoadAccountNames()
+    {
+        if (!string.IsNullOrEmpty(Tk_co))
+            await LoadAccountName(Tk_co, true);
+        
+        if (!string.IsNullOrEmpty(Tk_no))
+            await LoadAccountName(Tk_no, false);
+    }
+
+    private async Task LoadAccountName(string tk, bool isTkCo)
+    {
+        try
+        {
+            string sql = $"SELECT ten_tk, ten_tk2 FROM dmtk WHERE tk = '{tk.Trim()}'";
+            var ds = await myDb.LoadDataset(sql, null);
+            
+            if (ds?.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var row = ds.Tables[0].Rows[0];
+                string tenTk = IsLangEn 
+                    ? row["ten_tk2"]?.ToString() ?? "" 
+                    : row["ten_tk"]?.ToString() ?? "";
+
+                if (isTkCo)
+                    TenTkCo = tenTk;
+                else
+                    TenTkNo = tenTk;
+                
+                StateHasChanged();
+            }
+            else
+            {
+                if (isTkCo)
+                    TenTkCo = "";
+                else
+                    TenTkNo = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            if (isTkCo)
+                TenTkCo = "";
+            else
+                TenTkNo = "";
+        }
+    }
+
+    private async Task LoadWarehouseName()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(Ma_kho))
+            {
+                TenKho = "";
+                return;
+            }
+
+            string sql = $"SELECT ten_kho, ten_kho2 FROM dmkho WHERE ma_kho = '{Ma_kho.Trim()}'";
+            var ds = await myDb.LoadDataset(sql, null);
+            
+            if (ds?.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+            {
+                var row = ds.Tables[0].Rows[0];
+                TenKho = IsLangEn 
+                    ? row["ten_kho2"]?.ToString() ?? "" 
+                    : row["ten_kho"]?.ToString() ?? "";
+                
+                StateHasChanged();
+            }
+            else
+            {
+                TenKho = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            TenKho = "";
+        }
+    }
+
+    private void OnOkClick()
+    {
+        if (!ValidateInputs())
+            return;
+
+        var result = new Dictionary<string, object>
+        {
+            { "IsOk", true },
+            { "Ma_qs", Ma_qs },
+            { "Ma_qs_pc", Ma_qs_pc },
+            { "Tk_co", Tk_co },
+            { "Tk_no", Tk_no },
+            { "Ma_kho", Ma_kho }
+        };
+
+        IsVisible = false;
+        DialogResult?.TrySetResult(result);
+    }
+
+    private void OnCancelClick()
+    {
+        var result = new Dictionary<string, object>
+        {
+            { "IsOk", false }
+        };
+
+        IsVisible = false;
+        DialogResult?.TrySetResult(result);
+    }
+
+    private bool ValidateInputs()
+    {
+        if (string.IsNullOrWhiteSpace(Ma_qs))
+        {
+            myStateMN?.SetNewThongbao(Lap["Purchase book code is required"]);
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(Ma_qs_pc))
+        {
+            myStateMN?.SetNewThongbao(Lap["Payment voucher book code is required"]);
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(Tk_no))
+        {
+            myStateMN?.SetNewThongbao(Lap["Debit account is required"]);
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(Tk_co))
+        {
+            myStateMN?.SetNewThongbao(Lap["Credit account is required"]);
+            return false;
+        }
+
+        if (!IsServiceInvoice && string.IsNullOrWhiteSpace(Ma_kho))
+        {
+            myStateMN?.SetNewThongbao(Lap["Warehouse code is required"]);
+            return false;
+        }
+
+        return true;
+    }
+}

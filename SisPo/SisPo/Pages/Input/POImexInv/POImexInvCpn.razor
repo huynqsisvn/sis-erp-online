@@ -1,0 +1,1065 @@
+﻿@page "/POImexInv"
+@page "/POImexInv/{Menu_id}"
+@inherits ListBaseComponent
+@using System.Net
+@using Newtonsoft.Json
+@attribute [Authorize(Roles = "admin,poimexinv")]
+
+<DxLayoutBreakpoint MaxWidth="1200" @bind-IsActive="@IsMobileLayout" />
+
+<div class="form-main">
+<div class="form-control form-control-sm form-toolbar" @onkeydown="KeyPress">
+    <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain" ItemClick="@OnToolbarItemClick" Title="">
+            <TitleTemplate>
+                @if (!IsMobileLayout)
+                {
+                    
+                }
+            </TitleTemplate>
+            <Items>
+                <DxToolbarItem Name="btnSearch" IconCssClass="tb-icon tb-icon-search" class="tb-search"
+                    Tooltip="F5" Text="@Lap["Search"]"
+                    Alignment="ToolbarItemAlignment.Left"
+                    BeginGroup="true">
+                </DxToolbarItem>
+                <DxToolbarItem Name="btnRefresh" IconCssClass="tb-icon tb-icon-note" class="tb-refresh"
+                    Tooltip="F9" Text="@Lap["Note"]"
+                    Alignment="ToolbarItemAlignment.Left"
+                    BeginGroup="true">
+                </DxToolbarItem>
+                <DxToolbarItem Name="btnDelete" IconCssClass="tb-icon tb-icon-del" class="tb-del"
+                    Tooltip="Delete" Text="@Lap["Delete"]"
+                    Alignment="ToolbarItemAlignment.Left"
+                    BeginGroup="true">
+                </DxToolbarItem>
+                <DxToolbarItem Name="btnView" IconCssClass="tb-icon tb-icon-view" class="tb-view"
+                    Tooltip="View" Text="@Lap["View"]"
+                    Alignment="ToolbarItemAlignment.Left"
+                    BeginGroup="true">
+                </DxToolbarItem>
+                <DxToolbarItem Name="btnProcess" IconCssClass="tb-icon tb-icon-process" class="tb-process"
+                    Tooltip="Process" Text="@Lap["Process"]"
+                    Alignment="ToolbarItemAlignment.Left"
+                    BeginGroup="true">
+                    <Items>
+                        <DxToolbarItem Name="btnProcess1" Text="@Lap["Login system"]" Click="@((ToolbarItemClickEventArgs e) => OnProcessSubClick("login"))" />
+                        <DxToolbarItem Name="btnProcess2" Text="@Lap["Get data from TCT"]" Click="@((ToolbarItemClickEventArgs e) => OnProcessSubClick("getdata"))" />
+                        <DxToolbarItem Name="btnProcess3" Text="@Lap["Check seller info"]" Click="@((ToolbarItemClickEventArgs e) => OnProcessSubClick("checkseller"))" />
+                       @*  <DxToolbarItem Name="btnProcess4" Text="@Lap["Update version"]" Click="@((ToolbarItemClickEventArgs e) => OnProcessSubClick("updateversion"))" /> *@
+                    </Items>
+                </DxToolbarItem>
+                <DxToolbarItem Name="btnExport" IconCssClass="tb-icon tb-icon-export" class="tb-export"
+                    Tooltip="Export" Text="@Lap["Export"]"
+                    Alignment="ToolbarItemAlignment.Left"
+                    BeginGroup="true">
+                </DxToolbarItem>
+                <DxToolbarItem Name="btnReport" IconCssClass="tb-icon tb-icon-report" class="tb-report"
+                    Tooltip="Report" Text="@Lap["Detail report"]"
+                    Alignment="ToolbarItemAlignment.Left"
+                    BeginGroup="true">
+                </DxToolbarItem>
+
+                <DxToolbarItem BeginGroup="true" Alignment="ToolbarItemAlignment.Right">
+                    <Template>
+                        <SearchItem SearchData="@OnSearchChanged" Placehoder="@searchPlaceholder" />
+                    </Template>
+                </DxToolbarItem>
+            </Items>
+        </DxToolbar>
+    </div>
+    
+    <div class="row mt-1">
+        <FrmBrowseComponent @ref="@oBrowse" TblData="@TblData" Page_size="@Page_size" IsPageSize="true" CssClass="grid-frm-height" Fbrowse="@fbrowse" SelectItem="@CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+    
+</div>
+
+<DxPopup @ref="popFilter" CloseOnOutsideClick="false" CssClass="dxPopup"
+         @bind-Visible="@popFilterVisible"
+         Width="500px"
+         ShowFooter="true"
+         HeaderText="@Lap["Filter"]">
+    <BodyTemplate Context="filterBodyContext">
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center">
+                <div class="spinner-border text-primary" role="status" style="width: 5rem; height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From number"]">
+                        <DxTextBox CssClass="col" @bind-Text="@So_ct1" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idTu_so" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To number"]">
+                        <DxTextBox CssClass="col" @bind-Text="@So_ct2" NullText="" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                   InputId="idDen_so" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct1" NullText="" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    InputId="idTu_ngay" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To date"]">
+                        <DxDateEdit CssClass="col" @bind-Date="@Ngay_ct2" NullText="" DisplayFormat="dd-MM-yyyy" Format="dd-MM-yyyy" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    InputId="idDen_ngay" />
+                    </DxFormLayoutItem>                    
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate Context="filterFooterContext">
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["OK"]" Click="@BtnFilterOK" />
+                <DxButton CssClass="col " RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@BtnFilterCancel" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@if (IsShowFrmLogin)
+{
+    <DxPopup @bind-Visible="@IsShowFrmLogin" CloseOnEscape="true" Width="500px" Height="auto" CloseOnOutsideClick="false"
+             MinWidth="450px" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center"
+             MinHeight="200px"
+             AllowResize="false"
+             AllowDrag="true" ShowCloseButton="false"
+             AllowDragByHeaderOnly="true"
+             ShowFooter="false" ShowHeader="false"
+             HeaderText="@Lap["Login"]">
+        <BodyTemplate>
+            <FrmLogin OnLoginSuccess="@HandleLoginSuccess" OnLoginCancel="@HandleLoginCancel" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@if (IsShowFrmGetData)
+{
+    <DxPopup @bind-Visible="@IsShowFrmGetData" CloseOnEscape="true" Width="90vw" Height="85vh" CloseOnOutsideClick="false"
+             MinWidth="800px" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center"
+             MinHeight="600px"
+             MaxHeight="99vh"
+             AllowResize="true"
+             AllowDrag="true" ShowCloseButton="true"
+             AllowDragByHeaderOnly="true"
+             ShowFooter="false"
+             HeaderText="@Lap["Get Tax Invoice Data"]">
+        <BodyTemplate>
+            <FrmGetData OnDataReceived="@HandleDataReceived" Ma_ct="@Ma_ct" Token_TCT="@Token_TCT" IsLangEn="@IsLangEn" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@if (IsShowFrmBKCT)
+{
+    <DxPopup @bind-Visible="@IsShowFrmBKCT" CloseOnEscape="true" Width="95vw" Height="90vh" CloseOnOutsideClick="false"
+             MinWidth="1000px" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center"
+             MinHeight="700px"
+             MaxHeight="99vh"
+             AllowResize="true"
+             AllowDrag="true" ShowCloseButton="true"
+             AllowDragByHeaderOnly="true"
+             ShowFooter="false"
+             CssClass="popup-bkct"
+             HeaderText="@Lap["Detailed list"]">
+        <BodyTemplate>
+            <FrmBKCT Ma_ct="@Ma_ct" 
+                     Com_mand="@curCommand" 
+                     Token_TCT="@Token_TCT" 
+                     IsLangEn="@IsLangEn" 
+                     Ngay_ct1="@Ngay_ct1"
+                     Ngay_ct2="@Ngay_ct2"
+                     So_ct1="@So_ct1"
+                     So_ct2="@So_ct2"
+                     Ma_dvcs="@Ma_dvcs"
+                     OnDataReceived="@HandleBKCTDataReceived" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@if (IsShowFrmViewInvoice)
+{
+    <DxPopup @bind-Visible="@IsShowFrmViewInvoice" CloseOnEscape="true" Width="80vw" Height="800px" CloseOnOutsideClick="false"
+             MinWidth="900px" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center"
+             MinHeight="700px"
+             MaxHeight="90vh"
+             AllowResize="true"
+             AllowDrag="true" ShowCloseButton="true"
+             AllowDragByHeaderOnly="true"
+             ShowFooter="false"
+             HeaderText="@Lap["Purchase invoice information"]">
+        <BodyTemplate>
+            <FrmViewInvoice Id_hd="@SelectedId_hd" IsLangEn="@IsLangEn" OnClose="@HandleViewInvoiceClose" curActionTask="ActionTask.View"/>
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@if (IsShowNotePopup)
+{
+    <DxPopup @bind-Visible="@IsShowNotePopup" CloseOnEscape="true" Width="600px" Height="auto" CloseOnOutsideClick="false"
+             MinWidth="500px" HorizontalAlignment="HorizontalAlignment.Center" VerticalAlignment="VerticalAlignment.Center"
+             MinHeight="250px"
+             AllowResize="false"
+             AllowDrag="true" ShowCloseButton="true"
+             AllowDragByHeaderOnly="true"
+             ShowFooter="true"
+             HeaderText="@Lap["Note"]">
+        <BodyTemplate Context="notePopupContext">
+            <div class="container pt-3 pb-2">
+                <DxFormLayout CssClass="w-100">
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Invoice number"]">
+                        <DxTextBox Text="@SelectedSo_ct0" ReadOnly="true" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Invoice date"]">
+                        <DxDateEdit Date="@SelectedNgay_ct0" ReadOnly="true" DisplayFormat="dd-MM-yyyy" />
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Note"]">
+                        <DxMemo @bind-Text="@NoteContent" Rows="5" MaxLength="500" 
+                                NullText="@Lap["Note"]" 
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
+                    </DxFormLayoutItem>
+                </DxFormLayout>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate Context="noteFooterContext">
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-2" RenderStyle="ButtonRenderStyle.Success" Text="@Lap["Save"]" Click="@SaveNote" />
+                <DxButton CssClass="col mx-2" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Cancel"]" Click="@CancelNote" />
+            </div>
+        </FooterTemplate>
+    </DxPopup>
+}
+
+@if (IsShowSellerInfoPopup)
+{
+    <DxPopup @bind-Visible="@IsShowSellerInfoPopup" 
+             CloseOnEscape="true" 
+             Width="600px" 
+             Height="auto" 
+             CloseOnOutsideClick="false"
+             MinWidth="500px" 
+             HorizontalAlignment="HorizontalAlignment.Center" 
+             VerticalAlignment="VerticalAlignment.Center"
+             MinHeight="200px"
+             AllowResize="false"
+             AllowDrag="true" 
+             ShowCloseButton="true"
+             AllowDragByHeaderOnly="true"
+             ShowFooter="true"
+             HeaderText="@Lap["Seller Information"]">
+        <BodyTemplate>
+            <div class="container pt-3 pb-2">
+                <div class="seller-info">
+                    <div class="info-row">
+                        <span class="info-label">@Lap["Tax Code"]:</span>
+                        <span class="info-value">@SellerInfo_MST</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">@Lap["Business Name"]:</span>
+                        <span class="info-value">@SellerInfo_TenDN</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">@Lap["Address"]:</span>
+                        <span class="info-value">@SellerInfo_DiaChi</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label info-label-status">@Lap["Status"]:</span>
+                        <span class="info-value info-label-status">@SellerInfo_TrangThai</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">@Lap["Phone"]:</span>
+                        <span class="info-value">@SellerInfo_SoDT</span>
+                    </div>
+                </div>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate>
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col-auto" RenderStyle="ButtonRenderStyle.Primary" Text="@Lap["OK"]" Click="@CloseSellerInfoPopup" />
+            </div>
+        </FooterTemplate>
+    </DxPopup>
+}
+
+<style>
+    .form-main {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .form-control.form-control-sm.form-toolbar {
+        background-color: #f5f5f5;
+        height: 32px;
+        padding: 2px 4px;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        align-items: center;
+    }
+
+    .grid-frm-height {
+        height: 80vh;
+    }
+
+    .tb-icon {
+        width: 20px;
+        height: 20px;
+        background-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        background-position: center center;
+        background-color: transparent;
+        background-repeat: no-repeat;
+    }
+
+    .tb-icon-search {
+        background-image: url('.\\Images\\Search.png');
+    }
+
+    .tb-icon-note {
+        background-image: url('.\\Images\\Icon_sua.svg');
+    }
+
+    .tb-icon-del {
+        width: 20px;
+        height: 20px;
+        background-image: url('.\\Images\\Icon_xoa.svg');
+    }
+
+    .tb-icon-view {
+        background-image: url('.\\Images\\Icon_xem.svg');
+    }
+
+    .tb-icon-process {
+        background-image: url('.\\Images\\Icon_them_moi.svg');
+    }
+
+    .tb-icon-export {
+        background-image: url('.\\Images\\Export.png');
+    }
+
+    .tb-icon-report {
+        background-image: url('.\\Images\\detail.png');
+    }
+
+    .tb-icon-detail {
+        background-image: url('.\\Images\\Detail.png');
+    }
+
+    .tb-search, .tb-refresh, .tb-del, .tb-view, .tb-process, .tb-export, .tb-report, .tb-bkct {
+        height: 28px;
+    }
+
+    /* DxToolbar item styling */
+    :deep(.dx-toolbar-item) {
+        padding: 0 1px !important;
+    }
+
+    :deep(.dx-toolbar-button) {
+        height: 28px !important;
+        min-height: 28px !important;
+        padding: 1px 4px !important;
+        font-size: 12px !important;
+    }
+
+    :deep(.dx-toolbar-text) {
+        font-size: 12px !important;
+        line-height: 1.2 !important;
+    }
+
+    /* Seller Info Popup Styles */
+    .seller-info {
+        padding: 10px;
+    }
+
+    .info-row {
+        display: flex;
+        margin-bottom: 12px;
+        line-height: 1.6;
+    }
+
+    .info-label {
+        font-weight: bold;
+        min-width: 150px;
+        margin-right: 10px;
+    }
+
+    .info-label-status {
+        color: red;
+    }
+
+    .info-value {
+        flex: 1;
+        word-break: break-word;
+    }
+
+    /* Popup BKCT - constrain content */
+    :deep(.popup-bkct .dxbs-popup-body) {
+        overflow: hidden !important;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 0 !important;
+    }
+
+    :deep(.popup-bkct .dxbs-popup-body > *) {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+</style>
+
+@code {
+    public string So_ct1 = "";
+    public string So_ct2 = "";
+    public string Ma_dvcs = "";
+    private bool _isMobileLayout;
+    private string searchPlaceholder = "Search...";
+    private string GridSearchText = "";
+    private string Filter = "";
+    public string Token_TCT = "";
+    public string Ma_ct = "HDV";
+
+    public DxPopup popFilter { get; set; }
+    public bool popFilterVisible { get; set; } = false;
+    public DateTime Ngay_ct1 = DateTime.Now.Date;
+    public DateTime Ngay_ct2 = DateTime.Now.Date;
+
+    bool IsMobileLayout
+    {
+        get => _isMobileLayout;
+        set
+        {
+            _isMobileLayout = value;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Menu_id = (String.IsNullOrEmpty(Menu_id) ? "wp.ct.08" : Menu_id);
+        FrmType = null;
+        IsShowImport = false;
+        LanguageID = "";
+        Ngay_ct1 = myStateMN.GetStartDate();
+        Ngay_ct2 = myStateMN.GetEndDate();
+        if(Ngay_ct1 == DateTime.Now.Date)
+        {
+            Ngay_ct1 = SisLib.Ctrl.NgayTC.StartOfPeriod(mySysvar, SisLib.Ctrl.NgayTC.GetStartDate(mySysvar, Ngay_ct1).Year, SisLib.Ctrl.NgayTC.GetPeriodOfDate(mySysvar, Ngay_ct1));
+        }
+        if (Ngay_ct2 == DateTime.Now.Date)
+        {
+            Ngay_ct2 = SisLib.Ctrl.NgayTC.EndOfPeriod(mySysvar, SisLib.Ctrl.NgayTC.GetStartDate(mySysvar, Ngay_ct2).Year, SisLib.Ctrl.NgayTC.GetPeriodOfDate(mySysvar, Ngay_ct2));
+        }
+        base.OnInitialized();
+    }
+
+    private bool IsShowFrmLogin = false;
+    private bool IsShowFrmGetData = false;
+    private bool IsShowFrmBKCT = false;
+    private bool IsShowFrmViewInvoice = false;
+    private bool IsShowNotePopup = false;
+    private bool IsShowSellerInfoPopup = false;
+    
+    private string SelectedId_hd = "";
+    private string SelectedSo_ct0 = "";
+    private DateTime? SelectedNgay_ct0 = null;
+    private string NoteContent = "";
+    
+    // Seller Info Fields
+    private string SellerInfo_MST = "";
+    private string SellerInfo_TenDN = "";
+    private string SellerInfo_DiaChi = "";
+    private string SellerInfo_TrangThai = "";
+    private string SellerInfo_SoDT = "";
+
+    private void OnToolbarItemClick(ToolbarItemClickEventArgs e)
+    {
+        switch (e.ItemName)
+        {
+            case "btnSearch":
+                popFilterVisible = true;
+                StateHasChanged();
+                break;
+            case "btnRefresh":
+                AddNote();
+                break;
+            case "btnDelete":
+                DelteVc();
+                break;
+            case "btnView":
+                View();
+                break;
+            case "btnExport":
+                oBrowse?.ExPortGrid(1);
+                myStateMN.SetNewThongbao(Lap["Export successfully"]);
+                break;
+            case "btnReport":
+                ShowBKCTForm();
+                break;
+        }
+    }
+    private void AddNote()
+    {
+        if (SelectedItem == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Please select a row to view detail"]);
+            return;
+        }
+
+        var rowView = SelectedItem as DataRowView;
+        if (rowView != null)
+        {
+            SelectedId_hd = rowView["id_hd"]?.ToString() ?? "";
+            SelectedSo_ct0 = rowView["so_ct0"]?.ToString() ?? "";            
+
+            var ngayCtValue = rowView["ngay_ct0"];
+            if (ngayCtValue != null && ngayCtValue != DBNull.Value)
+            {
+                if (DateTime.TryParse(ngayCtValue.ToString(), out DateTime parsedDate))
+                {
+                    SelectedNgay_ct0 = parsedDate;
+                }
+                else if (ngayCtValue.ToString().Length == 8)
+                {
+                    if (DateTime.TryParseExact(ngayCtValue.ToString(), "yyyyMMdd", 
+                        System.Globalization.CultureInfo.InvariantCulture, 
+                        System.Globalization.DateTimeStyles.None, out parsedDate))
+                    {
+                        SelectedNgay_ct0 = parsedDate;
+                    }
+                }
+            }
+
+            NoteContent = myDb.GetValue($"SELECT ghi_chu_loi FROM ph92 WHERE id_hd = '{SelectedId_hd}'").ToString().Trim() ;
+
+            if (!string.IsNullOrEmpty(SelectedId_hd))
+            {
+                IsShowNotePopup = true;
+                StateHasChanged();
+            }
+            else
+            {
+                myStateMN.SetNewThongbao(Lap["No data selected"]);
+            }
+        }
+    }
+
+    private async void SaveNote()
+    {
+        try
+        {            
+            string escapedNote = (NoteContent ?? "").Replace("'", "''");
+
+            string sqlUpdate = $"UPDATE ph92 SET ghi_chu_loi = N'{escapedNote}' WHERE id_hd = '{SelectedId_hd}'";
+
+            await myDb.ExecuteSqlQueryAsync(sqlUpdate);
+
+            myStateMN.SetNewThongbao(Lap["Saved successfully"]); 
+            IsShowNotePopup = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Error. can not save"]}: {ex.Message}");
+        }
+    }
+
+    private void CancelNote()
+    {
+        IsShowNotePopup = false;
+        NoteContent = "";
+        SelectedId_hd = "";
+        SelectedSo_ct0 = "";
+        SelectedNgay_ct0 = null;
+        StateHasChanged();
+    }
+    private void View()
+    {
+        if (SelectedItem == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Please select a row to view detail"]);
+            return;
+        }
+
+        var rowView = SelectedItem as DataRowView;
+        if (rowView != null)
+        {
+            SelectedId_hd = rowView["id_hd"]?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(SelectedId_hd))
+            {
+                IsShowFrmViewInvoice = true;
+                StateHasChanged();
+            }
+            else
+            {
+                myStateMN.SetNewThongbao(Lap["No data selected"]);
+            }
+        }
+    }
+    private void OnSearchChanged(string value)
+    {
+        GridSearchText = value;
+        StateHasChanged();
+    }
+
+    private async void DelteVc()
+    {
+        if (SelectedItem == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Please select a row to view detail"]);
+            return;
+        }
+
+        var rowView = SelectedItem as DataRowView;
+        if (rowView == null)
+            return;
+
+        string id_hd = rowView["id_hd"]?.ToString() ?? "";
+        string so_ct0 = rowView["so_ct0"]?.ToString() ?? "";
+        string ma_dvcs = rowView["ma_dvcs"]?.ToString()?.Trim() ?? "";
+        string current_ma_dvcs = myStateMN.GetMa_Dvcs()?.Trim() ?? "";
+
+        if (string.IsNullOrEmpty(id_hd))
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }
+
+        if (ma_dvcs != current_ma_dvcs)
+        {
+            myStateMN.SetNewThongbao(Lap["Invoice does not belong to the current unit"] + " !");
+            return;
+        }
+
+        string sqlCheckHtkt = $"Exec POImexInv_IsHtkt '{id_hd}'";
+        var checkResult = myDb.GetValue(sqlCheckHtkt);
+        if (checkResult != null && !string.IsNullOrEmpty(checkResult.ToString().Trim()))
+        {
+            myStateMN.SetNewThongbao(Lap["Invoices have been recorded, cannot be deleted"] + "!");
+            return;
+        }
+
+        string MessageDl = string.Format(Lap["Do you want to delete :{0} ?"].Value, so_ct0);
+        bool? ResultDl = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+        {
+            Text = MessageDl,
+            Title = Lap["Confirm deletion of voucher"].Value,
+            OkButtonText = Lap["OK"].Value,
+            CancelButtonText = Lap["Cancel"].Value,
+            ShowIcon = true,
+            ShowCloseButton = false,
+            RenderStyle = MessageBoxRenderStyle.Danger,
+        });
+
+        if (ResultDl != true)
+            return;
+
+        try
+        {            
+            string sqlDelete = $"EXEC dbo.POImexInv_DelBulk '(''{id_hd}'')'";
+            await myDb.ExecuteSqlQueryAsync(sqlDelete);
+
+            string successMsg = Lap["Delete successfully : {0}"].Value.Replace("{0}", so_ct0);
+            myStateMN.SetNewThongbao(successMsg);
+
+            await Loaddata(false);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Error. can not save"].Value}: {ex.Message}");
+        }
+    }
+    private async void CheckSellerinfo()
+    {
+        if (SelectedItem == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Please select a row to view detail"]);
+            return;
+        }
+
+        var rowView = SelectedItem as DataRowView;
+        if (rowView == null)
+            return;
+
+        string mst_ban = rowView["mst_ban"]?.ToString()?.Trim() ?? "";
+        
+        if (string.IsNullOrEmpty(mst_ban))
+        {
+            myStateMN.SetNewThongbao(Lap["No seller tax code"]);
+            return;
+        }
+        
+        ClassMasothue infoMst = GetDatafromSISAPI(@"http://help.sis.vn:7785/AP/getmasothue/" + mst_ban);
+        try
+        {            
+            if (infoMst == null || String.IsNullOrEmpty(infoMst.MaSoThue))
+            {
+                myStateMN.SetNewThongbao(Lap["No information found for tax code"]);
+                return;
+            }
+
+            await ShowSellerInfoPopup(mst_ban, infoMst);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["No access to the server"]}: {ex.Message}");
+        }
+    }
+    private ClassMasothue GetDatafromSISAPI(string url)
+    {
+        ClassMasothue custom = null;
+        try
+        {
+            WebRequest request = WebRequest.Create(url);            
+            WebResponse response = request.GetResponse();
+            string status = ((HttpWebResponse)response).StatusDescription;
+            using (Stream dataStream = response.GetResponseStream())
+            {
+                StreamReader reader = new StreamReader(dataStream);
+                string responseFromServer = reader.ReadToEnd();
+                custom = JsonConvert.DeserializeObject<ClassMasothue>(responseFromServer);
+            }            
+            response.Close();
+            return custom;
+        }
+        catch (Exception ex)
+        {
+            return custom;
+        }
+
+    }
+
+    private async Task ShowSellerInfoPopup(string mst, ClassMasothue infoData)
+    {
+        try
+        {
+            SellerInfo_MST = mst;
+            SellerInfo_TenDN = infoData.TenChinhThuc?.ToString() ?? "";
+            SellerInfo_DiaChi = infoData.DiaChiGiaoDichChinh?.ToString() ?? "";
+            SellerInfo_TrangThai = infoData.TrangThaiHoatDong?.ToString() ?? "";
+            SellerInfo_SoDT = infoData.SoDienThoai?.ToString() ?? "";
+            
+            IsShowSellerInfoPopup = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Error showing seller info: {ex.Message}");
+        }
+    }
+
+    private void CloseSellerInfoPopup()
+    {
+        IsShowSellerInfoPopup = false;
+        SellerInfo_MST = "";
+        SellerInfo_TenDN = "";
+        SellerInfo_DiaChi = "";
+        SellerInfo_TrangThai = "";
+        SellerInfo_SoDT = "";
+        StateHasChanged();
+    }
+    private async Task KeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "F2")
+        {
+            View();
+        }
+        if (e.Key == "F8")
+        {
+            DelteVc();
+        }
+        if (e.Key == "F5")
+        {
+            popFilterVisible = true;
+            StateHasChanged();
+        }
+        if (e.Key == "F9")
+        {
+            AddNote();
+        }
+        if (e.Key == "F10")
+        {
+            ShowBKCTForm();
+        }
+    }
+
+    private void ShowBKCTForm()
+    {
+        string Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs == "ALL")
+        {
+            myStateMN.SetNewThongbao(Lap["Please, select Unit code"]);
+            return;
+        }
+        IsShowFrmBKCT = true;
+        StateHasChanged();
+    }
+
+    private async void HandleBKCTDataReceived(DataSet bkctData)
+    {
+        IsShowFrmBKCT = false;
+        if (bkctData != null && bkctData.Tables.Count > 0 && bkctData.Tables[0].Rows.Count > 0)
+        {
+            await Loaddata(false);            
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleViewInvoiceClose()
+    {
+        IsShowFrmViewInvoice = false;
+        SelectedId_hd = "";
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnProcessSubClick(string action)
+    {
+        string Ma_dvcs = myStateMN.GetMa_Dvcs();
+        switch (action)
+        {
+            case "login":                
+                if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs == "ALL")
+                {
+                    myStateMN.SetNewThongbao(Lap["Please, select Unit code"]);
+                    return;
+                }
+                V_Moi();
+                break;
+            case "getdata":                
+                if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs == "ALL")
+                {
+                    myStateMN.SetNewThongbao(Lap["Please, select Unit code"]);
+                    return;
+                }
+                IsShowFrmGetData = true;
+                break;
+            case "checkseller":
+                CheckSellerinfo();
+                break;
+            case "updateversion":
+                myStateMN.SetNewThongbao(Lap["Update version"]);
+                break;
+        }
+        StateHasChanged();
+    }
+
+    public override void V_Moi()
+    {
+        IsShowFrmLogin = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLoginSuccess(string token)
+    {
+        Token_TCT = token;
+        IsShowFrmLogin = false;
+        IsShowFrmGetData = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLoginCancel()
+    {
+        IsShowFrmLogin = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleDataReceived(DataSet invoiceData)
+    {
+        IsShowFrmGetData = false;        
+        if (invoiceData != null && invoiceData.Tables.Count > 0 && invoiceData.Tables[0].Rows.Count > 0)
+        {
+            TblData = invoiceData.Tables[0];
+            myStateMN.SetNewThongbao(Lap["Data loaded successfully"]);
+        }
+        else
+        {
+            await Loaddata(false);
+        }
+        
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async void BtnFilterOK()
+    {
+        ShowLoadding = true;
+
+        myStateMN.SetStartDate((DateTime)Ngay_ct1);
+        myStateMN.SetEndDate((DateTime)Ngay_ct2);
+        string dvcs = myStateMN.GetMa_Dvcs();
+        dvcs = (dvcs == "ALL" ? "" : dvcs);
+        Filter = "1=1";
+
+        // if (!string.IsNullOrEmpty(Ma_dvcs))
+        // {
+        //     Filter = Filter + " AND ma_dvcs LIKE ''" + Ma_dvcs.Trim() + "%''";
+        // }
+        // if (string.IsNullOrEmpty(Ma_dvcs))
+        // {
+        //     if (dvcs != "ALL")
+        //     {
+        //         Filter = Filter + " AND ma_dvcs LIKE ''" + dvcs.Trim() + "%''";
+        //     }
+        // }
+        // if (Ngay_ct1 != null)
+        // {
+        //     Filter = Filter + " AND ngay_ct0 >= ''" + Ngay_ct1.ToString("yyyyMMdd") + "''";
+        // }
+        // if (Ngay_ct2 != null)
+        // {
+        //     Filter = Filter + " AND ngay_ct0 <= ''" + Ngay_ct2.ToString("yyyyMMdd") + "''";
+        // }
+        // if (!String.IsNullOrEmpty(So_ct1))
+        // {
+        //     Filter = Filter + " AND so_ct0 >= ''" + So_ct1.ToString() + "''";
+        // }
+        // if (!String.IsNullOrEmpty(So_ct2))
+        // {
+        //     Filter = Filter + " AND so_ct0 <= ''" + So_ct2.ToString() + "''";
+        // }
+
+        await Loaddata(false);
+
+        ShowLoadding = false;
+        popFilterVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim() : LanguageID, UserLang.Trim()));
+            
+            myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            await LoadDataFromDb();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadDataFromDb()
+    {
+        if (Ngay_ct1 == null)
+            Ngay_ct1 = myStateMN.GetStartDate();
+        if (Ngay_ct2 == null)
+            Ngay_ct2 = myStateMN.GetEndDate();
+
+        string dvcs = myStateMN.GetMa_Dvcs();
+        Filter = "1=1";
+        if (dvcs != "ALL")
+        {
+            Filter = Filter + " AND ma_dvcs LIKE ''" + dvcs.Trim() + "%''";
+        }
+        if (Ngay_ct1 != null)
+        {
+            Filter = Filter + " AND ngay_ct0 >= ''" + Ngay_ct1.ToString("yyyyMMdd") + "''";
+        }
+        if (Ngay_ct2 != null)
+        {
+            Filter = Filter + " AND ngay_ct0 <= ''" + Ngay_ct2.ToString("yyyyMMdd") + "''";
+        }
+
+        await Loaddata(true);
+    }
+
+    public async Task Loaddata(bool isInit)
+    {        
+        fbrowse = !IsLangEn ? curCommand.Vbrowse1.Trim() : curCommand.Ebrowse1.Trim();
+        SqlTableKey = "stt_rec";
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        Ma_dvcs = (Ma_dvcs == "ALL" ? "" : Ma_dvcs);
+
+        string sqlPh = $@"EXEC POImexInv_LoadData @Ngay_ct1, @Ngay_ct2, @So_ct1, @So_ct2, @Ma_dvcs";
+        var parameters = new Dictionary<string, object>
+        {
+            { "@Ngay_ct1", Ngay_ct1.ToString("yyyyMMdd") },
+            { "@Ngay_ct2", Ngay_ct2.ToString("yyyyMMdd") },
+            { "@So_ct1", So_ct1 ?? "" },
+            { "@So_ct2", So_ct2 ?? "" },
+            { "@Ma_dvcs", Ma_dvcs ?? "" }
+        };
+
+        DataSet dsPH = await myDb.LoadDataset(sqlPh, parameters);
+        if (dsPH != null && dsPH.Tables.Count > 0)
+        {
+            TblData = dsPH.Tables[0];            
+        }
+        
+        InvokeAsync(StateHasChanged);
+        await Task.CompletedTask;
+    }
+
+    public void V_In()
+    {
+        myStateMN.SetNewThongbao(Lap["Feature in development"]);
+    }
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                V_Moi();
+                break;
+            case ActionTask.View:
+                View();
+                break;
+            case ActionTask.Search:
+                popFilterVisible = true;
+                StateHasChanged();
+                break;
+            case ActionTask.Export:
+                oBrowse?.ExPortGrid(1);
+                myStateMN.SetNewThongbao(Lap["Export successfully"]);
+                break;
+            case ActionTask.Detail:
+                ShowBKCTForm();
+                break;
+            case ActionTask.Quit:
+                myStateMN.SetCurrentActionTask(ActionTask.None);
+                StateHasChanged();
+                break;
+        }
+    }
+
+    public virtual void OnDvcsChanged(string ma_dvcs)
+    {
+        _ = Loaddata(false);
+        StateHasChanged();
+    }
+
+    public void BtnFilterCancel()
+    {
+        popFilterVisible = false;
+        StateHasChanged();
+    }
+    public override void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+        base.Dispose();
+    }
+    public class ClassMasothue
+    {
+        public string MaSoThue { get; set; }
+        public string TenChinhThuc { get; set; }
+        public string DiaChiGiaoDichChinh { get; set; }
+        public string DiaChiGiaoDichPhu { get; set; }
+        public string TrangThaiHoatDong { get; set; }
+        public string SoDienThoai { get; set; }
+        public string ChuDoanhNghiep { get; set; }
+        public string LastUpdate { get; set; }
+    }
+}

@@ -1,0 +1,385 @@
+@inherits FrmListBaseComponent
+
+<div style="width:auto;">
+    <FormList Title="@Title"
+              @bind-curActionTask="@curActionTask"
+              OnSave="@SaveDmtd"
+              OnEdit="@OnEdit"
+              OnCopy="@OnCopy"
+              OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmtd"
+                          ItemSizeMode="@Itemsizemode"
+                          CssClass="frm-header sis-form"
+                          onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                <!-- Mã t? do -->
+                <DxFormLayoutItem Caption="@Lap["Ma_td"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox CssClass="col col-8"
+                                   @bind-Text="@CurDmtd.ma_td"
+                                   maxlength="@tblLength["ma_td"]"
+                                   Enabled="@AllowEditMa"
+                                   InputCssClass="uppercase" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Tên t? do -->
+                <DxFormLayoutItem Caption="@Lap["Ten_td"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmtd.ten_td"
+                                   maxlength="@tblLength["ten_td"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Tên t? do 2 -->
+                <DxFormLayoutItem Caption="@Lap["Ten_td2"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmtd.ten_td2"
+                                   maxlength="@tblLength["ten_td2"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Mã tra c?u -->
+                <DxFormLayoutItem Caption="@Lap["Ma_tra_cuu"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmtd.ma_tra_cuu"
+                                   maxlength="@tblLength["ma_tra_cuu"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Mã ??n v? c? s? -->
+                <DxFormLayoutItem Caption="@Lap["Ma_dvcs"]" ColSpanMd="6">
+                    <Template>
+                        <AutocompleteComponent Ma_dm="dmdvcs"
+                                               @bind-Value="@CurDmtd.ma_dvcs"
+                                               IsEnable="@AllowEditMode"
+                                               IsLangEn="@IsLangEn">
+                        </AutocompleteComponent>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Tr?ng thái s? d?ng (status) -->
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="6">
+                    <Template>
+                        <DxComboBox Data="@LSStatus"
+                                    @bind-Value="@CurDmtd.status"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    Enabled="@AllowEditMode">
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Ghi chú -->
+                <DxFormLayoutItem Caption="@Lap["Ghi_chu"]" ColSpanMd="12">
+                    <Template>
+                        <DxMemo @bind-Text="@CurDmtd.ghi_chu"
+                                Rows="3"
+                                Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmtd CurDmtd { get; set; }
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmtd";
+        sqlTableView = "v_dmtd";
+        SqlTableKey = "ma_td";
+        CheckSqlTableKey = "ma_td";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "Dmtd" : ParentPage;
+        CurDmtd = new Dmtd();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.dm.td";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            // ? Set title theo action
+            SetTitle();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDmtd(Ma_ma);
+                    myStateMN.SetToolBar(new MyToolbar("save", false));
+                    break;
+
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditDmtdRecord(Ma_ma);
+                    break;
+
+                case ActionTask.New:
+                    await CreateNewDmtd();
+                    break;
+
+                case ActionTask.Copy:
+                    await CreateCopyDmtd(Ma_ma);
+                    break;
+
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDmtd(Ma_ma);
+                    break;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"L?i: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    // ? Set title ??ng theo action và ngôn ng?
+    void SetTitle()
+    {
+        // L?y title t? config ho?c dùng default
+        string baseTitle = !String.IsNullOrEmpty(CurDmdm.Title)
+            ? CurDmdm.Title.Split('.')[0].Trim()
+            : (IsLangEn ? "Free Code" : "Danh m?c t? do");
+
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                Title = IsLangEn
+                    ? $"View {baseTitle} Information"
+                    : $"Xem thông tin {baseTitle.ToLower()}";
+                break;
+            case ActionTask.Edit:
+                Title = IsLangEn
+                    ? $"Edit {baseTitle}"
+                    : $"S?a {baseTitle.ToLower()}";
+                break;
+            case ActionTask.New:
+                Title = IsLangEn
+                    ? $"Add New {baseTitle}"
+                    : $"Thêm m?i {baseTitle.ToLower()}";
+                break;
+            case ActionTask.Copy:
+                Title = IsLangEn
+                    ? $"Copy {baseTitle}"
+                    : $"Sao chép {baseTitle.ToLower()}";
+                break;
+            default:
+                Title = baseTitle;
+                break;
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = false;  // ? KHÔNG cho s?a mã khi Edit
+        curActionTask = ActionTask.Edit;
+        SetTitle();
+        StateHasChanged();
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDmtd(CurDmtd.ma_td);
+    }
+
+    async Task ViewDmtd(string ma_td)
+    {
+        CurDmtd = new Dmtd();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(ma_td);
+    }
+
+    async Task EditDmtdRecord(string ma_td)
+    {
+        CurDmtd = new Dmtd();
+        AllowEditMode = true;
+        AllowEditMa = false;  // ? KHÔNG cho s?a mã
+        await LoadData(ma_td);
+    }
+
+    async Task SaveDmtd()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            CurDmtd.ma_td = CurDmtd.ma_td.ToUpper().Trim();
+            SqlTableKeyValue = CurDmtd.ma_td;
+
+            if (curActionTask == ActionTask.New || curActionTask == ActionTask.Copy)
+            {
+                // Ki?m tra trùng mã
+                string checkSql = $"SELECT {SqlTableKey} FROM {sqlTableName} WHERE {SqlTableKey} = @ma_td";
+                DataSet ds = await myDb.LoadDataset(checkSql, "ma_td", CurDmtd.ma_td);
+
+                if (ds != null && ds.Tables[0].Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["New code is the same as the code already in the list"].ToString());
+                    StateHasChanged();
+                    return;
+                }
+
+                // Set audit fields cho NEW
+                CurDmtd.Date = DateTime.Now.Date;
+                CurDmtd.Date0 = DateTime.Now.Date;
+                CurDmtd.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurDmtd.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurDmtd.User_id = curUser.User_id.ToString();
+                    CurDmtd.User_id0 = curUser.User_id.ToString();
+                    CurDmtd.User_name = curUser.User_name;
+                    CurDmtd.User_name0 = curUser.User_name;
+                }
+
+                await myDb.InsertOneRow<Dmtd>(CurDmtd, sqlTableName);
+
+                myStateMN.SetNewThongbao(
+                    Lap["Successfully added new : {0}"].ToString().Replace("{0}", SqlTableKeyValue)
+                );
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                // Set audit fields cho EDIT
+                CurDmtd.Date = DateTime.Now.Date;
+                CurDmtd.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurDmtd.User_id = curUser.User_id.ToString();
+                    CurDmtd.User_name = curUser.User_name;
+                }
+
+                await myDb.UpdateOneRow<Dmtd>(CurDmtd, sqlTableName, SqlTableKey, Ma_ma);
+
+                myStateMN.SetNewThongbao(
+                    Lap["Edit successfully : {0}"].ToString().Replace("{0}", SqlTableKeyValue)
+                );
+            }
+
+            // Close form
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo("/" + ParentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"L?i khi l?u: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmtd.ma_td))
+        {
+            myStateMN.SetNewThongbao(Lap["Empty code"]);
+            StateHasChanged();
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(CurDmtd.ten_td))
+        {
+            myStateMN.SetNewThongbao(Lap["Empty name"]);
+            StateHasChanged();
+            return false;
+        }
+
+        return true;
+    }
+
+    async Task LoadData(string ma_td)
+    {
+        try
+        {
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {SqlTableKey} = @ma_td";
+            DataSet ds = await myDb.LoadDataset(sql, "ma_td", ma_td);
+
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                List<Dmtd> list = myDb.ConvertDataTable<Dmtd>(ds.Tables[0]);
+                if (list != null && list.Count > 0)
+                {
+                    CurDmtd = list[0];
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"L?i t?i d? li?u: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    async Task CreateNewDmtd()
+    {
+        try
+        {
+            CurDmtd = new Dmtd();
+            CurDmtd.status = 1;        // ?ang s? d?ng
+            CurDmtd.ma_td = GetNewSttDM();
+            CurDmtd.ma_dvcs = myStateMN.GetMa_Dvcs();
+            AllowEditMode = true;
+            AllowEditMa = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"L?i t?o m?i: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    async Task CreateCopyDmtd(string ma_td)
+    {
+        try
+        {
+            await LoadData(ma_td);
+
+            // ? Reset cho b?n copy
+            CurDmtd.ma_td = GetNewSttDM();
+            CurDmtd.status = 1;
+
+            AllowEditMode = true;
+            AllowEditMa = true;
+            curActionTask = ActionTask.New;
+            SetTitle();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"L?i sao chép: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+}

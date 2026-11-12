@@ -1,0 +1,106 @@
+﻿@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRDMKT
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveHrdmkt" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                <!-- Decision number / Quyết định số -->
+                <DxFormLayoutItem Caption="@Lap["Decision number"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox Id="ma_quyet_dinh_input" @bind-Text="@CurRow.Ma_quyet_dinh"
+                                   maxlength="@tblLength["ma_quyet_dinh"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem ColSpanMd="6" />
+
+                <!-- Employee code / Mã nhân viên -->
+                <DxFormLayoutItem Caption="@Lap["Employee code"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_ns_input" Ma_dm="dmns"
+                                               @bind-Value="@CurRow.Ma_ns"
+                                               IsEnable="@AllowEditMa"
+                                               SelectChanged="@((ExpandoObject v) => Ma_ns_Changed(v))"
+                                               IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Update date / Ngày cập nhật -->
+                <DxFormLayoutItem Caption="@Lap["Update date"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxDateEdit @bind-Date="@CurRow.Ngay_cap_nhat" Enabled="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem ColSpanMd="6" />
+
+                <!-- Reward/discipline type / Hình thức -->
+                <DxFormLayoutItem Caption="@Lap["Reward/discipline type"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_hinh_thuc_input" Ma_dm="dmht"
+                                               @bind-Value="@CurRow.Ma_hinh_thuc"
+                                               IsEnable="@AllowEditMode"
+                                               SelectChanged="@((ExpandoObject v) => Ma_hinh_thuc_Changed(v))"
+                                               IsLangEn="@IsLangEn" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Number of times / Số lần thưởng/phạt -->
+                <DxFormLayoutItem Caption="@Lap["Number of reward/discipline times"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit @bind-Value="@CurRow.So_lan_thuong_phat" Enabled="@AllowEditMode"
+                                    MinValue="0" ShowSpinButtons="false" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Reward reason / Lý do thưởng -->
+                <DxFormLayoutItem Caption="@Lap["Reward reason"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRow.Ly_do_thuong"
+                                   maxlength="@tblLength["ly_do_thuong"]"
+                                   Enabled="@(AllowEditMode && IsLydoThuongEnabled)" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Discipline reason / Lý do phạt -->
+                <DxFormLayoutItem Caption="@Lap["Discipline reason"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRow.Ly_do_phat"
+                                   maxlength="@tblLength["ly_do_phat"]"
+                                   Enabled="@(AllowEditMode && IsLydoPhatEnabled)" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Note / Ghi chú -->
+                <DxFormLayoutItem Caption="@Lap["Note"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurRow.Ghi_chu"
+                                   maxlength="@tblLength["ghi_chu"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <!-- Status / Trạng thái -->
+                <DxFormLayoutItem Caption="@Lap["Status"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxComboBox Enabled="@AllowEditMode"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                                    Data="LSStatus"
+                                    TextFieldName="Ten"
+                                    ValueFieldName="Ma"
+                                    @bind-Value="@CurRow.Status">
+                            <Columns>
+                                <DxListEditorColumn FieldName="Ma"  Caption="@Lap["ID"]"   Width="50px" />
+                                <DxListEditorColumn FieldName="Ten" Caption="@Lap["Name"]" />
+                            </Columns>
+                        </DxComboBox>
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>

@@ -1,0 +1,489 @@
+﻿@page "/cotinhgtpb"
+@page "/cotinhgtpb/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,cotinhgtpb")]
+
+<div class="row mt-1 align-items-center">
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 mb-0 fw-bold" style="min-width:80px;">@Lap["From month"]</label>
+        <DxSpinEdit @bind-Value="Period1" Min="1" Max="12" ShowSpinButtons="true" CssClass="w-auto" style="width:80px;" />
+    </div>
+    
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 mb-0 fw-bold" style="min-width:80px;">@Lap["To month"]</label>
+        <DxSpinEdit @bind-Value="Period2" Min="1" Max="12" ShowSpinButtons="true" CssClass="w-auto" style="width:80px;" />
+    </div>
+    
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 mb-0 fw-bold" style="min-width:80px;">@Lap["Year"]</label>
+        <DxSpinEdit @bind-Value="Year" Min="1900" Max="2100" ShowSpinButtons="true" CssClass="w-auto" style="width:100px;" />
+    </div>
+</div>
+
+<div class="row mt-1 align-items-center">
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 mb-0 fw-bold" style="min-width:80px;">@Lap["Account"]</label>
+        <AutocompleteComponent Ma_dm="dmtk" @bind-Value="@Tk" IsLangEn="@IsLangEn" AllowNull="false" CssClass="w-auto"/>
+    </div>
+    
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 mb-0" style="min-width:80px;">@Lap["Workshop code"]</label>
+        <AutocompleteComponent Ma_dm="dmpx" @bind-Value="@Ma_px" IsLangEn="@IsLangEn" CssClass="w-auto"/>
+    </div>
+</div>
+<hr style="margin:6px;padding:0px;height:1px;" />
+
+@if (isProcessing)
+{
+    <div class="row mb-2">
+        <div class="col-md-12">
+            <div class="progress" style="height: 25px;">
+                <div class="progress-bar progress-bar-animated progress-bar-striped"
+                     role="progressbar"
+                     style="width: @(progressValue)%;">
+                    @resultText
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="row mt-1" tabindex="0" @onkeydown="OnKeyDown" @onkeydown:preventDefault="true">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+<style>
+    .grid0-frm-height {
+        height: 75vh;
+    }
+</style>
+
+@code {
+    public string mPage = "cotinhgtpb";
+    public Command curCommand = new Command();
+    public bool IsLangEn = false;
+    public string UserLang = "";
+    string Ma_dvcs = "";
+
+    private int Year { get; set; }
+    private int Period1 { get; set; }
+    private int Period2 { get; set; }
+    private string Ma_px { get; set; } = "";
+    private string Tk { get; set; } = "";
+
+    private bool isProcessing = false;
+    private double progressValue = 0;
+    private string resultText = "0%";
+
+    protected override void OnInitialized()
+    {
+        mPage = "cotinhgtpb";
+        sqlTableName = "v_cotinhgtpb_result";
+        sqlTableView = "v_cotinhgtpb_result";
+        SqlTableKey = "stt_rec";
+        SqlItemName = "ma_vt";
+        var obj = myStateMN.GetItem("NAM");
+        if(obj != null)
+        {
+            Year = (int)obj;
+        }
+        obj = myStateMN.GetItem("THANG1");
+        if (obj != null)
+        {
+            Period1 = (int)obj;
+        }
+        obj = myStateMN.GetItem("THANG2");
+        if (obj != null)
+        {
+            Period2 = (int)obj;
+        }
+        if (Period2 < Period1)
+        {
+            Period2 = Period1;
+        }
+        Tk = myStateMN.GetItem("TK")?.ToString() ?? "";
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wo.ct.01";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", false));
+                myStateMN.SetToolBar(new MyToolbar("Copy", false));
+                myStateMN.SetToolBar(new MyToolbar("Import", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", false));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", false));
+                myStateMN.SetToolBar(new MyToolbar("Change", false));
+                myStateMN.SetToolBar(new MyToolbar("View", false));
+                myStateMN.AddOrderToolBarButton("Button1", Lap["Calculate cost"], 8);
+                myStateMN.AddOrderToolBarButton("Button2", Lap["Update price for finished product import slip"], 9);
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+
+            if (Year == 0 || Period1 == 0 || Period2 == 0)
+            {
+                var today = DateTime.Today;
+                Year = today.Year;
+                Period1 = 1;
+                Period2 = today.Month;
+
+                int p1 = myStateMN.GetCurrentMonth();
+                int y1 = myStateMN.GetCurrentYear().Year;
+                int p2 = p1;
+                if (p1 > 0) Period1 = p1;
+                if (y1 > 0) Year = y1;
+                if (p2 > 0) Period2 = p2;
+            }
+
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+
+            StateHasChanged();
+        }
+    }
+
+    public virtual void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Button1:
+                myStateMN.SetCurrentActionTask(ActionTask.Button1);
+                btnTinhGia_Click();
+                break;
+            case ActionTask.Button2:
+                myStateMN.SetCurrentActionTask(ActionTask.Button2);
+                V_CapNhatGia();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+        }
+    }
+
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+            Page_size = int.Parse(myOption.GetOptionsValue("M_GRID_NROW").Trim());
+        }
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        // Override but don't auto-load on filter change
+        // User must click "Calculate cost" button
+    }
+
+    void Filter_Changed(ExpandoObject value)
+    {
+        // Don't auto-calculate when filter changes
+        // User must click "Calculate cost" button
+    }
+
+    private async void btnTinhGia_Click()
+    {
+        if (!CheckValid())
+        {
+            return;
+        }
+
+        await StartCalculateCost();
+    }
+
+    private bool CheckValid()
+    {
+        bool ok = true;
+
+        if (string.IsNullOrWhiteSpace(Tk))
+        {
+            myStateMN.SetNewThongbao(Lap["Account is required"]);
+            ok = false;
+            return ok;
+        }
+
+        string resTk = myDb.GetValue($"SELECT tk FROM dmtk WHERE tk = '{Tk.Trim()}'").ToString();
+        if (string.IsNullOrEmpty(resTk))
+        {
+            myStateMN.SetNewThongbao(Lap["Account does not exist in the list"]);
+            ok = false;
+            return ok;
+        }
+
+        if (Period1 < 1 || Period1 > 12)
+        {
+            myStateMN.SetNewThongbao(Lap["From month invalid"]);
+            ok = false;
+            return ok;
+        }
+
+        if (Period2 < 1 || Period2 > 12)
+        {
+            myStateMN.SetNewThongbao(Lap["To month invalid"]);
+            ok = false;
+            return ok;
+        }
+
+        if (Year < 1900 || Year > 2079)
+        {
+            myStateMN.SetNewThongbao(Lap["Year invalid"]);
+            ok = false;
+            return ok;
+        }
+
+        try
+        {
+            var ngayKy1 = mySysvar.GetSysVar("M_NGAY_KY1");
+            if (ngayKy1 != null)
+            {
+                DateTime dateKy1 = Convert.ToDateTime(ngayKy1);
+                if (Year < dateKy1.Year)
+                {
+                    myStateMN.SetNewThongbao(Lap["Year must be greater than or equal to opening year"]);
+                    ok = false;
+                    return ok;
+                }
+            }
+        }
+        catch { }
+
+        try
+        {
+            var ngayDongSo = mySysvar.GetSysVar("M_NGAY_DONG_SO");
+            if (ngayDongSo != null)
+            {
+                DateTime dateDongSo = Convert.ToDateTime(ngayDongSo);
+                DateTime ngayCtEnd = new DateTime(Year, Period2, DateTime.DaysInMonth(Year, Period2));
+                if (ngayCtEnd <= dateDongSo)
+                {
+                    myStateMN.SetNewThongbao(Lap["Data is locked cannot calculate cost"]);
+                    ok = false;
+                    return ok;
+                }
+            }
+        }
+        catch { }
+
+        myStateMN.SetItem("THANG1",Period1);
+        myStateMN.SetItem("THANG2",Period2);
+        myStateMN.SetItem("NAM",Year);
+        myStateMN.SetItem("TK", Tk);
+
+        return ok;
+    }
+
+    public async Task StartCalculateCost()
+    {
+        if (!CheckValid())
+        {
+            return;
+        }
+
+        try
+        {
+            isProcessing = true;
+            progressValue = 0;
+            resultText = "0%";
+            StateHasChanged();
+
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+
+            DateTime ngay_ct1 = new DateTime(Year, Period1, 1);
+            DateTime ngay_ct2 = new DateTime(Year, Period2, DateTime.DaysInMonth(Year, Period2));
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@nam", Year },
+                { "@thang", Period1 },
+                { "@thang2", Period2 },
+                { "@ngay_ct1", ngay_ct1.ToString("yyyyMMdd") },
+                { "@ngay_ct2", ngay_ct2.ToString("yyyyMMdd") },
+                { "@ma_px", Ma_px?.Trim() ?? "" },
+                { "@tk", Tk.Trim() },
+                { "@ma_ct_list", curCommand.Parameter ?? "" },
+                { "@tp", "1" }
+            };
+
+            progressValue = 30;
+            resultText = Lap["Processing"] + "...";
+            await InvokeAsync(StateHasChanged);
+
+            var result = await myDb.LoadDataset(curCommand.Store_proc ?? "sis_COGTPB", parameters);
+
+            progressValue = 100;
+            resultText = Lap["Complete"];
+            await InvokeAsync(StateHasChanged);
+
+            if (result != null && result.Tables.Count > 0)
+            {
+                TblData = result.Tables[0];
+                TblData.TableName = "tbMain";
+                
+                if (TblData.DefaultView.Count > 0)
+                    SelectedItem = TblData.DefaultView[0];
+
+                if (oBrowse != null)
+                    await oBrowse.FocusGridAsync();
+            }
+
+            myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        }
+        catch (Exception ex)
+        {
+            progressValue = 0;
+            resultText = Lap["Error"];
+            myStateMN.SetNewThongbao(Lap["Operation error"] + $": {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public virtual async void V_CapNhatGia()
+    {
+        if (!CheckValid())
+        {
+            return;
+        }
+
+        if (TblData == null || TblData.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No data to process"]);
+            return;
+        }
+
+        var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+        {
+            Text = Lap["Update price for finished product import slip"] + "?",
+            Title = Lap["Confirm"],
+            OkButtonText = Lap["Yes"],
+            CancelButtonText = Lap["No"],
+            ShowIcon = true,
+            RenderStyle = MessageBoxRenderStyle.Warning
+        });
+
+        if (!confirm)
+            return;
+
+        try
+        {
+            isProcessing = true;
+            progressValue = 0;
+            resultText = Lap["Processing"] + "...";
+            StateHasChanged();
+
+            DateTime ngay_ct1 = new DateTime(Year, Period1, 1);
+            DateTime ngay_ct2 = new DateTime(Year, Period2, DateTime.DaysInMonth(Year, Period2));
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@nam", Year },
+                { "@thang", Period1 },
+                { "@thang2", Period2 },
+                { "@ngay_ct1", ngay_ct1 },
+                { "@ngay_ct2", ngay_ct2 },
+                { "@ma_px", Ma_px?.Trim() ?? "" },
+                { "@tk", Tk.Trim() },
+                { "@ma_ct_list", curCommand.Parameter ?? "" }
+            };
+
+            progressValue = 50;
+            await InvokeAsync(StateHasChanged);
+
+            await myDb.LoadDataset("sis_COGTPB_POSTGIA", parameters);
+
+            progressValue = 100;
+            resultText = Lap["Complete"];
+            await InvokeAsync(StateHasChanged);
+
+            myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        }
+        catch (Exception ex)
+        {
+            progressValue = 0;
+            resultText = Lap["Error"];
+            myStateMN.SetNewThongbao(Lap["Operation error"] + $": {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e is null) return;
+
+        if (string.Equals(e.Key, "F3", StringComparison.OrdinalIgnoreCase) || 
+            string.Equals(e.Code, "F3", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_CapNhatGia();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+
+    public virtual async Task Language()
+    {
+        try
+        {
+            IsLangEn = false;
+            UserLang = await myLcStore.GetItemAsync<string>("userlang");
+            if (!string.IsNullOrEmpty(UserLang))
+            {
+                if (UserLang.Equals("En"))
+                {
+                    IsLangEn = true;
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+    }
+}

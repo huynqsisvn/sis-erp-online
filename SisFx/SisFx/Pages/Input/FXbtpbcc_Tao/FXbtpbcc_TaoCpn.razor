@@ -1,0 +1,214 @@
+@page "/fxbtpbcc_tao"
+@page "/fxbtpbcc_tao/{Menu_id}"
+@inherits FXbtpbcc_TaoBase
+@attribute [Authorize(Roles = "admin,fxbtpbcc_tao")]
+@using SisFx.Pages.Input.FXbtpbcc_Tao
+@using DevExpress.Blazor
+@using System.Data
+
+@* ================================================================
+   PH?N 1: LOADING
+   ================================================================ *@
+@if (ShowLoaddingVoucher)
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    CssClass="w-100"
+                    IndicatorVisible="true"
+                    IndicatorAreaVisible="true"
+                    Visible="true"
+                    Text="@Lap["Loading data..."]"
+                    TextAlignment="LoadingPanelTextAlignment.Right">
+        <div style="min-height:250px;"></div>
+    </DxLoadingPanel>
+}
+else if (TblPH != null)
+{
+    @* ================================================================
+       PH?N 2: L??I PH (MASTER)
+       ================================================================ *@
+    <div class="row m-0 p-0">
+        <FrmBrowse3Component @ref="oBrowsePH"
+                             TblData="@TblPH"
+                             Page_size="@Page_size"
+                             IsPageSize="true"
+                             CssClass="grid-frm-height w-100"
+                             Fbrowse="@fbrowse"
+                             SelectItem="CurItem"
+                             SelectCol="tag"
+                             IsLangEn="@IsLangEn">
+        </FrmBrowse3Component>
+    </div>
+
+    <hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+
+    @* ================================================================
+       PH?N 3: L??I CT (DETAIL)
+       ================================================================ *@
+    <div class="row my-1 mx-0 p-0">
+        <h8 class="fw-bold bg-light text-warning rounded-pill mb-1">@Lap["Detail"]</h8>
+        <FrmBrowseComponent @ref="oBrowseCT"
+                            TblData="@TblCT"
+                            CssClass="grid-frmct-height w-100"
+                            Fbrowse="@FbrowseCT"
+                            IsLangEn="@IsLangEn">
+        </FrmBrowseComponent>
+    </div>
+}
+
+@* ================================================================
+   PH?N 4: POPUP FILTER
+   ================================================================ *@
+<DxPopup @ref="popFilter"
+         CloseOnOutsideClick="false"
+         CssClass="dxPopup"
+         @bind-Visible="@PopupVisible"
+         Width="520px"
+         ShowFooter="true"
+         Context="windowContext"
+         HeaderText="@Lap["Create tool allocation voucher"]">
+    <BodyTemplate>
+        @if (ShowLoadding)
+        {
+            <div class="row m-0 p-0 justify-content-center py-4">
+                <div class="spinner-border text-primary" role="status" style="width:5rem;height:5rem;border-width:3px;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="container pt-1 pb-2">
+                <DxFormLayout CssClass="w-100" onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                    @* --- N?M --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Year:"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div style="width:75%;">
+                                <DxSpinEdit @bind-Value="@FilterNam"
+                                            DisplayFormat="####"
+                                            MinValue="1900"
+                                            MaxValue="2079" />
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- T? K? --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["From period (1-12):"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy1"
+                                                MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy1 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy1 >= 1 && FilterKy1 <= 12)
+                                {
+                                    <span class="badge text-dark">
+                                        @(new DateTime(FilterNam, FilterKy1, 1).ToString("MM/yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                    @* --- ??N K? --- *@
+                    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["To period (1-12):"]" CaptionCssClass="fw-bold">
+                        <Template>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:75%;">
+                                    <DxSpinEdit Value="@FilterKy2"
+                                                MinValue="1" MaxValue="12"
+                                                ValueChanged="@((int v) => { FilterKy2 = v; StateHasChanged(); })" />
+                                </div>
+                                @if (FilterNam > 0 && FilterKy2 >= 1 && FilterKy2 <= 12)
+                                {
+                                    <span class="badge text-dark">
+                                        @(new DateTime(FilterNam, FilterKy2, 1).AddMonths(1).AddDays(-1).ToString("MM/yyyy"))
+                                    </span>
+                                }
+                            </div>
+                        </Template>
+                    </DxFormLayoutItem>
+
+                </DxFormLayout>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (!ShowLoadding)
+        {
+            <div class="row justify-content-end align-content-end m-2">
+                <DxButton CssClass="col mx-4" RenderStyle="ButtonRenderStyle.Success"
+                          Text="@Lap["Execute"]"
+                          Click="@BtnFilterOK" />
+                <DxButton CssClass="col" RenderStyle="ButtonRenderStyle.Danger"
+                          Text="@Lap["Close"]"
+                          Click="@CloseFilter" />
+            </div>
+        }
+    </FooterTemplate>
+</DxPopup>
+
+@* ================================================================
+   PH?N 5: POPUP T?O / XÓA / GHI ?È — Component con
+   ================================================================ *@
+<FrmFXbtpbcc_Tao @ref="frmAction"
+                 ShowDlgTaoBt="@ShowDlgTaoBt"
+                 ShowDlgTaoBtChanged="@((bool v) => { ShowDlgTaoBt = v; StateHasChanged(); })"
+                 DlgTaoBt="@DlgTaoBt"
+                 DlgLoading="@DlgLoading"
+                 DlgSoCt2="@DlgSoCt2"
+                 PendingTaggedRows="@_pendingTaggedRows"
+                 FilterNam="@FilterNam"
+                 FilterKy1="@FilterKy1"
+                 FilterKy2="@FilterKy2"
+                 IsLangEn="@IsLangEn"
+                 ShowConfirmDelete="@ShowConfirmDelete"
+                 ShowConfirmDeleteChanged="@((bool v) => { ShowConfirmDelete = v; StateHasChanged(); })"
+                 ShowConfirmOverwrite="@ShowConfirmOverwrite"
+                 ShowConfirmOverwriteChanged="@((bool v) => { ShowConfirmOverwrite = v; StateHasChanged(); })"
+                 OnDlgMaQsChanged="@OnDlgMaQsChanged"
+                 OnDlgTaoBtOK="@DlgTaoBt_OK"
+                 OnDlgTaoBtCancel="@DlgTaoBt_Cancel"
+                 OnConfirmDelete="@ConfirmDelete"
+                 OnCancelDelete="@CancelDelete"
+                 OnConfirmOverwrite="@ConfirmOverwriteAndContinue"
+                 OnCancelOverwrite="@CancelOverwrite" />
+
+@* ================================================================
+   PH?N 6: HÀNG ??I IN — tu?n t?, tránh crash DevExpress
+   ================================================================ *@
+@if (PrintQueue != null && PrintQueue.Any())
+{
+    var currentPrintJob = PrintQueue.First();
+    <DxPopup @key="currentPrintJob.Id"
+             Visible="true"
+             VisibleChanged="@((bool v) => { if (!v) ClosePrintWindow(currentPrintJob); })"
+             CloseOnOutsideClick="false"
+             CloseOnEscape="true"
+             CssClass="dxPopup"
+             Width="80%" Height="90%"
+             ShowFooter="false"
+             HeaderText="@currentPrintJob.Title">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@currentPrintJob.Data"
+                                   Menu_id="@Menu_id.Replace('_', '.')"
+                                   OnBack="@(() => ClosePrintWindow(currentPrintJob))" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+<style>
+    .grid-frm-height   { height: 52vh; }
+    .grid-frmct-height { height: 28vh; }
+</style>
+
+@code {
+    private FrmFXbtpbcc_Tao frmAction;
+
+    protected override void OnInitialized()
+    {
+        Menu_id = string.IsNullOrEmpty(Menu_id) ? "wf.xc.06" : Menu_id;
+        base.OnInitialized();
+    }
+}

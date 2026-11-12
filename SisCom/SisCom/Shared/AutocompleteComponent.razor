@@ -1,0 +1,358 @@
+﻿@inject Statemanagerment myStatemanagerment
+@inject IOptionsManager options
+@inject IDbManager myDb
+@implements IDisposable
+@inject IStringLocalizer<App> Lap
+@using System.Dynamic
+
+<DxComboBox Data="@LSData" Id="@Id"
+Value="@Value"
+Enabled="@IsEnable"
+ValueChanged="@((string value) => {OnCBoxChanged(value);})"
+ValueExpression="@(()=> Value)"
+NullText="@Lap["Select ..."]"
+AllowUserInput="@AllowUserInput"
+ClearButtonDisplayMode="@ClearButtonDisplayMode"
+FilteringMode="DataGridFilteringMode.Contains"
+ListRenderMode="ListRenderMode.Virtual"
+ValueFieldName="@_ValueFieldName"
+TextFieldName="@_TextFieldName"            
+CssClass="@CssClass"
+SearchMode="ListSearchMode.AutoSearch"
+SearchTextParseMode="ListSearchTextParseMode.GroupWordsByOr"
+SearchFilterCondition="ListSearchFilterCondition.Contains"
+InputId="cbDMDM"
+EditFormat="@_editformat">
+    <Columns>
+        @if (TblSource != null)
+        {
+            fields = Fbrowse.Split(';');
+            if (fields != null && fields.Length > 0)
+            {
+                foreach (string str in fields)
+                {
+                    string dinhdang = "";
+                    string[] _data = str.Split(':');
+                    string ma = _data[0];
+                    string rong = _data[1] + "px";
+                    string ten = "";
+                    if (_data.Length > 2 && _data[2].StartsWith("h="))
+                        ten = _data[2].Split('=')[1].Replace("[M_MA_NT0]", M_Ma_nt0);
+                    string BI = "";
+                    string BG = "";
+                    if (_data.Length > 3)
+                    {
+                        for (int x = 3; x < _data.Length; x++)
+                        {
+                            dinhdang = "";
+                            string d = _data[x].ToUpper();
+                            if (d.StartsWith("D") || d.StartsWith("N") || d.StartsWith("R") || d.StartsWith("P") || d.StartsWith("Q") || d.StartsWith("IMG") || d.StartsWith("SOLID") || d.StartsWith("TEXT") || d.StartsWith("COLOR") || d.StartsWith("HIDE") || d.StartsWith("BUTTON") || d.StartsWith("LINK"))
+                            {
+                                if (d.ToUpper().StartsWith("N"))
+                                {
+                                    if (d.ToUpper().Equals("N0"))
+                                        dinhdang = M_IP_TIEN;
+                                    else
+                                        dinhdang = M_IP_TIEN_NT;
+                                }
+                                else if (d.ToUpper().StartsWith("P0"))
+                                {
+                                    dinhdang = M_IP_GIA;
+                                }
+                                else if (d.ToUpper().StartsWith("P1"))
+                                {
+                                    dinhdang = M_IP_GIA_NT;
+                                }
+                                else if (d.ToUpper().StartsWith("Q"))
+                                {
+                                    dinhdang = M_IP_SL;
+                                }
+                                else if (d.ToUpper().StartsWith("RF"))
+                                {
+                                    dinhdang = M_IP_TY_GIAF;
+                                }
+                                else if (d.ToUpper().StartsWith("R"))
+                                {
+                                    dinhdang = M_IP_TY_GIA;
+                                }
+                                else
+                                    dinhdang = d;
+                                break;
+                            }
+                            if ("BI".Contains(d))
+                                BI = d;
+                            if ("G".Contains(d))
+                                BG = d;
+                        }
+                    }
+                    foreach (DataColumn col in TblSource.Columns)
+                    {
+                        if (col.ColumnName.ToLower().Equals(ma.ToLower()))
+                        {
+                            ten = String.IsNullOrEmpty(ten) ? col.ColumnName : ten;
+                            <DxListEditorColumn FieldName="@ma" Caption="@ten" Width="@rong" />
+                        }
+                    }
+                }
+            }
+        }
+    </Columns>
+</DxComboBox>
+
+@code {
+    [Parameter]
+    public string Ma_dm
+    {
+        get => _ma_dm;
+        set
+        {
+            if (_ma_dm == value) return;
+
+            _ma_dm = value;
+            PageLoad();
+        }
+    }
+    [Parameter]
+    public string Id { get; set; } = "";
+    [Parameter]
+    public string Filter { get; set; } = "";
+    [Parameter]
+    public DataTable TblData { get; set; }
+    [Parameter]
+    public bool IsEnable { get; set; } = true;
+    [Parameter]
+    public bool IsLangEn { get; set; } = false;
+    [Parameter]
+    public bool AllowNull { get; set; } = true;
+    [Parameter]
+    public bool AllowUserInput { get; set; } = true;
+    [Parameter]
+    public EventCallback<ExpandoObject> SelectChanged { get; set; }
+    [Parameter]
+    public string Value
+    {
+        get => _value;
+        set
+        {
+            if (_value == value) return;
+
+            _value = value;
+            ValueChanged.InvokeAsync(value);
+        }
+    }
+    private string _value;
+    private string _ma_dm;
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+    [Parameter]
+    public string CssClass { get; set; } = "";
+
+    string Fbrowse { get; set; } = "";
+    string _editformat;
+    string[] fields = new string[] { };
+    Dmdm _Dmdm = new Dmdm();
+    Users CurUser = null;
+    string Ma_dvcs = "";
+    public List<ExpandoObject> LSData;
+    private DataTable TblSource;
+    private string M_Ma_nt0 { get; set; }
+    private string M_IP_TY_GIA { get; set; }
+    private string M_IP_TY_GIAF { get; set; }
+    private string M_IP_TIEN { get; set; }
+    private string M_IP_TIEN_NT { get; set; }
+    private string M_IP_SL { get; set; }
+    private string M_IP_GIA { get; set; }
+    private string M_IP_GIA_NT { get; set; }
+    private string userLang { get; set; } = "";
+    string _ValueFieldName = "";
+    string _TextFieldName = "";
+    string sqltablekey = "";
+    string lastFilter = "";
+    bool firstLoad = true;
+    private DataEditorClearButtonDisplayMode ClearButtonDisplayMode = DataEditorClearButtonDisplayMode.Auto;
+    void OnCBoxChanged(string value)
+    {
+        Value = value;
+        if (string.IsNullOrEmpty(value))
+            return;
+
+        ExpandoObject _expend = LSData.Where(a => a.Any(s => s.Key.Trim().Equals(sqltablekey) && s.Value.ToString().Trim().Equals(value.Trim()))).FirstOrDefault();
+
+        // if (_expend == null)
+        //     return;
+        if (SelectChanged.HasDelegate)
+            SelectChanged.InvokeAsync(_expend);
+    }
+    protected override void OnParametersSet()
+    {
+        if (firstLoad)
+        {
+            firstLoad = false;
+        }
+        else if (lastFilter != Filter)
+        {
+            PageLoad();
+            lastFilter = Filter;            
+        }
+        StateHasChanged();
+    }
+    async Task PageLoad()
+    {
+        if(!AllowNull)
+            ClearButtonDisplayMode = DataEditorClearButtonDisplayMode.Never;
+        else
+            ClearButtonDisplayMode = DataEditorClearButtonDisplayMode.Auto;
+
+        if (string.IsNullOrEmpty(Ma_dm))
+            return;
+
+        string sql = string.Format("Select * from dmdm where ma_dm = '{0}'", Ma_dm);
+        DataSet ds = await myDb.LoadDataset(sql);
+        List<Dmdm> lsdm = myDb.ConvertDataTable<Dmdm>(ds.Tables[0]);
+        if (lsdm == null || lsdm.Count == 0)
+            return;
+
+        _Dmdm = lsdm[0];
+        sqltablekey = string.IsNullOrEmpty(_Dmdm.Value) ? _Dmdm.Key.Trim().Split(';').FirstOrDefault() : _Dmdm.Value.Trim().Split(';').FirstOrDefault();
+        Fbrowse = IsLangEn ? _Dmdm.Field2 : _Dmdm.Field;
+        int _count = 0;
+        _editformat = "";
+        if (String.IsNullOrEmpty(_Dmdm.Search0))
+            _editformat = "{0}";
+        else
+        {
+            foreach (string _str in _Dmdm.Search0.Split(';'))
+            {
+                _editformat += "{" + _count.ToString() + "} - ";
+                _count++;
+            }
+            _editformat = string.IsNullOrEmpty(_editformat) ? "{0}" : _editformat.Substring(0, _editformat.Length - 2);
+        }
+
+        if (string.IsNullOrEmpty(_Dmdm.Field_search))
+        {
+            _ValueFieldName = sqltablekey;
+            _TextFieldName = sqltablekey;
+        }
+        else
+        {
+            string[] _field_search = _Dmdm.Field_search.Split(";");
+            _ValueFieldName = _field_search[0].Trim();
+            if (_field_search.Length > 1)
+                _TextFieldName = _field_search[1].Trim();
+            else
+                _TextFieldName = _field_search[0].Trim();
+        }       
+
+        if (TblData != null && TblData.Rows.Count != 0)
+        {
+            TblSource = TblData;
+        }
+        else
+        {
+            string _order = (" ORDER BY " + (string.IsNullOrEmpty(_Dmdm.Order) ? sqltablekey : _Dmdm.Order.Trim())).Replace(";",",");
+            string _filter = "";
+            if (!string.IsNullOrEmpty(Filter))
+            {
+                _filter = " AND " + Filter;
+            }
+            string _dm_filter = "";
+            string _filter_user = "";
+            string _filter_dvcs = "";
+            if (!string.IsNullOrEmpty(_Dmdm.Filter_user) && CurUser != null && !string.IsNullOrEmpty(CurUser.User_name))
+            {
+                _filter_user = (_Dmdm.Filter_user.Equals("1") && CurUser.Is_admin != 1) ? string.Format(" AND (ISNULL(user_right, '') = '' OR dbo.InList(LTRIM(RTRIM(str({0}))) + ';',user_right,';')>0)", (object)CurUser.User_id.ToString().Trim()) : "";
+                //_filter_user = _Dmdm.Filter_user.Equals("1") ? string.Format(" AND user_id in (Select user_id from userinfo where user_id = '{0}')", CurUser.User_id) : "";
+            }
+
+            if (!string.IsNullOrEmpty(_Dmdm.Filter_dvcs) && !string.IsNullOrEmpty(Ma_dvcs))            
+                _filter_dvcs = _Dmdm.Filter_dvcs.Equals("1") ? string.Format(" AND ma_dvcs = '{0}'", Ma_dvcs) : "";
+
+            _dm_filter = string.IsNullOrEmpty(_Dmdm.Filter) ? "" : " AND " + _Dmdm.Filter.Trim();
+
+            string _filters = _dm_filter + _filter_user + _filter_dvcs + _filter + _order;
+            sql = string.Format("Select * from {0} where {1} <> '' {2};", _Dmdm.table_view.Trim(), sqltablekey, _filters);
+            try
+            {                
+                DataSet _ds = await myDb.LoadDataset(sql);
+                if (_ds != null && _ds.Tables.Count > 0)
+                    TblSource = _ds.Tables[0];
+            }
+            catch (Exception ex)
+        {
+                WLog("\n" + sql + "\n" + ex.Message);
+            }
+        }
+        LSData = ConvertDataTableToExpandoObjectList(TblSource);
+        StateHasChanged();
+    }
+    private static List<ExpandoObject> ConvertDataTableToExpandoObjectList(DataTable dataTable)
+    {
+        List<ExpandoObject> expandoList = new List<ExpandoObject>();
+        foreach (DataRow row in dataTable.Rows)
+        {
+            var expandoDict = new ExpandoObject() as IDictionary<String, Object>;
+            foreach (DataColumn col in dataTable.Columns)
+            {
+                expandoDict.Add(col.ToString(), row[col.ColumnName]);
+            }
+            expandoList.Add(expandoDict as ExpandoObject);
+        }
+        return expandoList;
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                CurUser = myStatemanagerment.GetCurUser();
+                Ma_dvcs = myStatemanagerment.GetMa_Dvcs(); 
+                await PageLoad();
+            }
+            catch
+            {
+
+            }
+        }
+    }
+    protected override void OnInitialized()
+    {
+        M_Ma_nt0 = options.GetOptionsValue("M_MA_NT0").Trim();
+        M_IP_TY_GIA = options.GetOptionsValue("M_IP_TY_GIA").Trim();
+        M_IP_TY_GIAF = options.GetOptionsValue("M_IP_TY_GIAF").Trim();
+        M_IP_TIEN = options.GetOptionsValue("M_IP_TIEN").Trim();
+        M_IP_TIEN_NT = options.GetOptionsValue("M_IP_TIEN_NT").Trim();
+        M_IP_SL = options.GetOptionsValue("M_IP_SL").Trim();
+        M_IP_GIA = options.GetOptionsValue("M_IP_GIA").Trim();
+        M_IP_GIA_NT = options.GetOptionsValue("M_IP_GIA_NT").Trim();
+        CssClass = String.IsNullOrEmpty(CssClass) ? "col" : CssClass;
+        myStatemanagerment.OnDvcsChanged += OnDvcsChanged;
+    }
+    private void OnDvcsChanged(string _ma_dvcs)
+    {
+        if (!string.IsNullOrEmpty(_ma_dvcs))
+            Ma_dvcs = _ma_dvcs;
+    }
+    public static void WLog(string logMessage)
+    {
+        using (StreamWriter w = File.AppendText(@"..\AutoCompleteerr.txt"))
+        {
+            Log(logMessage.Trim(), w);
+        }
+    }
+
+    //---------------------------------------------------
+    public static void Log(string logMessage, TextWriter w)
+    {
+        w.WriteLine("{0} {1}", DateTime.Now.ToLongTimeString(),
+            DateTime.Now.ToLongDateString());
+        w.WriteLine("{0}", logMessage);
+        w.WriteLine("-------------------------------");
+    }
+    public void Dispose()
+    {
+        myStatemanagerment.OnDvcsChanged -= OnDvcsChanged;
+    }
+}

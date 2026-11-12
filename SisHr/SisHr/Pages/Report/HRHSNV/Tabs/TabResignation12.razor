@@ -1,0 +1,165 @@
+﻿@namespace SisHr.Pages.Report.HRHSNV.Tabs
+
+@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using SisCom.Model
+@using SisCom.Shared
+@using SisLib.Lib
+@using Microsoft.AspNetCore.Components
+
+@* ===== 12. RESIGNATION INFO (Cập nhật thôi việc) ===== *@
+<DxFormLayoutGroup id="section-12" Caption="@Lap["Resignation information"]" HeaderCssClass="fw-bold text-danger" ColSpanMd="12" CssClass="mb-3"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+
+    @* --- Dòng 1: Mã và Ngày viết đơn --- *@
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Application date"]">
+        <Template>
+            <DxDateEdit @bind-Date="NghiViecInfo.Ngay_lam_don" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="">
+        <Template></Template>
+    </DxFormLayoutItem>
+
+    @* --- Dòng 2: Ngày thôi việc --- *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Termination date"]">
+        <Template>
+            <DxDateEdit @bind-Date="NghiViecInfo.Ngay_thoi_viec" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Actual termination date"]">
+        <Template>
+            <DxDateEdit @bind-Date="NghiViecInfo.Ngay_thoi_thuc_te" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="">
+        <Template></Template>
+    </DxFormLayoutItem>
+
+    @* --- Dòng 3: Trợ cấp --- *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Allowance"]">
+        <Template>
+            <DxComboBox Data="@TroCapList"
+                        @bind-Value="NghiViecInfo.Tro_cap"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="">
+        <Template></Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="">
+        <Template></Template>
+    </DxFormLayoutItem>
+
+    @* --- Dòng 4: Ngày chốt và trả sổ BH --- *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["SI closing date"]">
+        <Template>
+            <DxDateEdit @bind-Date="NghiViecInfo.Ngay_chot_so" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["SI return date"]">
+        <Template>
+            <DxDateEdit @bind-Date="NghiViecInfo.Ngay_tra_so" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="">
+        <Template></Template>
+    </DxFormLayoutItem>
+
+    @* --- Dòng 5: Quyết định --- *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Termination decision"]">
+        <Template>
+            <DxTextBox @bind-Text="NghiViecInfo.Quyet_dinh_cham_dut_hd" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Allowance decision"]">
+        <Template>
+            <DxTextBox @bind-Text="NghiViecInfo.Quyet_dinh_tro_cap" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* --- Dòng 6: Trạng thái --- *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Status"]">
+        <Template>
+            <DxComboBox Data="@StatusList"
+                        @bind-Value="NghiViecInfo.Status"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+@code {
+    [Parameter] public HsnvDetailModel CurRow { get; set; }
+    [Parameter] public bool AllowEditMode { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public dynamic Lap { get; set; }
+
+    // Reference đến dữ liệu nghỉ việc từ CurRow
+    private NghiViecRow NghiViecInfo
+    {
+        get => CurRow?.NghiViecInfo;
+        set
+        {
+            if (CurRow != null)
+                CurRow.NghiViecInfo = value;
+        }
+    }
+
+    // Khởi tạo các giá trị mặc định tránh Null Reference
+    protected override void OnInitialized()
+    {
+        InitializeNghiViecInfo();
+    }
+
+    // Gọi lại khi CurRow thay đổi (e.g., Load data từ DB)
+    protected override void OnParametersSet()
+    {
+        InitializeNghiViecInfo();
+    }
+
+    private void InitializeNghiViecInfo()
+    {
+        if (CurRow == null) return;
+
+        // Khởi tạo NghiViecInfo nếu chưa có
+        if (CurRow.NghiViecInfo == null)
+        {
+            CurRow.NghiViecInfo = new NghiViecRow
+            {
+                Ma_ns = CurRow.Ma_ns,
+                Status = "1",
+                Tro_cap = "0"
+            };
+        }
+        else
+        {
+            // ✅ QUAN TRỌNG: Luôn sync Ma_ns từ CurRow
+            CurRow.NghiViecInfo.Ma_ns = CurRow.Ma_ns;
+
+            // Khởi tạo giá trị mặc định nếu chưa có
+            if (string.IsNullOrEmpty(CurRow.NghiViecInfo.Status)) 
+                CurRow.NghiViecInfo.Status = "1";
+            if (string.IsNullOrEmpty(CurRow.NghiViecInfo.Tro_cap)) 
+                CurRow.NghiViecInfo.Tro_cap = "0";
+        }
+    }
+
+    // Danh sách Dropdown
+    private List<StatusItem> StatusList = new() {
+        new StatusItem { Value = "1", Text = "1 - Có sử dụng" },
+        new StatusItem { Value = "0", Text = "0 - Không sử dụng" }
+    };
+
+    private List<StatusItem> TroCapList = new() {
+        new StatusItem { Value = "1", Text = "1 - Có trợ cấp" },
+        new StatusItem { Value = "0", Text = "0 - Không trợ cấp" }
+    };
+
+    public class StatusItem { public string Value { get; set; } public string Text { get; set; } }
+}

@@ -1,0 +1,314 @@
+﻿@inherits FrmListBaseComponent
+@using SisFa.Pages.List.FANHOMTS
+
+<div class="popup-body-container w-100" style="overflow:auto;max-width:800px;">
+    <FormList Title="@Title"
+              @bind-curActionTask="@curActionTask"
+              OnSave="@SaveDM"
+              OnEdit="@OnEdit"
+              OnCopy="@OnCopy"
+              OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurDmnhomts"
+                          ItemSizeMode="@Itemsizemode"
+                          CssClass="frm-header sis-form"
+                          onkeydown="ModifyEnterKeyPressAsTab(event);">
+
+                <DxFormLayoutItem Caption="@Lap["Asset group code"]" ColSpanMd="6" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="nh_ts_input"
+                                   @bind-Text="@CurDmnhomts.Nh_ts"
+                                   maxlength="@tblLength["nh_ts"]"
+                                   InputCssClass="uppercase"
+                                   Enabled="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Asset group name"]" ColSpanMd="12" CaptionCssClass="fw-bold" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmnhomts.Ten_nh_ts"
+                                   maxlength="@tblLength["ten_nh_ts"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@(Lap["Name"] + " 2")" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurDmnhomts.Ten_nh_ts2"
+                                   maxlength="@tblLength["ten_nh_ts2"]"
+                                   Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem ColSpanMd="12">
+                    <Template>
+                        <hr />
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Dmnhomts CurDmnhomts;
+    private string menu_id = "wf.dm.05";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmnhomts";
+        SqlTableKey = "nh_ts";
+        CheckSqlTableKey = "nh_ts";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "fanhomts" : ParentPage;
+        CurDmnhomts = new Dmnhomts();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    myStateMN.SetToolBar(new MyToolbar("save", false));
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditDM(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await CreateNewDM();
+                    break;
+                case ActionTask.Copy:
+                    await CreateCopyDM(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewDM(Ma_ma);
+                    break;
+            }
+
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('nh_ts_input')?.focus()");
+            StateHasChanged();
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmnhomts = new Dmnhomts();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmnhomts = new Dmnhomts();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        await LoadData(SqlTableKeyValue);
+        if (curCommand != null && !string.IsNullOrEmpty(curCommand.Store_proc))
+        {
+            if (CheckDeleteListId(curCommand.Store_proc.Trim(), SqlTableKeyValue) == 0)
+            {
+                AllowEditMa = false;
+            }
+        }
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(CurDmnhomts.Nh_ts);
+    }
+
+    async Task SaveDM()
+    {
+        CurDmnhomts.Nh_ts = CurDmnhomts.Nh_ts.ToUpper().Trim().Replace(" ", "");
+        if (!CheckValid())
+            return;
+
+        SqlTableKeyValue = CurDmnhomts.Nh_ts.ToUpper().Trim();
+        SqlTableKeyValueOld = (curActionTask == ActionTask.New ? "" : Ma_ma);
+        if (curCommand != null)
+        {
+            if (!CheckValidCode())
+                return;
+        }
+        else
+        {
+            if (curActionTask == ActionTask.Edit && SqlTableKeyValue != SqlTableKeyValueOld)
+            {
+                string chk = "Select " + SqlTableKey + " from " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+                DataSet dsChk = await myDb.LoadDataset(chk);
+                if (dsChk != null && dsChk.Tables[0].Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(String.Format(Lap["Mã [{0} ] đã tồn tại !"], SqlTableKeyValue));
+                    StateHasChanged();
+                    return;
+                }
+            }
+        }
+
+        if (curActionTask == ActionTask.New)
+        {
+            CurDmnhomts.Date = DateTime.Now.Date;
+            CurDmnhomts.Date0 = DateTime.Now.Date;
+            CurDmnhomts.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmnhomts.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmnhomts.User_id = curUser.User_id;
+                CurDmnhomts.User_id0 = curUser.User_id;
+                CurDmnhomts.User_name = curUser.User_name;
+                CurDmnhomts.User_name0 = curUser.User_name;
+            }
+
+            CheckSqlTableKeyValue = CurDmnhomts.Nh_ts.Trim();
+            string check = "Select " + SqlTableKey + " from " + sqlTableName + " where " + SqlTableKey + " = '" + CheckSqlTableKeyValue + "'";
+            DataSet ds = await myDb.LoadDataset(check);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Mã [{0} ] đã tồn tại !"], SqlTableKeyValue));
+                StateHasChanged();
+                return;
+            }
+            else
+            {
+                await myDb.InsertOneRow<Dmnhomts>(CurDmnhomts, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Thêm mới thành công : {0}"], SqlTableKeyValue));
+            }
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmnhomts.Date = DateTime.Now.Date;
+            CurDmnhomts.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmnhomts.User_id = curUser.User_id;
+                CurDmnhomts.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmnhomts>(CurDmnhomts, sqlTableName, SqlTableKey, Ma_ma, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Cập nhật thành công : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmnhomts.Nh_ts))
+        {
+            myStateMN.SetNewThongbao(Lap["Mã Nhóm ts trống"] + " !");
+            StateHasChanged();
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(CurDmnhomts.Ten_nh_ts))
+        {
+            myStateMN.SetNewThongbao(Lap["Tên Nhóm ts trống"]);
+            StateHasChanged();
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = "Select * from " + sqlTableName + " where " + SqlTableKey + " = '" + SqlTableKeyValue + "'";
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmnhomts> lsdetai = myDb.ConvertDataTable<Dmnhomts>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+            {
+                CurDmnhomts = lsdetai[0];
+            }
+        }
+    }
+
+    async Task CreateNewDM()
+    {
+        CurDmnhomts = new Dmnhomts();
+        CurDmnhomts.Nh_ts = GetNewSttDM();
+        if (string.IsNullOrEmpty(CurDmnhomts.Nh_ts))
+            CurDmnhomts.Nh_ts = await GetNextNhTs();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmnhomts = new Dmnhomts();
+        await LoadData(SqlTableKeyValue);
+        CurDmnhomts.Nh_ts = GetNewSttDM();
+        if (string.IsNullOrEmpty(CurDmnhomts.Nh_ts))
+            CurDmnhomts.Nh_ts = await GetNextNhTs();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+
+    async Task<string> GetNextNhTs()
+    {
+        try
+        {
+            string sql = @"SELECT TOP 1 nh_ts FROM dmnhomts ORDER BY nh_ts DESC";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                string lastCode = ds.Tables[0].Rows[0][0].ToString().Trim();
+                string prefix = "";
+                string numPart = "";
+                for (int i = 0; i < lastCode.Length; i++)
+                {
+                    if (char.IsDigit(lastCode[i]))
+                    {
+                        prefix = lastCode.Substring(0, i);
+                        numPart = lastCode.Substring(i);
+                        break;
+                    }
+                }
+                if (string.IsNullOrEmpty(numPart))
+                    numPart = lastCode;
+                if (!string.IsNullOrEmpty(numPart) && int.TryParse(numPart, out int num))
+                {
+                    return prefix + (num + 1).ToString().PadLeft(numPart.Length, '0');
+                }
+            }
+        }
+        catch { }
+        return "";
+    }
+}

@@ -1,0 +1,305 @@
+@page "/catgnt"
+@page "/catgnt/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,catgnt")]
+
+<div class="row mt-1" @onkeydown="@OnoBrowseKeyDown" @onkeydown:preventDefault="true">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="500px"
+              MinWidth="400px"
+              Scrollable="true"
+              MaxHeight="95vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@if (IDVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IDVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmChangeListID @bind-Visible="@IDVisible" List_ID="@sqlTableName" Ma_ma="@SqlTableKeyValue" Title="@Lap["Change Item code"]" Ten_item="@Ten_item" OnOK="@ChangeOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@if (IsImportPopupVisible)
+{
+    <DxPopup @ref="@OptwRef"
+             ShowFooter="false"
+             ShowHeader="false"
+             MinWidth="50vw"
+             @bind-Visible="@IsImportPopupVisible"
+             CloseOnEscape="true"
+             ShowCloseButton="false"
+             AllowResize="true"
+             AllowDrag="true"
+             AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible" CurDmimex="@CurDmimex" OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        mPage = "catgnt";
+        sqlTableName = "dmtgnt";
+        sqlTableView = "dmtgnt";
+        SqlTableKey = "ma_nt;ngay_ct";
+
+        IsShowCopy = true;
+        IsShowImport = true;
+        FrmType = typeof(SisCa.Pages.List.Catgnt.EditDmtgnt);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wa.dm.04";
+
+        base.OnInitialized();
+    }
+
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Moi();
+                break;
+            case ActionTask.Copy:
+                myStateMN.SetCurrentActionTask(ActionTask.Copy);
+                V_Copy();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Import:
+                V_Import();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+
+    public override void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string[] strKeys = SqlTableKey.Split(";");
+            bool hasAllKeys = true;
+            foreach (string key in strKeys)
+            {
+                if (!rview.DataView.Table.Columns.Contains(key))
+                {
+                    hasAllKeys = false;
+                    break;
+                }
+            }
+            if (!hasAllKeys) return;
+
+            List<string> keyValues = new List<string>();
+            foreach (string key in strKeys)
+            {
+                if (rview[key] != null && rview[key] != DBNull.Value)
+                {
+                    string value = rview[key] is DateTime
+                        ? ((DateTime)rview[key]).ToString("yyyyMMdd")
+                        : rview[key].ToString().Trim();
+                    keyValues.Add(value);
+                }
+            }
+
+            if (keyValues.Count == strKeys.Length)
+            {
+                SqlTableKeyValue = String.Join(";", keyValues);
+                Par.Clear();
+                Par.Add("Ma_ma", (object)SqlTableKeyValue);
+                Par.Add("Menu_id", (object)Menu_id);
+                Par.Add("ShowAdd", (object)true);
+                Par.Add("curActionTask", (object)ActionTask.View);
+                Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                IsShowFrm = true;
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public override void V_Sua()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string[] strKeys = SqlTableKey.Split(";");
+            bool hasAllKeys = true;
+            foreach (string key in strKeys)
+            {
+                if (!rview.DataView.Table.Columns.Contains(key))
+                {
+                    hasAllKeys = false;
+                    break;
+                }
+            }
+            if (!hasAllKeys) return;
+
+            List<string> keyValues = new List<string>();
+            foreach (string key in strKeys)
+            {
+                if (rview[key] != null && rview[key] != DBNull.Value)
+                {
+                    string value = rview[key] is DateTime
+                        ? ((DateTime)rview[key]).ToString("yyyyMMdd")
+                        : rview[key].ToString().Trim();
+                    keyValues.Add(value);
+                }
+            }
+
+            if (keyValues.Count == strKeys.Length)
+            {
+                SqlTableKeyValue = String.Join(";", keyValues);
+                Par.Clear();
+                Par.Add("Ma_ma", (object)SqlTableKeyValue);
+                Par.Add("Menu_id", (object)Menu_id);
+                Par.Add("ShowAdd", (object)true);
+                Par.Add("curActionTask", (object)ActionTask.Edit);
+                Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                IsShowFrm = true;
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public void V_Copy()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string[] strKeys = SqlTableKey.Split(";");
+            bool hasAllKeys = true;
+            foreach (string key in strKeys)
+            {
+                if (!rview.DataView.Table.Columns.Contains(key))
+                {
+                    hasAllKeys = false;
+                    break;
+                }
+            }
+            if (!hasAllKeys) return;
+
+            List<string> keyValues = new List<string>();
+            foreach (string key in strKeys)
+            {
+                if (rview[key] != null && rview[key] != DBNull.Value)
+                {
+                    string value = rview[key] is DateTime
+                        ? ((DateTime)rview[key]).ToString("yyyyMMdd")
+                        : rview[key].ToString().Trim();
+                    keyValues.Add(value);
+                }
+            }
+
+            if (keyValues.Count == strKeys.Length)
+            {
+                SqlTableKeyValue = String.Join(";", keyValues);
+                Par.Clear();
+                Par.Add("Ma_ma", (object)SqlTableKeyValue);
+                Par.Add("Menu_id", (object)Menu_id);
+                Par.Add("ShowAdd", (object)true);
+                Par.Add("curActionTask", (object)ActionTask.Copy);
+                Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+                IsShowFrm = true;
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public override async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            MessageDl = String.Format(Lap["Do you want to delete :{0} ?"], SqlTableKeyValue);
+            ResultDl = await myDlSvc.ConfirmAsync(new MessageBoxOptions()
+            {
+                Text = MessageDl,
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["OK"],
+                CancelButtonText = Lap["Cancel"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger,
+            });
+            if (ResultDl == true)
+            {
+                await Dongy_xoa(rview);
+                StateHasChanged();
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public async Task Dongy_xoa(DataRowView rview)
+    {
+        string ngayCtFormatted = "";
+        if (rview["ngay_ct"] != null && rview["ngay_ct"] != DBNull.Value)
+        {
+            ngayCtFormatted = rview["ngay_ct"] is DateTime
+                ? ((DateTime)rview["ngay_ct"]).ToString("yyyyMMdd")
+                : rview["ngay_ct"].ToString().Trim();
+        }
+
+        string sql = $"Delete {sqlTableName} where ma_nt = '{rview["ma_nt"].ToString().Trim()}' AND CONVERT(char(8), ngay_ct, 112) = '{ngayCtFormatted}'";
+        await myDb.ExecuteSqlQueryAsync(sql);
+        await Loaddata();
+        string ToastMessage = String.Format(Lap["Delete successfully : {0}"], rview["ma_nt"].ToString().Trim());
+        myStateMN.SetNewThongbao(ToastMessage);
+    }
+}

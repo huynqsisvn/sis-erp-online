@@ -1,0 +1,476 @@
+﻿@page "/glctkc"
+@page "/glctkc/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,glctkc")]
+@if (!ShowLoading)
+{
+<div class="row my-1 py-1">
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 fw-bold">@Lap["Year"]</label>
+        <DxComboBox Data="@Years" @bind-Value="@Year" CssClass="p-0 m-0"></DxComboBox>
+    </div>
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 fw-bold">@Lap["From month"]</label>
+        <DxComboBox Data="@Months" @bind-Value="@Month1" CssClass="p-0 m-0"></DxComboBox>
+    </div>
+    <div class="col-auto d-flex align-items-center">
+        <label class="me-2 fw-bold">@Lap["To month"]</label>
+        <DxComboBox Data="@Months" @bind-Value="@Month2" CssClass="p-0 m-0"></DxComboBox>
+    </div>   
+</div>
+
+<div class="row mt-1">   
+    <FrmBrowse3Component @ref="oBrowsePH"
+                        TblData="@TblPH"
+                        Page_size="@PageSize"
+                        IsPageSize="true"
+                        CssClass="grid-frm-height"
+                        Fbrowse="@FbrowsePH"
+                        SelectItem="CurItem"
+                        SelectCol="tag"
+                        IsLangEn="@IsLangEn">
+    </FrmBrowse3Component>
+
+</div>
+<hr style="height:1px;background-color:dimgrey;margin:1px;padding:0px;">
+<div class="row my-1 mx-0 p-0">
+    <h8 class="fw-bold bg-light text-warning rounded-pill mb-1">@Lap["Detail"]</h8>
+    <FrmBrowseComponent @ref="oBrowseCT" TblData="@TblCT" CssClass="grid-frmct-height" Fbrowse="@FbrowseCT" IsLangEn="@IsLangEn" />
+</div>
+}
+else
+{
+    <DxLoadingPanel IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                CssClass="w-100"
+                IndicatorVisible="@ShowLoading"
+                IndicatorAreaVisible="@ShowLoading"
+                Visible="@ShowLoading"
+                Text="@Lap["Processing..."]"
+                TextAlignment="LoadingPanelTextAlignment.Right">
+    <div style="min-height: 250px;"></div>
+</DxLoadingPanel>
+}
+
+<style>
+    .grid-frm-height {
+        height: 45vh;
+    }
+
+    .grid-frmct-height {
+        height: 35vh;
+    }
+
+    .tb-icon-btntoolbar1 {
+        width: 24px;
+        height: 24px;
+        background-image: url('.\\Images\\Icon_them_moi.svg');
+    }
+
+    .tb-icon-btntoolbar2 {
+        width: 24px;
+        height: 24px;
+        background-image: url('.\\Images\\Icon_xoa.svg');
+    }
+
+    .tb-icon-btntoolbar3 {
+        width: 24px;
+        height: 24px;
+        background-image: url('.\\Images\\Icon_print.svg');
+    }
+</style>
+
+@code {
+    FrmBrowseComponent oBrowseCT; FrmBrowse3Component oBrowsePH;
+    public List<int> Years { get; set; } = Enumerable.Range(DateTime.Now.Year - 20, 30).OrderByDescending(y => y).ToList();
+    public List<int> Months { get; set; } = Enumerable.Range(1, 12).ToList();    
+    public int _month1 { get; set; } = DateTime.Now.Month;
+    public int _month2 { get; set; } = DateTime.Now.Month;
+    private int _year = DateTime.Now.Year;
+    public string Ma_ct { get; set; } = "PK3";
+    public string Ma_dvcs { get; set; } = "";
+
+    public DataTable TblPH { get; set; }
+    public DataTable TblCT { get; set; }
+    public int PageSize { get; set; } = 20;    
+    public List<object> SelectedMasterRows { get; set; } = new();
+
+    public string FbrowsePH { get; set; }
+    public string FbrowseCT { get; set; }
+
+    public bool ShowLoading { get; set; } = false;
+
+    public int Year
+    {
+        get => _year;
+        set
+        {
+            if (_year == value) return;
+            _year = value;
+            _ = OnYearChangedAsync();
+        }
+    }
+    public int Month1
+    {
+        get => _month1;
+        set
+        {
+            if (_month1 == value) return;
+            _month1 = value;
+            _ = OnYearChangedAsync();
+        }
+    }
+    public int Month2
+    {
+        get => _month2;
+        set
+        {
+            if (_month2 == value) return;
+            _month2 = value;
+            _ = OnYearChangedAsync();
+        }
+    }
+
+    public override void CurItem(object obj)
+    {
+        if (obj != null)
+        {
+            SelectedItem = obj;
+            DataRowView rview = (DataRowView)SelectedItem;
+            SqlTableKeyValue = rview[SqlTableKey].ToString().Trim();
+            if (TblCT != null)
+                TblCT.DefaultView.RowFilter = SqlTableKey + "='" + rview[SqlTableKey].ToString() + "'";
+        }
+        else
+        {
+            if (TblCT != null) TblCT.DefaultView.RowFilter = SqlTableKey + "=''";            
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        Ma_dvcs = myStateMN.GetDvcs().Ma_dvcs.Trim();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            SqlTableKey = "stt_kc";
+            UpdateBrowseStrings();            
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", false));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", false));
+                myStateMN.SetToolBar(new MyToolbar("View", false));
+                myStateMN.AddOrderToolBarButton("Button1", Lap["Excute"],1);
+                myStateMN.AddOrderToolBarButton("Button2", Lap["Delete"], 2);
+                myStateMN.AddOrderToolBarButton("Button3", Lap["Print"], 3);
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            await LoadDataAsync();
+            await Language();
+        }
+    }
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.Button1:
+                myStateMN.SetCurrentActionTask(ActionTask.Button1);
+                PostVoucherAsync();
+                break;           
+            case ActionTask.Button2:
+                myStateMN.SetCurrentActionTask(ActionTask.Button2);
+                DeleteVoucherAsync();
+                break;
+            case ActionTask.Button3:
+                myStateMN.SetCurrentActionTask(ActionTask.Button3);
+                PrintVoucherAsync();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Export2:
+                ExportData(2);
+                break;
+            case ActionTask.Export3:
+                ExportData(3);
+                break;
+        }
+    }
+    private async Task LoadDataAsync()
+    {
+        ShowLoading = true;
+        StateHasChanged();
+
+        var ds = await myDb.LoadDataset($"EXEC Glctkc_LoadPh {Year},{Month1},{Month2},'{Ma_dvcs}';EXEC Glctkc_LoadCt {Year},{Month1},{Month2},'{Ma_dvcs}'");
+        TblPH = ds.Tables.Count > 0 ? ds.Tables[0] : null;
+        TblCT = ds.Tables.Count > 1 ? ds.Tables[1] : null;
+
+        if (TblPH != null && TblPH.Rows.Count > 0)
+        {
+            SelectedItem = TblPH.DefaultView[0];            
+        }
+        else
+        {
+            TblCT = null;
+        }
+        if (TblCT != null)
+        {
+            TblCT.DefaultView.Sort = "stt_kc asc";
+            if (TblPH.DefaultView.Count > 0)
+                TblCT.DefaultView.RowFilter = "stt_kc='" + TblPH.DefaultView[0]["stt_kc"].ToString().Trim() + "'";
+        }
+
+        ShowLoading = false;
+        StateHasChanged();
+    }   
+
+    private async void OnMasterRowDbClick(object item)
+    {
+
+    }
+    private async void OnPHRowClick(GridRowClickEventArgs e)
+    {
+        string edb = e.Column.Name;
+    }
+
+    private void UpdateBrowseStrings()
+    {
+        string[] browseArr = IsLangEn
+            ? curCommand.Ebrowse1.Split('|')
+            : curCommand.Vbrowse1.Split('|');
+
+        FbrowsePH = browseArr.Length > 0 ? HideFields(browseArr[0], Month1, Month2) : "";
+        FbrowseCT = browseArr.Length > 1 ? browseArr[1] : "";
+    }
+
+    private string HideFields(string strFieldShow, int ky1, int ky2)
+    {
+        var f = "so_ct";
+        var soCtFields = Enumerable.Range(ky1, ky2 - ky1 + 1)
+            .Select(m => $"so_ct{m:00}")
+            .ToList();
+
+        return string.Join(";", strFieldShow.Split(';')
+            .Select(x => x.StartsWith(f) && !soCtFields.Any(y => x.StartsWith(y)) ? x + ":IV" : x));
+    }
+
+    private async void PostVoucherAsync()
+    {
+        DataRow[] rows = TblPH.Select("tag='true'");
+
+        if (rows == null || rows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No entries selected for posting"]);
+            return;
+        }
+
+        var selectedList = rows.ToList()
+            .OfType<DataRow>()
+            .Select(r => r["stt_kc"].ToString())
+            .ToList();
+
+        string numList = string.Join(",", selectedList);
+
+        ShowLoading = true;
+        StateHasChanged();
+
+        var startPeriod = new DateTime(Year, Month1, 1);
+        if (!SisLib.Ctrl.NgayTC.CheckValidNgayKs(mySysvar, myDb, startPeriod, Ma_ct))
+        {
+            myStateMN.SetNewThongbao(Lap["Data is locked, cannot post"]);
+            ShowLoading = false;
+            StateHasChanged();
+            return;
+        }
+        
+        var dsCheck = await myDb.LoadDataset("dbo.Glctkc", new Dictionary<string, object>
+            {
+                ["@Year"] = Year,
+                ["@Period1"] = Month1,
+                ["@Period2"] = Month2,
+                ["@NumList"] = numList,
+                ["@Ma_qs"] = GetMaQS(SelectedMasterRows.FirstOrDefault()),
+                ["@Ma_dvcs"] = Ma_dvcs,
+                ["@Type"] = "CHECK"
+            });
+
+        if (dsCheck != null && dsCheck.Tables.Count > 0 && dsCheck.Tables[0].Rows.Count > 0 && Convert.ToInt32(dsCheck.Tables[0].Rows[0][0]) == 1)
+        {
+            ShowLoading = false;
+            StateHasChanged();
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+                {
+                    Text = Lap["Transfering entries have already existed. Do you want to transfer again"] + " ?",
+                    Title = Lap["Confirm"],
+                    OkButtonText = Lap["Yes"],
+                    CancelButtonText = Lap["No"],
+                    ShowIcon = true,
+                    RenderStyle = MessageBoxRenderStyle.Warning
+                });
+            if (!confirm)
+            {                
+                return;
+            }
+        }
+
+        ShowLoading = true;
+        StateHasChanged();
+        await myDb.LoadDataset("dbo.Glctkc", new Dictionary<string, object>
+            {
+                ["@Year"] = Year,
+                ["@Period1"] = Month1,
+                ["@Period2"] = Month2,
+                ["@NumList"] = numList,
+                ["@Ma_qs"] = GetMaQS(SelectedMasterRows.FirstOrDefault()),
+                ["@Ma_dvcs"] = Ma_dvcs,
+                ["@Type"] = "NEW"
+            });
+
+        await LoadDataAsync();
+        myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        ShowLoading = false;
+        StateHasChanged();
+    }
+
+    private async void DeleteVoucherAsync()
+    {
+        DataRow[] rows = TblPH.Select("tag='true'");
+        if (rows == null || rows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No entries selected for deletion"]);
+            return;
+        }
+
+        var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = Lap["Are you sure you want to delete?"],
+                Title = Lap["Confirm deletion"],
+                OkButtonText = Lap["OK"],
+                CancelButtonText = Lap["Cancel"],
+                ShowIcon = true,
+                RenderStyle = MessageBoxRenderStyle.Danger
+            });
+
+        if (!confirm)
+            return;
+
+        var selectedList = rows
+            .OfType<DataRow>()
+            .Select(r => r["stt_kc"].ToString())
+            .ToList();
+
+        string numList = string.Join(",", selectedList);
+
+        ShowLoading = true;
+        StateHasChanged();
+
+        var startPeriod = SisLib.Ctrl.NgayTC.StartOfPeriod(mySysvar,Year,Month1);
+        if (!SisLib.Ctrl.NgayTC.CheckValidNgayKs(mySysvar, myDb, startPeriod, Ma_ct))
+        {
+            myStateMN.SetNewThongbao(Lap["Data is locked, cannot delete"]);
+            ShowLoading = false;
+            StateHasChanged();
+            return;
+        }
+
+        await myDb.LoadDataset("dbo.Glctkc", new Dictionary<string, object>
+            {
+                ["@Year"] = Year,
+                ["@Period1"] = Month1,
+                ["@Period2"] = Month2,
+                ["@NumList"] = numList,
+                ["@Ma_qs"] = GetMaQS(SelectedMasterRows.FirstOrDefault()),
+                ["@Ma_dvcs"] = Ma_dvcs,
+                ["@Type"] = "DEL"
+            });
+
+        await LoadDataAsync();
+        myStateMN.SetNewThongbao(Lap["Operation completed"] + " !");
+        ShowLoading = false;
+        StateHasChanged();
+    }
+
+    private async void PrintVoucherAsync()
+    {
+        DataRow[] rows = TblPH.Select("tag='true'");
+        if (rows == null || rows.Length == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No entries selected for printing"]);
+            return;
+        }
+
+        var selectedList = rows
+            .OfType<DataRow>()
+            .Select(r => r["stt_kc"].ToString())
+            .ToList();
+
+        string numList = string.Join(",", selectedList);
+
+        ShowLoading = true;
+        StateHasChanged();
+        
+        var dsPrint = await myDb.LoadDataset("dbo.Glctkc", new Dictionary<string, object>
+            {
+                ["@Year"] = Year,
+                ["@Period1"] = Month1,
+                ["@Period2"] = Month2,
+                ["@NumList"] = numList,
+                ["@Ma_qs"] = GetMaQS(SelectedMasterRows.FirstOrDefault()),
+                ["@Ma_dvcs"] = Ma_dvcs,
+                ["@Type"] = "PRINT"
+            });
+
+        if (dsPrint == null || dsPrint.Tables.Count == 0 || dsPrint.Tables[0].Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No data in report"]);
+            ShowLoading = false;
+            StateHasChanged();
+            return;
+        }
+
+        ShowReport(dsPrint);
+
+        ShowLoading = false;
+        StateHasChanged();
+    }
+    public override async void ExportData(int type)
+    {
+        oBrowsePH.ExPortGrid(type);
+        string ToastMessage = Lap["Export successfully"];
+        myStateMN.SetNewThongbao(ToastMessage);
+        StateHasChanged();
+    }
+    private string GetMaQS(object row)
+    {
+        if (row is DataRowView drv && drv.DataView.Table.Columns.Contains("ma_qs"))
+            return drv["ma_qs"].ToString();
+        return "";
+    }
+
+    private void ShowReport(DataSet ds)
+    {        
+        myStateMN.SetNewThongbao(Lap["Report previewed (demo)."]);
+    }
+    private async Task OnYearChangedAsync()
+    {
+        await LoadDataAsync();
+        StateHasChanged();
+    }
+}

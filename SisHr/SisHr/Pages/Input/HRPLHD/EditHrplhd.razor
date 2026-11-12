@@ -1,0 +1,273 @@
+@inherits FrmListBaseComponent
+@using SisHr.Pages.Input.HRPLHD
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SavePlhd" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event)">
+
+                @* --- CONTRACT NUMBER --- *@
+                <DxFormLayoutItem Caption="@Lap["Contract number"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_hdld_input" Ma_dm="dmhdld" Filter="status = 1" @bind-Value="@CurPlhd.Ma_hdld" IsEnable="@AllowEditMode" SelectChanged="Ma_hdld_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- APPENDIX NUMBER --- *@
+                <DxFormLayoutItem Caption="@Lap["Appendix number"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxTextBox Id="ma_plhd2_input" @bind-Text="@CurPlhd.Ma_plhd2" maxlength="@(tblLength.ContainsKey("ma_plhd2") ? tblLength["ma_plhd2"] : 50)" Enabled="@AllowEditMa" CharacterCasing="CharacterCasing.Upper" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- CONTENT OF CHANGE --- *@
+                <DxFormLayoutItem Caption="@Lap["Content change"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurPlhd.Noi_dung_thay_doi" maxlength="@(tblLength.ContainsKey("noi_dung_thay_doi") ? tblLength["noi_dung_thay_doi"] : 500)" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- BASE SALARY --- *@
+                <DxFormLayoutItem Caption="@Lap["Base salary"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxSpinEdit Id="luong_co_ban_input" Enabled="@AllowEditMode" Value="@(CurPlhd.Luong_co_ban ?? 0)"
+                            ValueChanged="@((int v) => { CurPlhd.Luong_co_ban = v; StateHasChanged(); })" DisplayFormat="N0" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- IMPLEMENTATION TIME --- *@
+                <DxFormLayoutItem Caption="@Lap["Implementation time"]" ColSpanMd="12">
+                    <Template>
+                        <DxTextBox @bind-Text="@CurPlhd.Thoi_gian_thuc_hien" maxlength="@(tblLength.ContainsKey("thoi_gian_thuc_hien") ? tblLength["thoi_gian_thuc_hien"] : 500)" Enabled="@AllowEditMode" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                @* --- EFFECTIVE DATE --- *@
+                <DxFormLayoutItem Caption="@Lap["Effective date"]" ColSpanMd="12" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <DxDateEdit Id="ngay_ap_dung_input" Enabled="@AllowEditMode" @bind-Date="@CurPlhd.Ngay_ap_dung" DisplayFormat="dd/MM/yyyy" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    public Plhd CurPlhd;
+    private string menu_id = "wr.ct.06";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName  = "dmplhd";
+        sqlTableView  = "v_dmplhd";
+        SqlTableKey   = "ma_plhd2";
+        CheckSqlTableKey = "ma_plhd2";
+        ParentPage    = string.IsNullOrEmpty(ParentPage) ? "HRPLHD" : ParentPage;
+        CurPlhd       = new Plhd();
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord();
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+                await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_hdld_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task ViewRecord(string key)
+    {
+        CurPlhd = new Plhd();
+        AllowEditMode = false;
+        AllowEditMa   = false;
+        await LoadData(key);
+    }
+
+    async Task EditRecord(string key)
+    {
+        CurPlhd = new Plhd();
+        AllowEditMode = true;
+        AllowEditMa   = false;
+        await LoadData(key);
+    }
+
+    async Task NewRecord()
+    {
+        CurPlhd = new Plhd();
+        CurPlhd.Status       = 1;
+        CurPlhd.Ngay_ap_dung = DateTime.Now.Date;
+        CurPlhd.Luong_co_ban = 0;
+        AllowEditMode = true;
+        AllowEditMa   = true;
+        StateHasChanged();
+    }
+
+    async Task LoadData(string key)
+    {
+        try
+        {
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {SqlTableKey} = @{SqlTableKey}";
+            DataSet ds = await myDb.LoadDataset(sql, SqlTableKey, key);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                List<Plhd> list = myDb.ConvertDataTable<Plhd>(ds.Tables[0]);
+                if (list != null && list.Count > 0)
+                {
+                    CurPlhd = list[0];
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data load error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Ma_hdld_Changed(ExpandoObject value)
+    {
+        StateHasChanged();
+    }
+
+    async Task SavePlhd()
+    {
+        try
+        {
+            if (!CheckValid())
+                return;
+
+            // Normalize empty values
+            CurPlhd.Noi_dung_thay_doi       = CurPlhd.Noi_dung_thay_doi ?? "";
+            CurPlhd.Thoi_gian_thuc_hien     = CurPlhd.Thoi_gian_thuc_hien ?? "";
+
+            if (curActionTask == ActionTask.New)
+            {
+                string safe_ma  = CurPlhd.Ma_plhd2.Trim().Replace("'", "''");
+                string sqlCheck = $"SELECT COUNT(1) FROM {sqlTableName} WHERE ma_plhd2='{safe_ma}'";
+                DataTable dtChk = myDb.GetTable(sqlCheck);
+                if (dtChk != null && dtChk.Rows.Count > 0 && Convert.ToInt32(dtChk.Rows[0][0]) > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["Appendix number already exists"] + "!");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_plhd2_input')?.focus()");
+                    return;
+                }
+
+                DateTime now = DateTime.Now;
+                CurPlhd.Date0     = now.Date;
+                CurPlhd.Time0     = now.ToString("HH:mm:ss");
+                CurPlhd.Date      = now.Date;
+                CurPlhd.Time      = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurPlhd.User_id0   = curUser.User_id;
+                    CurPlhd.User_name0 = curUser.User_name;
+                    CurPlhd.User_id    = curUser.User_id;
+                    CurPlhd.User_name  = curUser.User_name;
+                }
+
+                await myDb.InsertOneRow<Plhd>(CurPlhd, sqlTableName);
+                myStateMN.SetNewThongbao($"{Lap["Successfully added new"]}: {CurPlhd.Ma_plhd2}");
+            }
+            else if (curActionTask == ActionTask.Edit)
+            {
+                DateTime now = DateTime.Now;
+                CurPlhd.Date  = now.Date;
+                CurPlhd.Time  = now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurPlhd.User_id   = curUser.User_id;
+                    CurPlhd.User_name = curUser.User_name;
+                }
+
+                string safeMa    = Ma_ma.Trim().Replace("'", "''");
+                string whereClause = "ma_plhd2 = '" + safeMa + "'";
+                await myDb.UpdateOneRow1<Plhd>(CurPlhd, sqlTableName, "", whereClause);
+                myStateMN.SetNewThongbao($"{Lap["Edit successfully"]}: {CurPlhd.Ma_plhd2}");
+            }
+
+            if (DxWindowmodel != null)
+                myModal.CloseModal(DxWindowmodel);
+
+            if (ShowAdd == true)
+                OnClose.InvokeAsync();
+            else
+                myNavi.NavigateTo(ParentPage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"{Lap["Save failed"]}: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrWhiteSpace(CurPlhd.Ma_hdld))
+        {
+            myStateMN.SetNewThongbao(Lap["Contract number is required"] + "!");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(CurPlhd.Ma_plhd2))
+        {
+            myStateMN.SetNewThongbao(Lap["Appendix number is required"] + "!");
+            return false;
+        }
+
+        if (CurPlhd.Ngay_ap_dung == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Effective date is required"] + "!");
+            return false;
+        }
+
+        return true;
+    }
+}

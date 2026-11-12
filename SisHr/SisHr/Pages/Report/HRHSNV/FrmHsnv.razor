@@ -1,0 +1,2962 @@
+﻿@page "/frmhsnv"
+@using SisHr.Pages.Report.HRHSNV
+@using DevExpress.Blazor
+@using SisCom.Model
+@using SisCom.Shared
+@using SisLib.Lib
+@using SisLib.List
+@using SisData.Service
+@using System.Data
+@using SisHr.Pages.Report.HRHSNV
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
+@using SisHr.Pages.Report.HRHSNV.Tabs
+@using System.Linq
+@inherits FrmListBaseComponent
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+<FormList  @bind-curActionTask="@curActionTask" OnSave="@SaveHsnv" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+    <div class="row g-0">
+        @* ===== CỘT TRÁI: MENU ===== *@
+        <div class="col-md-3 border-end pe-2">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item list-group-item-action @(ActiveSection == 1 ? "active" : "")" 
+                    style="cursor:pointer;" 
+                    @onclick="() => ScrollToSection(1)">
+                    <i class="fa fa-user me-2"></i>@Lap["Main information"]
+                </li>
+                <li class="list-group-item list-group-item-action @(ActiveSection == 2 ? "active" : "")" 
+                    style="cursor:pointer;" 
+                    @onclick="() => ScrollToSection(2)">
+                    <i class="fa fa-coins me-2"></i>@Lap["Deduction information"]
+                </li>
+                <li class="list-group-item list-group-item-action @(ActiveSection == 3 ? "active" : "")" 
+                    style="cursor:pointer;" 
+                    @onclick="() => ScrollToSection(3)">
+                    <i class="fa fa-users me-2"></i>@Lap["Dependent information"]
+                </li>
+                @if (IsShowSocialInsurance)
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 4 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(4)">
+                        <i class="fa fa-shield-alt me-2"></i>@Lap["Social insurance"]
+                    </li>
+                }
+                @if (IsShowUnionParty)
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 5 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(5)">
+                        <i class="fa fa-flag me-2"></i>@Lap["Union/Party"]
+                    </li>
+                }
+                @if (IsShowSalary)
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 6 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(6)">
+                        <i class="fa fa-dollar-sign me-2"></i>@Lap["Salary"]
+                    </li>
+                }
+                @if (IsShowTransferUnit)
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 7 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(7)">
+                        <i class="fa fa-exchange-alt me-2"></i>@Lap["Transfer unit"]
+                    </li>
+                }
+                @if (IsShowHopDong)
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 8 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(8)">
+                        <i class="fa fa-file-contract me-2"></i>@Lap["Labor contract"]
+                    </li>
+                }
+                @if (IsShowQtbh && (curActionTask.ToString() == "Edit" || curActionTask.ToString() == "1" || curActionTask.ToString() == "View" || curActionTask.ToString() == "0") && (curActionTask.ToString() == "View" || curActionTask.ToString() == "0" || HasLaborContract()))
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 9 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(9)">
+                        <i class="fa fa-history me-2"></i>@Lap["Insurance process"]
+                    </li>
+                }
+                @if (IsShowQhgd)
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 10 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(10)">
+                        <i class="fa fa-heart me-2"></i>@Lap["Family relationship"]
+                    </li>
+                }
+                @if (IsShowDieuChuyen)
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 11 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(11)">
+                        <i class="fa fa-location-arrow me-2"></i>@Lap["Personnel transfer"]
+                    </li>
+                }
+                @if (IsShowNghiViec)
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 12 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(12)">
+                        <i class="fa fa-sign-out-alt me-2"></i>@Lap["Resignation update"]
+                    </li>
+                }
+                @if (IsShowQtct)
+                {
+                    <li class="list-group-item list-group-item-action @(ActiveSection == 13 ? "active" : "")" 
+                        style="cursor:pointer;" 
+                        @onclick="() => ScrollToSection(13)">
+                        <i class="fa fa-briefcase me-2"></i>@Lap["Working process"]
+                    </li>
+                }
+            </ul>
+
+            <div class="mt-3">
+                <button class="btn btn-outline-primary w-100" @onclick="ShowSectionSelector">
+                    <i class="fa fa-plus me-1"></i>
+                    @Lap["Add item"]
+                </button>
+            </div>
+        </div>
+
+        @* ===== CỘT PHẢI: CHI TIẾT ===== *@
+        <div class="col-md-9 ps-3" style="max-height: 80vh; overflow-y: auto;" @ref="ScrollContainer">
+            @if (ShowLoadding)
+            {
+                <div class="d-flex justify-content-center align-items-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">@Lap["Loading data, please wait..."]</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @* ===== EMPLOYEE CARD SECTION (phần ảnh và thông tin nhân viên) ===== *@
+                <div class="card mb-3 p-3">
+                    <div class="row g-3">
+                        @* Left: Avatar and Photo Upload *@
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="position-relative d-inline-block" style="width: 160px; height: 160px; overflow: hidden; border-radius: 12px; border: 1px solid #dee2e6; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                                    <img id="employeePhoto" 
+                                         src="@(string.IsNullOrEmpty(CurRow.Image_url) ? "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' font-size='48' fill='%236c757d' text-anchor='middle' dominant-baseline='middle'%3E👤%3C/text%3E%3C/svg%3E" : CurRow.Image_url)" 
+                                         alt="@CurRow.Ten_ns" 
+                                         style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain;">
+                                    @if (AllowEditMode)
+                                    {
+                                        <label for="photoInput" class="position-absolute bottom-0 end-0" style="cursor: pointer;">
+                                            <div class="btn btn-sm btn-primary rounded-circle" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fa fa-camera text-white"></i>
+                                            </div>
+                                        </label>
+                                        <InputFile id="photoInput" class="d-none" accept="image/*" OnChange="@OnPhotoSelectedHandler" />
+                                    }
+                                </div>
+                                @if (AllowEditMode)
+                                {
+                                    <div class="mt-2">
+                                        <small class="text-muted d-block">@Lap["Click to change photo"]</small>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        @* Right: Employee Information *@
+                        <div class="col-md-9">
+                            <div class="row g-2">
+                                @* Row 1 *@
+                                <div class="col-md-6">
+                                    <div>
+                                        <label class="form-label small fw-bold">@Lap["Employee code"]</label>
+                                        @if (AllowEditMode)
+                                        {
+                                            <DxTextBox @bind-Text="CurRow.Ma_ns" IsEnable="@AllowEditMa" CharacterCasing="Upper" CssClass="form-control form-control-sm" />
+                                        }
+                                        else
+                                        {
+                                            <div class="form-control form-control-plaintext ps-0">@CurRow.Ma_ns</div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div>
+                                        <label class="form-label small fw-bold">@Lap["Employee name"]</label>
+                                        @if (AllowEditMode)
+                                        {
+                                            <DxTextBox @bind-Text="CurRow.Ten_ns" CssClass="form-control form-control-sm" />
+                                        }
+                                        else
+                                        {
+                                            <div class="form-control form-control-plaintext ps-0">@CurRow.Ten_ns</div>
+                                        }
+                                    </div>
+                                </div>
+
+                                @* Row 2 *@
+                                <div class="col-md-6">
+                                    <div>
+                                        <label class="form-label small fw-bold">@Lap["Birth date"]</label>
+                                        @if (AllowEditMode)
+                                        {
+                                            <DxDateEdit @bind-Date="CurRow.Ngay_sinh" CssClass="w-100" />
+                                        }
+                                        else
+                                        {
+                                            <div class="form-control form-control-plaintext ps-0">
+                                                @if (CurRow.Ngay_sinh.HasValue)
+                                                {
+                                                    @CurRow.Ngay_sinh.Value.ToString("dd-MM-yyyy")
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div>
+                                        <label class="form-label small fw-bold">@Lap["ID/Passport"]</label>
+                                        @if (AllowEditMode)
+                                        {
+                                            <DxTextBox @bind-Text="CurRow.Cmnd" CssClass="form-control form-control-sm" />
+                                        }
+                                        else
+                                        {
+                                            <div class="form-control form-control-plaintext ps-0">@CurRow.Cmnd</div>
+                                        }
+                                    </div>
+                                </div>
+
+                                @* Row 3 *@
+                                <div class="col-md-6">
+                                    <div>
+                                        <label class="form-label small fw-bold">@Lap["Department"]</label>
+                                        @if (AllowEditMode)
+                                        {
+                                            <div class="input-group input-group-sm">
+                                                <AutocompleteComponent Ma_dm="dmbpns" @bind-Value="@CurRow.Ma_bpns" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="form-control form-control-plaintext ps-0">@CurRow.Ma_bpns</div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div>
+                                        <label class="form-label small fw-bold">@Lap["Address"]</label>
+                                        @if (AllowEditMode)
+                                        {
+                                            <DxTextBox @bind-Text="CurRow.Dia_chi" CssClass="form-control form-control-sm" />
+                                        }
+                                        else
+                                        {
+                                            <div class="form-control form-control-plaintext ps-0">@CurRow.Dia_chi</div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <DxFormLayout CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                    @* ===== 1. Main INFORMATION (thông tin chính) ===== *@
+                    <TabMainInfo1 @ref="tabMainInfo" CurRow="@CurRow" AllowEditMode="@AllowEditMode" IsLangEn="@IsLangEn" Lap="@Lap" />
+
+                    @* ===== 2. DEDUCTION INFORMATION (Giảm trừ) ===== *@
+                    <DxFormLayoutGroup id="section-2" Caption="@Lap["Deduction information"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                                       Decoration="FormLayoutGroupDecoration.Card"
+                                       ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                                       AnimationType="LayoutAnimationType.Slide">
+
+                        @* Checkbox xác định có tính giảm trừ hay không *@
+                        <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Personal deduction"]">
+                            <Template>
+                                <DxComboBox Data="@Tab2_YesNoList"
+                                            @bind-Value="CurRow.Giam_tru"
+                                            TextFieldName="Text"
+                                            ValueFieldName="Value"
+                                            IsEnable="@AllowEditMode" />
+                            </Template>
+                        </DxFormLayoutItem>
+
+                        @* Lưới chi tiết thông tin giảm trừ *@
+                        <DxFormLayoutItem BeginRow="true" ColSpanMd="12" CssClass="mt-2">
+                            <Template>
+
+                                @* Bọc UI giống hệt lưới Chi tiết giá trị Tài sản của Zcfats *@
+                                <div id="grid-detail" class="mt-2 border rounded p-2">
+                                    <h6 class="fw-bold text-primary m-0 mb-1">Chi tiết thông tin giảm trừ</h6>
+
+                                    @* Thêm @onfocusin để khai báo cho hệ thống biết Lưới nào đang được trỏ chuột *@
+                                    <div @ref="GridWrapperCtgtk" id="grid-wrapper-ctgtk" @onfocusout="OnGridCtgtkLostFocus" @onfocusin='() => LastFocusedGrid = "CTGTK"'  class="mt-2 mb-3">
+                                        <DxGrid @ref="GridCtgtk"
+                                                Data="@(CurRow.ListCtgtk ?? new List<CtgtkRow>())"
+                                                SizeMode="SizeMode.Medium" 
+                                                CssClass="w-100 grid-height-dynamic"
+                                                @onkeydown="GridCtgtk_OnKeyDown"
+                                                AllowSelectRowByClick="true"
+                                                KeyboardNavigationEnabled="true"
+                                                @bind-SelectedDataItem="@SelectedCtgtk"
+                                                ValidationEnabled="false"
+                                                EditMode="GridEditMode.EditRow"
+                                                RowClick="@StartEditCtgtkRow"
+                                                SelectionMode="GridSelectionMode.Single"
+                                                CustomizeEditModel="GridCtgtk_CustomizeEditModel"
+                                                EditModelSaving="GridCtgtk_EditModelSaving"
+                                                DataItemDeleting="GridCtgtk_DataItemDeleting"
+                                                ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                                ShowFilterRow="false"
+                                                ShowAllRows="true"
+                                                TextWrapEnabled="false"
+                                                AllowSort="false"
+                                                HighlightRowOnHover="true"
+                                                FooterDisplayMode="GridFooterDisplayMode.Always">
+                                            <Columns>
+                                                @* Cột xóa thiết kế y hệt Zcfats *@
+                                                <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                    <CellDisplayTemplate Context="cntedit">
+                                                        <div class="grid-cell-align-center">
+                                                            <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                      RenderStyle="ButtonRenderStyle.Link"
+                                                                      CssClass="grid-delete-btn"
+                                                                      aria-label="Delete"
+                                                                      Click="@(() => GridCtgtk.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                        </div>
+                                                    </CellDisplayTemplate>
+                                                    <CellEditTemplate Context="cntedit1">
+                                                        <div class="grid-cell-align-center">
+                                                            <DxButton Enabled="false"
+                                                                      CssClass="grid-disabled-button"
+                                                                      IconCssClass="grid-icon grid-icon-delete"
+                                                                      aria-label="Delete"
+                                                                      RenderStyle="ButtonRenderStyle.Link" />
+                                                        </div>
+                                                    </CellEditTemplate>
+                                                </DxGridCommandColumn>
+                            
+                                                <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+                            
+                                                <DxGridDataColumn FieldName="Ngay_hl1" Caption="@Lap["Effective date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{ var item = (CtgtkRow)ctx.EditModel; }
+                                                        <DxDateEdit @bind-Date="@item.Ngay_hl1" Format="dd/MM/yyyy" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                            
+                                                <DxGridDataColumn FieldName="Ngay_hl2" Caption="@Lap["Expiration date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{ var item = (CtgtkRow)ctx.EditModel; }
+                                                        <DxDateEdit @bind-Date="@item.Ngay_hl2" Format="dd/MM/yyyy" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                            
+                                                <DxGridDataColumn FieldName="Luong_thang" Caption="@Lap["Basic salary"]" Width="130px" DisplayFormat="N0">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{ var item = (CtgtkRow)ctx.EditModel; }
+                                                        <DxSpinEdit @bind-Value="@item.Luong_thang" DisplayFormat="N0" ShowSpinButtons="false" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                            
+                                                <DxGridDataColumn FieldName="Luong" Caption="@Lap["Insurance salary"]" Width="130px" DisplayFormat="N0">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{ var item = (CtgtkRow)ctx.EditModel; }
+                                                        <DxSpinEdit Value="@item.Luong" DisplayFormat="N0" ShowSpinButtons="false" ValueChanged="@((decimal? v) => { item.Luong = v; Tab2_AutoCalculateDeductions(item); })" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                            
+                                                <DxGridDataColumn FieldName="Gia_canh" Caption="@Lap["Family deduction"]" Width="130px" DisplayFormat="N0">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{ var item = (CtgtkRow)ctx.EditModel; }
+                                                        <DxSpinEdit @bind-Value="@item.Gia_canh" DisplayFormat="N0" ShowSpinButtons="false" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                            
+                                                <DxGridDataColumn FieldName="A_001" Caption="@Lap["Unemployment insurance"]" Width="130px" DisplayFormat="N0">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{ var item = (CtgtkRow)ctx.EditModel; }
+                                                        <DxSpinEdit @bind-Value="@item.A_001" DisplayFormat="N0" ShowSpinButtons="false" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                            
+                                                <DxGridDataColumn FieldName="A_002" Caption="@Lap["Health insurance"]" Width="130px" DisplayFormat="N0">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{ var item = (CtgtkRow)ctx.EditModel; }
+                                                        <DxSpinEdit @bind-Value="@item.A_002" DisplayFormat="N0" ShowSpinButtons="false" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                            
+                                                <DxGridDataColumn FieldName="A_003" Caption="@Lap["Social insurance"]" Width="130px" DisplayFormat="N0">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{ var item = (CtgtkRow)ctx.EditModel; }
+                                                        <DxSpinEdit @bind-Value="@item.A_003" DisplayFormat="N0" ShowSpinButtons="false" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                            
+                                                <DxGridDataColumn FieldName="Tien_gt" Caption="@Lap["Other deduction"]" MinWidth="130">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{ var item = (CtgtkRow)ctx.EditModel; }
+                                                        <DxSpinEdit @bind-Value="@item.Tien_gt" DisplayFormat="N0" ShowSpinButtons="false" CssClass="w-100" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                            </Columns>
+                                        </DxGrid>
+                                    </div>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+
+                    @* ===== 3. DEPENDENT INFORMATION (Người phụ thuộc) ===== *@
+                    <DxFormLayoutGroup id="section-3" Caption="@Lap["Dependent information"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                                       Decoration="FormLayoutGroupDecoration.Card"
+                                       ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                                       AnimationType="LayoutAnimationType.Slide">
+                        <DxFormLayoutItem BeginRow="true" ColSpanMd="12" CssClass="mt-2">
+                            <Template>
+                                <div id="grid-detail-ctnpt" class="mt-2 border rounded p-2">
+                                    <h6 class="fw-bold text-primary m-0 mb-1">Chi tiết người phụ thuộc</h6>
+                                    <div @ref="GridWrapperCtnpt" id="grid-wrapper-ctnpt" @onfocusout="OnGridCtnptLostFocus" @onfocusin='() => LastFocusedGrid = "CTNPT"' class="mt-2 mb-3">
+                                        <DxGrid @ref="GridCtnpt"
+                                                Data="@(CurRow.ListCtnpt ?? new List<CtnptRow>())"
+                                                SizeMode="SizeMode.Medium"
+                                                CssClass="w-100 grid-height-dynamic"
+                                                @onkeydown="GridCtnpt_OnKeyDown"
+                                                AllowSelectRowByClick="true"
+                                                KeyboardNavigationEnabled="true"
+                                                @bind-SelectedDataItem="@SelectedCtnpt"
+                                                ValidationEnabled="false"
+                                                EditMode="GridEditMode.EditRow"
+                                                RowClick="@StartEditCtnptRow"
+                                                SelectionMode="GridSelectionMode.Single"
+                                                CustomizeEditModel="GridCtnpt_CustomizeEditModel"
+                                                EditModelSaving="GridCtnpt_EditModelSaving"
+                                                DataItemDeleting="GridCtnpt_DataItemDeleting"
+                                                ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                                ShowFilterRow="false"
+                                                ShowAllRows="true"
+                                                TextWrapEnabled="false"
+                                                AllowSort="false"
+                                                HighlightRowOnHover="true"
+                                                FooterDisplayMode="GridFooterDisplayMode.Always">
+                                            <Columns>
+                                                <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                    <CellDisplayTemplate Context="cntedit">
+                                                        <div class="grid-cell-align-center">
+                                                            <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                      RenderStyle="ButtonRenderStyle.Link"
+                                                                      CssClass="grid-delete-btn"
+                                                                      aria-label="Delete"
+                                                                      Click="@(() => GridCtnpt.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                        </div>
+                                                    </CellDisplayTemplate>
+                                                    <CellEditTemplate Context="cntedit1">
+                                                        <div class="grid-cell-align-center">
+                                                            <DxButton Enabled="false"
+                                                                      CssClass="grid-disabled-button"
+                                                                      IconCssClass="grid-icon grid-icon-delete"
+                                                                      aria-label="Delete"
+                                                                      RenderStyle="ButtonRenderStyle.Link" />
+                                                        </div>
+                                                    </CellEditTemplate>
+                                                </DxGridCommandColumn>
+
+                                                <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                                                @* 2. Mã người phụ thuộc *@
+                                                <DxGridDataColumn FieldName="Ma_npt" Caption="@Lap["Dependent code"]" Width="120px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Ma_npt" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 3. Họ tên *@
+                                                <DxGridDataColumn FieldName="Ho_ten" Caption="@Lap["Full name"]" Width="160px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Ho_ten" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 4. Họ tên 2 *@
+                                                <DxGridDataColumn FieldName="Ho_ten2" Caption="@Lap["Full name 2"]" Width="160px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Ho_ten2" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 5. Quốc gia *@
+                                                <DxGridDataColumn FieldName="Quoc_gia" Caption="@Lap["Nationality"]" Width="100px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Quoc_gia" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 6. Ngày sinh *@
+                                                <DxGridDataColumn FieldName="Ngay_sinh" Caption="@Lap["Birth date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxDateEdit @bind-Date="@item.Ngay_sinh" DisplayFormat="dd/MM/yyyy" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 7. CMND *@
+                                                <DxGridDataColumn FieldName="Cmnd" Caption="@Lap["ID Card"]" Width="120px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Cmnd" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 8. Số *@
+                                                <DxGridDataColumn FieldName="So" Caption="@Lap["Number"]" Width="80px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.So" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 9. Quyển số *@
+                                                <DxGridDataColumn FieldName="Quyen_so" Caption="@Lap["Book"]" Width="80px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Quyen_so" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 10. Thành phố/Tỉnh *@
+                                                <DxGridDataColumn FieldName="Thanh_pho" Caption="@Lap["Province/City"]" Width="130px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Thanh_pho" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 11. Quận/Huyện *@
+                                                <DxGridDataColumn FieldName="Quan" Caption="@Lap["District"]" Width="120px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Quan" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 12. Phường/Xã *@
+                                                <DxGridDataColumn FieldName="Phuong" Caption="@Lap["Ward"]" Width="120px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Phuong" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 13. Mã số thuế *@
+                                                <DxGridDataColumn FieldName="Ma_so_thue" Caption="@Lap["Tax code"]" Width="120px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Ma_so_thue" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 14. Quan hệ *@
+                                                <DxGridDataColumn FieldName="Quan_he" Caption="@Lap["Relationship"]" Width="120px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Quan_he" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 15. Ngày hiệu lực từ *@
+                                                <DxGridDataColumn FieldName="Ngay_pt1" Caption="@Lap["Effective from"]" Width="130px" DisplayFormat="dd/MM/yyyy">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxDateEdit @bind-Date="@item.Ngay_pt1" DisplayFormat="dd/MM/yyyy" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 16. Ngày hiệu lực đến *@
+                                                <DxGridDataColumn FieldName="Ngay_pt2" Caption="@Lap["Effective to"]" Width="130px" DisplayFormat="dd/MM/yyyy">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxDateEdit @bind-Date="@item.Ngay_pt2" DisplayFormat="dd/MM/yyyy" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 17. Chứng từ đi kèm *@
+                                                <DxGridDataColumn FieldName="Ct_kem" Caption="@Lap["Attachment"]" Width="120px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Ct_kem" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 18. Diễn giải *@
+                                                <DxGridDataColumn FieldName="Dien_giai" Caption="@Lap["Description"]" Width="200px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxTextBox @bind-Text="@item.Dien_giai" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+
+                                                @* 19. Lần bổ sung *@
+                                                <DxGridDataColumn FieldName="Bo_sung" Caption="@Lap["Supplement"]" Width="100px">
+                                                    <CellEditTemplate Context="ctx">
+                                                        @{
+                                                            var item = (CtnptRow)ctx.EditModel;
+                                                        }
+                                                        <DxSpinEdit @bind-Value="@item.Bo_sung" />
+                                                    </CellEditTemplate>
+                                                </DxGridDataColumn>
+                                            </Columns>
+                                        </DxGrid>
+                                    </div>
+                                </div>
+                            </Template>
+                        </DxFormLayoutItem>
+                    </DxFormLayoutGroup>
+
+                    @* ===== 4. SOCIAL INSURANCE ===== *@
+                    @if (IsShowSocialInsurance)
+                    {
+                        <TabSocialInsurance4 @ref="tabSocialInsurance" CurRow="@CurRow" AllowEditMode="@AllowEditMode" IsLangEn="@IsLangEn" Lap="@Lap" />
+                    }
+
+                    @* ===== 5. UNION/PARTY ===== *@
+                    @if (IsShowUnionParty)
+                    {
+                        <TabUnionParty5 @ref="tabUnionParty" CurRow="@CurRow" AllowEditMode="@AllowEditMode" IsLangEn="@IsLangEn" Lap="@Lap" />
+                    }
+
+                    @* ===== 6. SALARY ===== *@
+                    @if (IsShowSalary)
+                    {
+                        <TabSalary6 @ref="tabSalary" CurRow="@CurRow" AllowEditMode="@AllowEditMode" Lap="@Lap" />
+                    }
+
+                    @* ===== 7. TRANSFER UNIT ===== *@
+                    @if (IsShowTransferUnit)
+                    {
+                        <TabTransferUnit7 @ref="tabTransferUnit" CurRow="@CurRow" AllowEditMode="@AllowEditMode" IsLangEn="@IsLangEn" Lap="@Lap" />
+                    }
+
+                    @* ===== 8. LABOR CONTRACT (GRID) ===== *@
+                    @if (IsShowHopDong)
+                    {
+                        <DxFormLayoutGroup id="section-8" Caption="@Lap["Labor contract"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                                           Decoration="FormLayoutGroupDecoration.Card"
+                                           ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                                           AnimationType="LayoutAnimationType.Slide">
+                            <DxFormLayoutItem BeginRow="true" ColSpanMd="12" CssClass="mt-2">
+                                <Template>
+                                    <div id="grid-detail-hopdong" class="mt-2 border rounded p-2">
+                                        <h6 class="fw-bold text-primary m-0 mb-1">Chi tiết hợp đồng lao động</h6>
+                                        <div @ref="GridWrapperHopDong" id="grid-wrapper-hopdong" @onfocusout="OnGridHopDongLostFocus" @onfocusin='() => LastFocusedGrid = "HOPDONG"' class="mt-2 mb-3">
+                                            <DxGrid @ref="GridHopDong"
+                                                    Data="@(CurRow.ListHopDong ?? new List<HopDongRow>())"
+                                                    SizeMode="SizeMode.Medium"
+                                                    CssClass="w-100 grid-height-dynamic"
+                                                    @onkeydown="GridHopDong_OnKeyDown"
+                                                    AllowSelectRowByClick="true"
+                                                    KeyboardNavigationEnabled="true"
+                                                    @bind-SelectedDataItem="@SelectedHopDong"
+                                                    ValidationEnabled="false"
+                                                    EditMode="GridEditMode.EditRow"
+                                                    RowClick="@StartEditHopDongRow"
+                                                    SelectionMode="GridSelectionMode.Single"
+                                                    CustomizeEditModel="GridHopDong_CustomizeEditModel"
+                                                    EditModelSaving="GridHopDong_EditModelSaving"
+                                                    DataItemDeleting="GridHopDong_DataItemDeleting"
+                                                    ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                    EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                                    ShowFilterRow="false"
+                                                    ShowAllRows="true"
+                                                    TextWrapEnabled="false"
+                                                    AllowSort="false"
+                                                    HighlightRowOnHover="true"
+                                                    FooterDisplayMode="GridFooterDisplayMode.Always">
+                                                <Columns>
+                                                    <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                        <CellDisplayTemplate Context="cntedit">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link"
+                                                                          CssClass="grid-delete-btn"
+                                                                          aria-label="Delete"
+                                                                          Click="@(() => GridHopDong.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                            </div>
+                                                        </CellDisplayTemplate>
+                                                        <CellEditTemplate Context="cntedit1">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton Enabled="false"
+                                                                          CssClass="grid-disabled-button"
+                                                                          IconCssClass="grid-icon grid-icon-delete"
+                                                                          aria-label="Delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridCommandColumn>
+
+                                                    <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                                                    <DxGridDataColumn FieldName="Ma_hdld" Caption="@Lap["Contract No."]" Width="130px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ma_hdld" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_plhd" Caption="@Lap["Annex No."]" Width="130px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmplhd" @bind-Value="@item.Ma_plhd" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_ns_ct" Caption="@Lap["Employer Rep."]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmns" @bind-Value="@item.Ma_ns_ct" IsLangEn="@IsLangEn"
+                                                                                       SelectChanged="@((ExpandoObject v) => Tab8_OnMaNsCtChanged(item))" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_quocgia" Caption="@Lap["Nationality"]" Width="120px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ma_quocgia" ReadOnly="true" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_cv_ct" Caption="@Lap["Emp. Position"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@item.Ma_cv_ct" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_lhd" Caption="@Lap["Contract type"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmlhdong" @bind-Value="@item.Ma_lhd" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Tu_ngay" Caption="@Lap["From date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Tu_ngay" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Den_ngay" Caption="@Lap["To date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Den_ngay" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Dia_diem_lam_viec" Caption="@Lap["Work location"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Dia_diem_lam_viec" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Dia_chi_lam_viec" Caption="@Lap["Work address"]" Width="200px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Dia_chi_lam_viec" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_cv" Caption="@Lap["Position"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@item.Ma_cv" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Yeu_cau1" Caption="@Lap["Requirement 1"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Yeu_cau1" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Yeu_cau2" Caption="@Lap["Requirement 2"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Yeu_cau2" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Thoi_gian_lv" Caption="@Lap["Working hours"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxSpinEdit @bind-Value="@item.Thoi_gian_lv" DisplayFormat="{0:n2}" ShowSpinButtons="false" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Phuong_tien" Caption="@Lap["Transportation"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Phuong_tien" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Muc_luong" Caption="@Lap["Salary"]" Width="130px" DisplayFormat="{0:n0}">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxSpinEdit @bind-Value="@item.Muc_luong" DisplayFormat="{0:n0}" ShowSpinButtons="false" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Phu_cap" Caption="@Lap["Allowance"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Phu_cap" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ngay_hl" Caption="@Lap["Effective date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Ngay_hl" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ngay_hd" Caption="@Lap["Sign date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Ngay_hd" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"]" MinWidth="200">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (HopDongRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ghi_chu" CssClass="w-100" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+                                                </Columns>
+                                            </DxGrid>
+                                        </div>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                    }
+
+                    @* ===== 9. INSURANCE PROCESS (GRID) ===== *@
+                    @if (IsShowQtbh && (curActionTask.ToString() == "Edit" || curActionTask.ToString() == "1" || curActionTask.ToString() == "View" || curActionTask.ToString() == "0") && (curActionTask.ToString() == "View" || curActionTask.ToString() == "0" || HasLaborContract()))
+                    {
+                        <DxFormLayoutGroup id="section-9" Caption="@Lap["Insurance process"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                                           Decoration="FormLayoutGroupDecoration.Card"
+                                           ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                                           AnimationType="LayoutAnimationType.Slide">
+                            <DxFormLayoutItem BeginRow="true" ColSpanMd="12" CssClass="mt-2">
+                                <Template>
+                                    <div id="grid-detail-qtbh" class="mt-2 border rounded p-2">
+                                        <h6 class="fw-bold text-primary m-0 mb-1">Chi tiết quá trình tham gia bảo hiểm</h6>
+                                        <div @ref="GridWrapperQtbh" id="grid-wrapper-qtbh" @onfocusout="OnGridQtbhLostFocus" @onfocusin='() => LastFocusedGrid = "QTBH"' class="mt-2 mb-3">
+                                            <DxGrid @ref="GridQtbh"
+                                                    Data="@(CurRow.ListQtbh ?? new List<QtbhRow>())"
+                                                    SizeMode="SizeMode.Medium"
+                                                    CssClass="w-100 grid-height-dynamic"
+                                                    @onkeydown="GridQtbh_OnKeyDown"
+                                                    AllowSelectRowByClick="true"
+                                                    KeyboardNavigationEnabled="true"
+                                                    @bind-SelectedDataItem="@SelectedQtbh"
+                                                    ValidationEnabled="false"
+                                                    EditMode="GridEditMode.EditRow"
+                                                    RowClick="@StartEditQtbhRow"
+                                                    SelectionMode="GridSelectionMode.Single"
+                                                    CustomizeEditModel="GridQtbh_CustomizeEditModel"
+                                                    EditModelSaving="GridQtbh_EditModelSaving"
+                                                    DataItemDeleting="GridQtbh_DataItemDeleting"
+                                                    ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                    EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                                    ShowFilterRow="false"
+                                                    ShowAllRows="true"
+                                                    TextWrapEnabled="false"
+                                                    AllowSort="false"
+                                                    HighlightRowOnHover="true"
+                                                    FooterDisplayMode="GridFooterDisplayMode.Always">
+                                                <Columns>
+                                                    <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                        <CellDisplayTemplate Context="cntedit">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link"
+                                                                          CssClass="grid-delete-btn"
+                                                                          aria-label="Delete"
+                                                                          Click="@(() => GridQtbh.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                            </div>
+                                                        </CellDisplayTemplate>
+                                                        <CellEditTemplate Context="cntedit1">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton Enabled="false"
+                                                                          CssClass="grid-disabled-button"
+                                                                          IconCssClass="grid-icon grid-icon-delete"
+                                                                          aria-label="Delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridCommandColumn>
+
+                                                    <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                                                    <DxGridDataColumn FieldName="So_the_bhxh" Caption="@Lap["SI Book No."]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.So_the_bhxh" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Tu_ngay" Caption="@Lap["SI From Date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Tu_ngay" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Den_ngay" Caption="@Lap["SI To Date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Den_ngay" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Donvi_bh" Caption="@Lap["Unit"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Donvi_bh" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Donvi_cv" Caption="@Lap["Position/Job"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Donvi_cv" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="So_the_bhyt" Caption="@Lap["HI Card No."]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.So_the_bhyt" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Bhyt_tungay" Caption="@Lap["HI From Date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Bhyt_tungay" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Bhyt_denngay" Caption="@Lap["HI To Date"]" Width="120px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Bhyt_denngay" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Status" Caption="@Lap["Status"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxComboBox Data="@Tab9_StatusList"
+                                                                        @bind-Value="item.Status"
+                                                                        TextFieldName="Text"
+                                                                        ValueFieldName="Value" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"]" MinWidth="200">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtbhRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ghi_chu" CssClass="w-100" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+                                                </Columns>
+                                            </DxGrid>
+                                        </div>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                    }
+
+                    @* ===== 10. FAMILY RELATIONSHIP (GRID) ===== *@
+                    @if (IsShowQhgd)
+                    {
+                        <DxFormLayoutGroup id="section-10" Caption="@Lap["Family relationship"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                                           Decoration="FormLayoutGroupDecoration.Card"
+                                           ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                                           AnimationType="LayoutAnimationType.Slide">
+                            <DxFormLayoutItem BeginRow="true" ColSpanMd="12" CssClass="mt-2">
+                                <Template>
+                                    <div id="grid-detail-qhgd" class="mt-2 border rounded p-2">
+                                        <h6 class="fw-bold text-primary m-0 mb-1">Chi tiết quan hệ gia đình</h6>
+                                        <div @ref="GridWrapperQhgd" id="grid-wrapper-qhgd" @onfocusout="OnGridQhgdLostFocus" @onfocusin='() => LastFocusedGrid = "QHGD"' class="mt-2 mb-3">
+                                            <DxGrid @ref="GridQhgd"
+                                                    Data="@(CurRow.ListQhgd ?? new List<QhgdRow>())"
+                                                    SizeMode="SizeMode.Medium"
+                                                    CssClass="w-100 grid-height-dynamic"
+                                                    @onkeydown="GridQhgd_OnKeyDown"
+                                                    AllowSelectRowByClick="true"
+                                                    KeyboardNavigationEnabled="true"
+                                                    @bind-SelectedDataItem="@SelectedQhgd"
+                                                    ValidationEnabled="false"
+                                                    EditMode="GridEditMode.EditRow"
+                                                    RowClick="@StartEditQhgdRow"
+                                                    SelectionMode="GridSelectionMode.Single"
+                                                    CustomizeEditModel="GridQhgd_CustomizeEditModel"
+                                                    EditModelSaving="GridQhgd_EditModelSaving"
+                                                    DataItemDeleting="GridQhgd_DataItemDeleting"
+                                                    ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                    EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                                    ShowFilterRow="false"
+                                                    ShowAllRows="true"
+                                                    TextWrapEnabled="false"
+                                                    AllowSort="false"
+                                                    HighlightRowOnHover="true"
+                                                    FooterDisplayMode="GridFooterDisplayMode.Always">
+                                                <Columns>
+                                                    <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                        <CellDisplayTemplate Context="cntedit">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link"
+                                                                          CssClass="grid-delete-btn"
+                                                                          aria-label="Delete"
+                                                                          Click="@(() => GridQhgd.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                            </div>
+                                                        </CellDisplayTemplate>
+                                                        <CellEditTemplate Context="cntedit1">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton Enabled="false"
+                                                                          CssClass="grid-disabled-button"
+                                                                          IconCssClass="grid-icon grid-icon-delete"
+                                                                          aria-label="Delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridCommandColumn>
+
+                                                    <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                                                    <DxGridDataColumn FieldName="Ma_qhgd" Caption="@Lap["Relationship code"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmqhgd" @bind-Value="@item.Ma_qhgd" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ten_tpgd" Caption="@Lap["Full name"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ten_tpgd" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ten_tpgd2" Caption="@Lap["Full name 2"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ten_tpgd2" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_gioitinh" Caption="@Lap["Gender"]" Width="120px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmgioitinh" @bind-Value="@item.Ma_gioitinh" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Nam_sinh" Caption="@Lap["Birth year"]" Width="100px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Nam_sinh" MaxLength="4" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Cmnd" Caption="@Lap["ID Card"]" Width="130px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Cmnd" MaxLength="16" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_so_thue" Caption="@Lap["Tax code"]" Width="130px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ma_so_thue" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Nguoi_phu_thuoc" Caption="@Lap["Dependent"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxComboBox Data="@Tab10_DependentList"
+                                                                        @bind-Value="item.Nguoi_phu_thuoc"
+                                                                        TextFieldName="Text"
+                                                                        ValueFieldName="Value" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Nghe_nghiep" Caption="@Lap["Occupation"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Nghe_nghiep" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Noi_lam_viec" Caption="@Lap["Workplace"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Noi_lam_viec" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Cho_o_hien_nay" Caption="@Lap["Current residence"]" Width="200px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Cho_o_hien_nay" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Trinh_do_chinh_tri" Caption="@Lap["Political theory level"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Trinh_do_chinh_tri" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Truoc_cach_mang" Caption="@Lap["Before revolution"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Truoc_cach_mang" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Trong_cach_mang" Caption="@Lap["During revolution"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Trong_cach_mang" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Sau_cach_mang" Caption="@Lap["After revolution"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Sau_cach_mang" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"]" MinWidth="200">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ghi_chu" CssClass="w-100" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Status" Caption="@Lap["Status"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QhgdRow)ctx.EditModel; }
+                                                            <DxComboBox Data="@Tab10_StatusList"
+                                                                        @bind-Value="item.Status"
+                                                                        TextFieldName="Text"
+                                                                        ValueFieldName="Value" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+                                                </Columns>
+                                            </DxGrid>
+                                        </div>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                    }
+
+                    @* ===== 11. PERSONNEL TRANSFER (GRID) ===== *@
+                    @if (IsShowDieuChuyen)
+                    {
+                        <DxFormLayoutGroup id="section-11" Caption="@Lap["Personnel transfer"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                                           Decoration="FormLayoutGroupDecoration.Card"
+                                           ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                                           AnimationType="LayoutAnimationType.Slide">
+                            <DxFormLayoutItem BeginRow="true" ColSpanMd="12" CssClass="mt-2">
+                                <Template>
+                                    <div id="grid-detail-dieuchuyen" class="mt-2 border rounded p-2">
+                                        <h6 class="fw-bold text-primary m-0 mb-1">Chi tiết điều chuyển nhân sự</h6>
+                                        <div @ref="GridWrapperDieuChuyen" id="grid-wrapper-dieuchuyen" @onfocusout="OnGridDieuChuyenLostFocus" @onfocusin='() => LastFocusedGrid = "DIEUCHUYEN"' class="mt-2 mb-3">
+                                            <DxGrid @ref="GridDieuChuyen"
+                                                    Data="@(CurRow.ListDieuChuyen ?? new List<DieuChuyenRow>())"
+                                                    SizeMode="SizeMode.Medium"
+                                                    CssClass="w-100 grid-height-dynamic"
+                                                    @onkeydown="GridDieuChuyen_OnKeyDown"
+                                                    AllowSelectRowByClick="true"
+                                                    KeyboardNavigationEnabled="true"
+                                                    @bind-SelectedDataItem="@SelectedDieuChuyen"
+                                                    ValidationEnabled="false"
+                                                    EditMode="GridEditMode.EditRow"
+                                                    RowClick="@StartEditDieuChuyenRow"
+                                                    SelectionMode="GridSelectionMode.Single"
+                                                    CustomizeEditModel="GridDieuChuyen_CustomizeEditModel"
+                                                    EditModelSaving="GridDieuChuyen_EditModelSaving"
+                                                    DataItemDeleting="GridDieuChuyen_DataItemDeleting"
+                                                    ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                    EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                                    ShowFilterRow="false"
+                                                    ShowAllRows="true"
+                                                    TextWrapEnabled="false"
+                                                    AllowSort="false"
+                                                    HighlightRowOnHover="true"
+                                                    FooterDisplayMode="GridFooterDisplayMode.Always">
+                                                <Columns>
+                                                    <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                        <CellDisplayTemplate Context="cntedit">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link"
+                                                                          CssClass="grid-delete-btn"
+                                                                          aria-label="Delete"
+                                                                          Click="@(() => GridDieuChuyen.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                            </div>
+                                                        </CellDisplayTemplate>
+                                                        <CellEditTemplate Context="cntedit1">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton Enabled="false"
+                                                                          CssClass="grid-disabled-button"
+                                                                          IconCssClass="grid-icon grid-icon-delete"
+                                                                          aria-label="Delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridCommandColumn>
+
+                                                    <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                                                    <DxGridDataColumn FieldName="Ngay_dc_cu" Caption="@Lap["Old transfer date"]" Width="130px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Ngay_dc_cu" Format="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_bpns_cu" Caption="@Lap["Old department"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmbpns" @bind-Value="@item.Ma_bpns_cu" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_cv_cu" Caption="@Lap["Old position"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@item.Ma_cv_cu" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_cd_cu" Caption="@Lap["Old job title"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmcd" @bind-Value="@item.Ma_cd_cu" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ghi_chu_cu" Caption="@Lap["Old note"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ghi_chu_cu" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ngay_dc_moi" Caption="@Lap["New transfer date"]" Width="130px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Ngay_dc_moi" Format="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_bpns_moi" Caption="@Lap["New department"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmbpns" @bind-Value="@item.Ma_bpns_moi" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_cv_moi" Caption="@Lap["New position"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@item.Ma_cv_moi" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_cd_moi" Caption="@Lap["New job title"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmcd" @bind-Value="@item.Ma_cd_moi" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ghi_chu_moi" Caption="@Lap["New note"]" MinWidth="180">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ghi_chu_moi" CssClass="w-100" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Status" Caption="@Lap["Status"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (DieuChuyenRow)ctx.EditModel; }
+                                                            <DxComboBox Data="@Tab11_StatusList"
+                                                                        @bind-Value="item.Status"
+                                                                        TextFieldName="Text"
+                                                                        ValueFieldName="Value" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+                                                </Columns>
+                                            </DxGrid>
+                                        </div>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                    }
+
+                    @* ===== 12. RESIGNATION UPDATE (FORM) ===== *@
+                    @if (IsShowNghiViec)
+                    {
+                        <TabResignation12 @ref="tabResignation" CurRow="@CurRow" AllowEditMode="@AllowEditMode" IsLangEn="@IsLangEn" Lap="@Lap" />
+                    }
+
+                    @* ===== 13. WORKING PROCESS (GRID) ===== *@
+                    @if (IsShowQtct)
+                    {
+                        <DxFormLayoutGroup id="section-13" Caption="@Lap["Working process"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                                           Decoration="FormLayoutGroupDecoration.Card"
+                                           ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                                           AnimationType="LayoutAnimationType.Slide">
+                            <DxFormLayoutItem BeginRow="true" ColSpanMd="12" CssClass="mt-2">
+                                <Template>
+                                    <div id="grid-detail-qtct" class="mt-2 border rounded p-2">
+                                        <h6 class="fw-bold text-primary m-0 mb-1">Chi tiết quá trình công tác</h6>
+                                        <div @ref="GridWrapperQtct" id="grid-wrapper-qtct" @onfocusout="OnGridQtctLostFocus" @onfocusin='() => LastFocusedGrid = "QTCT"' class="mt-2 mb-3">
+                                            <DxGrid @ref="GridQtct"
+                                                    Data="@(CurRow.ListQtct ?? new List<QtctRow>())"
+                                                    SizeMode="SizeMode.Medium"
+                                                    CssClass="w-100 grid-height-dynamic"
+                                                    @onkeydown="GridQtct_OnKeyDown"
+                                                    AllowSelectRowByClick="true"
+                                                    KeyboardNavigationEnabled="true"
+                                                    @bind-SelectedDataItem="@SelectedQtct"
+                                                    ValidationEnabled="false"
+                                                    EditMode="GridEditMode.EditRow"
+                                                    RowClick="@StartEditQtctRow"
+                                                    SelectionMode="GridSelectionMode.Single"
+                                                    CustomizeEditModel="GridQtct_CustomizeEditModel"
+                                                    EditModelSaving="GridQtct_EditModelSaving"
+                                                    DataItemDeleting="GridQtct_DataItemDeleting"
+                                                    ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                                                    EditNewRowPosition="@(AllowEditMode ? GridEditNewRowPosition.LastRow : (GridEditNewRowPosition)(-1))"
+                                                    ShowFilterRow="false"
+                                                    ShowAllRows="true"
+                                                    TextWrapEnabled="false"
+                                                    AllowSort="false"
+                                                    HighlightRowOnHover="true"
+                                                    FooterDisplayMode="GridFooterDisplayMode.Always">
+                                                <Columns>
+                                                    <DxGridCommandColumn Width="3%" NewButtonVisible="false" Visible="@AllowEditMode" VisibleIndex="0">
+                                                        <CellDisplayTemplate Context="cntedit">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton IconCssClass="grid-icon grid-icon-delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link"
+                                                                          CssClass="grid-delete-btn"
+                                                                          aria-label="Delete"
+                                                                          Click="@(() => GridQtct.ShowRowDeleteConfirmation(cntedit.VisibleIndex))" />
+                                                            </div>
+                                                        </CellDisplayTemplate>
+                                                        <CellEditTemplate Context="cntedit1">
+                                                            <div class="grid-cell-align-center">
+                                                                <DxButton Enabled="false"
+                                                                          CssClass="grid-disabled-button"
+                                                                          IconCssClass="grid-icon grid-icon-delete"
+                                                                          aria-label="Delete"
+                                                                          RenderStyle="ButtonRenderStyle.Link" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridCommandColumn>
+
+                                                    <DxGridDataColumn FieldName="Stt" Caption="STT" Width="50px" ReadOnly="true" />
+
+                                                    <DxGridDataColumn FieldName="Ma_quyet_dinh" Caption="@Lap["Decision No."]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtctRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ma_quyet_dinh" CharacterCasing="CharacterCasing.Upper" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ngay_di" Caption="@Lap["Departure date"]" Width="130px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtctRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Ngay_di" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ngay_ve" Caption="@Lap["Return date"]" Width="130px" DisplayFormat="dd/MM/yyyy">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtctRow)ctx.EditModel; }
+                                                            <DxDateEdit @bind-Date="@item.Ngay_ve" DisplayFormat="dd/MM/yyyy" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ma_nct" Caption="@Lap["Destination"]" Width="180px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtctRow)ctx.EditModel; }
+                                                            <div class="input-group input-group-sm">
+                                                                <AutocompleteComponent Ma_dm="dmnct" @bind-Value="@item.Ma_nct" IsLangEn="@IsLangEn" />
+                                                            </div>
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Chi_phi" Caption="@Lap["Cost"]" Width="150px" DisplayFormat="{0:n0}">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtctRow)ctx.EditModel; }
+                                                            <DxSpinEdit @bind-Value="@item.Chi_phi" DisplayFormat="{0:n0}" ShowSpinButtons="false" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Noi_dung" Caption="@Lap["Content"]" Width="200px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtctRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Noi_dung" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ket_qua" Caption="@Lap["Result"]" Width="200px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtctRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ket_qua" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Ghi_chu" Caption="@Lap["Note"]" Width="200px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtctRow)ctx.EditModel; }
+                                                            <DxTextBox @bind-Text="@item.Ghi_chu" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+
+                                                    <DxGridDataColumn FieldName="Status" Caption="@Lap["Status"]" Width="150px">
+                                                        <CellEditTemplate Context="ctx">
+                                                            @{ var item = (QtctRow)ctx.EditModel; }
+                                                            <DxComboBox Data="@Tab13_StatusList"
+                                                                        @bind-Value="item.Status"
+                                                                        TextFieldName="Text"
+                                                                        ValueFieldName="Value" />
+                                                        </CellEditTemplate>
+                                                    </DxGridDataColumn>
+                                                </Columns>
+                                            </DxGrid>
+                                        </div>
+                                    </div>
+                                </Template>
+                            </DxFormLayoutItem>
+                        </DxFormLayoutGroup>
+                    }
+                </DxFormLayout>
+            }
+        </div>
+    </div>
+</FormList>
+
+@* ===== MODAL CHỌN MỤC =====*@
+<div class="modal fade" id="sectionSelectorModal" tabindex="-1" aria-labelledby="sectionSelectorModalLabel" aria-hidden="true" >
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="sectionSelectorModalLabel">
+                    <i class="fa fa-check-square me-2"></i>@Lap["Select sections to display"]
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="HideSectionSelector" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group">
+                    <label class="list-group-item list-group-item-action" style="cursor: pointer;">
+                        <input class="form-check-input me-3" type="checkbox" @bind="IsShowSocialInsurance" />
+                        <span>
+                            <i class="fa fa-shield-alt me-2 text-info"></i>
+                            <strong>@Lap["Social insurance"]</strong>
+                        </span>
+                    </label>
+                    <label class="list-group-item list-group-item-action" style="cursor: pointer;">
+                        <input class="form-check-input me-3" type="checkbox" @bind="IsShowUnionParty" />
+                        <span>
+                            <i class="fa fa-flag me-2 text-warning"></i>
+                            <strong>@Lap["Union/Party"]</strong>
+                        </span>
+                    </label>
+                    <label class="list-group-item list-group-item-action" style="cursor: pointer;">
+                        <input class="form-check-input me-3" type="checkbox" @bind="IsShowSalary" />
+                        <span>
+                            <i class="fa fa-dollar-sign me-2 text-success"></i>
+                            <strong>@Lap["Salary"]</strong>
+                        </span>
+                    </label>
+                    <label class="list-group-item list-group-item-action" style="cursor: pointer;">
+                        <input class="form-check-input me-3" type="checkbox" @bind="IsShowTransferUnit" />
+                        <span>
+                            <i class="fa fa-exchange-alt me-2 text-danger"></i>
+                            <strong>@Lap["Transfer unit"]</strong>
+                        </span>
+                    </label>
+                    @* Tab 8: Hợp đồng lao động - có thể chọn ở tất cả chế độ (New, Edit, View) *@
+                    <label class="list-group-item list-group-item-action" style="cursor: pointer;">
+                        <input class="form-check-input me-3" type="checkbox" @bind="IsShowHopDong" />
+                        <span>
+                            <i class="fa fa-file-contract me-2 text-primary"></i>
+                            <strong>@Lap["Labor contract"]</strong>
+                        </span>
+                    </label>
+                    @* Tab 9: Quá trình tham gia bảo hiểm - chỉ chọn ở chế độ Edit/View và có HD *@
+                    @if (curActionTask.ToString() == "Edit" || curActionTask.ToString() == "1" || curActionTask.ToString() == "View" || curActionTask.ToString() == "0")
+                    {
+                        <label class="list-group-item list-group-item-action" style="cursor: pointer;" title="@(HasLaborContract() ? "" : "Chỉ hiển thị khi có hợp đồng lao động")">
+                            <input class="form-check-input me-3" type="checkbox" @bind="IsShowQtbh" disabled="@(!HasLaborContract())" />
+                            <span>
+                                <i class="fa fa-history me-2 text-secondary"></i>
+                                <strong>@Lap["Insurance process"]</strong>
+                                @if (!HasLaborContract())
+                                {
+                                    <span class="badge bg-warning ms-2">Cần HD</span>
+                                }
+                            </span>
+                        </label>
+                    }
+                    <label class="list-group-item list-group-item-action" style="cursor: pointer;">
+                        <input class="form-check-input me-3" type="checkbox" @bind="IsShowQhgd" />
+                        <span>
+                            <i class="fa fa-heart me-2 text-danger"></i>
+                            <strong>@Lap["Family relationship"]</strong>
+                        </span>
+                    </label>
+                    <label class="list-group-item list-group-item-action" style="cursor: pointer;">
+                        <input class="form-check-input me-3" type="checkbox" @bind="IsShowDieuChuyen" />
+                        <span>
+                            <i class="fa fa-location-arrow me-2 text-info"></i>
+                            <strong>@Lap["Personnel transfer"]</strong>
+                        </span>
+                    </label>
+                    <label class="list-group-item list-group-item-action" style="cursor: pointer;">
+                        <input class="form-check-input me-3" type="checkbox" @bind="IsShowNghiViec" />
+                        <span>
+                            <i class="fa fa-sign-out-alt me-2 text-warning"></i>
+                            <strong>@Lap["Resignation update"]</strong>
+                        </span>
+                    </label>
+                    <label class="list-group-item list-group-item-action" style="cursor: pointer;">
+                        <input class="form-check-input me-3" type="checkbox" @bind="IsShowQtct" />
+                        <span>
+                            <i class="fa fa-briefcase me-2 text-success"></i>
+                            <strong>@Lap["Working process"]</strong>
+                        </span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" @onclick="ApplySectionSelection">
+                    <i class="fa fa-check me-1"></i>@Lap["Apply"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .modal-body .list-group-item-action:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .modal-body .list-group-item input[type="checkbox"] {
+        cursor: pointer;
+    }
+
+    .list-group-item.active {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+        color: white;
+    }
+
+    .sis-form .dxbl-grid-layout-item-caption {
+        min-width: 150px;
+    }
+</style>
+
+@code {
+    // Code-behind moved to FrmHsnv.razor.cs
+
+    // ===== TAB 2: DEDUCTION - BIẾN LƯỚI =====
+    private DxGrid GridCtgtk;
+    private object SelectedCtgtk;
+    private ElementReference GridWrapperCtgtk;
+    private string LastFocusedGrid = "";
+
+    public List<Tab2StatusItem> Tab2_YesNoList { get; set; } = new()
+    {
+        new Tab2StatusItem { Value = 0, Text = "0 - Không" },
+        new Tab2StatusItem { Value = 1, Text = "1 - Có" }
+    };
+    public class Tab2StatusItem { public int Value { get; set; } public string Text { get; set; } }
+
+    // ===== TAB 2: LOAD DỮ LIỆU =====
+    private async Task Tab2_LoadDataAsync(string maNs)
+    {
+        if (string.IsNullOrEmpty(maNs)) return;
+        string safeKey = maNs.Trim().Replace("'", "''");
+        string sql = $@"SELECT ngay_hl1, ngay_hl2, MAX(luong_thang) as luong_thang, MAX(luong) as luong,
+                       MAX(CASE WHEN ma_gt = 'GT01' THEN tien_gt ELSE 0 END) AS A_001,
+                       MAX(CASE WHEN ma_gt = 'GT02' THEN tien_gt ELSE 0 END) AS A_002,
+                       MAX(CASE WHEN ma_gt = 'GT03' THEN tien_gt ELSE 0 END) AS A_003,
+                       MAX(CASE WHEN ma_gt = 'GT01' THEN tien_gt ELSE 0 END) AS Gia_canh,
+                       MAX(CASE WHEN ma_gt = 'GT05' THEN tien_gt ELSE 0 END) AS Tien_gt
+                FROM ctgtk WHERE ma_ns = N'{safeKey}'
+                GROUP BY ngay_hl1, ngay_hl2 ORDER BY ngay_hl1";
+        var ds = await myDb.LoadDataset(sql);
+        CurRow.ListCtgtk = ds?.Tables.Count > 0
+            ? (List<CtgtkRow>)myDb.ConvertDataTable<CtgtkRow>(ds.Tables[0]) ?? new List<CtgtkRow>()
+            : new List<CtgtkRow>();
+        int stt = 1;
+        CurRow.ListCtgtk.ForEach(x => x.Stt = stt++);
+    }
+
+    // ===== TAB 2: COPY ROW =====
+    private void Tab2_CopyCtgtkRow(CtgtkRow src, CtgtkRow dst)
+    {
+        dst.Ma_gt = src.Ma_gt;
+        dst.Ngay_hl1 = src.Ngay_hl1;
+        dst.Ngay_hl2 = src.Ngay_hl2;
+        dst.Luong_thang = src.Luong_thang;
+        dst.Luong = src.Luong;
+        dst.Gia_canh = src.Gia_canh;
+        dst.A_001 = src.A_001;
+        dst.A_002 = src.A_002;
+        dst.A_003 = src.A_003;
+        dst.Tien_gt = src.Tien_gt;
+        dst.Dien_giai = src.Dien_giai;
+    }
+
+    // ===== TAB 2: TỰ TÍNH BẢO HIỂM =====
+    private void Tab2_AutoCalculateDeductions(CtgtkRow item)
+    {
+        if (!item.Luong.HasValue || item.Luong.Value == 0)
+        {
+            item.A_001 = 0; item.A_002 = 0; item.A_003 = 0;
+            return;
+        }
+        decimal luongBH = item.Luong.Value;
+        item.A_001 = Math.Round((luongBH * 1m) / 100m, 0, MidpointRounding.AwayFromZero);
+        item.A_002 = Math.Round((luongBH * 1.5m) / 100m, 0, MidpointRounding.AwayFromZero);
+        item.A_003 = Math.Round((luongBH * 8m) / 100m, 0, MidpointRounding.AwayFromZero);
+    }
+
+    // ===== TAB 2: CUSTOMIZE EDIT MODEL =====
+        void GridCtgtk_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+        {
+            if (e.IsNew)
+            {
+                var model = (CtgtkRow)e.EditModel;
+                model.Stt = CurRow.ListCtgtk.Count > 0 ? CurRow.ListCtgtk.Max(a => a.Stt) + 1 : 1;
+            }
+        }
+
+        // ===== TAB 2: LƯU DÒNG =====
+        async Task GridCtgtk_EditModelSaving(GridEditModelSavingEventArgs e)
+        {
+            var edit = (CtgtkRow)e.EditModel;
+            bool coNhapNgay = edit.Ngay_hl1.HasValue;
+            bool coNhapLuong = (edit.Luong_thang ?? 0) != 0 || (edit.Luong ?? 0) != 0 || (edit.Tien_gt ?? 0) != 0;
+            bool laDongTrong = !coNhapNgay && !coNhapLuong;
+
+            if (e.IsNew && laDongTrong)
+            {
+                e.Cancel = false; 
+                return; 
+            }
+
+            if (e.IsNew)
+            {
+                var newItem = new CtgtkRow();
+                Tab2_CopyCtgtkRow(edit, newItem);
+                Tab2_AutoCalculateDeductions(newItem); 
+                newItem.Stt = CurRow.ListCtgtk.Count + 1;
+                CurRow.ListCtgtk.Add(newItem);
+                
+                CurRow.ListCtgtk.RemoveAll(x => !x.Ngay_hl1.HasValue && x != newItem);
+                SelectedCtgtk = newItem;
+            }
+            else
+            {
+                var dataItem = (CtgtkRow)e.DataItem;
+                Tab2_CopyCtgtkRow(edit, dataItem);
+                Tab2_AutoCalculateDeductions(dataItem);
+                SelectedCtgtk = dataItem;
+            }
+
+            int stt = 1;
+            CurRow.ListCtgtk.ForEach(x => x.Stt = stt++);
+            
+            e.Cancel = false;
+
+            if (GridCtgtk != null) ((IGrid)GridCtgtk).Reload();
+            await InvokeAsync(StateHasChanged);
+        }
+
+        // ===== TAB 2: XÓA DÒNG =====
+    void GridCtgtk_DataItemDeleting(GridDataItemDeletingEventArgs e)
+        {
+            var itemToDelete = (CtgtkRow)e.DataItem;
+            CurRow.ListCtgtk.Remove(itemToDelete);
+            int stt = 1;
+            foreach (var r in CurRow.ListCtgtk) r.Stt = stt++;
+            e.Cancel = true;
+            if (GridCtgtk != null) ((IGrid)GridCtgtk).Reload();
+            StateHasChanged();
+        }
+
+        // ===== TAB 2: CLICK DÒNG ĐỂ SỬA =====
+    async Task StartEditCtgtkRow(GridRowClickEventArgs e)
+        {
+            if (!AllowEditMode) return;
+            if (GridCtgtk.IsEditing())
+                await GridCtgtk.SaveChangesAsync();
+            var item = GridCtgtk.GetDataItem(e.VisibleIndex);
+            if (item != null)
+                await GridCtgtk.StartEditDataItemAsync(item);
+        }
+
+        // ===== TAB 2: LOST FOCUS - TỰ ĐỘNG LƯU =====
+    async void OnGridCtgtkLostFocus(FocusEventArgs e)
+        {
+            try
+            {
+                bool stillInside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-ctgtk");
+                if (stillInside) return;
+                if (GridCtgtk != null && GridCtgtk.IsEditing())
+                    await GridCtgtk.SaveChangesAsync();
+            }
+            catch { }
+        }
+
+    // ===== TAB 3: DEPENDENT - BIẾN LƯỚI =====
+    private DxGrid GridCtnpt;
+    private object SelectedCtnpt;
+    private ElementReference GridWrapperCtnpt;
+
+    // ===== TAB 3: CUSTOMIZE EDIT MODEL =====
+    void GridCtnpt_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var model = (CtnptRow)e.EditModel;
+            model.Stt = CurRow.ListCtnpt.Count > 0 ? CurRow.ListCtnpt.Max(a => a.Stt) + 1 : 1;
+        }
+    }
+
+    // ===== TAB 3: LƯU DÒNG =====
+    async Task GridCtnpt_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var edit = (CtnptRow)e.EditModel;
+        bool laDongTrong = string.IsNullOrEmpty(edit.Ma_npt) && string.IsNullOrEmpty(edit.Ho_ten);
+
+        if (e.IsNew && laDongTrong)
+        {
+            e.Cancel = false;
+            return;
+        }
+
+        if (e.IsNew)
+        {
+            CurRow.ListCtnpt.Add(edit);
+            CurRow.ListCtnpt.RemoveAll(x => string.IsNullOrEmpty(x.Ma_npt) && string.IsNullOrEmpty(x.Ho_ten) && x != edit);
+            SelectedCtnpt = edit;
+        }
+        else
+        {
+            var dataItem = (CtnptRow)e.DataItem;
+            dataItem.Ma_npt = edit.Ma_npt;
+            dataItem.Ho_ten = edit.Ho_ten;
+            dataItem.Ho_ten2 = edit.Ho_ten2;
+            dataItem.Quoc_gia = edit.Quoc_gia;
+            dataItem.Ngay_sinh = edit.Ngay_sinh;
+            dataItem.Cmnd = edit.Cmnd;
+            dataItem.So = edit.So;
+            dataItem.Quyen_so = edit.Quyen_so;
+            dataItem.Thanh_pho = edit.Thanh_pho;
+            dataItem.Quan = edit.Quan;
+            dataItem.Phuong = edit.Phuong;
+            dataItem.Ma_so_thue = edit.Ma_so_thue;
+            dataItem.Quan_he = edit.Quan_he;
+            dataItem.Ngay_pt1 = edit.Ngay_pt1;
+            dataItem.Ngay_pt2 = edit.Ngay_pt2;
+            dataItem.Ct_kem = edit.Ct_kem;
+            dataItem.Dien_giai = edit.Dien_giai;
+            dataItem.Bo_sung = edit.Bo_sung;
+            SelectedCtnpt = dataItem;
+        }
+
+        int stt = 1;
+        CurRow.ListCtnpt.ForEach(x => x.Stt = stt++);
+
+        e.Cancel = false;
+
+        if (GridCtnpt != null) ((IGrid)GridCtnpt).Reload();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ===== TAB 3: XÓA DÒNG =====
+    void GridCtnpt_DataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var itemToDelete = (CtnptRow)e.DataItem;
+        CurRow.ListCtnpt.Remove(itemToDelete);
+        int stt = 1;
+        foreach (var r in CurRow.ListCtnpt) r.Stt = stt++;
+        e.Cancel = true;
+        if (GridCtnpt != null) ((IGrid)GridCtnpt).Reload();
+        StateHasChanged();
+    }
+
+    // ===== TAB 3: CLICK DÒNG ĐỂ SỬA =====
+    async Task StartEditCtnptRow(GridRowClickEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        if (GridCtnpt.IsEditing())
+            await GridCtnpt.SaveChangesAsync();
+        var item = GridCtnpt.GetDataItem(e.VisibleIndex);
+        if (item != null)
+            await GridCtnpt.StartEditDataItemAsync(item);
+    }
+
+    // ===== TAB 3: LOST FOCUS - TỰ ĐỘNG LƯU =====
+    async void OnGridCtnptLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            bool stillInside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-ctnpt");
+            if (stillInside) return;
+            if (GridCtnpt != null && GridCtnpt.IsEditing())
+                await GridCtnpt.SaveChangesAsync();
+        }
+        catch { }
+    }
+
+    // ===== TAB 3: KEYDOWN =====
+    private async Task GridCtnpt_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await Tab3_HandleSaveAndMoveNext();
+                break;
+            case "F4":
+                Tab3_AddNewCtnptRow();
+                break;
+            case "F8":
+                if (SelectedCtnpt != null)
+                    GridCtnpt.ShowDataItemDeleteConfirmation(SelectedCtnpt);
+                break;
+            case "Escape":
+                try { await GridCtnpt.CancelEditAsync(); } catch { }
+                break;
+        }
+    }
+
+    private async Task Tab3_HandleSaveAndMoveNext()
+    {
+        if (!AllowEditMode || GridCtnpt == null) return;
+
+        if (GridCtnpt.IsEditing())
+            await GridCtnpt.SaveChangesAsync();
+
+        await Task.Delay(100);
+
+        if (SelectedCtnpt != null)
+        {
+            var currentItem = (CtnptRow)SelectedCtnpt;
+            var index = CurRow.ListCtnpt.IndexOf(currentItem);
+
+            if (index >= 0 && index < CurRow.ListCtnpt.Count - 1)
+                await GridCtnpt.StartEditDataItemAsync(CurRow.ListCtnpt[index + 1]);
+            else
+                Tab3_AddNewCtnptRow();
+        }
+        else
+        {
+            Tab3_AddNewCtnptRow();
+        }
+    }
+
+    public async void Tab3_AddNewCtnptRow()
+    {
+        if (!AllowEditMode || GridCtnpt == null) return;
+
+        if (GridCtnpt.IsEditing())
+        {
+            await GridCtnpt.SaveChangesAsync();
+            await Task.Delay(100);
+        }
+        await GridCtnpt.StartEditNewRowAsync();
+    }
+
+    // ===== TAB 8: HOPDONG - BIẾN LƯỚI =====
+    private DxGrid GridHopDong;
+    private object SelectedHopDong;
+    private ElementReference GridWrapperHopDong;
+
+    // ===== TAB 8: CUSTOMIZE EDIT MODEL =====
+    void GridHopDong_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var model = (HopDongRow)e.EditModel;
+            model.Stt = CurRow.ListHopDong.Count > 0 ? CurRow.ListHopDong.Max(a => a.Stt) + 1 : 1;
+            model.Ngay_hd = DateTime.Now.Date;
+            model.Ngay_hl = DateTime.Now.Date;
+            model.Status = "1";
+        }
+    }
+
+    // ===== TAB 8: COPY ROW =====
+    private void Tab8_CopyHopDongRow(HopDongRow src, HopDongRow dst)
+    {
+        dst.Ma_hdld = src.Ma_hdld;
+        dst.Ma_plhd = src.Ma_plhd;
+        dst.Ma_ns_ct = src.Ma_ns_ct;
+        dst.Ma_quocgia = src.Ma_quocgia;
+        dst.Ma_cv_ct = src.Ma_cv_ct;
+        dst.Ma_lhd = src.Ma_lhd;
+        dst.Tu_ngay = src.Tu_ngay;
+        dst.Den_ngay = src.Den_ngay;
+        dst.Dia_diem_lam_viec = src.Dia_diem_lam_viec;
+        dst.Dia_chi_lam_viec = src.Dia_chi_lam_viec;
+        dst.Ma_cv = src.Ma_cv;
+        dst.Yeu_cau1 = src.Yeu_cau1;
+        dst.Yeu_cau2 = src.Yeu_cau2;
+        dst.Thoi_gian_lv = src.Thoi_gian_lv;
+        dst.Phuong_tien = src.Phuong_tien;
+        dst.Muc_luong = src.Muc_luong;
+        dst.Phu_cap = src.Phu_cap;
+        dst.Ngay_hl = src.Ngay_hl;
+        dst.Ngay_hd = src.Ngay_hd;
+        dst.Ghi_chu = src.Ghi_chu;
+        dst.Status = src.Status;
+    }
+
+    // ===== TAB 8: LƯU DÒNG =====
+    async Task GridHopDong_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var edit = (HopDongRow)e.EditModel;
+        bool laDongTrong = string.IsNullOrEmpty(edit.Ma_hdld) && string.IsNullOrEmpty(edit.Ma_ns_ct);
+
+        if (e.IsNew && laDongTrong)
+        {
+            e.Cancel = false;
+            return;
+        }
+
+        if (e.IsNew)
+        {
+            CurRow.ListHopDong.Add(edit);
+            CurRow.ListHopDong.RemoveAll(x => string.IsNullOrEmpty(x.Ma_hdld) && string.IsNullOrEmpty(x.Ma_ns_ct) && x != edit);
+            SelectedHopDong = edit;
+        }
+        else
+        {
+            var dataItem = (HopDongRow)e.DataItem;
+            Tab8_CopyHopDongRow(edit, dataItem);
+            SelectedHopDong = dataItem;
+        }
+
+        int stt = 1;
+        CurRow.ListHopDong.ForEach(x => x.Stt = stt++);
+
+        e.Cancel = false;
+
+        if (GridHopDong != null) ((IGrid)GridHopDong).Reload();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ===== TAB 8: XÓA DÒNG =====
+    void GridHopDong_DataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var itemToDelete = (HopDongRow)e.DataItem;
+        CurRow.ListHopDong.Remove(itemToDelete);
+        int stt = 1;
+        foreach (var r in CurRow.ListHopDong) r.Stt = stt++;
+        e.Cancel = true;
+        if (GridHopDong != null) ((IGrid)GridHopDong).Reload();
+        StateHasChanged();
+    }
+
+    // ===== TAB 8: CLICK DÒNG ĐỂ SỬA =====
+    async Task StartEditHopDongRow(GridRowClickEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        if (GridHopDong.IsEditing())
+            await GridHopDong.SaveChangesAsync();
+        var item = GridHopDong.GetDataItem(e.VisibleIndex);
+        if (item != null)
+            await GridHopDong.StartEditDataItemAsync(item);
+    }
+
+    // ===== TAB 8: LOST FOCUS - TỰ ĐỘNG LƯU =====
+    async void OnGridHopDongLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            bool stillInside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-hopdong");
+            if (stillInside) return;
+            if (GridHopDong != null && GridHopDong.IsEditing())
+                await GridHopDong.SaveChangesAsync();
+        }
+        catch { }
+    }
+
+    // ===== TAB 8: KEYDOWN =====
+    private async Task GridHopDong_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await Tab8_HandleSaveAndMoveNext();
+                break;
+            case "F4":
+                Tab8_AddNewHopDongRow();
+                break;
+            case "F8":
+                if (SelectedHopDong != null)
+                    GridHopDong.ShowDataItemDeleteConfirmation(SelectedHopDong);
+                break;
+            case "Escape":
+                try { await GridHopDong.CancelEditAsync(); } catch { }
+                break;
+        }
+    }
+
+    private async Task Tab8_HandleSaveAndMoveNext()
+    {
+        if (!AllowEditMode || GridHopDong == null) return;
+
+        if (GridHopDong.IsEditing())
+            await GridHopDong.SaveChangesAsync();
+
+        await Task.Delay(100);
+
+        if (SelectedHopDong != null)
+        {
+            var currentItem = (HopDongRow)SelectedHopDong;
+            var index = CurRow.ListHopDong.IndexOf(currentItem);
+
+            if (index >= 0 && index < CurRow.ListHopDong.Count - 1)
+                await GridHopDong.StartEditDataItemAsync(CurRow.ListHopDong[index + 1]);
+            else
+                Tab8_AddNewHopDongRow();
+        }
+        else
+        {
+            Tab8_AddNewHopDongRow();
+        }
+    }
+
+    public async void Tab8_AddNewHopDongRow()
+    {
+        if (!AllowEditMode || GridHopDong == null) return;
+
+        if (GridHopDong.IsEditing())
+        {
+            await GridHopDong.SaveChangesAsync();
+            await Task.Delay(100);
+        }
+        await GridHopDong.StartEditNewRowAsync();
+    }
+
+    private void Tab8_OnMaNsCtChanged(HopDongRow item)
+    {
+        item.Ma_quocgia = "";
+        if (!string.IsNullOrWhiteSpace(item.Ma_ns_ct))
+        {
+            string safe = item.Ma_ns_ct.Trim().Replace("'", "''");
+            item.Ma_quocgia = myDb?.GetValue($"SELECT quoc_tich FROM dmns WHERE ma_ns = '{safe}'")?.ToString() ?? "";
+        }
+        StateHasChanged();
+    }
+
+    // ===== TAB 9: QTBH - BIẾN LƯỚI =====
+    private DxGrid GridQtbh;
+    private object SelectedQtbh;
+    private ElementReference GridWrapperQtbh;
+
+    public List<Tab9StatusItem> Tab9_StatusList { get; set; } = new()
+    {
+        new Tab9StatusItem { Value = "1", Text = "1 - Sử dụng" },
+        new Tab9StatusItem { Value = "2", Text = "2 - Không sử dụng" }
+    };
+    public class Tab9StatusItem { public string Value { get; set; } public string Text { get; set; } }
+
+    // ===== TAB 9: CUSTOMIZE EDIT MODEL =====
+    void GridQtbh_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var model = (QtbhRow)e.EditModel;
+            model.Stt = CurRow.ListQtbh.Count > 0 ? CurRow.ListQtbh.Max(a => a.Stt) + 1 : 1;
+            model.Status = "1";
+        }
+    }
+
+    // ===== TAB 9: COPY ROW =====
+    private void Tab9_CopyQtbhRow(QtbhRow src, QtbhRow dst)
+    {
+        dst.So_the_bhxh = src.So_the_bhxh;
+        dst.Tu_ngay = src.Tu_ngay;
+        dst.Den_ngay = src.Den_ngay;
+        dst.Donvi_bh = src.Donvi_bh;
+        dst.Donvi_cv = src.Donvi_cv;
+        dst.So_the_bhyt = src.So_the_bhyt;
+        dst.Bhyt_tungay = src.Bhyt_tungay;
+        dst.Bhyt_denngay = src.Bhyt_denngay;
+        dst.Status = src.Status;
+        dst.Ghi_chu = src.Ghi_chu;
+    }
+
+    // ===== TAB 9: LƯU DÒNG =====
+    async Task GridQtbh_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var edit = (QtbhRow)e.EditModel;
+        bool laDongTrong = string.IsNullOrEmpty(edit.So_the_bhxh) && string.IsNullOrEmpty(edit.So_the_bhyt);
+
+        if (e.IsNew && laDongTrong)
+        {
+            e.Cancel = false;
+            return;
+        }
+
+        if (e.IsNew)
+        {
+            CurRow.ListQtbh.Add(edit);
+            CurRow.ListQtbh.RemoveAll(x => string.IsNullOrEmpty(x.So_the_bhxh) && string.IsNullOrEmpty(x.So_the_bhyt) && x != edit);
+            SelectedQtbh = edit;
+        }
+        else
+        {
+            var dataItem = (QtbhRow)e.DataItem;
+            Tab9_CopyQtbhRow(edit, dataItem);
+            SelectedQtbh = dataItem;
+        }
+
+        int stt = 1;
+        CurRow.ListQtbh.ForEach(x => x.Stt = stt++);
+
+        e.Cancel = false;
+
+        if (GridQtbh != null) ((IGrid)GridQtbh).Reload();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ===== TAB 9: XÓA DÒNG =====
+    void GridQtbh_DataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var itemToDelete = (QtbhRow)e.DataItem;
+        CurRow.ListQtbh.Remove(itemToDelete);
+        int stt = 1;
+        foreach (var r in CurRow.ListQtbh) r.Stt = stt++;
+        e.Cancel = true;
+        if (GridQtbh != null) ((IGrid)GridQtbh).Reload();
+        StateHasChanged();
+    }
+
+    // ===== TAB 9: CLICK DÒNG ĐỂ SỬA =====
+    async Task StartEditQtbhRow(GridRowClickEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        if (GridQtbh.IsEditing())
+            await GridQtbh.SaveChangesAsync();
+        var item = GridQtbh.GetDataItem(e.VisibleIndex);
+        if (item != null)
+            await GridQtbh.StartEditDataItemAsync(item);
+    }
+
+    // ===== TAB 9: LOST FOCUS - TỰ ĐỘNG LƯU =====
+    async void OnGridQtbhLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            bool stillInside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-qtbh");
+            if (stillInside) return;
+            if (GridQtbh != null && GridQtbh.IsEditing())
+                await GridQtbh.SaveChangesAsync();
+        }
+        catch { }
+    }
+
+    // ===== TAB 9: KEYDOWN =====
+    private async Task GridQtbh_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await Tab9_HandleSaveAndMoveNext();
+                break;
+            case "F4":
+                Tab9_AddNewQtbhRow();
+                break;
+            case "F8":
+                if (SelectedQtbh != null)
+                    GridQtbh.ShowDataItemDeleteConfirmation(SelectedQtbh);
+                break;
+            case "Escape":
+                try { await GridQtbh.CancelEditAsync(); } catch { }
+                break;
+        }
+    }
+
+    private async Task Tab9_HandleSaveAndMoveNext()
+    {
+        if (!AllowEditMode || GridQtbh == null) return;
+
+        if (GridQtbh.IsEditing())
+            await GridQtbh.SaveChangesAsync();
+
+        await Task.Delay(100);
+
+        if (SelectedQtbh != null)
+        {
+            var currentItem = (QtbhRow)SelectedQtbh;
+            var index = CurRow.ListQtbh.IndexOf(currentItem);
+
+            if (index >= 0 && index < CurRow.ListQtbh.Count - 1)
+                await GridQtbh.StartEditDataItemAsync(CurRow.ListQtbh[index + 1]);
+            else
+                Tab9_AddNewQtbhRow();
+        }
+        else
+        {
+            Tab9_AddNewQtbhRow();
+        }
+    }
+
+    public async void Tab9_AddNewQtbhRow()
+    {
+        if (!AllowEditMode || GridQtbh == null) return;
+
+        if (GridQtbh.IsEditing())
+        {
+            await GridQtbh.SaveChangesAsync();
+            await Task.Delay(100);
+        }
+        await GridQtbh.StartEditNewRowAsync();
+    }
+
+    // ===== TAB 10: QHGD - BIẾN LƯỚI =====
+    private DxGrid GridQhgd;
+    private object SelectedQhgd;
+    private ElementReference GridWrapperQhgd;
+
+    public List<Tab10StatusItem> Tab10_StatusList { get; set; } = new()
+    {
+        new Tab10StatusItem { Value = "1", Text = "1 - Sử dụng" },
+        new Tab10StatusItem { Value = "0", Text = "0 - Không sử dụng" }
+    };
+
+    public List<Tab10DependentItem> Tab10_DependentList { get; set; } = new()
+    {
+        new Tab10DependentItem { Value = "1", Text = "1 - Phụ thuộc" },
+        new Tab10DependentItem { Value = "0", Text = "0 - Không phụ thuộc" }
+    };
+
+    public class Tab10StatusItem { public string Value { get; set; } public string Text { get; set; } }
+    public class Tab10DependentItem { public string Value { get; set; } public string Text { get; set; } }
+
+    // ===== TAB 10: COPY ROW =====
+    private void Tab10_CopyQhgdRow(QhgdRow src, QhgdRow dst)
+    {
+        dst.Ma_qhgd = src.Ma_qhgd;
+        dst.Ten_tpgd = src.Ten_tpgd;
+        dst.Ten_tpgd2 = src.Ten_tpgd2;
+        dst.Ma_gioitinh = src.Ma_gioitinh;
+        dst.Nam_sinh = src.Nam_sinh;
+        dst.Cmnd = src.Cmnd;
+        dst.Ma_so_thue = src.Ma_so_thue;
+        dst.Nguoi_phu_thuoc = src.Nguoi_phu_thuoc;
+        dst.Nghe_nghiep = src.Nghe_nghiep;
+        dst.Noi_lam_viec = src.Noi_lam_viec;
+        dst.Cho_o_hien_nay = src.Cho_o_hien_nay;
+        dst.Trinh_do_chinh_tri = src.Trinh_do_chinh_tri;
+        dst.Truoc_cach_mang = src.Truoc_cach_mang;
+        dst.Trong_cach_mang = src.Trong_cach_mang;
+        dst.Sau_cach_mang = src.Sau_cach_mang;
+        dst.Ghi_chu = src.Ghi_chu;
+        dst.Status = src.Status;
+    }
+
+    // ===== TAB 10: CUSTOMIZE EDIT MODEL =====
+    void GridQhgd_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var model = (QhgdRow)e.EditModel;
+            model.Stt = CurRow.ListQhgd.Count > 0 ? CurRow.ListQhgd.Max(a => a.Stt) + 1 : 1;
+            model.Status = "1";
+            model.Nguoi_phu_thuoc = "0";
+        }
+    }
+
+    // ===== TAB 10: LƯU DÒNG =====
+    async Task GridQhgd_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var edit = (QhgdRow)e.EditModel;
+        bool laDongTrong = string.IsNullOrEmpty(edit.Ten_tpgd);
+
+        if (e.IsNew && laDongTrong)
+        {
+            e.Cancel = false;
+            return;
+        }
+
+        if (e.IsNew)
+        {
+            CurRow.ListQhgd.Add(edit);
+            CurRow.ListQhgd.RemoveAll(x => string.IsNullOrEmpty(x.Ten_tpgd) && x != edit);
+            SelectedQhgd = edit;
+        }
+        else
+        {
+            var dataItem = (QhgdRow)e.DataItem;
+            Tab10_CopyQhgdRow(edit, dataItem);
+            SelectedQhgd = dataItem;
+        }
+
+        int stt = 1;
+        CurRow.ListQhgd.ForEach(x => x.Stt = stt++);
+
+        e.Cancel = false;
+
+        if (GridQhgd != null) ((IGrid)GridQhgd).Reload();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ===== TAB 10: XÓA DÒNG =====
+    void GridQhgd_DataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var itemToDelete = (QhgdRow)e.DataItem;
+        CurRow.ListQhgd.Remove(itemToDelete);
+        int stt = 1;
+        foreach (var r in CurRow.ListQhgd) r.Stt = stt++;
+        e.Cancel = true;
+        if (GridQhgd != null) ((IGrid)GridQhgd).Reload();
+        StateHasChanged();
+    }
+
+    // ===== TAB 10: CLICK DÒNG ĐỂ SỬA =====
+    async Task StartEditQhgdRow(GridRowClickEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        if (GridQhgd.IsEditing())
+            await GridQhgd.SaveChangesAsync();
+        var item = GridQhgd.GetDataItem(e.VisibleIndex);
+        if (item != null)
+            await GridQhgd.StartEditDataItemAsync(item);
+    }
+
+    // ===== TAB 10: LOST FOCUS - TỰ ĐỘNG LƯU =====
+    async void OnGridQhgdLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            bool stillInside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-qhgd");
+            if (stillInside) return;
+            if (GridQhgd != null && GridQhgd.IsEditing())
+                await GridQhgd.SaveChangesAsync();
+        }
+        catch { }
+    }
+
+    // ===== TAB 10: KEYDOWN =====
+    private async Task GridQhgd_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await Tab10_HandleSaveAndMoveNext();
+                break;
+            case "F4":
+                Tab10_AddNewQhgdRow();
+                break;
+            case "F8":
+                if (SelectedQhgd != null)
+                    GridQhgd.ShowDataItemDeleteConfirmation(SelectedQhgd);
+                break;
+            case "Escape":
+                try { await GridQhgd.CancelEditAsync(); } catch { }
+                break;
+        }
+    }
+
+    private async Task Tab10_HandleSaveAndMoveNext()
+    {
+        if (!AllowEditMode || GridQhgd == null) return;
+
+        if (GridQhgd.IsEditing())
+            await GridQhgd.SaveChangesAsync();
+
+        await Task.Delay(100);
+
+        if (SelectedQhgd != null)
+        {
+            var currentItem = (QhgdRow)SelectedQhgd;
+            var index = CurRow.ListQhgd.IndexOf(currentItem);
+
+            if (index >= 0 && index < CurRow.ListQhgd.Count - 1)
+                await GridQhgd.StartEditDataItemAsync(CurRow.ListQhgd[index + 1]);
+            else
+                Tab10_AddNewQhgdRow();
+        }
+        else
+        {
+            Tab10_AddNewQhgdRow();
+        }
+    }
+
+    public async void Tab10_AddNewQhgdRow()
+    {
+        if (!AllowEditMode || GridQhgd == null) return;
+
+        if (GridQhgd.IsEditing())
+        {
+            await GridQhgd.SaveChangesAsync();
+            await Task.Delay(100);
+        }
+        await GridQhgd.StartEditNewRowAsync();
+    }
+
+    // ===== TAB 11: DIEUCHUYEN - BIẾN LƯỚI =====
+    private DxGrid GridDieuChuyen;
+    private object SelectedDieuChuyen;
+    private ElementReference GridWrapperDieuChuyen;
+
+    public List<Tab11StatusItem> Tab11_StatusList { get; set; } = new()
+    {
+        new Tab11StatusItem { Value = "1", Text = "1 - Sử dụng" },
+        new Tab11StatusItem { Value = "0", Text = "0 - Không sử dụng" }
+    };
+    public class Tab11StatusItem { public string Value { get; set; } public string Text { get; set; } }
+
+    // ===== TAB 11: COPY ROW =====
+    private void Tab11_CopyDieuChuyenRow(DieuChuyenRow src, DieuChuyenRow dst)
+    {
+        dst.Ngay_dc_cu = src.Ngay_dc_cu;
+        dst.Ma_bpns_cu = src.Ma_bpns_cu;
+        dst.Ma_cv_cu = src.Ma_cv_cu;
+        dst.Ma_cd_cu = src.Ma_cd_cu;
+        dst.Ghi_chu_cu = src.Ghi_chu_cu;
+        dst.Ngay_dc_moi = src.Ngay_dc_moi;
+        dst.Ma_bpns_moi = src.Ma_bpns_moi;
+        dst.Ma_cv_moi = src.Ma_cv_moi;
+        dst.Ma_cd_moi = src.Ma_cd_moi;
+        dst.Ghi_chu_moi = src.Ghi_chu_moi;
+        dst.Status = src.Status;
+    }
+
+    // ===== TAB 11: CUSTOMIZE EDIT MODEL =====
+    void GridDieuChuyen_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var model = (DieuChuyenRow)e.EditModel;
+            model.Stt = CurRow.ListDieuChuyen.Count > 0 ? CurRow.ListDieuChuyen.Max(a => a.Stt) + 1 : 1;
+            model.Status = "1";
+            model.Ngay_dc_moi = DateTime.Now.Date;
+        }
+    }
+
+    // ===== TAB 11: LƯU DÒNG =====
+    async Task GridDieuChuyen_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var edit = (DieuChuyenRow)e.EditModel;
+        bool laDongTrong = string.IsNullOrEmpty(edit.Ma_bpns_cu) && string.IsNullOrEmpty(edit.Ma_bpns_moi);
+
+        if (e.IsNew && laDongTrong)
+        {
+            e.Cancel = false;
+            return;
+        }
+
+        if (e.IsNew)
+        {
+            CurRow.ListDieuChuyen.Add(edit);
+            CurRow.ListDieuChuyen.RemoveAll(x => string.IsNullOrEmpty(x.Ma_bpns_cu) && string.IsNullOrEmpty(x.Ma_bpns_moi) && x != edit);
+            SelectedDieuChuyen = edit;
+        }
+        else
+        {
+            var dataItem = (DieuChuyenRow)e.DataItem;
+            Tab11_CopyDieuChuyenRow(edit, dataItem);
+            SelectedDieuChuyen = dataItem;
+        }
+
+        int stt = 1;
+        CurRow.ListDieuChuyen.ForEach(x => x.Stt = stt++);
+
+        e.Cancel = false;
+
+        if (GridDieuChuyen != null) ((IGrid)GridDieuChuyen).Reload();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ===== TAB 11: XÓA DÒNG =====
+    void GridDieuChuyen_DataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var itemToDelete = (DieuChuyenRow)e.DataItem;
+        CurRow.ListDieuChuyen.Remove(itemToDelete);
+        int stt = 1;
+        foreach (var r in CurRow.ListDieuChuyen) r.Stt = stt++;
+        e.Cancel = true;
+        if (GridDieuChuyen != null) ((IGrid)GridDieuChuyen).Reload();
+        StateHasChanged();
+    }
+
+    // ===== TAB 11: CLICK DÒNG ĐỂ SỬA =====
+    async Task StartEditDieuChuyenRow(GridRowClickEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        if (GridDieuChuyen.IsEditing())
+            await GridDieuChuyen.SaveChangesAsync();
+        var item = GridDieuChuyen.GetDataItem(e.VisibleIndex);
+        if (item != null)
+            await GridDieuChuyen.StartEditDataItemAsync(item);
+    }
+
+    // ===== TAB 11: LOST FOCUS - TỰ ĐỘNG LƯU =====
+    async void OnGridDieuChuyenLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            bool stillInside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-dieuchuyen");
+            if (stillInside) return;
+            if (GridDieuChuyen != null && GridDieuChuyen.IsEditing())
+                await GridDieuChuyen.SaveChangesAsync();
+        }
+        catch { }
+    }
+
+    // ===== TAB 11: KEYDOWN =====
+    private async Task GridDieuChuyen_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await Tab11_HandleSaveAndMoveNext();
+                break;
+            case "F4":
+                Tab11_AddNewDieuChuyenRow();
+                break;
+            case "F8":
+                if (SelectedDieuChuyen != null)
+                    GridDieuChuyen.ShowDataItemDeleteConfirmation(SelectedDieuChuyen);
+                break;
+            case "Escape":
+                try { await GridDieuChuyen.CancelEditAsync(); } catch { }
+                break;
+        }
+    }
+
+    private async Task Tab11_HandleSaveAndMoveNext()
+    {
+        if (!AllowEditMode || GridDieuChuyen == null) return;
+
+        if (GridDieuChuyen.IsEditing())
+            await GridDieuChuyen.SaveChangesAsync();
+
+        await Task.Delay(100);
+
+        if (SelectedDieuChuyen != null)
+        {
+            var currentItem = (DieuChuyenRow)SelectedDieuChuyen;
+            var index = CurRow.ListDieuChuyen.IndexOf(currentItem);
+
+            if (index >= 0 && index < CurRow.ListDieuChuyen.Count - 1)
+                await GridDieuChuyen.StartEditDataItemAsync(CurRow.ListDieuChuyen[index + 1]);
+            else
+                Tab11_AddNewDieuChuyenRow();
+        }
+        else
+        {
+            Tab11_AddNewDieuChuyenRow();
+        }
+    }
+
+    public async void Tab11_AddNewDieuChuyenRow()
+    {
+        if (!AllowEditMode || GridDieuChuyen == null) return;
+
+        if (GridDieuChuyen.IsEditing())
+        {
+            await GridDieuChuyen.SaveChangesAsync();
+            await Task.Delay(100);
+        }
+        await GridDieuChuyen.StartEditNewRowAsync();
+    }
+
+    private async Task GridCtgtk_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await Tab2_HandleSaveAndMoveNext();
+                break;
+            case "F4":
+                Tab2_AddNewCtgtkRow();
+                break;
+            case "F8":
+                if (SelectedCtgtk != null)
+                    GridCtgtk.ShowDataItemDeleteConfirmation(SelectedCtgtk);
+                break;
+            case "Escape":
+                try { await GridCtgtk.CancelEditAsync(); } catch { }
+                break;
+        }
+    }
+
+    [JSInvokable]
+    public async Task SaveAndMoveNextRow()
+    {
+        await Tab2_HandleSaveAndMoveNext();
+    }
+    [JSInvokable]
+    public void CallGridEditMode(string value)
+    {
+        if (!AllowEditMode) return;
+
+        // Dựa vào việc chuột đang ở lưới nào để đẻ dòng cho lưới đó
+        switch (LastFocusedGrid)
+        {
+            case "CTGTK":
+                Tab2_AddNewCtgtkRow(); 
+                break;
+            case "CTNPT":
+                Tab3_AddNewCtnptRow();
+                break;
+            case "HOPDONG":
+                Tab8_AddNewHopDongRow();
+                break;
+            case "QTBH":
+                Tab9_AddNewQtbhRow();
+                break;
+            case "QHGD":
+                Tab10_AddNewQhgdRow();
+                break;
+            case "DIEUCHUYEN":
+                Tab11_AddNewDieuChuyenRow();
+                break;
+            case "QTCT":
+                Tab13_AddNewQtctRow();
+                break;
+        }
+        
+        StateHasChanged();
+    }
+    private async Task Tab2_HandleSaveAndMoveNext()
+    {
+        if (!AllowEditMode || GridCtgtk == null) return;
+
+        // Lưu dòng hiện tại trước
+        if (GridCtgtk.IsEditing())
+            await GridCtgtk.SaveChangesAsync();
+
+        // Chờ 1 chút để lưới đồng bộ hoàn tất (Chuẩn Zcfats là 100ms)
+        await Task.Delay(100);
+
+        if (SelectedCtgtk != null)
+        {
+            var currentItem = (CtgtkRow)SelectedCtgtk;
+            var index = CurRow.ListCtgtk.IndexOf(currentItem);
+
+            // Nếu chưa phải dòng cuối -> Xuống dòng kế tiếp
+            if (index >= 0 && index < CurRow.ListCtgtk.Count - 1)
+            {
+                await GridCtgtk.StartEditDataItemAsync(CurRow.ListCtgtk[index + 1]);
+            }
+            else
+            {
+                // Nếu đang ở dòng cuối cùng -> Thêm dòng mới
+                Tab2_AddNewCtgtkRow();
+            }
+        }
+        else
+        {
+            Tab2_AddNewCtgtkRow();
+        }
+    }
+
+    // 4. HÀM THÊM DÒNG (Dùng async void y hệt Zcfats)
+    public async void Tab2_AddNewCtgtkRow()
+    {
+        if (!AllowEditMode || GridCtgtk == null) return;
+        
+        if (GridCtgtk.IsEditing())
+        {
+            await GridCtgtk.SaveChangesAsync();
+            await Task.Delay(100);
+        }
+        await GridCtgtk.StartEditNewRowAsync();
+    }
+
+    // ===== TAB 13: QTCT - BIẾN LƯỚI =====
+    private DxGrid GridQtct;
+    private object SelectedQtct;
+    private ElementReference GridWrapperQtct;
+
+    public List<Tab13StatusItem> Tab13_StatusList { get; set; } = new()
+    {
+        new Tab13StatusItem { Value = "1", Text = "1 - Sử dụng" },
+        new Tab13StatusItem { Value = "0", Text = "0 - Không sử dụng" }
+    };
+    public class Tab13StatusItem { public string Value { get; set; } public string Text { get; set; } }
+
+    // ===== TAB 13: COPY ROW =====
+    private void Tab13_CopyQtctRow(QtctRow src, QtctRow dst)
+    {
+        dst.Ma_quyet_dinh = src.Ma_quyet_dinh;
+        dst.Ngay_di = src.Ngay_di;
+        dst.Ngay_ve = src.Ngay_ve;
+        dst.Ma_nct = src.Ma_nct;
+        dst.Chi_phi = src.Chi_phi;
+        dst.Noi_dung = src.Noi_dung;
+        dst.Ket_qua = src.Ket_qua;
+        dst.Ghi_chu = src.Ghi_chu;
+        dst.Status = src.Status;
+    }
+
+    // ===== TAB 13: CUSTOMIZE EDIT MODEL =====
+    void GridQtct_CustomizeEditModel(GridCustomizeEditModelEventArgs e)
+    {
+        if (e.IsNew)
+        {
+            var model = (QtctRow)e.EditModel;
+            model.Stt = CurRow.ListQtct.Count > 0 ? CurRow.ListQtct.Max(a => a.Stt) + 1 : 1;
+            model.Status = "1";
+            model.Chi_phi = 0;
+        }
+    }
+
+    // ===== TAB 13: LƯU DÒNG =====
+    async Task GridQtct_EditModelSaving(GridEditModelSavingEventArgs e)
+    {
+        var edit = (QtctRow)e.EditModel;
+        bool laDongTrong = string.IsNullOrEmpty(edit.Ma_quyet_dinh) && !edit.Ngay_di.HasValue && !edit.Ngay_ve.HasValue;
+
+        if (e.IsNew && laDongTrong)
+        {
+            e.Cancel = false;
+            return;
+        }
+
+        if (e.IsNew)
+        {
+            var newItem = new QtctRow();
+            Tab13_CopyQtctRow(edit, newItem);
+            newItem.Stt = CurRow.ListQtct.Count + 1;
+            CurRow.ListQtct.Add(newItem);
+            CurRow.ListQtct.RemoveAll(x => string.IsNullOrEmpty(x.Ma_quyet_dinh) && !x.Ngay_di.HasValue && !x.Ngay_ve.HasValue && x != newItem);
+            SelectedQtct = newItem;
+        }
+        else
+        {
+            var dataItem = (QtctRow)e.DataItem;
+            Tab13_CopyQtctRow(edit, dataItem);
+            SelectedQtct = dataItem;
+        }
+
+        int stt = 1;
+        CurRow.ListQtct.ForEach(x => x.Stt = stt++);
+
+        e.Cancel = false;
+
+        if (GridQtct != null) ((IGrid)GridQtct).Reload();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ===== TAB 13: XÓA DÒNG =====
+    void GridQtct_DataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var itemToDelete = (QtctRow)e.DataItem;
+        CurRow.ListQtct.Remove(itemToDelete);
+        int stt = 1;
+        foreach (var r in CurRow.ListQtct) r.Stt = stt++;
+        e.Cancel = true;
+        if (GridQtct != null) ((IGrid)GridQtct).Reload();
+        StateHasChanged();
+    }
+
+    // ===== TAB 13: CLICK DÒNG ĐỂ SỬA =====
+    async Task StartEditQtctRow(GridRowClickEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        if (GridQtct.IsEditing())
+            await GridQtct.SaveChangesAsync();
+        var item = GridQtct.GetDataItem(e.VisibleIndex);
+        if (item != null)
+            await GridQtct.StartEditDataItemAsync(item);
+    }
+
+    // ===== TAB 13: LOST FOCUS - TỰ ĐỘNG LƯU =====
+    async void OnGridQtctLostFocus(FocusEventArgs e)
+    {
+        try
+        {
+            bool stillInside = await JS.InvokeAsync<bool>("focusInside", "grid-wrapper-qtct");
+            if (stillInside) return;
+            if (GridQtct != null && GridQtct.IsEditing())
+                await GridQtct.SaveChangesAsync();
+        }
+        catch { }
+    }
+
+    // ===== TAB 13: KEYDOWN =====
+    private async Task GridQtct_OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!AllowEditMode) return;
+        switch (e.Key)
+        {
+            case "Enter":
+                await Tab13_HandleSaveAndMoveNext();
+                break;
+            case "F4":
+                Tab13_AddNewQtctRow();
+                break;
+            case "F8":
+                if (SelectedQtct != null)
+                    GridQtct.ShowDataItemDeleteConfirmation(SelectedQtct);
+                break;
+            case "Escape":
+                try { await GridQtct.CancelEditAsync(); } catch { }
+                break;
+        }
+    }
+
+    private async Task Tab13_HandleSaveAndMoveNext()
+    {
+        if (!AllowEditMode || GridQtct == null) return;
+
+        if (GridQtct.IsEditing())
+            await GridQtct.SaveChangesAsync();
+
+        await Task.Delay(100);
+
+        if (SelectedQtct != null)
+        {
+            var currentItem = (QtctRow)SelectedQtct;
+            var index = CurRow.ListQtct.IndexOf(currentItem);
+
+            if (index >= 0 && index < CurRow.ListQtct.Count - 1)
+                await GridQtct.StartEditDataItemAsync(CurRow.ListQtct[index + 1]);
+            else
+                Tab13_AddNewQtctRow();
+        }
+        else
+        {
+            Tab13_AddNewQtctRow();
+        }
+    }
+
+    public async void Tab13_AddNewQtctRow()
+    {
+        if (!AllowEditMode || GridQtct == null) return;
+
+        if (GridQtct.IsEditing())
+        {
+            await GridQtct.SaveChangesAsync();
+            await Task.Delay(100);
+        }
+        await GridQtct.StartEditNewRowAsync();
+    }
+}
+
+
+

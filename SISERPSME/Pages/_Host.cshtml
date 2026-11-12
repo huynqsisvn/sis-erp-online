@@ -1,0 +1,137 @@
+﻿@page "/"
+@namespace SISERPSME.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = "_Layout";
+}
+
+<component type="typeof(App)" render-mode="Server" />
+<script>
+    window.SetFocusToElement = (element) => {
+        element.focus();
+    };
+     (function () {
+        // 👉 Đổi chuỗi version này MỖI KHI anh deploy bản mới có thay đổi lớn
+        const appVersion = '2025-11-19-01';
+
+        try {
+            const stored = localStorage.getItem('SIS_APP_VERSION');
+
+            if (stored !== appVersion) {
+                // Giống thao tác anh xóa demo.sis.vn trên Chrome
+                localStorage.clear();
+                sessionStorage.clear();
+
+                localStorage.setItem('SIS_APP_VERSION', appVersion);
+            }
+        } catch (e) {
+            console.warn('Cannot access localStorage', e);
+        }
+
+        window.SetFocusToElement = (element) => {
+            if (element) {
+                element.focus();
+            }
+        };
+
+        // Smooth scroll to element by ID
+        window.scrollToElement = (elementId) => {
+            try {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (e) {
+                console.warn('Cannot scroll to element', elementId, e);
+            }
+        };
+
+        // Update image source
+        window.updateImageSrc = (elementId, dataUrl) => {
+            try {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.src = dataUrl;
+                }
+            } catch (e) {
+                console.warn('Cannot update image', elementId, e);
+            }
+        };
+
+        // Show Bootstrap Modal
+        window.SIS_ShowModal = (modalId) => {
+            try {
+                const modalElement = document.getElementById(modalId);
+                if (modalElement) {
+                    const modal = new bootstrap.Modal(modalElement, {
+                        backdrop: true,
+                        keyboard: true
+                    });
+                    modal.show();
+                }
+            } catch (e) {
+                console.warn('Cannot show modal', modalId, e);
+            }
+        };
+
+        // Hide Bootstrap Modal
+        window.SIS_HideModal = (modalId) => {
+            try {
+                const modalElement = document.getElementById(modalId);
+                if (modalElement) {
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) {
+                        modal.hide();
+                    }
+                }
+            } catch (e) {
+                console.warn('Cannot hide modal', modalId, e);
+            }
+        };
+
+        // Check if focus is inside a grid
+        window.checkIfInGrid = () => {
+            try {
+                const activeElement = document.activeElement;
+                if (!activeElement) return false;
+
+                // Kiểm tra các class/parent của DevExpress Grid
+                return activeElement.closest('.dxgv') !== null ||
+                       activeElement.closest('[id*="grid-wrapper"]') !== null ||
+                       activeElement.closest('.dxic') !== null ||
+                       activeElement.closest('.dxesl') !== null ||
+                       activeElement.classList.contains('dxic') ||
+                       activeElement.classList.contains('dxesl');
+            } catch (e) {
+                console.warn('Error checking if in grid', e);
+                return false;
+            }
+        };
+
+        // Convert Enter to Tab
+        window.convertEnterToTab = () => {
+            try {
+                const activeElement = document.activeElement;
+                if (activeElement) {
+                    // Tạo event Tab
+                    const tabEvent = new KeyboardEvent('keydown', {
+                        key: 'Tab',
+                        code: 'Tab',
+                        keyCode: 9,
+                        which: 9,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    activeElement.dispatchEvent(tabEvent);
+
+                    // Hoặc gọi hàm chuyển focus tới input tiếp theo
+                    // activeElement.blur();
+                    // const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
+                    // document.dispatchEvent(tabEvent);
+                }
+            } catch (e) {
+                console.warn('Error converting Enter to Tab', e);
+            }
+        };
+    })();
+</script>

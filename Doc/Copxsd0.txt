@@ -1,0 +1,52 @@
+Thêm mới chức năng : Vào số dư ban đầu của các phân xưởng
+- Menu_id = 'wo.gs.01', Page ='copxsd0'
+- Thư mục : \SisCo\SisCo\Pages\Opening\Copxsd0\
+- Các Component kế thừa như các danh mục khác. Xem chức năng Vào số dư ban đầu của các kế ước : \SisCa\SisCa\Pages\Opening\Cakusd0\
+- Form thêm mới như ảnh
+- Tham khảo chức năng đã làm trên wpf ở project COPXSD0, không build lại project COPXSD0
+- Ko cần viết file .md nhiều, không viết file .sql, chỉ cần 1 README.md ở dạng đơn giản
+- Model ở dạng đơn giản, không có Requirement, length.
+- Bảng dữ liệu đã có, không cần tạo các query liên quan SQL server: 
+
+CREATE TABLE [dbo].[cdpx](
+	[nam] [dbo].[udt_nam] NULL,
+	[tk] [dbo].[udt_tk] NULL,
+	[ma_px] [dbo].[udt_ma_px] NULL,
+	[ma_kh] [dbo].[udt_ma_kh] NULL,
+	[du_no00] [dbo].[udt_tien] NULL,
+	[du_no_nt00] [dbo].[udt_tien_nt] NULL,
+	[du_co00] [dbo].[udt_tien] NULL,
+	[du_co_nt00] [dbo].[udt_tien_nt] NULL,
+	[date] [dbo].[udt_ngay_ct] NULL,
+	[time] [dbo].[udt_time] NULL,
+	[user_id] [dbo].[udt_user_id] NULL,
+	[user_name] [dbo].[udt_user_name] NULL,
+	[date0] [dbo].[udt_ngay_ct] NULL,
+	[time0] [dbo].[udt_time] NULL,
+	[user_id0] [dbo].[udt_user_id] NULL,
+	[user_name0] [dbo].[udt_user_name] NULL,
+	[status] [char](1) NULL,
+	[ma_dvcs] [dbo].[udt_ma_dvcs] NULL,
+	[du_co1] [dbo].[udt_tien] NULL,
+	[du_no1] [dbo].[udt_tien] NULL,
+	[du_no_nt1] [dbo].[udt_tien_nt] NULL,
+	[du_co_nt1] [dbo].[udt_tien_nt] NULL
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[cdpx] ADD  CONSTRAINT [DF_cdpx_du_co1]  DEFAULT ((0)) FOR [du_co1]
+GO
+
+ALTER TABLE [dbo].[cdpx] ADD  CONSTRAINT [DF_cdpx_du_no1]  DEFAULT ((0)) FOR [du_no1]
+GO
+
+ALTER TABLE [dbo].[cdpx] ADD  CONSTRAINT [DF_cdpx_du_no_nt1]  DEFAULT ((0)) FOR [du_no_nt1]
+GO
+
+ALTER TABLE [dbo].[cdpx] ADD  CONSTRAINT [DF_cdpx_du_co_nt1]  DEFAULT ((0)) FOR [du_co_nt1]
+GO
+
+
+
+
+

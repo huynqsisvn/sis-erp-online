@@ -1,0 +1,360 @@
+@inherits FrmListBaseComponent
+
+<div style="width:auto;">
+    <FormList Title="@Title" @bind-curActionTask="@curActionTask" OnSave="@SaveInsd0" OnEdit="@OnEdit" OnCancel="@HideVoucher">
+        <div class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DxFormLayout Data="@CurInsd0" ItemSizeMode="@Itemsizemode" CssClass="frm-header sis-form" onkeydown="ModifyEnterKeyPressAsTab(event);">
+                
+                <DxFormLayoutItem Caption="@Lap["Storage code"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_kho_input" Ma_dm="dmkho" Filter="ton_kho_vv = '0'" @bind-Value="@CurInsd0.Ma_kho" IsEnable="@AllowEditMa" SelectChanged="Ma_kho_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Warehouse name"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox ReadOnly="true" Text="@ten_kho" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Item code"]" ColSpanMd="6" BeginRow="true" CaptionCssClass="fw-bold">
+                    <Template>
+                        <AutocompleteComponent Id="ma_vt_input" Ma_dm="dmvt" Filter="gia_ton <> '3'" @bind-Value="@CurInsd0.Ma_vt" IsEnable="@AllowEditMa" SelectChanged="Ma_vt_Changed" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Item name"]" ColSpanMd="6">
+                    <Template>
+                        <DxTextBox ReadOnly="true" Text="@ten_vt" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Lot number"]" ColSpanMd="12" BeginRow="true">
+                    <Template>
+                        <AutocompleteComponent Id="ma_lo_input" Ma_dm="dmlo" @bind-Value="@CurInsd0.Ma_lo" IsEnable="@AllowEditMa" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Opening quantity"]" ColSpanMd="6" BeginRow="true">
+                    <Template>
+                        <DxSpinEdit Id="ton00_input" Enabled="@AllowEditMode" Value="@CurInsd0.Ton00" DisplayFormat="@M_IP_SL" ValueChanged="@((decimal newValue) => Ton00_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="@Lap["Opening balance"]" ColSpanMd="6">
+                    <Template>
+                        <DxSpinEdit Id="du00_input" Enabled="@AllowEditMode" Value="@CurInsd0.Du00" DisplayFormat="@M_IP_TIEN" ValueChanged="@((decimal newValue) => Du00_ValueChanged(newValue))" />
+                    </Template>
+                </DxFormLayoutItem>
+
+            </DxFormLayout>
+        </div>
+    </FormList>
+</div>
+
+@code {
+    
+    public Insd0 CurInsd0;
+    private string menu_id = "wi.sd.01";
+    public string M_IP_TIEN = "";
+    public string M_IP_SL = "";
+    public string ten_kho = "";
+    public string ten_vt = "";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "cdvtvv";
+        sqlTableView = "v_cdvtvv";
+        SqlTableKey = "ma_lo;ma_vt;ma_kho;nam";
+        CheckSqlTableKey = "ma_vt";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "insd0" : ParentPage;
+        CurInsd0 = new Insd0();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        M_IP_TIEN = myOption.GetOptionsValue("M_IP_TIEN");
+        M_IP_SL = myOption.GetOptionsValue("M_IP_SL");
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await PageLoad();
+
+            switch (curActionTask)
+            {
+                case ActionTask.View:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+                case ActionTask.Edit:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await EditRecord(Ma_ma);
+                    break;
+                case ActionTask.New:
+                    await NewRecord(Ma_ma);
+                    break;
+                default:
+                    if (!string.IsNullOrEmpty(Ma_ma))
+                        await ViewRecord(Ma_ma);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    void Ma_kho_Changed(ExpandoObject value)
+    {
+        ten_kho = "";
+        if (!String.IsNullOrEmpty(CurInsd0.Ma_kho))
+        {
+            string col_name = IsLangEn ? "ten_kho2" : "ten_kho";
+            ten_kho = myDb.GetValue($"select {col_name} from dmkho where ma_kho = '{CurInsd0.Ma_kho.Trim()}'")?.ToString();
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await base.OnAfterRenderAsync(firstRender);
+
+                if (String.IsNullOrEmpty(CurInsd0.Ma_kho))
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_kho_input')?.focus()");
+                else if (String.IsNullOrEmpty(CurInsd0.Ma_vt))
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_vt_input')?.focus()");
+                else
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ton00_input')?.focus()");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task ViewRecord(string SqlTableKeyValue)
+    {
+        CurInsd0 = new Insd0();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task EditRecord(string SqlTableKeyValue)
+    {
+        CurInsd0 = new Insd0();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        await LoadData(SqlTableKeyValue);
+    }
+
+    async Task NewRecord(string SqlTableKeyValue)
+    {
+        CurInsd0 = new Insd0();
+        CurInsd0.Ma_dvcs = myStateMN.GetDvcs().Ma_dvcs;
+        CurInsd0.Ma_lo = "";
+        CurInsd0.Ma_vv = "";
+
+        if (SqlTableKeyValue.Split(";").Length > 1)
+        {
+            CurInsd0.Nam = int.Parse(SqlTableKeyValue.Split(";")[1]);
+            CurInsd0.Ma_kho = SqlTableKeyValue.Split(";")[0];
+            CurInsd0.Ma_kho = myDb.GetValue($"select top 1 ma_kho from dmkho where ton_kho_vv = '0' and ma_kho like '{CurInsd0.Ma_kho.Trim()}%' order by ma_kho")?.ToString();
+            await LoadLookupInfo();
+        }
+        else if (SqlTableKeyValue.Split(";").Length == 1)
+            CurInsd0.Nam = int.Parse(SqlTableKeyValue.Split(";")[0]);
+        else
+            CurInsd0.Nam = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_DN")).Year;
+
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    async Task SaveInsd0()
+    {
+        try
+        {
+            if (!CheckValid())
+            {
+                return;
+            }
+
+            if (curActionTask == ActionTask.Edit)
+            {
+                CurInsd0.Date = DateTime.Now.Date;
+                CurInsd0.Time = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurInsd0.User_id = curUser.User_id;
+                    CurInsd0.User_name = curUser.User_name;
+                }
+
+                string _where = "";
+                string[] strkey = SqlTableKey.Split(';');
+                string[] strvalue = Ma_ma.Split(';');
+                if (strkey.Length == strvalue.Length)
+                {
+                    for (int x = 0; x < strkey.Length; x++)
+                    {
+                        _where += strkey[x] + " = '" + strvalue[x] + "' and ";
+                    }
+                }
+                if (_where.Length > 0)
+                {
+                    _where = _where.Substring(0, _where.Length - 4);
+                    await myDb.UpdateOneRow1<Insd0>(CurInsd0, sqlTableName, "", _where);
+                    myStateMN.SetNewThongbao(String.Format(Lap["Edit successfully : {0}"], CurInsd0.Ma_vt));
+                }
+            }
+            else if (curActionTask == ActionTask.New)
+            {
+                string strsql = $"Select ma_vt from {sqlTableName} where nam={CurInsd0.Nam} AND ma_kho='{CurInsd0.Ma_kho.Trim()}' AND ma_vt='{CurInsd0.Ma_vt.Trim()}' AND ma_lo='{CurInsd0.Ma_lo.Trim()}'";
+                DataTable dt = myDb.GetTable(strsql);
+                if (dt.Rows.Count > 0)
+                {
+                    myStateMN.SetNewThongbao(Lap["This record already exists, can not add new"] + " !");
+                    await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_vt_input')?.focus()");
+                    return;
+                }
+
+                CurInsd0.Date = DateTime.Now.Date;
+                CurInsd0.Time = DateTime.Now.ToString("HH:mm:ss");
+                CurInsd0.Date0 = DateTime.Now.Date;
+                CurInsd0.Time0 = DateTime.Now.ToString("HH:mm:ss");
+                if (curUser != null)
+                {
+                    CurInsd0.User_id = curUser.User_id;
+                    CurInsd0.User_id0 = curUser.User_id;
+                    CurInsd0.User_name = curUser.User_name;
+                    CurInsd0.User_name0 = curUser.User_name;
+                }
+                await myDb.InsertOneRow<Insd0>(CurInsd0, sqlTableName);
+                myStateMN.SetNewThongbao(String.Format(Lap["Successfully added new : {0}"], CurInsd0.Ma_vt));
+            }
+
+            if (DxWindowmodel != null)
+            {
+                myModal.CloseModal(DxWindowmodel);
+            }
+
+            if (ShowAdd == true)
+            {
+                OnClose.InvokeAsync();
+            }
+            else
+            {
+                myNavi.NavigateTo(ParentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Save failed: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    bool CheckValid()
+    {
+        if (String.IsNullOrEmpty(CurInsd0.Ma_dvcs))
+        {
+            myStateMN.SetNewThongbao(Lap["Unit is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurInsd0.Ma_kho))
+        {
+            myStateMN.SetNewThongbao(Lap["Warehouse is required"] + " !");
+            return false;
+        }
+        if (String.IsNullOrEmpty(CurInsd0.Ma_vt))
+        {
+            myStateMN.SetNewThongbao(Lap["Material code is required"] + " !");
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        try
+        {
+            string[] strarr = SqlTableKey.Split(";");
+            string strwhere = string.Join(" AND ", strarr.Select(c => $"{c} = @{c}"));
+            string sql = $"Select * from {sqlTableView} where {strwhere}";
+            DataSet DsTrans = await myDb.LoadDataset(sql, SqlTableKey, SqlTableKeyValue);
+            if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+            {
+                List<Insd0> lsdetai = myDb.ConvertDataTable<Insd0>(DsTrans.Tables[0]);
+                if (lsdetai != null && lsdetai.Count > 0)
+                {
+                    CurInsd0 = lsdetai[0];
+                    await LoadLookupInfo();
+                }
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao("Data error: " + ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    async Task LoadLookupInfo()
+    {
+        ten_kho = "";
+        if (!String.IsNullOrEmpty(CurInsd0.Ma_kho))
+        {
+            ten_kho = myDb.GetValue($"select ten_kho from dmkho where ma_kho = '{CurInsd0.Ma_kho.Trim()}'")?.ToString();
+        }
+        if (!String.IsNullOrEmpty(CurInsd0.Ma_vt))
+        {
+            ten_vt = myDb.GetValue($"select ten_vt from dmvt where ma_vt = '{CurInsd0.Ma_vt.Trim()}'")?.ToString();
+        }
+        StateHasChanged();
+    }
+
+    void Ma_vt_Changed(ExpandoObject value)
+    {
+        if (!String.IsNullOrEmpty(CurInsd0.Ma_vt))
+        {
+            ten_vt = myDb.GetValue($"select ten_vt from dmvt where ma_vt = '{CurInsd0.Ma_vt.Trim()}'")?.ToString();
+            StateHasChanged();
+        }
+    }
+
+    void Ton00_ValueChanged(decimal newValue)
+    {
+        CurInsd0.Ton00 = newValue;
+        StateHasChanged();
+    }
+
+    void Du00_ValueChanged(decimal newValue)
+    {
+        CurInsd0.Du00 = newValue;
+        StateHasChanged();
+    }
+}

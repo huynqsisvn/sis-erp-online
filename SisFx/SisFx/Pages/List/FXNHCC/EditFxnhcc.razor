@@ -1,0 +1,267 @@
+﻿@inherits FrmListBaseComponent
+@using SisFx.Pages.List.FXNHCC
+
+<div class="popup-body-container w-100" style="overflow:auto;max-width:800px;">
+    <FormList Title="@Title"
+              @bind-curActionTask="@curActionTask"
+              OnSave="@SaveDM"
+              OnEdit="@OnEdit"
+              OnCopy="@OnCopy"
+              OnCancel="@HideVoucher">
+        <EditForm Model="@CurDmnhcc" onkeydown="ModifyEnterKeyPressAsTab(event);" class="row m-1 me-2 rounded-1 border border-light shadow">
+            <DataAnnotationsValidator></DataAnnotationsValidator>
+            <div class="row">
+                <div class="row pb-2">
+                    <label class="col-4" for="Ma_nh">@Lap["Group ID"] (*): </label>
+                    <DxTextBox CssClass="col" Id="Ma_nh" @bind-Text="@CurDmnhcc.Ma_nh" InputCssClass="uppercase font-bold" maxlength="@tblLength["ma_nh"]" Enabled="@AllowEditMa" />
+                </div>
+
+                <div class="row pb-2">
+                    <label class="col-4" for="Ten_nh">@Lap["Group name"] (*): </label>
+                    <DxTextBox CssClass="col" Id="Ten_nh" @bind-Text="@CurDmnhcc.Ten_nh" maxlength="@tblLength["ten_nh"]" Enabled="@AllowEditMode" />
+                </div>
+
+                <div class="row pb-2">
+                    <label class="col-4" for="Ten_nh2">@Lap["Group name 2"] : </label>
+                    <DxTextBox CssClass="col" Id="Ten_nh2" @bind-Text="@CurDmnhcc.Ten_nh2" maxlength="@tblLength["ten_nh2"]" Enabled="@AllowEditMode" />
+                </div>
+
+                <hr class="col-12 m-2" />
+            </div>
+        </EditForm>
+    </FormList>
+</div>
+
+@code {
+    [Parameter] public int FilterLoaiNh { get; set; } = 1;
+
+    public Dmnhcc CurDmnhcc { get; set; }
+    private string menu_id = "wf.xd.04";
+
+    protected override void OnInitialized()
+    {
+        sqlTableName = "dmnhcc";
+        SqlTableKey = "loai_nh;ma_nh";
+        CheckSqlTableKey = "loai_nh;ma_nh";
+        ParentPage = String.IsNullOrEmpty(ParentPage) ? "fxnhcc" : ParentPage;
+        CurDmnhcc = new Dmnhcc();
+
+        if (String.IsNullOrEmpty(Menu_id))
+            Menu_id = menu_id;
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PageLoad();
+        myStateMN.OnLangguaChanged += OnLangguachange;
+
+        if (curActionTask == ActionTask.None)
+            curActionTask = myStateMN.GetCurrentActionTask();
+
+        curUser = myStateMN.GetCurUser();
+
+        switch (curActionTask)
+        {
+            case ActionTask.View:
+                if (!string.IsNullOrEmpty(Ma_ma))
+                    await ViewDM(Ma_ma);
+                myStateMN.SetToolBar(new MyToolbar("save", false));
+                break;
+            case ActionTask.Edit:
+                if (!string.IsNullOrEmpty(Ma_ma))
+                    await EditDM(Ma_ma);
+                break;
+            case ActionTask.New:
+                await CreateNewDM();
+                break;
+            case ActionTask.Copy:
+                await CreateCopyDM(Ma_ma);
+                break;
+            default:
+                if (!string.IsNullOrEmpty(Ma_ma))
+                    await ViewDM(Ma_ma);
+                break;
+        }
+    }
+
+    async Task ViewDM(string SqlTableKeyValue)
+    {
+        CurDmnhcc = new Dmnhcc();
+        AllowEditMode = false;
+        AllowEditMa = false;
+        await LoadData(SqlTableKeyValue);
+        StateHasChanged();
+    }
+
+    async Task EditDM(string SqlTableKeyValue)
+    {
+        CurDmnhcc = new Dmnhcc();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        SqlTableKeyValueOld = SqlTableKeyValue;
+        await LoadData(SqlTableKeyValue);
+
+        if (await CheckExistsMaNhCc(CurDmnhcc.Loai_nh, CurDmnhcc.Ma_nh))
+        {
+            AllowEditMa = false;
+        }
+        StateHasChanged();
+    }
+
+    async Task OnEdit()
+    {
+        AllowEditMode = true;
+        curActionTask = ActionTask.Edit;
+        StateHasChanged();
+    }
+
+    async Task OnCopy()
+    {
+        await CreateCopyDM(CurDmnhcc.Loai_nh.ToString() + ";" + CurDmnhcc.Ma_nh);
+    }
+
+    async Task SaveDM()
+    {
+        CurDmnhcc.Ma_nh = (CurDmnhcc.Ma_nh ?? "").ToUpper().Trim().Replace(" ", "");
+        if (!CheckValid())
+            return;
+
+        SqlTableKeyValue = CurDmnhcc.Loai_nh.ToString().Trim() + ";" + CurDmnhcc.Ma_nh.Trim();
+        SqlTableKeyValueOld = (curActionTask == ActionTask.New ? "" : Ma_ma);
+        if (!CheckValidCode())
+            return;
+
+        if (curActionTask == ActionTask.New)
+        {
+            string strsql = "Select top 1 ma_nh from " + sqlTableName + " where loai_nh = " + CurDmnhcc.Loai_nh.ToString().Trim() + " AND ma_nh = '" + CurDmnhcc.Ma_nh.Trim() + "'";
+            DataSet ds = await myDb.LoadDataset(strsql);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao(String.Format(Lap["Mã [{0} ] đã tồn tại !"], CurDmnhcc.Ma_nh.Trim()));
+                return;
+            }
+
+            CurDmnhcc.Date = DateTime.Now.Date;
+            CurDmnhcc.Date0 = DateTime.Now.Date;
+            CurDmnhcc.Time = DateTime.Now.ToString("HH:mm:ss");
+            CurDmnhcc.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmnhcc.User_id = curUser.User_id;
+                CurDmnhcc.User_id0 = curUser.User_id;
+                CurDmnhcc.User_name = curUser.User_name;
+                CurDmnhcc.User_name0 = curUser.User_name;
+            }
+            await myDb.InsertOneRow<Dmnhcc>(CurDmnhcc, sqlTableName);
+            myStateMN.SetNewThongbao(String.Format(Lap["Thêm mới thành công : {0}"], SqlTableKeyValue));
+        }
+        else if (curActionTask == ActionTask.Edit)
+        {
+            CurDmnhcc.Date = DateTime.Now.Date;
+            CurDmnhcc.Time = DateTime.Now.ToString("HH:mm:ss");
+            if (curUser != null)
+            {
+                CurDmnhcc.User_id = curUser.User_id;
+                CurDmnhcc.User_name = curUser.User_name;
+            }
+            await myDb.UpdateOneRow<Dmnhcc>(CurDmnhcc, sqlTableName, SqlTableKey, SqlTableKeyValueOld, true);
+            myStateMN.SetNewThongbao(String.Format(Lap["Cập nhật thành công : {0}"], SqlTableKeyValue));
+        }
+
+        if (DxWindowmodel != null)
+        {
+            myModal.CloseModal(DxWindowmodel);
+        }
+
+        if (ShowAdd == true)
+        {
+            OnClose.InvokeAsync();
+        }
+        else
+            myNavi.NavigateTo("/" + ParentPage);
+    }
+
+    bool CheckValid()
+    {
+        if (string.IsNullOrEmpty(CurDmnhcc.Ma_nh))
+        {
+            myStateMN.SetNewThongbao(Lap["fxnhcc.err.no_ma"] + " !");
+            StateHasChanged();
+            return false;
+        }
+        if (string.IsNullOrEmpty(CurDmnhcc.Ten_nh))
+        {
+            myStateMN.SetNewThongbao(Lap["fxnhcc.err.no_ten"]);
+            StateHasChanged();
+            return false;
+        }
+        if (CurDmnhcc.Ma_nh.Trim().Contains(";"))
+        {
+            myStateMN.SetNewThongbao(Lap["The code cannot contain characters"] + " [;] !");
+            return false;
+        }
+        return true;
+    }
+
+    async Task LoadData(string SqlTableKeyValue)
+    {
+        string sql = BuildSql(sqlTableName, SqlTableKey, SqlTableKeyValue);
+        DataSet DsTrans = await myDb.LoadDataset(sql);
+        if (DsTrans != null && DsTrans.Tables[0].Rows.Count > 0)
+        {
+            List<Dmnhcc> lsdetai = myDb.ConvertDataTable<Dmnhcc>(DsTrans.Tables[0]);
+            if (lsdetai != null && lsdetai.Count > 0)
+                CurDmnhcc = lsdetai[0];
+        }
+        StateHasChanged();
+    }
+
+    async Task CreateNewDM()
+    {
+        CurDmnhcc = new Dmnhcc();
+        CurDmnhcc.Status = "1";
+        CurDmnhcc.Loai_nh = FilterLoaiNh;
+        CurDmnhcc.Ma_nh = GetNewSttDM();
+        AllowEditMode = true;
+        AllowEditMa = true;
+        StateHasChanged();
+    }
+
+    public async Task CreateCopyDM(string SqlTableKeyValue)
+    {
+        CurDmnhcc = new Dmnhcc();
+        await LoadData(SqlTableKeyValue);
+        CurDmnhcc.Ma_nh = GetNewSttDM();
+        CurDmnhcc.Status = "1";
+        AllowEditMode = true;
+        AllowEditMa = true;
+        curActionTask = ActionTask.New;
+        StateHasChanged();
+    }
+
+    async Task<bool> CheckExistsMaNhCc(int loai_nh, string ma_nh)
+    {
+        try
+        {
+            string colName = loai_nh switch
+            {
+                1 => "nh_cc1",
+                2 => "nh_cc2",
+                _ => "nh_cc3"
+            };
+            string sql = "Select count(ma_cc_me) as cnt From dmcc Where " + colName + " = '" + (ma_nh ?? "").Replace("'", "''") + "'";
+            DataSet ds = await myDb.LoadDataset(sql);
+            if (ds != null && ds.Tables[0].Rows.Count > 0)
+            {
+                return Convert.ToInt32(ds.Tables[0].Rows[0]["cnt"]) > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("CheckExistsMaNhCc error: " + ex.Message);
+        }
+        return false;
+    }
+}

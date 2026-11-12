@@ -1,0 +1,46 @@
+@page "/dmtknh"
+@page "/dmtknh/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,dmtknh")]
+
+<div class="row mt-1" tabindex="0">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="750px"
+              MinWidth="700px"
+              Scrollable="true"
+              MaxHeight="95vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        mPage = "dmtknh";
+        sqlTableName = "dmtknh";
+        sqlTableView = "v_dmtknh";
+        SqlTableKey = "tk";
+
+        IsShowCopy = true;        
+        IsShowImport = false;
+        Is_doi_ma = false;
+        FrmType = typeof(SisCa.Pages.List.Catknh.EditDmtknh);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wa.dm.03";
+
+        base.OnInitialized();
+    }
+}

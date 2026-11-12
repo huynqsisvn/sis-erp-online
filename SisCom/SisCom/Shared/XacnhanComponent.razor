@@ -1,0 +1,41 @@
+﻿@using DevExpress.Blazor
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<App> Lap
+
+@if(!string.IsNullOrEmpty(Content))
+{
+<div class="modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true" style="display:block">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                    <h5 class="modal-title text-warning" id="exampleModalLongTitle">@Lap["Notification"]</h5>
+            </div>
+            <div class="modal-body" style="font-size:14pt;">
+                @Content
+            </div>
+            <div class="modal-footer">
+                    <DxButton class="btn btn-warning text-white btnokcancel" Click="@(()=> Dongy())" Text="@Lap["OK"]"></DxButton>
+                    <DxButton class="btn btn-warning text-white btnokcancel" Click="@(()=> Cancel())" Text="@Lap["Cancel"]"></DxButton>
+            </div>
+        </div>
+    </div>
+</div>
+}
+@code {
+    [Parameter]
+    public string Content { get; set; } = "";
+    [Parameter]
+    public EventCallback<bool> Xacnhanxoa { get; set; }
+    public void Dongy()
+    {
+        Content = "";
+        StateHasChanged();
+        Xacnhanxoa.InvokeAsync(true);
+    }
+    public void Cancel()
+    {
+        Content = "";
+        StateHasChanged();
+        Xacnhanxoa.InvokeAsync(false);
+    }
+}

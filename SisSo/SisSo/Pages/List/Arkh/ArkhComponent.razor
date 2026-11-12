@@ -1,0 +1,311 @@
+﻿@page "/arkh"
+@page "/arkh/{Menu_id}"
+@inherits ListBaseComponent
+@using SisLib.List
+@using Microsoft.Extensions.Localization
+@using SisSo.Pages.List.Arkh
+@inject IStringLocalizer<ArkhComponent> Lat
+@attribute [Authorize(Roles = "admin,arkh")]
+
+<div class="row">
+    <div class="col-12 position-relative">
+        <button class="btn-ai-assistant-float" @onclick="@OpenChatBot" title="Trợ lý AI tạo khách hàng">
+            <img src=".\Images\sbot_icon.jpg" alt="AI" class="btn-ai-icon" />
+            <span>Trợ lý AI</span>
+        </button>
+        <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+    </div>
+</div>
+
+<style>
+    .btn-ai-assistant-float {
+        position: absolute;
+        top: -15px;
+        right: 15px;
+        z-index: 100;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        text-align: center;
+        height: 30px;
+    }
+
+    .btn-ai-assistant-float:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 14px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(135deg, #5568d3 0%, #6a3f91 100%);
+    }
+
+    .btn-ai-assistant-float:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-ai-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+
+    .btn-ai-assistant-float span {
+        white-space: nowrap;
+        line-height: 1;
+    }
+
+    @@media (max-width: 768px) {
+        .btn-ai-assistant-float {
+            top: -40px;
+            right: 10px;
+            padding: 3px 10px;
+            font-size: 12px;
+            height: 30px;
+        }
+        
+        .btn-ai-assistant-float span {
+            display: none;
+        }
+        
+        .btn-ai-assistant-float {
+            width: 30px;
+            padding: 0;
+            border-radius: 50%;
+        }
+        
+        .btn-ai-icon {
+            width: 20px;
+            height: 20px;
+        }
+    }
+</style>
+<DxPopup @ref="@OptwRef"
+          ShowFooter="false"
+          ShowHeader="false"
+          @bind-Visible="@IDVisible"
+          MinWidth="50vw"
+          CloseOnEscape="true"
+          ShowCloseButton="false"          
+          AllowResize="true"
+          AllowDrag="true"
+          AllowDragByHeaderOnly="true">    
+    <BodyContentTemplate>
+        <div class="row">
+            <FrmChangeListID @bind-Visible="@IDVisible" List_ID="@sqlTableName" Ma_ma="@SqlTableKeyValue" Title="@Lat["Change customer code"]" Ten_item="@Ten_item" OnOK="@ChangeOK" />
+        </div>
+    </BodyContentTemplate>
+</DxPopup>
+@if (IsImportPopupVisible)
+{
+
+    <DxPopup @ref="@OptwRef"
+    ShowFooter="false"
+    ShowHeader="false"
+    MinWidth="50vw"
+    @bind-Visible="@IsImportPopupVisible"
+    CloseOnEscape="true"
+    ShowCloseButton="false"
+    AllowResize="true"
+    AllowDrag="true"
+    AllowDragByHeaderOnly="true">
+        <BodyContentTemplate>
+            <div class="row">
+                <FrmImportDM @bind-IsImportPopupVisible="@IsImportPopupVisible" CurDmimex ="@CurDmimex" OnImportCompleted="@ImportOK" />
+            </div>
+        </BodyContentTemplate>
+    </DxPopup>
+}
+@if (IsChatBotVisible)
+{
+    <ChatBotArkhComponent CloseWindow="@CloseChatBot" 
+                         OnCustomerCreated="@HandleCustomerCreated" 
+                         OnCustomerUpdated="@HandleCustomerUpdated"
+                         OnCustomerDeleted="@HandleCustomerDeleted" />
+}
+@code {
+private bool IsChatBotVisible = false;
+    
+protected override void OnInitialized()
+{
+    mPage = "arkh";
+    IsShowImport = true;
+    editPage = "frmArkh";
+    IsShowCopy = true;
+    if (String.IsNullOrEmpty(Menu_id))
+        Menu_id = "ws_dm_01";
+
+    base.OnInitialized();
+}
+    
+void OpenChatBot()
+{
+    IsChatBotVisible = true;
+    StateHasChanged();
+}
+    
+    void CloseChatBot(bool close)
+    {
+        IsChatBotVisible = false;
+        StateHasChanged();
+    }
+    
+    async Task HandleCustomerCreated(Dmkh customer)
+    {
+        try
+        {
+            if (customer == null)
+            {
+                myStateMN.SetNewThongbao("Dữ liệu khách hàng không hợp lệ");
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(customer.Ten_kh))
+            {
+                myStateMN.SetNewThongbao("Tên khách hàng không được để trống");
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(customer.Ma_kh))
+            {
+                string sql = "SELECT ISNULL(MAX(CAST(ma_kh AS INT)), 0) + 1 as NewCode FROM dmkh WHERE ISNUMERIC(ma_kh) = 1";
+                var result = await myDb.LoadDataset(sql);
+                if (result != null && result.Tables[0].Rows.Count > 0)
+                {
+                    customer.Ma_kh = result.Tables[0].Rows[0]["NewCode"].ToString();
+                }
+                else
+                {
+                    customer.Ma_kh = "1";
+                }
+            }
+            
+            customer.Ma_kh = customer.Ma_kh.ToUpper().Trim().Replace(" ", "");
+            
+            string checkSql = "SELECT ma_kh FROM dmkh WHERE ma_kh = '" + customer.Ma_kh + "'";
+            var checkDs = await myDb.LoadDataset(checkSql);
+            if (checkDs != null && checkDs.Tables[0].Rows.Count > 0)
+            {
+                myStateMN.SetNewThongbao($"Mã khách hàng [{customer.Ma_kh}] đã tồn tại!");
+                return;
+            }
+            
+            customer.Date = DateTime.Now.Date;
+            customer.Date0 = DateTime.Now.Date;
+            customer.Time = DateTime.Now.ToString("HH:mm:ss");
+            customer.Time0 = DateTime.Now.ToString("HH:mm:ss");
+            
+            var curUser = myStateMN.GetCurUser();
+            if (curUser != null)
+            {
+                customer.User_id = curUser.User_id;
+                customer.User_id0 = curUser.User_id;
+                customer.User_name = curUser.User_name;
+                customer.User_name0 = curUser.User_name;
+            }
+            
+            await myDb.InsertOneRow<Dmkh>(customer, "dmkh");
+            
+            myStateMN.SetNewThongbao($"✓ Tạo khách hàng thành công: {customer.Ten_kh} (Mã: {customer.Ma_kh})");
+            
+            await Loaddata();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi khi tạo khách hàng: {ex.Message}");
+            Console.WriteLine($"Error creating customer: {ex.Message}");
+        }
+    }
+    
+    async Task HandleCustomerUpdated(Dmkh customer)
+    {
+        try
+        {
+            if (customer == null)
+            {
+                myStateMN.SetNewThongbao("Dữ liệu khách hàng không hợp lệ");
+                return;
+            }
+            
+            if (string.IsNullOrEmpty(customer.Ma_kh) || string.IsNullOrEmpty(customer.Ten_kh))
+            {
+                myStateMN.SetNewThongbao("Mã KH và Tên KH không được để trống");
+                return;
+            }
+            
+            customer.Date = DateTime.Now.Date;
+            customer.Time = DateTime.Now.ToString("HH:mm:ss");
+            
+            var curUser = myStateMN.GetCurUser();
+            if (curUser != null)
+            {
+                customer.User_id = curUser.User_id;
+                customer.User_name = curUser.User_name;
+            }
+            
+            await myDb.UpdateOneRow<Dmkh>(customer, "dmkh", "ma_kh", customer.Ma_kh);
+            
+            myStateMN.SetNewThongbao($"✓ Cập nhật khách hàng thành công: {customer.Ten_kh} (Mã: {customer.Ma_kh})");
+            
+            await Loaddata();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"Lỗi khi cập nhật khách hàng: {ex.Message}");
+            Console.WriteLine($"Error updating customer: {ex.Message}");
+        }
+    }
+    
+    async Task HandleCustomerDeleted(string maKh)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(maKh))
+            {
+                myStateMN.SetNewThongbao("⚠️ Mã khách hàng không hợp lệ");
+                return;
+            }
+
+            // Get customer name for notification
+            string sql = $"SELECT ten_kh FROM dmkh WHERE ma_kh = '{maKh}'";
+            var ds = await myDb.LoadDataset(sql);
+            string tenKh = ds?.Tables[0].Rows.Count > 0 
+                ? ds.Tables[0].Rows[0]["ten_kh"]?.ToString() ?? maKh 
+                : maKh;
+
+            // Delete from database
+            sql = $"DELETE FROM dmkh WHERE ma_kh = '{maKh}'";
+            object affected = myDb.GetValue(sql);
+
+            if (affected == null)
+            {
+                myStateMN.SetNewThongbao($"✓ Đã xóa khách hàng: {tenKh} (Mã: {maKh})");
+                
+                // Refresh grid data
+                await Loaddata();
+                StateHasChanged();
+            }
+            else
+            {
+                myStateMN.SetNewThongbao("⚠️ Không có dữ liệu bị xóa");
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao($"❌ Lỗi khi xóa khách hàng: {ex.Message}");
+            Console.WriteLine($"Error deleting customer: {ex.Message}");
+        }
+    }
+}

@@ -1,0 +1,45 @@
+﻿@namespace SisHr.Pages.Report.HRHSNV.Tabs
+
+@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using Microsoft.AspNetCore.Components
+
+@* ===== 6. SALARY (Lương) ===== *@
+<DxFormLayoutGroup id="section-6" Caption="@Lap["Salary"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Salary coefficient"]">
+        <Template>
+            <DxSpinEdit @bind-Value="CurRow.He_so_luong" IsEnable="@AllowEditMode" DisplayFormat="{0:n2}" ShowSpinButtons="false" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Allowance coefficient"]">
+        <Template>
+            <DxSpinEdit @bind-Value="CurRow.He_so_phu_cap" IsEnable="@AllowEditMode" DisplayFormat="{0:n2}" ShowSpinButtons="false" />
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Salary grade"]">
+        <Template>
+            <DxSpinEdit @bind-Value="CurRow.Bac_luong" IsEnable="@AllowEditMode" DisplayFormat="{0:n2}" ShowSpinButtons="false" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["Effective salary date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_huong_luong" IsEnable="@AllowEditMode" DisplayFormat="dd/MM/yyyy" />
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="6" Caption="@Lap["Salary amount"]">
+        <Template>
+            <DxSpinEdit @bind-Value="CurRow.Muc_luong" IsEnable="@AllowEditMode" DisplayFormat="{0:n0}" ShowSpinButtons="false" />
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+@code {
+    [Parameter] public HsnvDetailModel CurRow { get; set; }
+    [Parameter] public bool AllowEditMode { get; set; }
+    [Parameter] public dynamic Lap { get; set; }
+}

@@ -1,0 +1,1058 @@
+﻿@using System.Data
+@using System.Data.SqlClient
+@using System.Net.Http.Headers
+@using System.Linq
+@inject XmlStringLocalizer Lap
+@inject IDbManager myDb
+@inject Statemanagerment myStateMN
+@inject IOptionsManager myOptions
+@inject ISysVarManager mySysVars
+@inject IWebHostEnvironment myHost
+@inject IDialogService myDlSvc
+
+<FrmCreatePurchaseInvoiceDialog @ref="createInvoiceDialog" />
+<FrmUpdateValueDialog @ref="updateValueDialog" />
+
+<div class="form-wrapper">
+    @if (IsLoading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p class="mt-2">@Lap["Loading invoice data"]...</p>
+        </div>
+    }
+    else if (InvoiceList != null && InvoiceList.Count > 0)
+    {
+        <div class="toolbar-container">
+            <div class="form-toolbar">
+                <DxToolbar ItemRenderStyleMode="ToolbarRenderStyleMode.Plain" ItemClick="@OnToolbarItemClick">
+                    <Items>
+                        <DxToolbarItem Name="btnRefresh" IconCssClass="tb-icon tb-icon-refresh" class="tb-btn"
+                                       Tooltip="F9" Text="@Lap["Refresh"]"
+                                       Alignment="ToolbarItemAlignment.Left"
+                                       BeginGroup="true">
+                        </DxToolbarItem>
+                        <DxToolbarItem Name="btnUpdateValue" IconCssClass="tb-icon tb-icon-update" class="tb-btn"
+                                       Tooltip="F4" Text="@Lap["Update value"]"
+                                       Alignment="ToolbarItemAlignment.Left"
+                                       BeginGroup="true">
+                        </DxToolbarItem>
+                        <DxToolbarItem Name="btnCreatePurchase" IconCssClass="tb-icon tb-icon-add" class="tb-btn"
+                                       Tooltip="F5" Text="@Lap["Create purchase invoice"]"
+                                       Alignment="ToolbarItemAlignment.Left"
+                                       BeginGroup="true">
+                        </DxToolbarItem>
+                        <DxToolbarItem Name="btnCreateService" IconCssClass="tb-icon tb-icon-add" class="tb-btn"
+                                       Tooltip="F6" Text="@Lap["Create service invoice"]"
+                                       Alignment="ToolbarItemAlignment.Left"
+                                       BeginGroup="true">
+                        </DxToolbarItem>
+                        <DxToolbarItem Name="btnExport" IconCssClass="tb-icon tb-icon-export" class="tb-btn"
+                                       Tooltip="Export" Text="@Lap["Export"]"
+                                       Alignment="ToolbarItemAlignment.Left"
+                                       BeginGroup="true">
+                        </DxToolbarItem>
+                    </Items>
+                </DxToolbar>
+            </div>
+        </div>
+
+        <div class="grid-container">
+            <div class="grid-scroll-wrapper">
+                <FrmBrowse3Component @ref="oBrowse" TblData="@InvoiceData" Page_size="15" IsPageSize="true" CssClass="invoice-grid" Fbrowse="@strBrowseBKCT" SelectCol="chon" IsLangEn="@IsLangEn" RowStyleFunc="@GetRowStyle" />
+            </div>
+        </div>
+
+        <div class="button-container">            
+            <DxButton CssClass="col-auto" RenderStyle="ButtonRenderStyle.Danger" Text="@Lap["Close"]" Click="@OnClose" />
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info m-2">
+            <p>@Lap["No data"]</p>
+        </div>
+    }
+</div>
+
+<style>
+    /* === MAIN LAYOUT === */
+    .form-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        max-height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* === TOOLBAR - NO SIDE BORDERS === */
+    .toolbar-container {
+        flex: 0 0 auto;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .form-toolbar {
+        width: 100%;
+        height: 32px;
+        background-color: #f5f5f5;
+        border-top: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+        border-left: 0;
+        border-right: 0;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    /* === GRID - FILLS ALL SPACE === */
+    .grid-container {
+        flex: 1 1 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        min-height: 0;
+        position: relative;
+    }
+
+    .grid-scroll-wrapper {
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: auto;
+        position: relative;
+    }
+
+    .invoice-grid {
+        width: 100%;
+    }
+
+    :deep(.grid-container .container-fluid) {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* === BUTTON - MINIMAL PADDING === */
+    .button-container {
+        flex: 0 0 auto;
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        padding: 6px 8px;
+        margin: 0;
+        border-top: 1px solid #ddd;
+        background-color: #f9f9f9;
+        gap: 8px;
+    }
+
+    /* === TOOLBAR ICONS === */
+    .tb-icon {
+        width: 20px;
+        height: 20px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    .tb-icon-refresh { background-image: url('.\\Images\\Icon_refresh.svg'); }
+    .tb-icon-update { background-image: url('.\\Images\\Icon_sua.svg'); }
+    .tb-icon-add { background-image: url('.\\Images\\Icon_them_moi.svg'); }
+    .tb-icon-edit { background-image: url('.\\Images\\Icon_sua.svg'); }
+    .tb-icon-export { background-image: url('.\\Images\\Export.png'); }
+
+    .tb-btn {
+        height: 28px;
+    }
+
+    /* === DEVEXPRESS OVERRIDES === */
+    :deep(.form-toolbar .dx-toolbar) {
+        width: 100%;
+        margin: 0;
+        padding: 0 4px;
+        border: 0;
+    }
+
+    :deep(.dx-toolbar-item) {
+        padding: 0 2px;
+    }
+
+    :deep(.dx-toolbar-button) {
+        height: 28px;
+        min-height: 28px;
+        padding: 2px 6px;
+        font-size: 12px;
+    }
+
+    :deep(.dx-toolbar-text) {
+        font-size: 12px;
+        line-height: 1.2;
+    }
+
+    /* === FIX BUTTON ICON + TEXT OVERLAP === */
+    .btn-close {
+        min-width: 100px !important;
+    }
+    :deep(.btn-close) {
+        min-width: 100px;
+        height: 32px;
+        padding: 4px 12px;
+        display: inline-flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+    }
+
+    :deep(.btn-close > *) {
+        flex-shrink: 0;
+    }
+
+    :deep(.btn-close svg),
+    :deep(.btn-close .dxbs-icon) {
+        margin: 0 !important;
+    }
+
+    :deep(.btn-close .dxbs-btn-txt) {
+        white-space: nowrap;
+    }
+
+    /* === ENSURE GRID FILLS CONTAINER === */
+    :deep(.invoice-grid > *) {
+        width: 100%;
+    }
+
+    :deep(.grid-scroll-wrapper .dxbl-grid) {
+        max-height: none !important;
+    }
+</style>
+
+@code {
+
+    [Parameter] public string Ma_ct { get; set; }
+    [Parameter] public Command Com_mand { get; set; }
+    [Parameter] public string Token_TCT { get; set; }
+    [Parameter] public bool IsLangEn { get; set; }
+    [Parameter] public DateTime Ngay_ct1 { get; set; }
+    [Parameter] public DateTime Ngay_ct2 { get; set; }
+    [Parameter] public string So_ct1 { get; set; }
+    [Parameter] public string So_ct2 { get; set; }
+    [Parameter] public string Ma_dvcs { get; set; }
+    [Parameter] public EventCallback<DataSet> OnDataReceived { get; set; }
+
+    private FrmBrowse3Component oBrowse;
+    private FrmCreatePurchaseInvoiceDialog createInvoiceDialog;
+    private FrmUpdateValueDialog updateValueDialog;
+    private DataTable InvoiceData;
+    private DataSet dataSet = new DataSet();
+    private List<InvoiceItem> InvoiceList;
+    private bool IsLoading = false;
+    private string strBrowseBKCT = "";
+
+    protected override void OnInitialized()
+    {
+        // Set browse string
+        if (Com_mand != null)
+        {
+            if (!IsLangEn)
+            {
+                strBrowseBKCT = Com_mand.Vbrowse2?.Trim() ?? "";
+            }
+            else
+            {
+                strBrowseBKCT = Com_mand.Ebrowse2?.Trim() ?? "";
+            }
+        }
+
+        // Load initial data with parameters from parent
+        _ = LoadBKCTData(true);
+
+        base.OnInitialized();
+    }
+
+    private async Task LoadBKCTData(bool isFirstLoad)
+    {
+        IsLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            string sqlCmd = "POImexInv_LoadBkhddvTCT";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@Ngay_ct1", Ngay_ct1.ToString("yyyyMMdd") },
+                { "@Ngay_ct2", Ngay_ct2.ToString("yyyyMMdd") },
+                { "@So_ct1", So_ct1 ?? "" },
+                { "@So_ct2", So_ct2 ?? "" },
+                { "@Ma_dvcs", Ma_dvcs ?? "" }
+            };
+
+            DataSet ds = await myDb.LoadDataset(sqlCmd, parameters);
+            if (ds != null && ds.Tables.Count > 0)
+            {
+                InvoiceData = ds.Tables[0].Copy();
+                InvoiceData.TableName = "tbDetail";
+                InvoiceList = ConvertToInvoiceList(InvoiceData);
+
+                dataSet = ds;
+
+                if (InvoiceList == null || InvoiceList.Count == 0)
+                {
+                    myStateMN?.SetNewThongbao(Lap["No invoices found"]);
+                }
+                else
+                {
+                    myStateMN?.SetNewThongbao(string.Format(Lap["Found {0} invoices"], InvoiceList.Count));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN?.SetNewThongbao($"{Lap["Load error"]}: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async void OnToolbarItemClick(ToolbarItemClickEventArgs e)
+    {
+        switch (e.ItemName)
+        {
+            case "btnRefresh":
+                _ = LoadBKCTData(false);
+                break;
+            case "btnUpdateValue":
+                UpdateValue();
+                break;
+            case "btnCreatePurchase":
+                await CreatePurchaseInvoice();
+                break;
+            case "btnCreateService":
+                CreateServiceInvoice();
+                break;
+            case "btnExport":
+                oBrowse?.ExPortGrid(1);
+                myStateMN.SetNewThongbao(Lap["Export successfully"]);
+                break;
+        }
+    }
+
+    private async void UpdateValue()
+    {
+        try
+        {
+            if (InvoiceData == null || InvoiceData.Rows.Count == 0)
+            {
+                myStateMN?.SetNewThongbao(Lap["No data available"]);
+                return;
+            }
+
+            var checkedRows = InvoiceData.AsEnumerable()
+                .Where(row => row.Table.Columns.Contains("chon") && Convert.ToBoolean(row["chon"]))
+                .ToArray();
+
+            if (checkedRows.Length == 0)
+            {
+                await myDlSvc.AlertAsync(new MessageBoxOptions
+                {
+                    Text = Lap["Please select invoices to create"],
+                    Title = Lap["Warning"],
+                    OkButtonText = Lap["OK"],
+                    ShowIcon = true,
+                    RenderStyle = MessageBoxRenderStyle.Warning
+                });
+                return;
+            }
+
+            // Show update value dialog
+            var dialogParams = new Dictionary<string, object>
+            {
+                { "OldValue", "" },
+                { "Field", "ma_kh" },
+                { "IsLangEn", IsLangEn }
+            };
+
+            var result = await updateValueDialog.ShowAsync(dialogParams);
+
+            if (result == null || !result.ContainsKey("IsOk") || !(bool)result["IsOk"])
+            {
+                return;
+            }
+
+            string fieldToUpdate = result["Field"]?.ToString() ?? "";
+            string newValue = result["NewValue"]?.ToString() ?? "";
+            string dvt1 = result["Dvt1"]?.ToString() ?? "";
+            string heSo = result["HeSo"]?.ToString() ?? "";
+
+            if (string.IsNullOrWhiteSpace(fieldToUpdate) || string.IsNullOrWhiteSpace(newValue))
+            {
+                return;
+            }
+
+            bool confirmUpdate = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = IsLangEn ? "Do you want to update the data?" : "Có muốn cập nhật số liệu không?",
+                Title = Lap["Confirm"],
+                OkButtonText = Lap["Yes"],
+                CancelButtonText = Lap["No"],
+                ShowIcon = true
+            });
+
+            if (!confirmUpdate)
+            {
+                return;
+            }
+
+            IsLoading = true;
+            StateHasChanged();
+
+            int successCount = 0;
+            int errorCount = 0;
+
+            foreach (var row in checkedRows)
+            {
+                try
+                {
+                    string invGuid = row["inv_guid"]?.ToString().Trim() ?? "";
+                    if (string.IsNullOrEmpty(invGuid)) continue;
+
+                    // Update in database
+                    string updateSql = $"UPDATE bkhddvtct SET [{fieldToUpdate}] = @Value, dvt1 = @Dvt1 WHERE inv_guid = @InvGuid";
+                    var parameters = new Dictionary<string, object>
+                    {
+                        { "@Value", newValue.Trim() },
+                        { "@Dvt1", dvt1 },
+                        { "@InvGuid", invGuid }
+                    };
+
+                    await myDb.LoadDataset(updateSql, parameters);
+
+                    row[fieldToUpdate] = newValue.Trim();
+                    if (fieldToUpdate == "ma_vt")
+                    {
+                        row["dvt1"] = dvt1;
+                    }
+
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    errorCount++;
+                }
+            }
+
+            IsLoading = false;
+
+            if (successCount > 0)
+            {
+                InvoiceData.AcceptChanges();
+                StateHasChanged();
+
+                await myDlSvc.AlertAsync(new MessageBoxOptions
+                {
+                    Text = $"{(IsLangEn ? "Successfully updated" : "Cập nhật thành công")} {successCount} {(IsLangEn ? "records" : "bản ghi")}",
+                    Title = Lap["Information"],
+                    OkButtonText = Lap["OK"],
+                    ShowIcon = true,
+                    RenderStyle = MessageBoxRenderStyle.Info
+                });
+            }
+
+            if (errorCount > 0)
+            {
+                await myDlSvc.AlertAsync(new MessageBoxOptions
+                {
+                    Text = $"{(IsLangEn ? "Failed to update" : "Cập nhật thất bại")} {errorCount} {(IsLangEn ? "records" : "bản ghi")}",
+                    Title = Lap["Error"],
+                    OkButtonText = Lap["OK"],
+                    ShowIcon = true,
+                    RenderStyle = MessageBoxRenderStyle.Danger
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            IsLoading = false;
+            myStateMN?.SetNewThongbao($"{Lap["Error"]}: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CreatePurchaseInvoice()
+    {
+        try
+        {
+            if (InvoiceData == null || InvoiceData.Rows.Count == 0)
+            {
+                myStateMN?.SetNewThongbao(Lap["No data available"]);
+                return;
+            }
+
+            DataView dataView = InvoiceData.DefaultView;
+
+            var checkedRows = InvoiceData.AsEnumerable()
+                .Where(row => row.Table.Columns.Contains("chon") && Convert.ToBoolean(row["chon"]))
+                .GroupBy(row => row["id_hd"]?.ToString()?.Trim())
+                .Select(g => g.OrderBy(row => row["ngay_ct0"]).First())
+                .OrderBy(row => row["ngay_ct0"])
+                .ToArray();
+
+            if (checkedRows.Length == 0)
+            {
+                await myDlSvc.AlertAsync(new MessageBoxOptions
+                {
+                    Text = Lap["Please select invoices to create"],
+                    Title = Lap["Warning"],
+                    OkButtonText = Lap["OK"],
+                    ShowIcon = true,
+                    RenderStyle = MessageBoxRenderStyle.Warning
+                });
+                return;
+            }
+
+            var missingCustomer = checkedRows.Where(row => string.IsNullOrWhiteSpace(row["ma_kh"]?.ToString())).ToArray();
+            if (missingCustomer.Length > 0)
+            {
+                await myDlSvc.AlertAsync(new MessageBoxOptions
+                {
+                    Text = Lap["Some invoices are missing customer code on accounting software"],
+                    Title = Lap["Warning"],
+                    OkButtonText = Lap["OK"],
+                    ShowIcon = true,
+                    RenderStyle = MessageBoxRenderStyle.Warning
+                });
+                return;
+            }
+
+            var missingProduct = checkedRows.Where(row => string.IsNullOrWhiteSpace(row["ma_vt"]?.ToString())).ToArray();
+            if (missingProduct.Length > 0)
+            {
+                await myDlSvc.AlertAsync(new MessageBoxOptions
+                {
+                    Text = Lap["Some invoices are missing product code on accounting software"],
+                    Title = Lap["Warning"],
+                    OkButtonText = Lap["OK"],
+                    ShowIcon = true,
+                    RenderStyle = MessageBoxRenderStyle.Warning
+                });
+                return;
+            }
+
+            string list_id_hd = string.Join(",", checkedRows
+                .Where(row => !string.IsNullOrWhiteSpace(row["id_hd"]?.ToString()))
+                .Select(row => row["id_hd"].ToString().Trim())
+                .Distinct());
+
+            if (!string.IsNullOrEmpty(list_id_hd))
+            {
+                string checkExistCmd = $"select stt_rec from ph71 where id_hd in (select Items from [dbo].[Split](@list_id_hd,',')) UNION select stt_rec from ph31 where id_hd in (select Items from [dbo].[Split](@list_id_hd,','))";
+                var existingVouchers = await myDb.LoadDataset(checkExistCmd, new Dictionary<string, object>
+                {
+                    { "@list_id_hd", list_id_hd }
+                });
+
+                if (existingVouchers?.Tables.Count > 0 && existingVouchers.Tables[0].Rows.Count > 0)
+                {
+                    bool confirmRecreate = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+                    {
+                        Text = Lap["Invoices already exist. Do you want to recreate them?"],
+                        Title = Lap["Confirm"],
+                        OkButtonText = Lap["Yes"],
+                        CancelButtonText = Lap["No"],
+                        ShowIcon = true,
+                        RenderStyle = MessageBoxRenderStyle.Warning
+                    });
+
+                    if (!confirmRecreate)
+                    {
+                        return;
+                    }
+
+                    foreach (DataRow voucherRow in existingVouchers.Tables[0].Rows)
+                    {
+                        string sttRec = voucherRow["stt_rec"].ToString().Trim();
+                        string deleteCmd = $"EXEC [DeleteVoucher] 'PNA', '{sttRec}'";
+                        await myDb.ExecuteSqlQueryAsync(deleteCmd);
+                    }
+                }
+            }
+
+            string ma_qs_default = "";
+            string ma_qs_pc_default = "";
+            string ma_kho_default = "";
+            string tk_co_default = "";
+            string tk_no_default = "";
+
+            try
+            {
+                ma_qs_default = myStateMN.GetItem("M_HDDVTCT_MA_QS_PNA")?.ToString() ?? "";
+                ma_qs_pc_default = myStateMN.GetItem("M_HDDVTCT_MA_QS_PC")?.ToString() ?? "";
+                ma_kho_default = myStateMN.GetItem("M_HDDVTCT_MA_KHO_PNA")?.ToString() ?? "";
+                tk_co_default = myStateMN.GetItem("M_HDDVTCT_TK_CO")?.ToString() ?? "";
+                tk_no_default = myStateMN.GetItem("M_HDDVTCT_TK_NO")?.ToString() ?? "";
+            }
+            catch
+            {
+                // Use empty defaults if options are not available
+            }
+
+            string invoiceNumbers = string.Join(", ", checkedRows.Select(r => r["so_ct0"]?.ToString().Trim()).Distinct());
+
+            var dialogParams = new Dictionary<string, object>
+            {
+                { "Ma_qs", ma_qs_default },
+                { "Ma_qs_pc", ma_qs_pc_default },
+                { "Ma_kho", ma_kho_default },
+                { "Tk_co", tk_co_default },
+                { "Tk_no", tk_no_default },
+                { "InvoiceNumbers", invoiceNumbers },
+                { "UserId", myStateMN.GetCurUser().User_id },
+                { "IsLangEn", IsLangEn }
+            };
+
+            var result = await ShowCreateInvoiceDialog(dialogParams);
+
+            if (result != null && result.ContainsKey("IsOk") && (bool)result["IsOk"])
+            {
+                string ma_qs = result["Ma_qs"]?.ToString().Trim() ?? "";
+                string ma_qs_pc = result["Ma_qs_pc"]?.ToString().Trim() ?? "";
+                string tk_no = result["Tk_no"]?.ToString().Trim() ?? "";
+                string tk_co = result["Tk_co"]?.ToString().Trim() ?? "";
+                string ma_kho = result["Ma_kho"]?.ToString().Trim() ?? "";
+                IsLoading = true;
+                StateHasChanged();
+
+                myStateMN.SetItem("M_HDDVTCT_MA_QS_PNA", ma_qs);
+                myStateMN.SetItem("M_HDDVTCT_MA_QS_PC", ma_qs_pc);
+                myStateMN.SetItem("M_HDDVTCT_MA_KHO_PNA", ma_kho);
+                myStateMN.SetItem("M_HDDVTCT_TK_CO", tk_co);
+                myStateMN.SetItem("M_HDDVTCT_TK_NO", tk_no);
+
+                string msg_success = "";
+                string msg_error = "";
+                int count_success = 0;
+                int count_error = 0;
+                Ma_dvcs = myStateMN.GetDvcs().Ma_dvcs;
+                
+
+                foreach (var row in checkedRows)
+                {
+                    try
+                    {
+                        string id_hd = row["id_hd"]?.ToString().Trim() ?? "";
+                        string so_ct = row["so_ct0"]?.ToString().Trim() ?? "";
+
+                        if (string.IsNullOrEmpty(id_hd)) continue;
+
+                        var parameters = new Dictionary<string, object>
+                        {
+                            { "@List", id_hd },
+                            { "@Ma_dvcs", Ma_dvcs },
+                            { "@user_id", myStateMN.GetCurUser().User_id },
+                            { "@Ma_qs", ma_qs },
+                            { "@Tk_co", tk_co },
+                            { "@Tk_no", tk_no },
+                            { "@Ma_kho", ma_kho }
+                        };
+
+                        var resultDs = await myDb.LoadDataset("BKHDDVTCT_CREATE_PNA", parameters);
+
+                        if (resultDs?.Tables.Count > 0 && resultDs.Tables[resultDs.Tables.Count - 1].Rows.Count > 0)
+                        {
+                            string yn = resultDs.Tables[resultDs.Tables.Count - 1].Rows[0]["YN"]?.ToString().Trim() ?? "0";
+                            
+                            if (yn == "1")
+                            {
+                                count_success++;
+                                msg_success += (string.IsNullOrEmpty(msg_success) ? "" : "; ") + so_ct;
+
+                                if (!string.IsNullOrEmpty(ma_qs_pc))
+                                {
+                                    string createPcCmd = $"EXEC [dbo].[BKHDDVTCT_PNA_TAOPC] '{id_hd}', '{ma_qs_pc}'";
+                                    await myDb.ExecuteSqlQueryAsync(createPcCmd);
+                                }
+                            }
+                            else
+                            {
+                                count_error++;
+                                msg_error += (string.IsNullOrEmpty(msg_error) ? "" : "; ") + so_ct;
+                            }
+                        }
+                        else
+                        {
+                            count_error++;
+                            msg_error += (string.IsNullOrEmpty(msg_error) ? "" : "; ") + so_ct;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        count_error++;
+                        string so_ct = row["so_ct0"]?.ToString().Trim() ?? "";
+                        msg_error += (string.IsNullOrEmpty(msg_error) ? "" : "; ") + so_ct;
+                    }
+                }
+
+                IsLoading = false;
+
+                if (!string.IsNullOrEmpty(msg_success))
+                {
+                    await myDlSvc.AlertAsync(new MessageBoxOptions
+                    {
+                        Text = $"{Lap["Successfully created"]} ({count_success} {Lap["invoices"]}): {msg_success}",
+                        Title = Lap["Information"],
+                        OkButtonText = Lap["OK"],
+                        ShowIcon = true,
+                        RenderStyle = MessageBoxRenderStyle.Info
+                    });
+                }
+
+                if (!string.IsNullOrEmpty(msg_error))
+                {
+                    await myDlSvc.AlertAsync(new MessageBoxOptions
+                    {
+                        Text = $"{Lap["Failed to create"]} ({count_error} {Lap["invoices"]}): {msg_error}",
+                        Title = Lap["Error"],
+                        OkButtonText = Lap["OK"],
+                        ShowIcon = true,
+                        RenderStyle = MessageBoxRenderStyle.Danger
+                    });
+                }
+
+                //await LoadBKCTData(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            IsLoading = false;
+            myStateMN?.SetNewThongbao($"{Lap["Error"]}: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<Dictionary<string, object>> ShowCreateInvoiceDialog(Dictionary<string, object> parameters)
+    {
+        // Parameters are already set in CreatePurchaseInvoice method
+        var result = await createInvoiceDialog.ShowAsync(parameters);
+        return result;
+    }
+
+    private async Task CreateServiceInvoice()
+    {
+        try
+        {
+            if (InvoiceData == null || InvoiceData.Rows.Count == 0)
+            {
+                myStateMN?.SetNewThongbao(Lap["No data available"]);
+                return;
+            }
+
+            DataView dataView = InvoiceData.DefaultView;
+
+            var checkedRows = InvoiceData.AsEnumerable()
+                .Where(row => row.Table.Columns.Contains("chon") && Convert.ToBoolean(row["chon"]))
+                .GroupBy(row => row["id_hd"]?.ToString()?.Trim())
+                .Select(g => g.OrderBy(row => row["ngay_ct0"]).First())
+                .OrderBy(row => row["ngay_ct0"])
+                .ToArray();
+
+            if (checkedRows.Length == 0)
+            {
+                await myDlSvc.AlertAsync(new MessageBoxOptions
+                {
+                    Text = Lap["Please select invoices to create"],
+                    Title = Lap["Warning"],
+                    OkButtonText = Lap["OK"],
+                    ShowIcon = true,
+                    RenderStyle = MessageBoxRenderStyle.Warning
+                });
+                return;
+            }
+
+            var missingCustomer = checkedRows.Where(row => string.IsNullOrWhiteSpace(row["ma_kh"]?.ToString())).ToArray();
+            if (missingCustomer.Length > 0)
+            {
+                await myDlSvc.AlertAsync(new MessageBoxOptions
+                {
+                    Text = Lap["Some invoices are missing customer code on accounting software"],
+                    Title = Lap["Warning"],
+                    OkButtonText = Lap["OK"],
+                    ShowIcon = true,
+                    RenderStyle = MessageBoxRenderStyle.Warning
+                });
+                return;
+            }
+
+            string list_id_hd = string.Join(",", checkedRows
+                .Where(row => !string.IsNullOrWhiteSpace(row["id_hd"]?.ToString()))
+                .Select(row => row["id_hd"].ToString().Trim())
+                .Distinct());
+
+            if (!string.IsNullOrEmpty(list_id_hd))
+            {
+                string checkExistCmd = $"select stt_rec, ma_ct from ph71 where id_hd in (select Items from [dbo].[Split](@list_id_hd,',')) UNION select stt_rec, ma_ct from ph31 where id_hd in (select Items from [dbo].[Split](@list_id_hd,','))";
+                var existingVouchers = await myDb.LoadDataset(checkExistCmd, new Dictionary<string, object>
+                {
+                    { "@list_id_hd", list_id_hd }
+                });
+
+                if (existingVouchers?.Tables.Count > 0 && existingVouchers.Tables[0].Rows.Count > 0)
+                {
+                    bool confirmRecreate = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+                    {
+                        Text = Lap["Invoices already exist. Do you want to recreate them?"],
+                        Title = Lap["Confirm"],
+                        OkButtonText = Lap["Yes"],
+                        CancelButtonText = Lap["No"],
+                        ShowIcon = true,
+                        RenderStyle = MessageBoxRenderStyle.Warning
+                    });
+
+                    if (!confirmRecreate)
+                    {
+                        return;
+                    }
+
+                    foreach (DataRow voucherRow in existingVouchers.Tables[0].Rows)
+                    {
+                        string sttRec = voucherRow["stt_rec"].ToString().Trim();
+                        string maCt = voucherRow["ma_ct"]?.ToString().Trim() ?? "";
+                        string voucherType = maCt == "PN1" ? "PN1" : "PNA";
+                        string deleteCmd = $"EXEC [DeleteVoucher] '{voucherType}', '{sttRec}'";
+                        await myDb.ExecuteSqlQueryAsync(deleteCmd);
+                    }
+                }
+            }
+
+            string ma_qs_default = "";
+            string ma_qs_pc_default = "";
+            string tk_co_default = "";
+            string tk_no_default = "";
+
+            try
+            {
+                ma_qs_default = myStateMN.GetItem("M_HDDVTCT_MA_QS_PN1")?.ToString() ?? "";
+                ma_qs_pc_default = myStateMN.GetItem("M_HDDVTCT_MA_QS_PC")?.ToString() ?? "";
+                tk_co_default = myStateMN.GetItem("M_HDDVTCT_TK_CO")?.ToString() ?? "";
+                tk_no_default = myStateMN.GetItem("M_HDDVTCT_TK_NO")?.ToString() ?? "";
+            }
+            catch
+            {
+                // Use empty defaults if options are not available
+            }
+
+            string invoiceNumbers = string.Join(", ", checkedRows.Select(r => r["so_ct0"]?.ToString().Trim()).Distinct());
+
+            var dialogParams = new Dictionary<string, object>
+            {
+                { "Ma_qs", ma_qs_default },
+                { "Ma_qs_pc", ma_qs_pc_default },
+                { "Ma_kho", "" },
+                { "Tk_co", tk_co_default },
+                { "Tk_no", tk_no_default },
+                { "InvoiceNumbers", invoiceNumbers },
+                { "UserId", myStateMN.GetCurUser().User_id },
+                { "IsLangEn", IsLangEn },
+                { "IsServiceInvoice", true }
+            };
+
+            var result = await ShowCreateInvoiceDialog(dialogParams);
+
+            if (result != null && result.ContainsKey("IsOk") && (bool)result["IsOk"])
+            {
+                string ma_qs = result["Ma_qs"]?.ToString().Trim() ?? "";
+                string ma_qs_pc = result["Ma_qs_pc"]?.ToString().Trim() ?? "";
+                string tk_no = result["Tk_no"]?.ToString().Trim() ?? "";
+                string tk_co = result["Tk_co"]?.ToString().Trim() ?? "";
+                
+                IsLoading = true;
+                StateHasChanged();
+
+                myStateMN.SetItem("M_HDDVTCT_MA_QS_PN1", ma_qs);
+                myStateMN.SetItem("M_HDDVTCT_MA_QS_PC", ma_qs_pc);
+                myStateMN.SetItem("M_HDDVTCT_TK_CO", tk_co);
+                myStateMN.SetItem("M_HDDVTCT_TK_NO", tk_no);
+
+                string msg_success = "";
+                string msg_error = "";
+                int count_success = 0;
+                int count_error = 0;
+                Ma_dvcs = myStateMN.GetDvcs().Ma_dvcs;
+
+                foreach (var row in checkedRows)
+                {
+                    try
+                    {
+                        string id_hd = row["id_hd"]?.ToString().Trim() ?? "";
+                        string so_ct = row["so_ct0"]?.ToString().Trim() ?? "";
+
+                        if (string.IsNullOrEmpty(id_hd)) continue;
+
+                        var parameters = new Dictionary<string, object>
+                        {
+                            { "@List", id_hd },
+                            { "@Ma_dvcs", Ma_dvcs },
+                            { "@user_id", myStateMN.GetCurUser().User_id },
+                            { "@Ma_qs", ma_qs },
+                            { "@Tk_co", tk_co },
+                            { "@Tk_no", tk_no }
+                        };
+
+                        var resultDs = await myDb.LoadDataset("BKHDDVTCT_CREATE_PN1", parameters);
+
+                        if (resultDs?.Tables.Count > 0 && resultDs.Tables[resultDs.Tables.Count - 1].Rows.Count > 0)
+                        {
+                            string yn = resultDs.Tables[resultDs.Tables.Count - 1].Rows[0]["YN"]?.ToString().Trim() ?? "0";
+                            
+                            if (yn == "1")
+                            {
+                                count_success++;
+                                msg_success += (string.IsNullOrEmpty(msg_success) ? "" : "; ") + so_ct;
+
+                                if (!string.IsNullOrEmpty(ma_qs_pc))
+                                {
+                                    string createPcCmd = $"EXEC [dbo].[BKHDDVTCT_PN1_TAOPC] '{id_hd}', '{ma_qs_pc}'";
+                                    await myDb.ExecuteSqlQueryAsync(createPcCmd);
+                                }
+                            }
+                            else
+                            {
+                                count_error++;
+                                msg_error += (string.IsNullOrEmpty(msg_error) ? "" : "; ") + so_ct;
+                            }
+                        }
+                        else
+                        {
+                            count_error++;
+                            msg_error += (string.IsNullOrEmpty(msg_error) ? "" : "; ") + so_ct;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        count_error++;
+                        string so_ct = row["so_ct0"]?.ToString().Trim() ?? "";
+                        msg_error += (string.IsNullOrEmpty(msg_error) ? "" : "; ") + so_ct;
+                    }
+                }
+
+                IsLoading = false;
+
+                if (!string.IsNullOrEmpty(msg_success))
+                {
+                    await myDlSvc.AlertAsync(new MessageBoxOptions
+                    {
+                        Text = $"{Lap["Successfully created"]} ({count_success} {Lap["invoices"]}): {msg_success}",
+                        Title = Lap["Information"],
+                        OkButtonText = Lap["OK"],
+                        ShowIcon = true,
+                        RenderStyle = MessageBoxRenderStyle.Info
+                    });
+                }
+
+                if (!string.IsNullOrEmpty(msg_error))
+                {
+                    await myDlSvc.AlertAsync(new MessageBoxOptions
+                    {
+                        Text = $"{Lap["Failed to create"]} ({count_error} {Lap["invoices"]}): {msg_error}",
+                        Title = Lap["Error"],
+                        OkButtonText = Lap["OK"],
+                        ShowIcon = true,
+                        RenderStyle = MessageBoxRenderStyle.Danger
+                    });
+                }
+
+                //await LoadBKCTData(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            IsLoading = false;
+            myStateMN?.SetNewThongbao($"{Lap["Error"]}: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+    string GetRowStyle(DataRowView row)
+    {
+        if (row.Row.Table.Columns.Contains("ss") && row["ss"].ToString().Trim() == "2")
+        {
+            return "red-item";
+        }
+        if (row.Row.Table.Columns.Contains("ss") && row["ss"].ToString().Trim() == "1")
+        {
+            return "blue-item";
+        }
+        return "";
+    }
+
+    private List<InvoiceItem> ConvertToInvoiceList(DataTable dt)
+    {
+        if (dt == null || dt.Rows.Count == 0)
+            return new List<InvoiceItem>();
+
+        var list = new List<InvoiceItem>();
+        foreach (DataRow row in dt.Rows)
+        {
+            list.Add(new InvoiceItem
+                {
+                    ngay_ct0 = row["ngay_ct0"] != DBNull.Value ? Convert.ToDateTime(row["ngay_ct0"]) : DateTime.MinValue,
+                    so_ct0 = row["so_ct0"]?.ToString() ?? "",
+                    so_seri0 = row["so_seri0"]?.ToString() ?? "",
+                    kh_mau_hd0 = row["kh_mau_hd0"]?.ToString() ?? "",
+                    mst_ban = row["mst_ban"]?.ToString() ?? "",
+                    ten_dv_ban = row["ten_dv_ban"]?.ToString() ?? "",
+                    dia_chi_ban = row.Table.Columns.Contains("dia_chi_ban") ? row["dia_chi_ban"]?.ToString() ?? "" : "",
+                    t_tien = row["t_tien"] != DBNull.Value ? Convert.ToDecimal(row["t_tien"]) : 0,
+                    t_thue = row["t_thue"] != DBNull.Value ? Convert.ToDecimal(row["t_thue"]) : 0,
+                    t_tt = row["t_tt"] != DBNull.Value ? Convert.ToDecimal(row["t_tt"]) : 0,
+                    tinh_trang_hd = row.Table.Columns.Contains("tinh_trang_hd") ? row["tinh_trang_hd"]?.ToString() ?? "" : "",
+                    id_hd = row.Table.Columns.Contains("id_hd") ? row["id_hd"]?.ToString() ?? "" : ""
+                });
+        }
+        return list;
+    }
+
+    private void OnClose()
+    {
+        OnDataReceived.InvokeAsync(dataSet);
+    }
+
+    public class InvoiceItem
+    {
+        public DateTime ngay_ct0 { get; set; }
+        public string so_ct0 { get; set; }
+        public string so_seri0 { get; set; }
+        public string kh_mau_hd0 { get; set; }
+        public string mst_ban { get; set; }
+        public string ten_dv_ban { get; set; }
+        public string dia_chi_ban { get; set; }
+        public decimal t_tien { get; set; }
+        public decimal t_thue { get; set; }
+        public decimal t_tt { get; set; }
+        public string tinh_trang_hd { get; set; }
+        public string id_hd { get; set; }
+    }
+}
+

@@ -1,0 +1,451 @@
+﻿@using DevExpress.Blazor
+@using SisHr.Pages.Report.HRHSNV
+@using SisCom.Model
+@using SisCom.Shared
+@using SisLib.Lib
+@using SisLib.List
+@using SisData.Service
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+@* ===== 1. MAIN INFORMATION ===== *@
+<DxFormLayoutGroup id="section-1" Caption="@Lap["Main information"]" HeaderCssClass="fw-bold text-primary" ColSpanMd="12" CssClass="mb-3" @onkeydown="HandleFormKeyDown"
+                   Decoration="FormLayoutGroupDecoration.Card"
+                   ExpandButtonDisplayMode="GroupExpandButtonDisplayMode.Start"
+                   AnimationType="LayoutAnimationType.Slide">
+
+    @* Row 1 *@
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Unit code"]">
+        <Template>
+            <div class="form-control form-control-sm" style="background-color: #f8f9fa; padding: 0.375rem 0.75rem;">
+                @DisplayMaDvcs
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Employee name 2"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Ten_ns2" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Gender"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmgioitinh" @bind-Value="@CurRow.Gioi_tinh" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 2*@ 
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Birthplace"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Noi_sinh" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Alias"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Bi_danh" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Native place"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmtinhthanh"
+                                       @bind-Value="@CurRow.Nguyen_quan"
+                                       IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Nationality"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmqg"
+                                       @bind-Value="@CurRow.Quoc_tich"
+                                       IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Ethnicity"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmdt" @bind-Value="@CurRow.Ma_dantoc" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Religion"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmtg" @bind-Value="@CurRow.Ma_tongiao" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 5 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Marital status"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmtthn" @bind-Value="@CurRow.Ma_tt_honnhan" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Family component"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Ma_tp_giadinh" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Social component"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmtpxh" @bind-Value="@CurRow.Ma_tp_banthan" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 6 *@
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["ID issue date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_cmnd" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["ID issue place"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Nc_cmnd" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 7 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Tax code"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Ma_so_thue" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Tax code issue date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_mst" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Tax code issue place"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Nc_mst" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 8 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="12" Caption="@Lap["Residential address"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Dia_chi" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 8B *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="12" Caption="@Lap["Household registration"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Dia_chi" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 8C *@
+    <DxFormLayoutItem ColSpanMd="12" Caption="@Lap["Temporary residence"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Dc_cu_tru" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 9B *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Email"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.E_mail" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="Fax">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Fax" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Contact for message"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Khicannhantincho" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 10 *@
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Message address"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Diachinhantin" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Start date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_vao" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Appointment date"]">
+        <Template>
+            <DxDateEdit @bind-Date="CurRow.Ngay_bien_che" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    
+    @* Row 11B *@
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Phone"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Dien_thoai" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Team"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmto" @bind-Value="@CurRow.Ma_todoi" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Block"]">
+        <Template>
+            <DxComboBox Data="@KhoiList"
+                        @bind-Value="CurRow.Khoi"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 13 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Position"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmcv" @bind-Value="@CurRow.Ma_chucvu" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Job title"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmcd" @bind-Value="@CurRow.Ma_chucdanh" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Education qualification"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmvh" @bind-Value="@CurRow.Ma_td_vanhoa" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 14 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Education level"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmtrinhdo" @bind-Value="@CurRow.Ma_trinhdo" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Major"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmcn" @bind-Value="@CurRow.Ma_chuyennganh" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Degree"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmbangcap" @bind-Value="CurRow.Ma_bangcap" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 15 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Foreign language"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmnn" @bind-Value="@CurRow.Ma_ngoaingu" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["IT skills"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmth" @bind-Value="@CurRow.Ma_tinhoc" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Health status"]">
+        <Template>
+            <div class="input-group input-group-sm">
+                <AutocompleteComponent Ma_dm="dmttsk" @bind-Value="@CurRow.Ma_tt_suckhoe" IsLangEn="@IsLangEn" IsEnable="@AllowEditMode" />
+            </div>
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 17 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Residence status"]">
+        <Template>
+            <DxComboBox Data="@ResidenceList"
+                        @bind-Value="CurRow.Dt_cu_tru"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Calculate personal income tax"]">
+        <Template>
+            <DxComboBox Data="@YesNoList"
+                        @bind-Value="CurRow.Thue_ck"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["In economic zone"]">
+        <Template>
+            <DxComboBox Data="@YesNoList"
+                        @bind-Value="CurRow.Khu_kt_ck"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 18 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Authorize settlement"]">
+        <Template>
+            <DxComboBox Data="@YesNoList"
+                        @bind-Value="CurRow.Uq_qt_ck"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Sign labor contract 3 months"]">
+        <Template>
+            <DxComboBox Data="@YesNoList"
+                        @bind-Value="CurRow.Hdld3thang"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Auto meal attendance"]">
+        <Template>
+            <DxCheckBox @bind-Checked="CurRow.An_com_checked" IsEnable="@AllowEditMode">
+            </DxCheckBox>
+        </Template>
+    </DxFormLayoutItem>
+
+    @* Row 19 *@
+    <DxFormLayoutItem BeginRow="true" ColSpanMd="4" Caption="@Lap["Note"]">
+        <Template>
+            <DxTextBox @bind-Text="CurRow.Ghi_chu" IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+    <DxFormLayoutItem ColSpanMd="4" Caption="@Lap["Status"]">
+        <Template>
+            <DxComboBox Data="@StatusList"
+                        @bind-Value="CurRow.Status"
+                        TextFieldName="Text"
+                        ValueFieldName="Value"
+                        IsEnable="@AllowEditMode" />
+        </Template>
+    </DxFormLayoutItem>
+</DxFormLayoutGroup>
+
+@code {
+[Parameter] public HsnvDetailModel CurRow { get; set; }
+[Parameter] public bool AllowEditMode { get; set; }
+[Parameter] public bool IsLangEn { get; set; }
+[Parameter] public dynamic Lap { get; set; }
+
+private string DisplayMaDvcs => CurRow?.Ma_dvcs ?? "-";
+
+public List<StatusItem> ResidenceList { get; set; } = new()
+{
+    new StatusItem { Value = 1, Text = "1 - Cư trú" },
+    new StatusItem { Value = 2, Text = "2 - Không cư trú" }
+};
+
+public List<StatusItem> YesNoList { get; set; } = new()
+{
+    new StatusItem { Value = 0, Text = "0 - Không" },
+    new StatusItem { Value = 1, Text = "1 - Có" }
+};
+
+public List<StatusItem> KhoiList { get; set; } = new()
+{
+    new StatusItem { Value = "1", Text = "1 - Khối SX trực tiếp" },
+    new StatusItem { Value = "2", Text = "2 - Khối SX gián tiếp" },
+    new StatusItem { Value = "3", Text = "3 - Khối HCTH" }
+};
+
+public List<StatusItem> StatusList { get; set; } = new()
+{
+    new StatusItem { Value = "0", Text = "0 - Không sử dụng" },
+    new StatusItem { Value = "1", Text = "1 - Đang sử dụng" }
+};
+
+public class StatusItem
+{
+    public dynamic Value { get; set; }
+    public string Text { get; set; }
+}
+
+    private async Task HandleFormKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            // Chuyển Enter thành Tab để move tới field tiếp theo
+            try
+            {
+                // Dispatch Tab key event
+                await DispatchTabEvent();
+            }
+            catch
+            {
+                // Bỏ qua lỗi JS interop
+            }
+        }
+    }
+
+    private async Task<string> GetActiveElement()
+    {
+        try
+        {
+            return "focus";
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task DispatchTabEvent()
+    {
+        try
+        {
+            // Dispatch Tab event để tự động move tới field tiếp theo
+            var script = @"
+                const active = document.activeElement;
+                if (active) {
+                    // Tìm form parent
+                    const form = active.closest('form') || active.form;
+                    if (form) {
+                        // Lấy tất cả input/select/textarea
+                        const inputs = Array.from(form.querySelectorAll('input, select, textarea, [tabindex]:not([tabindex=""-1""])'));
+                        const idx = inputs.indexOf(active);
+                        // Focus tới element tiếp theo
+                        if (idx >= 0 && idx < inputs.length - 1) {
+                            inputs[idx + 1].focus();
+                        } else if (idx >= inputs.length - 1) {
+                            // Nếu là field cuối cùng, về đầu
+                            inputs[0]?.focus();
+                        }
+                    }
+                }
+            ";
+            // await JavascriptService.InvokeVoidAsync("eval", script);
+        }
+        catch
+        {
+            // Bỏ qua lỗi
+        }
+    }
+}

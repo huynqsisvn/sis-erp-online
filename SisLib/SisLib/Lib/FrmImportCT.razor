@@ -1,0 +1,800 @@
+﻿@inherits TranBaseComponent
+@inject HttpClient myHttp
+@using System.Data.OleDb
+@using System.Diagnostics;
+@using System.Data.SqlClient;
+@using SisData.Model
+@using System.Reflection;
+
+<div class="w-100">
+    <div class="d-flex justify-content-between align-items-center mb-2 mx-2 rounded-1 border  border-1 bg-light">
+        <div>
+            <h8 class="fw-semibold m-0 ps-2" style="color:dodgerblue">@Lap["Import data from Excel file"] - @CurDmimex.Ten</h8>
+        </div>
+        <div class="d-flex justify-content-end gap-2 me-1">
+            <DxButton Text="Nhận"
+                      RenderStyle="ButtonRenderStyle.Secondary" RenderStyleMode="ButtonRenderStyleMode.Outline"
+                      Click="@InsertDataToDatabase"
+                      CssClass="px-4  my-1">
+                <span><i class="fas fa-save"></i>@context</span>
+            </DxButton>
+            <DxButton Text="Hủy"
+                      RenderStyle="ButtonRenderStyle.Danger" RenderStyleMode="ButtonRenderStyleMode.Outline"
+                      Click="@Cancel"
+                      CssClass="px-4  my-1"><span><i class="fas fa-close"></i>@context</span></DxButton>
+        </div>
+   </div>
+   <div class="row m-2 rounded-1 border  border-1 ">
+        <DxFormLayout Data="@CurDmimex" SizeMode="@Itemsizemode" CssClass="frm-header sis-form my-2" onkeydown="ModifyEnterKeyPressAsTab(event);">
+            <DxFormLayoutItem Caption="@Lap["Data to be transferred"]" ColSpanMd="12" CaptionCssClass="fw-bold">
+                <Template>
+                    <DxTextBox Text="@CurDmimex.Ten" ReadOnly="true" />
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem ColSpanMd="6" Caption="@Lap["File name"]"BeginRow="true">
+                <Template>
+                    <DxTextBox @bind-Text="@FilePath" ReadOnly="true"/>                    
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem CssClass="no-caption" Caption="" ColSpanMd="2">
+                <Template>
+                    <DxButton Id="overviewDemoSelectButton"                            
+                              RenderStyle="ButtonRenderStyle.Primary" CssClass="w-100"
+                              Text="..." />
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem CssClass="no-caption" Caption="" ColSpanMd="2">
+                <Template>
+                    <DxButton Text="@Lap["See"]" CssClass="w-100"
+                              RenderStyle="ButtonRenderStyle.Secondary" RenderStyleMode="ButtonRenderStyleMode.Outline"                              
+                              Click="@OpenExcelFile" />
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem CssClass="no-caption" Caption="" ColSpanMd="2">
+                <Template>
+                    <DxButton Text="@Lap["Download example"]" CssClass="w-100 h-60"
+                              RenderStyle="ButtonRenderStyle.Secondary" RenderStyleMode="ButtonRenderStyleMode.Outline"                              
+                              Click="DownloadExamle" />
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="@Lap["Book code"]" ColSpanMd="6">
+                <Template>
+                    <AutocompleteComponent Id="ma_qs_input" CssClass="col p-0" Ma_dm="dmqs" @bind-Value="@CurDmimex.Ma_qs" Filter="@_filter_qs" IsLangEn="@IsLangEn"></AutocompleteComponent>
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="@Lap["Documents with duplicate numbers"]" ColSpanMd="6" BeginRow="true">
+                <DxComboBox ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Never"
+                            Data="@(new List<listItem> { new listItem { ma_item = "0", ten_item = Lap["No duplicates"] }, new listItem { ma_item = "1", ten_item = Lap["Overwrite"] }, new listItem { ma_item = "2", ten_item = Lap["Duplicate"] } })"
+                            TextFieldName="@nameof(listItem.ten_item)"
+                            ValueFieldName="@nameof(listItem.ma_item)"
+                            AllowUserInput="true"
+                            SearchFilterCondition="ListSearchFilterCondition.Contains"
+                            @bind-Value="@CurDmimex.Overwrite">
+                    <Columns>
+                        <DxListEditorColumn FieldName="@nameof(listItem.ma_item)" Caption=@Lap["ID"] Width="80px" />
+                        <DxListEditorColumn FieldName="@nameof(listItem.ten_item)" Caption=@Lap["Name"] />
+                    </Columns>
+                </DxComboBox>
+            </DxFormLayoutItem>
+        </DxFormLayout>
+
+    </div>
+</div>
+<DxFileInput Visible="@UploadVisible"
+             ExternalSelectButtonCssSelector="#overviewDemoSelectButton"
+             ExternalDropZoneCssSelector="#overviewDemoDropZone"
+             ExternalDropZoneDragOverCssClass="custom-drop-zone-hover"
+             MaxFileSize="2147483647"
+             AllowMultiFileUpload="false"
+             FilesUploading="OnFilesUploading"
+             SelectedFilesChanged="@SelectedFilesChanged">
+</DxFileInput>
+<DxPopup @bind-Visible="@isPopupVisible"
+         HeaderText=@Lap["Data Excel file"]
+         Width="80%"
+         Height="600px"
+         ShowCloseButton="true"
+         CloseOnOutsideClick="true">
+    <BodyContentTemplate>
+        @if (dataExcel == null || dataExcel.Rows.Count == 0)
+        {
+            <p>@Lap["No data"]</p>
+        }
+        else
+        {
+            <DxGrid Data="@dataExcel"
+                    ShowBorders="true"
+                    ShowRowLines="true"
+                    ColumnAutoWidth="true"
+                    CssClass="p-2"
+                    HorizontalScrollMode="HorizontalScrollMode.Auto"
+                    ShowPager="true"
+                    PageSize="20">
+                <Columns>
+                    @foreach (DataColumn col in dataExcel.Columns)
+                    {
+                        <DxGridDataColumn FieldName="@col.ColumnName" Width="150px" />
+                    }
+                </Columns>
+            </DxGrid>
+            @*  <div class="mt-3">
+                <DxButton Text="Chèn dữ liệu vào cơ sở dữ liệu" Click="InsertDataToDatabase" />
+            </div> *@
+        }
+    </BodyContentTemplate>
+</DxPopup>
+
+@code {
+    [Parameter] public Dmimex CurDmimex { get; set; }
+    [Parameter] public EventCallback OnImportCompleted { get; set; }
+    [Parameter] public Func<DataErrArgs, bool>? ShowError { get; set; }
+    [Parameter] public EventCallback<bool> IsImportPopupVisibleChanged { get; set; }
+    [Parameter] public bool IsImportPopupVisible { get; set; }
+
+    private DataTable dataExcel;
+    bool UploadVisible { get; set; } = false;
+    bool isPopupVisible { get; set; } = false;
+    public IEnumerable<string> Tags { get; set; }
+    char Placeholder = '#';
+    private List<List<string>> data = null;
+    public static string StrBrowse = "";
+    public static string StrBrowseKhoa = "";
+    public static string StrBrowseKhoa_dac_biet = "";
+    private List<Dictionary<string, object>> excelRows = new();
+
+    public string fileName { get; set; } = "";
+    public DataSet dataImport { get; set; } = new DataSet();
+    public String sqlTableNameCT { get; set; }
+    public String sqlTableName { get; set; }
+    public String Status = "2";
+    public String Ma_ct = "BG1";
+    public Decimal Ty_gia = 1;
+    string _filter_qs = "";
+    public DotNetObjectReference<FrmImportCT> Pageobj;
+    protected async override Task OnInitializedAsync()
+    {
+        Menu_id = (String.IsNullOrEmpty(Menu_id) ? "ws.ct.06" : Menu_id);
+        Ma_ct = CurDmimex.Ma_ct.Trim();
+
+        await base.OnInitializedAsync();
+
+        sqlTableName = CurDmimex.Ph.Trim();
+        sqlTableNameCT = CurDmimex.Ct.Trim();
+        _filter_qs = String.Format("ma_cts = '' OR ma_cts like '%{0}%'", CurDmimex.Ma_ct.Trim());
+    }
+    private DxFileInput fileInput;    
+    private string FilePath { get; set; } = "";
+
+    protected void SelectedFilesChanged(IEnumerable<UploadFileInfo> files)
+    {
+        var fileList = files.ToList();
+        UploadVisible = fileList.Count > 0;
+
+        if (fileList.Count > 0)
+        {
+            FilePath = fileList[0].Name;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ConvertDataTableToList(DataTable table)
+    {
+        excelRows = new List<Dictionary<string, object>>();
+        foreach (DataRow row in table.Rows)
+        {
+            var dict = new Dictionary<string, object>();
+            foreach (DataColumn col in table.Columns)
+            {
+                dict[col.ColumnName] = row[col];
+            }
+            excelRows.Add(dict);
+        }
+
+
+    }
+
+    private async Task Cancel()
+    {
+        await IsImportPopupVisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task OpenExcelFile()
+    {
+
+        if (!string.IsNullOrEmpty(FilePath))
+        {
+
+            dataExcel = GetDataFromExcel(fileName);
+            if (dataExcel == null || dataExcel.Rows.Count == 0)
+            {
+                myStateMN.SetNewThongbao(Lap["No date in Excel file"]);
+                return;
+            }
+
+            ConvertDataTableToList(dataExcel);
+            CleanDataTable(dataExcel);
+            isPopupVisible = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+        }
+    }
+
+    protected async Task OnFilesUploading(FilesUploadingEventArgs args)
+    {
+        var baseUrl = myNavi.BaseUri;
+
+        var file = args.Files[0];
+        if (!file.Name.Contains(".xls", StringComparison.OrdinalIgnoreCase))
+        {
+            myStateMN.SetNewThongbao(Lap["Please, select Excel file(.xls)"]);
+            return;
+        }
+
+        try
+        {
+
+            var fileContent = new StreamContent(file.OpenReadStream(file.Size));
+            var content = new MultipartFormDataContent();
+            content.Add(fileContent, "myFile", file.Name);
+            using var stream = new System.IO.MemoryStream();
+            await file.OpenReadStream(file.Size).CopyToAsync(stream);
+
+            var response = await myHttp.PostAsync($"{baseUrl}api/Upload/UploadFile", content);
+            response.EnsureSuccessStatusCode();
+
+
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot\\upload_tmp", file.Name);
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+
+            var dtImport = GetData(filePath);
+            fileName = filePath;
+            dataImport = dtImport;
+
+            await InvokeAsync(StateHasChanged);
+
+
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Import failed"] + ":" + ex.Message);
+        }
+    }
+
+
+    public DataSet GetData(String info)
+    {
+        DataSet dtImport = new DataSet();
+        try
+        {
+            DataTable dataFromExcel = GetDataFromExcel(info);
+            string tableName = sqlTableName;
+            if (tableName == null || tableName == "")
+            {
+                return null;
+            }
+
+            string sqlDmhd = $"SELECT * FROM information_schema.columns WHERE table_name = '{sqlTableName.Trim()}'";
+            DataSet dataSetDmhd = myDb.LoadDataSet(sqlDmhd);
+            if (dataSetDmhd == null || dataSetDmhd.Tables.Count == 0)
+            {
+                return null;
+            }
+            dataSetDmhd.Tables[0].TableName = "StrucDmhd";
+
+            string sqlDmhdct = $"SELECT * FROM information_schema.columns WHERE table_name = '{sqlTableNameCT.Trim()}'";
+            DataSet dataSetDmhdct = myDb.LoadDataSet(sqlDmhdct);
+            if (dataSetDmhdct == null || dataSetDmhdct.Tables.Count == 0)
+            {
+                return null;
+            }
+            dataSetDmhdct.Tables[0].TableName = "StrucDmhdct";
+
+            // DataTable structTable = dataSet.Tables[0];
+            DataTable structTableDmhd = dataSetDmhd.Tables[0];
+            DataTable structTableDmhdct = dataSetDmhdct.Tables[0];
+            if (dataFromExcel == null || structTableDmhd == null || structTableDmhdct == null)
+            {
+                return null;
+            }
+            dtImport.Tables.Add(dataFromExcel.Copy());
+            dtImport.Tables.Add(structTableDmhd.Copy());
+            dtImport.Tables.Add(structTableDmhdct.Copy());
+            dtImport.Tables[0].TableName = "DataExcel";
+            dtImport.Tables[1].TableName = "StrucDmhd";
+            dtImport.Tables[2].TableName = "StrucDmhdct";
+            ConverDateTime(ref dtImport);
+
+        }
+        catch (Exception ex)
+        {
+
+            return null;
+        }
+        return dtImport;
+    }
+
+    public static DataTable XoaDongTrang(DataTable tbExcel)
+    {
+        bool flag = false;
+        DataTable dataTable = tbExcel.Clone();
+        for (int i = 0; i < tbExcel.Rows.Count; i++)
+        {
+            flag = false;
+            for (int j = 1; j < tbExcel.Columns.Count; j++)
+            {
+                if (tbExcel.Rows[i][j].ToString().Trim() != "")
+                {
+                    flag = true;
+                    break;
+                }
+            }
+            if (flag)
+            {
+                dataTable.ImportRow(tbExcel.Rows[i]);
+            }
+        }
+        return dataTable;
+    }
+
+    public static void XoaCotTrang(ref DataTable tbExcel)
+    {
+        string text = "";
+        int result = 0;
+        for (int i = 0; i < tbExcel.Columns.Count; i++)
+        {
+            text = tbExcel.Columns[i].ColumnName.Trim();
+            if (text.IndexOf("F") == 0 && int.TryParse(text.Substring(1, text.Length - 1), out result))
+            {
+                tbExcel.Columns.Remove(text);
+                i = -1;
+            }
+        }
+    }
+
+    private void CleanDataTable(DataTable table)
+    {
+        foreach (DataRow row in table.Rows)
+        {
+            foreach (DataColumn col in table.Columns)
+            {
+                if (row[col] == null || row[col] == DBNull.Value || string.IsNullOrWhiteSpace(row[col]?.ToString()))
+                {
+                    row[col] = DBNull.Value;
+                }
+            }
+        }
+    }
+    public static DataTable GetDataFromExcel(string _fileName)
+    {
+        string text = "Yes";
+        string text2 = "";
+        text2 = ((!_fileName.Contains(".xls")) ? ("Provider=Microsoft.ACE.OLEDB.16.0;Data Source=" + _fileName + ";Extended Properties=\"Excel 8.0;HDR=" + text + ";IMEX=1\"") : ("Provider=Microsoft.ACE.OLEDB.16.0;Data Source=" + _fileName + ";Extended Properties=\"Excel 12.0;HDR=" + text + ";IMEX=1\""));
+        DataSet dataSet = new DataSet();
+        using (OleDbConnection oleDbConnection = new OleDbConnection(text2))
+        {
+            bool flag = false;
+            try
+            {
+                oleDbConnection.Open();
+                flag = true;
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("OLEDB"))
+                {
+                    try
+                    {
+                        oleDbConnection.Open();
+                        flag = true;
+                    }
+                    catch (Exception ex2)
+                    {
+                        return null;
+                    }
+                }
+            }
+            if (flag)
+            {
+                try
+                {
+
+                    DataTable dtSchema = oleDbConnection.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
+                    string sheetName = null;
+                    foreach (DataRow row in dtSchema.Rows)
+                    {
+                        string tableName = row["TABLE_NAME"].ToString();
+                        if (!tableName.ToLower().Contains("hướng dẫn")) // Bỏ qua sheet có tên chứa "Hướng dẫn"
+                        {
+                            sheetName = tableName;
+                            break; // Lấy sheet đầu tiên không phải "Hướng dẫn"
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(sheetName))
+                    {
+                        oleDbConnection.Close();
+                        return null; // Không tìm thấy sheet phù hợp
+                    }
+
+
+                    OleDbCommand oleDbCommand = new OleDbCommand("SELECT * FROM [" + sheetName + "]", oleDbConnection);
+                    oleDbCommand.CommandType = CommandType.Text;
+                    DataTable dataTable = new DataTable(sheetName);
+                    dataSet.Tables.Add(dataTable);
+                    new OleDbDataAdapter(oleDbCommand).Fill(dataTable);
+
+                }
+                catch (Exception ex)
+                {
+
+                    oleDbConnection.Close();
+                    return null;
+                }
+                oleDbConnection.Close();
+            }
+        }
+        if (dataSet.Tables.Count == 0)
+        {
+            return null;
+        }
+        DataTable tbExcel = XoaDongTrang(dataSet.Tables[0]);
+        XoaCotTrang(ref tbExcel);
+        tbExcel.TableName = "DataExcel";
+        return SetColumnName(tbExcel);
+    }
+    private static DataTable SetColumnName(DataTable tb)
+    {
+        try
+        {          
+            string text2 = "";
+            string text3 = "";
+            string text4 = "";
+            for (int i = 0; i < tb.Columns.Count; i++)
+            {
+                string text5 = tb.Columns[i].ColumnName.ToString();
+                int num = text5.LastIndexOf('(');
+                int num2 = text5.LastIndexOf(')');
+                if (num == -1 || num2 == -1 || num >= num2)
+                {
+
+                    tb.Columns[i].ColumnName = text5;
+                    continue;
+                }
+                string text6 = text5.Substring(num + 1, num2 - num - 1).Trim();
+                string str = text6 + ":H=" + text5.Substring(0, num - 1).Trim().Replace('_', ' ') + text5.Substring(num2 + 1, text5.Length - num2 - 1).Trim();
+                text2 = text2 + str + ";";
+                // if (source2.Contains(text6))
+                // {
+                text3 = text3 + str + ";";
+                // }
+                // if (source.Contains(text6))
+                // {
+                text4 = text4 + str + ";";
+                // }
+                tb.Columns[i].ColumnName = text6;
+            }
+            StrBrowse = text2.Substring(0, text2.Length - 1);
+            if (text3.Length > 1)
+            {
+                StrBrowseKhoa = text3.Substring(0, text3.Length - 1);
+            }
+            if (text4.Length > 1)
+            {
+                StrBrowseKhoa_dac_biet = text4.Substring(0, text4.Length - 1);
+            }
+            StrBrowse = StrBrowse.Replace("#", ".");
+            StrBrowseKhoa = StrBrowseKhoa.Replace("#", ".");
+            StrBrowseKhoa_dac_biet = StrBrowseKhoa_dac_biet.Replace("#", ".");
+        }
+        catch (Exception ex)
+        {
+            return null;
+        }
+        return tb;
+    }
+    private static void ConverDateTime(ref DataSet dtImport)
+    {
+        foreach (DataRow row in dtImport.Tables["DataExcel"].Rows)
+        {
+            foreach (DataColumn col in dtImport.Tables["DataExcel"].Columns)
+            {
+                // Kiểm tra cột có trong StrucDmhd hoặc StrucDmhdct
+                DataRow[] arrayDmhd = dtImport.Tables["StrucDmhd"].Select($"column_name = '{col.ColumnName}'");
+                DataRow[] arrayDmhdct = dtImport.Tables["StrucDmhdct"].Select($"column_name = '{col.ColumnName}'");
+
+                if ((arrayDmhd.Length > 0 && arrayDmhd[0]["data_type"].ToString().Trim() == "smalldatetime") ||
+                    (arrayDmhdct.Length > 0 && arrayDmhdct[0]["data_type"].ToString().Trim() == "smalldatetime"))
+                {
+                    if (!row[col].GetType().FullName.Equals("System.DateTime"))
+                    {
+                        string value = row[col].ToString().Replace(" ", "").Replace("/", "-");
+                        string[] array2 = value.Split('-');
+                        if (array2.Length == 3)
+                        {
+                            row[col] = $"{array2[2].Substring(0, 4)}{(array2[1].Length > 1 ? array2[1] : "0" + array2[1])}{(array2[0].Length > 1 ? array2[0] : "0" + array2[0])}";
+                        }
+                        else
+                        {
+                            row[col] = DBNull.Value;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public async void DownloadExamle()
+    {
+        try
+        {
+            var baseUrl = myNavi.BaseUri;
+            var FilePath = $"./EX_mau/" + CurDmimex.Ex_mau.Trim() + ".xls";
+            myNavi.NavigateTo(FilePath, forceLoad: true);
+            myStateMN.SetNewThongbao(Lap["Download Successful"] + "!");
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Download error"] + ":" + ex.Message);
+        }
+    }
+    public virtual async Task InsertDataToDatabase()
+    {
+        if (String.IsNullOrEmpty(FilePath))
+        {
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+            return;
+        }        
+        if (String.IsNullOrEmpty(CurDmimex.Ma_qs))
+        {
+            myStateMN.SetNewThongbao(Lap["Book code is required"]);
+            await JavacriptS.InvokeVoidAsync("eval", "document.getElementById('ma_qs_input')?.focus()");
+            return;
+        }
+
+        if (dataImport == null || dataImport.Tables["DataExcel"] == null ||
+            dataImport.Tables["StrucDmhd"] == null || dataImport.Tables["StrucDmhdct"] == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Upload error"] + ":" + Lap["Invalid table structure"]);
+            return;
+        }
+
+        try
+        {
+            DataTable dataExcel = dataImport.Tables["DataExcel"];
+            DataTable structDmhd = dataImport.Tables["StrucDmhd"];
+            DataTable structDmhdct = dataImport.Tables["StrucDmhdct"];
+
+            // Chuẩn bị cột cho Dmhd
+            string columnsDmhd = "[stt_rec],[ma_ct],[status],";
+            foreach (DataRow row in structDmhd.Rows)
+            {
+                string columnName = row["column_name"].ToString();
+                if (dataExcel.Columns.Contains(columnName) && columnName != "[stt_rec]")
+                {
+                    columnsDmhd += $"[{columnName}],";
+                }
+            }
+            columnsDmhd = columnsDmhd.TrimEnd(',');
+
+            // Chuẩn bị cột cho Dmhdct
+            string columnsDmhdct = "[stt_rec],[ma_ct],[ma_hd],";
+            foreach (DataRow row in structDmhdct.Rows)
+            {
+                string columnName = row["column_name"].ToString();
+                if (dataExcel.Columns.Contains(columnName) && columnName != "[stt_rec]")
+                {
+                    columnsDmhdct += $"[{columnName}],";
+                }
+            }
+            columnsDmhdct = columnsDmhdct.TrimEnd(',');
+
+            if (string.IsNullOrEmpty(columnsDmhd) && string.IsNullOrEmpty(columnsDmhdct))
+            {
+                myStateMN.SetNewThongbao(Lap["Upload error"] + ":" + Lap["Invalid column"] + "!");
+                return;
+            }
+            int i = 0;
+            DataTable tblDbfmau = myDb.GetTable("Delete from " + CurDmimex.Dbf_mau.Trim() + ";Select * from " + CurDmimex.Dbf_mau.Trim() + " where 1=0");
+            if (tblDbfmau != null)
+            {
+                DataRow rowDbfmau = tblDbfmau.NewRow();
+                rowDbfmau["stt"] = 0;
+                rowDbfmau["user_id"] = curUser.User_id;
+                rowDbfmau["user_id0"] = curUser.User_id;
+                rowDbfmau["date0"] = DateTime.Now.Date;
+                rowDbfmau["time0"] = DateTime.Now.ToString("HH:mm:ss");
+                int jrow = 0;
+                foreach (DataRow row in dataExcel.Rows)
+                {
+                    jrow++;
+                    CopyDataRow(row, rowDbfmau);
+                    rowDbfmau["stt"] = jrow;
+                    await myDb.InsertData(CurDmimex.Dbf_mau.Trim(), rowDbfmau);
+                }
+                //CheckData
+                string _ma_dvcs = myStateMN.GetMa_Dvcs();
+                string strsql = $"EXEC {CurDmimex.Postproc.Split(',')[0].ToString()} {curUser.User_id}, '{CurDmimex.Ma_qs.Trim()}', '{_ma_dvcs.Trim()}', '{CurDmimex.Overwrite.Trim()}'";
+                DataSet dataSet = myDb.LoadDataSet(strsql);
+                tbStt_rec = dataSet.Tables[dataSet.Tables.Count - 1].Copy();
+                tbDuLieuTrung = dataSet.Tables[dataSet.Tables.Count - 2].Copy();
+                bool flag = ShowErr(dataSet, CurDmimex.Ma_imex);
+                if (flag)
+                {
+                    myStateMN.SetNewThongbao(Lap[$"Import erro"]);
+                }
+                else
+                {
+                    await Post();
+                    myStateMN.SetNewThongbao(Lap["Data import success"] + " !");
+                }
+                await OnImportCompleted.InvokeAsync();
+                await Cancel();                
+            }        
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap[$"Import erro"] + ":" + ex.Message);
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+    public static DataTable tbStt_rec = new DataTable();
+    public static DataTable tbDuLieuTrung = new DataTable();
+    public static DataTable tb_Post_Error = new DataTable();
+    public virtual async Task Post()
+    {            
+        if (dataImport?.Tables["DataExcel"] == null ||
+            dataImport.Tables["StrucDmhd"] == null ||
+            dataImport.Tables["StrucDmhdct"] == null)
+        {
+            myStateMN.SetNewThongbao(Lap["Invalid table structure"]);
+            return;
+        }
+
+        try
+        {
+            var postProcName = CurDmimex.Postproc?.Split(',')[1]?.Trim();
+            if (string.IsNullOrEmpty(postProcName))
+            {
+                myStateMN.SetNewThongbao(Lap["Invalid post procedure"]);
+                return;
+            }
+
+            tb_Post_Error = tbStt_rec.Clone();
+            tb_Post_Error.Columns.Add("ly_do_loi", typeof(string));
+            int count = tbStt_rec.Rows.Count;           
+
+            bool hasError = false;
+            int processedCount = 0;
+
+            foreach (DataRow row in tbStt_rec.Rows)
+            {
+                try
+                {
+                    string sttRec = row["stt_rec"]?.ToString().Trim() ?? "";
+                    string storedProc = $"EXEC {postProcName} '{sttRec}'";
+
+                    await myDb.ExecuteSqlQueryAsync(storedProc);
+                    processedCount++;
+                }
+                catch (Exception ex)
+                {
+                    DataRow errorRow = tb_Post_Error.NewRow();
+                    errorRow.ItemArray = row.ItemArray;
+                    errorRow["ly_do_loi"] = ex.Message;
+                    tb_Post_Error.Rows.Add(errorRow);
+                    hasError = true;
+                }                
+            }
+
+            if (hasError)
+            {                
+                foreach (DataRow row2 in tbStt_rec.Rows)
+                {
+                    string CommandText = string.Format("EXEC [dbo].[DeleteVoucher] '{0}', '{1}'", CurDmimex.Ma_ct.Trim(), row2["stt_rec"].ToString().Trim());
+                    await myDb.ExecuteSqlQueryAsync(CommandText);
+                }
+                myStateMN.SetNewThongbao(Lap["Some records failed to post"]);
+                //Show bảng lỗi
+                string TitleErr = (!IsLangEn ? "Các chứng từ bị lỗi khi post" : "The post data errors");
+                string strbrowse = !IsLangEn ? "ly_do_loi:H=Lý do lỗi;ngay_ct:H=Ngày c.từ:130;ma_qs:H=Mã quyển c.từ  :130;so_ct:H=Số c.từ:130;stt_rec:0:H=stt_rec" : "ly_do_loi:H=Error description;ngay_ct:H=Voucher date:130;ma_qs:H=Book code:130;so_ct:H=Voucher no.:130;stt_rec:0:H=Stt_rec";
+                SisLib.ReportLib.BrowTable(myModal, tb_Post_Error, strbrowse, " : " + TitleErr, Lap["Cancel"]);
+            }
+            else if (CurDmimex.Overwrite?.Trim() == "1")
+            {     
+                foreach (DataRow row3 in tbDuLieuTrung.Rows)
+                {
+                    string CommandText = string.Format("EXEC [dbo].[DeleteVoucher] '{0}', '{1}'", CurDmimex.Ma_ct.Trim(), row3["stt_rec"].ToString().Trim());
+                    myDb.ExecuteSqlQueryAsync(CommandText);
+                }                          
+            }
+            else
+                myStateMN.SetNewThongbao(Lap["Post completed successfully"]);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Post error"] + ": " + ex.Message);
+        }    
+    }
+    public bool ShowErr(DataSet dsError, string maImex)
+    {
+        if (dsError != null && dsError.Tables.Count != 0 && ShowError is not null)
+        {
+            return ShowError(new DataErrArgs(dsError, maImex)); 
+        }
+
+        return false;
+    }
+    public static void CopyDataRow(DataRow source, DataRow target)
+    {
+        foreach (DataColumn col in source.Table.Columns)
+        {
+            if (target.Table.Columns.Contains(col.ColumnName))
+            {
+                object value = source[col.ColumnName];
+
+                if (value == DBNull.Value)
+                {
+                    target[col.ColumnName] = DBNull.Value;
+                    continue;
+                }
+
+                Type targetType = target.Table.Columns[col.ColumnName].DataType;
+
+                try
+                {                    
+                    if (value.GetType() == targetType)
+                    {
+                        target[col.ColumnName] = value;
+                    }
+                    else
+                    {                        
+                        var converted = Convert.ChangeType(value, targetType);
+                        target[col.ColumnName] = converted;
+                    }
+                }
+                catch
+                {                    
+                    target[col.ColumnName] = DBNull.Value;
+                }
+                bool isNumericType = targetType == typeof(byte) ||
+                                 targetType == typeof(short) ||
+                                 targetType == typeof(int) ||
+                                 targetType == typeof(long) ||
+                                 targetType == typeof(float) ||
+                                 targetType == typeof(double) ||
+                                 targetType == typeof(decimal);
+
+                if (isNumericType)
+                {
+                    if (target.IsNull(col.ColumnName))
+                    {
+                        target[col.ColumnName] = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    private object ConvertToPropertyType(object value, Type targetType)
+    {
+        if (targetType == typeof(string)) return value.ToString();
+        if (targetType == typeof(int) || targetType == typeof(int?)) return Convert.ToInt32(value);
+        if (targetType == typeof(decimal) || targetType == typeof(decimal?)) return Convert.ToDecimal(value);
+        if (targetType == typeof(DateTime) || targetType == typeof(DateTime?)) return Convert.ToDateTime(value);
+        if (targetType == typeof(bool) || targetType == typeof(bool?)) return Convert.ToBoolean(value);
+        return Convert.ChangeType(value, targetType);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {            
+            Pageobj = DotNetObjectReference.Create(this);
+            await JavacriptS.InvokeVoidAsync("SetPageObj", Pageobj);
+        }
+    }
+}

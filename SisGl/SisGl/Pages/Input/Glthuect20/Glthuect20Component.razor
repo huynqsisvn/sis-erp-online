@@ -1,0 +1,425 @@
+@page "/glthuect20"
+@page "/glthuect20/{Menu_id}"
+@inherits ListBaseComponent
+@attribute [Authorize(Roles = "admin,glthuect20")]
+
+<div class="d-flex mt-1 align-items-center gap-3">
+    <h6 class="mb-0">@Lap["From date"]:</h6>
+    <DxDateEdit Date="@Ngay_ct1" CssClass="w-auto" style="min-width:150px;" DateChanged="@((DateTime? newDate) => OnDateChanged(newDate, 1))" />
+    
+    <h6 class="mb-0">@Lap["To date"]:</h6>
+    <DxDateEdit Date="@Ngay_ct2" CssClass="w-auto" style="min-width:150px;" DateChanged="@((DateTime? newDate) => OnDateChanged(newDate, 2))" />
+    
+    <h6 class="mb-0">@Lap["Account"]:</h6>
+    <AutocompleteComponent Ma_dm="dmtk" @bind-Value="@Ma_tk" IsLangEn="@IsLangEn" CssClass="w-auto" SelectChanged="OnFilterChanged"/>
+</div>
+<hr style="margin:6px;padding:0px;height:1px;" />
+
+<div class="row mt-1" tabindex="0" @onkeydown="OnKeyDown" @onkeydown:preventDefault="true">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@if (IsShowFrm && FrmType != null)
+{
+    <DxPopup @bind-Visible="@IsShowFrm" ShowCloseButton="false" CloseOnOutsideClick="false"
+              Width="80vw"
+              MinWidth="900px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+<style>
+    .grid0-frm-height {
+        height: 75vh;
+    }
+</style>
+
+@code {
+    public string mPage = "glthuect20";
+    public string Ma_ct { get; set; } = "T02";
+    public string Ma_tk { get; set; } = "";
+    public DateTime? Ngay_ct1 { get; set; }
+    public DateTime? Ngay_ct2 { get; set; }
+    string Ma_dvcs = "";
+
+    protected override void OnInitialized()
+    {
+        mPage = "glthuect20";
+        sqlTableName = "ctgt20";
+        sqlTableView = "v_ctgt20";
+        SqlTableKey = "stt_rec";
+        SqlItemName = "so_ct";
+        FrmType = typeof(EditCtgt20);
+
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wg.tc.05";
+
+        var today = DateTime.Today;
+        Ngay_ct1 = myStateMN.GetStartDate();
+        Ngay_ct2 = myStateMN.GetEndDate();
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", curCommand.Ma_phan_he.Trim().ToLower(), UserLang.Trim()));
+            
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true, "F4"));
+                myStateMN.SetToolBar(new MyToolbar("Copy", false));
+                myStateMN.SetToolBar(new MyToolbar("Import", false));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+                myStateMN.SetToolBar(new MyToolbar("Change", false));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Aproval", false));
+                myStateMN.SetToolBar(new MyToolbar("Print", false));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Search", false));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            myStateMN.OnDvcsChanged += OnDvcsChanged;
+
+            Ma_dvcs = myStateMN.GetMa_Dvcs();
+            Ma_dvcs = Ma_dvcs == "ALL" ? "" : Ma_dvcs;
+            
+            if (curCommand != null && !string.IsNullOrEmpty(curCommand.Ma_ct))
+            {
+                Ma_ct = curCommand.Ma_ct.Trim();
+            }
+
+            await Loaddata();
+            StateHasChanged();
+        }
+    }
+
+    public virtual void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Them();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+        }
+    }
+
+    public async void CloseForm()
+    {
+        IsShowFrm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            fbrowse = IsLangEn ? curCommand.Ebrowse1 : curCommand.Vbrowse1;
+            Page_size = int.Parse(myOption.GetOptionsValue("M_GRID_NROW").Trim());
+        }
+        StateHasChanged();
+    }
+
+    public override async Task Loaddata()
+    {
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs.Equals("ALL"))
+        {
+            Ma_dvcs = "";
+        }
+
+        string preFilter = $" ma_ct = '{Ma_ct}' ";
+        preFilter += $" AND ma_dvcs LIKE '{Ma_dvcs}%'";
+        
+        if (Ngay_ct1.HasValue)
+            preFilter += $" AND ngay_ct >= '{Ngay_ct1.Value:yyyyMMdd}'";
+        
+        if (Ngay_ct2.HasValue)
+            preFilter += $" AND ngay_ct <= '{Ngay_ct2.Value:yyyyMMdd}'";
+        
+        if (!string.IsNullOrEmpty(Ma_tk))
+            preFilter += $" AND (tk_thue_co LIKE '{Ma_tk.Trim()}%' OR tk_du LIKE '{Ma_tk.Trim()}%')";
+
+        DataSet dsList = await myDb.LoadDataset($"SELECT * FROM {sqlTableView} WHERE {preFilter} ORDER BY ngay_ct DESC, so_ct DESC");
+        TblData = dsList.Tables[0];
+
+        if (TblData.DefaultView.Count > 0)
+            SelectedItem = TblData.DefaultView[0];
+
+        if (oBrowse != null)
+            await oBrowse.FocusGridAsync();
+        StateHasChanged();
+    }
+
+    async void OnFilterChanged(ExpandoObject value)
+    {
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private async void OnDateChanged(DateTime? newDate, int fieldType)
+    {
+        if (fieldType == 1)
+            Ngay_ct1 = newDate;
+        else if (fieldType == 2)
+            Ngay_ct2 = newDate;
+        
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    private bool CheckDataEntryLock()
+    {
+        try
+        {
+            DateTime M_NGAY_DONG_SO = Convert.ToDateTime(mySysvar.GetSysVar("M_NGAY_DONG_SO"));
+            DateTime checkDate = Ngay_ct1 ?? DateTime.Today;
+
+            if (checkDate <= M_NGAY_DONG_SO)
+            {
+                myStateMN.SetNewThongbao(Lap["Data is locked, cannot be edited!"]);
+                return true;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    public virtual void V_Them()
+    {
+        if (CheckDataEntryLock())
+            return;
+
+        Ma_dvcs = myStateMN.GetMa_Dvcs();
+        if (string.IsNullOrEmpty(Ma_dvcs) || Ma_dvcs.Equals("ALL"))
+        {
+            myStateMN.SetNewThongbao(Lap["Please, select Unit code"] + "!");
+            return;
+        }
+
+        Par.Clear();
+        Par.Add("Ma_ma", (object)"");
+        Par.Add("Menu_id", (object)Menu_id);
+        Par.Add("Ma_ct", (object)Ma_ct);
+        Par.Add("ShowAdd", (object)true);
+        Par.Add("curActionTask", (object)ActionTask.New);
+        Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    public override void V_Sua()
+    {
+        if (CheckDataEntryLock())
+            return;
+
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            // Check if it's the correct voucher type
+            string ma_ct_check = rview["ma_ct"].ToString().Trim();
+            if (ma_ct_check != Ma_ct)
+            {
+                myStateMN.SetNewThongbao(Lap["This VAT invoice cannot be edited here"] + "!");
+                return;
+            }
+
+            string stt_rec = rview["stt_rec"].ToString().Trim();
+
+            Par.Clear();
+            Par.Add("Ma_ma", (object)stt_rec);
+            Par.Add("Menu_id", (object)Menu_id);
+            Par.Add("Ma_ct", (object)Ma_ct);
+            Par.Add("ShowAdd", (object)true);
+            Par.Add("curActionTask", (object)ActionTask.Edit);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public virtual void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string stt_rec = rview["stt_rec"].ToString().Trim();
+
+            Par.Clear();
+            Par.Add("Ma_ma", (object)stt_rec);
+            Par.Add("Menu_id", (object)Menu_id);
+            Par.Add("Ma_ct", (object)Ma_ct);
+            Par.Add("ShowAdd", (object)true);
+            Par.Add("curActionTask", (object)ActionTask.View);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    public virtual async void V_Xoa()
+    {
+        if (CheckDataEntryLock())
+            return;
+
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            // Check if it's the correct voucher type
+            string ma_ct_check = rview["ma_ct"].ToString().Trim();
+            if (ma_ct_check != Ma_ct)
+            {
+                myStateMN.SetNewThongbao(Lap["This VAT invoice cannot be deleted here"] + "!");
+                return;
+            }
+
+            string stt_rec = rview["stt_rec"].ToString().Trim();
+            string so_ct = rview["so_ct"].ToString().Trim();
+
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = String.Format(Lap["Do you want to delete :{0} ?"], so_ct),
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["Yes"],
+                CancelButtonText = Lap["No"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger
+            });
+
+            if (confirm)
+            {
+                await DeleteRecord(stt_rec, so_ct);
+            }
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No data selected"]);
+    }
+
+    private async Task DeleteRecord(string stt_rec, string so_ct)
+    {
+        try
+        {
+            string sql = $"DELETE FROM {sqlTableName} WHERE stt_rec = @stt_rec";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@stt_rec", stt_rec }
+            };
+            await myDb.LoadDataset(sql, parameters);
+
+            await Loaddata();
+            string ToastMessage = String.Format(Lap["Delete successfully : {0}"], so_ct);
+            myStateMN.SetNewThongbao(ToastMessage);
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Delete failed"] + ": " + ex.Message);
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e is null) return;
+
+        if (string.Equals(e.Key, "F2", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F2", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_Xem();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        if (string.Equals(e.Key, "F3", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F3", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_Sua();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        if (string.Equals(e.Key, "F4", StringComparison.OrdinalIgnoreCase) || string.Equals(e.Code, "F4", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                V_Them();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+
+    private async void OnDvcsChanged(string _ma_dvcs)
+    {
+        if (!string.IsNullOrEmpty(_ma_dvcs) && !_ma_dvcs.Equals("ALL"))
+        {
+            await Loaddata();
+            StateHasChanged();
+        }
+        else
+        {
+            myStateMN.SetNewThongbao(Lap["Unit code is empty"] + "!");
+        }
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+        myStateMN.OnDvcsChanged -= OnDvcsChanged;
+    }
+}

@@ -1,0 +1,37 @@
+Thêm mới chức năng : Vào số dư ban đầu của các phân xưởng
+- Menu_id = 'wo.gs.02', Page ='copxddck'
+- Thư mục : \SisCo\SisCo\Pages\Opening\Copxddck\
+- Các Component kế thừa như các danh mục khác. Xem chức năng Vào số dư ban đầu của các kế ước : \SisCa\SisCa\Pages\Opening\Cakusd0\
+- Form thêm mới như ảnh, phần lọc theo ngày, tài khoản như ảnh
+- Tham khảo chức năng đã làm trên wpf ở project COPXSD0, không build lại các project trên Wpf => quan trọng
+- Ko cần viết file .md nhiều, không viết file .sql, chỉ cần 1 README.md ở dạng đơn giản => quan trọng
+- Model ở dạng đơn giản, không có Requirement, length.
+- Bảng dữ liệu đã có, không cần tạo các query liên quan SQL server:
+CREATE TABLE [dbo].[cdddpx](
+	[ngay] [dbo].[udt_ngay_ct] NULL,
+	[tk] [dbo].[udt_tk] NULL,
+	[ma_px] [dbo].[udt_ma_px] NULL,
+	[tien] [dbo].[udt_tien] NULL,
+	[tien_nt] [dbo].[udt_tien_nt] NULL,
+	[date] [dbo].[udt_ngay_ct] NULL,
+	[time] [dbo].[udt_time] NULL,
+	[user_id] [dbo].[udt_user_id] NULL,
+	[date0] [dbo].[udt_ngay_ct] NULL,
+	[time0] [dbo].[udt_time] NULL,
+	[user_id0] [dbo].[udt_user_id] NULL,
+	[status] [char](1) NULL,
+	[ma_dvcs] [dbo].[udt_ma_dvcs] NULL,
+	[user_name] [dbo].[udt_user_name] NULL,
+	[user_name0] [dbo].[udt_user_name] NULL
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[cdddpx] ADD  CONSTRAINT [DF_cdddpx_tien]  DEFAULT ((0)) FOR [tien]
+GO
+
+ALTER TABLE [dbo].[cdddpx] ADD  CONSTRAINT [DF_cdddpx_tien_nt]  DEFAULT ((0)) FOR [tien_nt]
+GO
+
+
+
+

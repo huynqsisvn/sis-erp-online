@@ -1,0 +1,539 @@
+@page "/hrqtdc"
+@page "/hrqtdc/{Menu_id}"
+@inherits ListBaseComponent
+@using SisHr.Pages.Input.HRQTDC
+@attribute [Authorize(Roles = "admin,hrqtdc")]
+
+<div class="d-flex mt-1 align-items-center gap-3">
+    <h6 class="mb-0">@Lap["Employee code"]</h6>
+    <AutocompleteComponent Ma_dm="dmns" @bind-Value="@M_EMP_ID" Filter="status = 1" SelectChanged="EmpFilter_Changed" CssClass="w-25" />
+</div>
+<hr style="margin:6px;padding:0px;height:1px;" />
+<div class="row mt-1" tabindex="0" onkeydown="_handleFunctionKeys(event);">
+    <FrmBrowseComponent @ref="oBrowse" TblData="@TblData" Fbrowse="@fbrowse" Page_size="@Page_size" SelectItem="CurItem" OnRowDbClick="@OnRDBClick" IsLangEn="@IsLangEn"></FrmBrowseComponent>
+</div>
+
+@* ================================================================
+   POPUP FORM ADD/EDIT/VIEW
+   ================================================================ *@
+@if (IsShowFrm && FrmType != null)
+{
+    <DxWindow @bind-Visible="@IsShowFrm"
+              CloseOnEscape="true"
+              Width="30vw"
+              MinWidth="300px"
+              Scrollable="true"
+              MaxHeight="98vh"
+              AllowResize="true"
+              AllowDrag="true"
+              AllowDragByHeaderOnly="true"
+              ShowFooter="false">
+        <BodyTemplate>
+            <DynamicComponent Type="@FrmType" Parameters="@Par" />
+        </BodyTemplate>
+    </DxWindow>
+}
+
+@* ================================================================
+   POPUP PRINT
+   ================================================================ *@
+@if (frmPrintVisible)
+{
+    <DxPopup @ref="popPrint"
+             CloseOnOutsideClick="false"
+             CssClass="dxPopup"
+             @bind-Visible="@frmPrintVisible"
+             Width="80%" Height="90%"
+             ShowFooter="false"
+             HeaderText="@Lap["Print employee transfer"]">
+        <BodyTemplate>
+            <ReportOptionComponent LSItems="@LsData"
+                                   Menu_id="@Menu_id.Replace('_', '.')"
+                                   OnBack="@(() => { frmPrintVisible = false; StateHasChanged(); })" />
+        </BodyTemplate>
+    </DxPopup>
+}
+
+@code {
+    // ===================================================
+    // LOCAL VARIABLES
+    // ===================================================
+    private DxPopup popPrint;
+    private bool frmPrintVisible = false;
+    private List<HrqtdcPrintModel> LsData;
+
+    private string preFilter = "";
+    private string _EMP_ID;
+
+    public string M_EMP_ID
+    {
+        get { return _EMP_ID; }
+        set
+        {
+            if (_EMP_ID != value)
+            {
+                _EMP_ID = value;
+                Loaddata();
+            }
+        }
+    }
+
+    public DotNetObjectReference<Hrqtdc> Pageobj;
+    private string ActiveComponentId = "oBrowse";
+
+    // ===================================================
+    // INITIALIZATION
+    // ===================================================
+    protected override void OnInitialized()
+    {
+        mPage = "hrqtdc";
+        editPage = "edithrqtdc";
+        IsShowCopy = false;
+        IsShowImport = false;
+        sqlTableName = "dmqtdc";
+        sqlTableView = "v_dmqtdc";
+        SqlTableKey = "qtdcid";
+        SqlItemName = "ma_ns";
+
+        FrmType = typeof(EditHrqtdc);
+        if (string.IsNullOrEmpty(Menu_id))
+            Menu_id = "wr.ct.11";
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Language();
+            await PageLoad();
+            await Lap.LoadLocalizationAsync(String.Format("{0}-{1}", String.IsNullOrEmpty(LanguageID) ? curCommand.Ma_phan_he.Trim().ToLower() : LanguageID, UserLang.Trim()));
+            string Menuid = Menu_id.Replace("_", ".");
+            if (curUser.Is_admin == 1 || curUser.CheckRight(Menuid, "VIEW"))
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", true));
+                myStateMN.SetToolBar(new MyToolbar("New", true, "F4"));
+                myStateMN.SetToolBar(new MyToolbar("Edit", true, "F3"));
+                myStateMN.SetToolBar(new MyToolbar("Save", false));
+                myStateMN.SetToolBar(new MyToolbar("Delete", true, "F8"));
+                myStateMN.SetToolBar(new MyToolbar("View", true, "F2"));
+                myStateMN.SetToolBar(new MyToolbar("Print", false, "F7"));
+                myStateMN.SetToolBar(new MyToolbar("Export", true));
+                myStateMN.SetToolBar(new MyToolbar("Quit", false));
+            }
+            else
+            {
+                myStateMN.SetToolBar(new MyToolbar("toolbar", false));
+            }
+            myStateMN.OnActionTaskChanged += OnActionTaskchanged;
+            myStateMN.OnLangguaChanged += OnLangguachange;
+            Pageobj = DotNetObjectReference.Create(this);
+            await SetActiveComponentIdAsync("oBrowse");
+            M_EMP_ID = "";
+            await Language();
+        }
+    }
+
+    // ===================================================
+    // PAGELOAD
+    // ===================================================
+    public override async Task PageLoad()
+    {
+        curCommand = await myCommand.GetSubMenuBymenuId(Menu_id.Replace("_", "."));
+        if (curCommand != null)
+        {
+            fbrowse = IsLangEn ? curCommand.Vbrowse2 : curCommand.Vbrowse1;
+            Page_size = int.Parse(myOption.GetOptionsValue("M_GRID_NROW").Trim());
+            editPage = "";
+        }
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // LOAD DATA
+    // ===================================================
+    public override async Task Loaddata()
+    {
+        try
+        {
+            SelectedItem = null;
+            preFilter = "1=1";
+
+            if (!String.IsNullOrEmpty(M_EMP_ID))
+            {
+                preFilter += " AND ma_ns LIKE '" + M_EMP_ID.Trim() + "%'";
+            }
+
+            string sql = "SELECT * FROM " + sqlTableView + " WHERE " + preFilter;
+
+            DataSet dsList = await myDb.LoadDataset(sql);
+            if (dsList != null && dsList.Tables.Count > 0)
+            {
+                TblData = dsList.Tables[0];
+                if (TblData.DefaultView.Count > 0)
+                    SelectedItem = TblData.DefaultView[0];
+            }
+
+            if (oBrowse != null)
+                await oBrowse.FocusGridAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Loaddata error: " + ex.Message);
+            myStateMN.SetNewThongbao(Lap["Error loading data"] + ": " + ex.Message);
+        }
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // KEYBOARD HOTKEYS
+    // ===================================================
+    [JSInvokable]
+    public async void GridFMode(string value, string Id)
+    {
+        if (!string.IsNullOrEmpty(Id) && Id.Equals("oBrowse"))
+            oBrowseHotKeyFunction(value);
+    }
+
+    void oBrowseHotKeyFunction(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Equals("F2")) V_Xem();
+            else if (value.Equals("F3")) V_Sua();
+            else if (value.Equals("F4")) V_Them();
+            else if (value.Equals("F5")) StateHasChanged();
+            else if (value.Equals("F7")) DoPrint();
+            else if (value.Equals("F8")) V_Xoa();
+        }
+    }
+
+    private async Task SetActiveComponentIdAsync(string id)
+    {
+        try
+        {
+            ActiveComponentId = id ?? ActiveComponentId;
+            if (Pageobj != null)
+                await JavacriptS.InvokeVoidAsync("SetPageFModeObj", Pageobj, ActiveComponentId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SetActiveComponentIdAsync error: " + ex.Message);
+        }
+    }
+
+    // ===================================================
+    // HANDLE TOOLBAR ACTIONS
+    // ===================================================
+    public override void OnActionTaskchanged(ActionTask ac)
+    {
+        switch (ac)
+        {
+            case ActionTask.New:
+                myStateMN.SetCurrentActionTask(ActionTask.New);
+                V_Them();
+                break;
+            case ActionTask.Edit:
+                myStateMN.SetCurrentActionTask(ActionTask.Edit);
+                V_Sua();
+                break;
+            case ActionTask.View:
+                myStateMN.SetCurrentActionTask(ActionTask.View);
+                V_Xem();
+                break;
+            case ActionTask.Delete:
+                V_Xoa();
+                break;
+            case ActionTask.Export:
+                ExportData(1);
+                break;
+            case ActionTask.Print:
+                DoPrint();
+                StateHasChanged();
+                break;
+        }
+    }
+
+    // ===================================================
+    // ADD NEW
+    // ===================================================
+    public virtual void V_Them()
+    {
+        string strEmpId = M_EMP_ID;
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+            strEmpId = rview["ma_ns"].ToString().Trim();
+
+        if (string.IsNullOrEmpty(strEmpId))
+        {
+            myStateMN.SetNewThongbao(Lap["Please select an employee before adding new employee transfer!"] + "!");
+            return;
+        }
+
+        Par.Clear();
+        Par.Add("Ma_ma", (object)strEmpId);
+        Par.Add("Menu_id", (object)Menu_id);
+        Par.Add("ShowAdd", (object)true);
+        Par.Add("curActionTask", (object)ActionTask.New);
+        Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+        IsShowFrm = true;
+        StateHasChanged();
+    }
+
+    // ===================================================
+    // EDIT
+    // ===================================================
+    public override void V_Sua()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string qtdcid = rview["qtdcid"].ToString().Trim();
+            Par.Clear();
+            Par.Add("Ma_ma", (object)qtdcid);
+            Par.Add("Menu_id", (object)Menu_id);
+            Par.Add("ShowAdd", (object)true);
+            Par.Add("curActionTask", (object)ActionTask.Edit);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No row selected!"] + "!");
+    }
+
+    // ===================================================
+    // VIEW
+    // ===================================================
+    public virtual void V_Xem()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string qtdcid = rview["qtdcid"].ToString().Trim();
+            Par.Clear();
+            Par.Add("Ma_ma", (object)qtdcid);
+            Par.Add("Menu_id", (object)Menu_id);
+            Par.Add("ShowAdd", (object)true);
+            Par.Add("curActionTask", (object)ActionTask.View);
+            Par.Add("OnClose", EventCallback.Factory.Create(this, CloseForm));
+            IsShowFrm = true;
+            StateHasChanged();
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No row selected!"] + "!");
+    }
+
+    // ===================================================
+    // DELETE
+    // ===================================================
+    public virtual async void V_Xoa()
+    {
+        DataRowView rview = (DataRowView)SelectedItem;
+        if (rview != null)
+        {
+            string qtdcid = rview["qtdcid"].ToString().Trim();
+            string displayValue = $"{rview["ma_ns"]}";
+
+            var confirm = await myDlSvc.ConfirmAsync(new MessageBoxOptions
+            {
+                Text = String.Format(Lap["Do you want to delete :{0} ?"], displayValue),
+                Title = Lap["Confirm deletion of list"],
+                OkButtonText = Lap["Yes"],
+                CancelButtonText = Lap["No"],
+                ShowIcon = true,
+                ShowCloseButton = false,
+                RenderStyle = MessageBoxRenderStyle.Danger
+            });
+
+            if (confirm)
+                await DeleteRecord(qtdcid);
+        }
+        else
+            myStateMN.SetNewThongbao(Lap["No row selected!"] + "!");
+    }
+
+    private async Task DeleteRecord(string qtdcid)
+    {
+        try
+        {
+            string safe = qtdcid.Replace("'", "''");
+            string sql = $"DELETE FROM {sqlTableName} WHERE qtdcid = '{safe}'";
+            await myDb.ExecuteSqlQueryAsync(sql);
+            await Loaddata();
+            myStateMN.SetNewThongbao(String.Format(Lap["Delete successfully : {0}"], qtdcid));
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Delete failed"] + ": " + ex.Message);
+        }
+    }
+
+    // ===================================================
+    // PRINT
+    // ===================================================
+    private void DoPrint()
+    {
+        if (TblData == null || TblData.Rows.Count == 0)
+        {
+            myStateMN.SetNewThongbao(Lap["No data to print"]);
+            return;
+        }
+
+        try
+        {
+            LsData = new List<HrqtdcPrintModel>();
+
+            // Get all data rows from view for printing
+            string sql = $"SELECT * FROM {sqlTableView} WHERE {preFilter}";
+            DataTable dtFull = myDb.GetTable(sql);
+
+            if (dtFull != null && dtFull.Rows.Count > 0)
+            {
+                // Create list of rows first
+                List<HrqtdcPrintRow> lsRows = new List<HrqtdcPrintRow>();
+                
+                for (int i = 0; i < dtFull.Rows.Count; i++)
+                {
+                    DataRow dr = dtFull.Rows[i];
+                    var row = new HrqtdcPrintRow
+                    {
+                        Stt = i + 1,
+                        Qtdcid = dr["qtdcid"]?.ToString()?.Trim() ?? "",
+                        Ma_ns = dr["ma_ns"]?.ToString()?.Trim() ?? "",
+                        Ten_ns = GetColumnValue(dr, "ten_ns", ""),
+                        Ngay_dc_cu = dr["ngay_dc_cu"] != DBNull.Value ? (DateTime?)dr["ngay_dc_cu"] : null,
+                        Ma_bpns_cu = dr["ma_bpns_cu"]?.ToString()?.Trim() ?? "",
+                        Ten_bpns_cu = GetDmBpnsTen(dr["ma_bpns_cu"]?.ToString()?.Trim() ?? ""),
+                        Ma_cv_cu = dr["ma_cv_cu"]?.ToString()?.Trim() ?? "",
+                        Ten_cv_cu = GetDmCvTen(dr["ma_cv_cu"]?.ToString()?.Trim() ?? ""),
+                        Ma_cd_cu = dr["ma_cd_cu"]?.ToString()?.Trim() ?? "",
+                        Ten_cd_cu = GetDmCdTen(dr["ma_cd_cu"]?.ToString()?.Trim() ?? ""),
+                        Ghi_chu_cu = GetColumnValue(dr, "ghi_chu_cu", ""),
+                        Ngay_dc_moi = dr["ngay_dc_moi"] != DBNull.Value ? (DateTime?)dr["ngay_dc_moi"] : null,
+                        Ma_bpns_moi = dr["ma_bpns_moi"]?.ToString()?.Trim() ?? "",
+                        Ten_bpns_moi = GetDmBpnsTen(dr["ma_bpns_moi"]?.ToString()?.Trim() ?? ""),
+                        Ma_cv_moi = dr["ma_cv_moi"]?.ToString()?.Trim() ?? "",
+                        Ten_cv_moi = GetDmCvTen(dr["ma_cv_moi"]?.ToString()?.Trim() ?? ""),
+                        Ma_cd_moi = dr["ma_cd_moi"]?.ToString()?.Trim() ?? "",
+                        Ten_cd_moi = GetDmCdTen(dr["ma_cd_moi"]?.ToString()?.Trim() ?? ""),
+                        Ghi_chu_moi = GetColumnValue(dr, "ghi_chu_moi", ""),
+                        Date = dr["date"] != DBNull.Value ? (DateTime?)dr["date"] : null,
+                        Time = GetColumnValue(dr, "time", ""),
+                        User_id = dr["user_id"] != DBNull.Value ? (int?)dr["user_id"] : null,
+                        User_name = GetColumnValue(dr, "user_name", ""),
+                        Date0 = dr["date0"] != DBNull.Value ? (DateTime?)dr["date0"] : null,
+                        Time0 = GetColumnValue(dr, "time0", ""),
+                        User_id0 = dr["user_id0"] != DBNull.Value ? (int?)dr["user_id0"] : null,
+                        User_name0 = GetColumnValue(dr, "user_name0", ""),
+                        Tencty = myOption.GetOptionsValue("M_TEN_CTY")?.Trim() ?? "",
+                        Diachicty = myOption.GetOptionsValue("M_DIA_CHI2")?.Trim() ?? ""
+                    };
+                    lsRows.Add(row);
+                }
+
+                var model = new HrqtdcPrintModel
+                {
+                    LsData = lsRows
+                };
+
+                LsData.Add(model);
+                frmPrintVisible = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Print failed"] + ": " + ex.Message);
+        }
+    }
+
+    // Helper methods to get data safely
+    private string GetColumnValue(DataRow dr, string columnName, string defaultValue)
+    {
+        if (dr.Table.Columns.Contains(columnName) && dr[columnName] != DBNull.Value)
+            return dr[columnName]?.ToString()?.Trim() ?? defaultValue;
+        return defaultValue;
+    }
+
+    private string GetDmBpnsTen(string maBpns)
+    {
+        if (string.IsNullOrEmpty(maBpns)) return "";
+        try
+        {
+            string safe = maBpns.Replace("'", "''");
+            string colName = IsLangEn ? "ten_bpns2" : "ten_bpns";
+            string sql = $"SELECT {colName} as ten FROM dmbpns WHERE ma_bpns = '{safe}'";
+            DataTable dt = myDb.GetTable(sql);
+            return dt?.Rows.Count > 0 ? dt.Rows[0]["ten"]?.ToString()?.Trim() ?? "" : "";
+        }
+        catch { return ""; }
+    }
+
+    private string GetDmCvTen(string maCv)
+    {
+        if (string.IsNullOrEmpty(maCv)) return "";
+        try
+        {
+            string safe = maCv.Replace("'", "''");
+            string colName = IsLangEn ? "ten_cv2" : "ten_cv";
+            string sql = $"SELECT {colName} as ten FROM dmcv WHERE ma_cv = '{safe}'";
+            DataTable dt = myDb.GetTable(sql);
+            return dt?.Rows.Count > 0 ? dt.Rows[0]["ten"]?.ToString()?.Trim() ?? "" : "";
+        }
+        catch { return ""; }
+    }
+
+    private string GetDmCdTen(string maCd)
+    {
+        if (string.IsNullOrEmpty(maCd)) return "";
+        try
+        {
+            string safe = maCd.Replace("'", "''");
+            string colName = IsLangEn ? "ten_cd2" : "ten_cd";
+            string sql = $"SELECT {colName} as ten FROM dmcd WHERE ma_cd = '{safe}'";
+            DataTable dt = myDb.GetTable(sql);
+            return dt?.Rows.Count > 0 ? dt.Rows[0]["ten"]?.ToString()?.Trim() ?? "" : "";
+        }
+        catch { return ""; }
+    }
+
+    // ===================================================
+    // FILTER / CLOSE / EXPORT / DISPOSE
+    // ===================================================
+    void EmpFilter_Changed(ExpandoObject value) => Loaddata();
+
+    public async void CloseForm()
+    {
+        IsShowFrm = false;
+        await Loaddata();
+        StateHasChanged();
+    }
+
+    public override async void ExportData(int type)
+    {
+        try
+        {
+            if (TblData == null || TblData.Rows.Count == 0)
+            {
+                myStateMN.SetNewThongbao(Lap["No data to export"] + "!");
+                return;
+            }
+            
+            // Call FrmBrowseComponent's ExPortGrid method to export data
+            oBrowse.ExPortGrid(type);
+            myStateMN.SetNewThongbao(Lap["Export successfully"] + "!");
+        }
+        catch (Exception ex)
+        {
+            myStateMN.SetNewThongbao(Lap["Export failed"] + ": " + ex.Message);
+        }
+    }
+
+    public override async void Dispose()
+    {
+        myStateMN.OnActionTaskChanged -= OnActionTaskchanged;
+        myStateMN.OnLangguaChanged -= OnLangguachange;
+    }
+}
+
