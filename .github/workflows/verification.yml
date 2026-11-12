@@ -1,0 +1,119 @@
+# Kiểm chứng PR: dựng môi trường theo global.json, build, chạy test, lưu bằng chứng.
+# Workflow này chạy trên pull_request với quyền chỉ đọc, nên an toàn với PR từ fork.
+# Mọi action được ghim theo SHA commit (ghi chú phiên bản bên cạnh).
+name: Verification
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verification-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verification:
+    # Tên job chính là tên status check dùng trong ruleset: "verification".
+    name: verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      # Test ghi ảnh chụp (nếu có) vào thư mục này để được upload.
+      VERIFY_EVIDENCE_DIR: ${{ github.workspace }}/evidence/screenshots
+      TEST_FILTER: Category=Auth
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout head SHA của PR
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Chuẩn bị thư mục bằng chứng và xác nhận SHA
+        shell: bash
+        run: |
+          mkdir -p "$EVIDENCE_DIR/logs" "$EVIDENCE_DIR/test-results" "$VERIFY_EVIDENCE_DIR"
+          {
+            echo "head_sha_expected=$PR_HEAD_SHA"
+            echo "head_sha_checked_out=$(git rev-parse HEAD)"
+            echo "runner_image=${ImageOS:-unknown} ${ImageVersion:-unknown}"
+          } | tee "$EVIDENCE_DIR/logs/revision.txt"
+          test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
+
+      - name: Cài .NET SDK theo global.json
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Thông tin SDK
+        shell: bash
+        run: dotnet --info 2>&1 | tee "$EVIDENCE_DIR/logs/dotnet-info.log"
+
+      - name: Restore
+        shell: bash
+        run: |
+          set +e
+          dotnet restore SISERPSME.sln > "$EVIDENCE_DIR/logs/restore.log" 2>&1
+          rc=$?
+          echo "restore exit: $rc" | tee "$EVIDENCE_DIR/logs/restore.exit"
+          [ "$rc" -eq 0 ] || tail -n 80 "$EVIDENCE_DIR/logs/restore.log"
+          exit "$rc"
+
+      - name: Build
+        shell: bash
+        run: |
+          set +e
+          dotnet build SISERPSME.sln --no-restore > "$EVIDENCE_DIR/logs/build.log" 2>&1
+          rc=$?
+          echo "build exit: $rc" | tee "$EVIDENCE_DIR/logs/build.exit"
+          [ "$rc" -eq 0 ] || grep -E ' error ' "$EVIDENCE_DIR/logs/build.log" | sort -u | head -n 40
+          exit "$rc"
+
+      - name: Test
+        shell: bash
+        run: |
+          set +e
+          dotnet test SISERPSME.sln --no-build --filter "$TEST_FILTER" \
+            --logger "trx;LogFileName=tests.trx" \
+            --results-directory "$EVIDENCE_DIR/test-results" \
+            > "$EVIDENCE_DIR/logs/test.log" 2>&1
+          rc=$?
+          echo "test exit: $rc" | tee "$EVIDENCE_DIR/logs/test.exit"
+          [ "$rc" -eq 0 ] || tail -n 80 "$EVIDENCE_DIR/logs/test.log"
+          exit "$rc"
+
+      # dotnet test có thể thoát 0 khi không có project test nào. Không coi đó là đạt.
+      - name: Yêu cầu có ít nhất một test đã chạy
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=("$EVIDENCE_DIR"/test-results/*.trx)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::Không có kết quả test (.trx): repo chưa có project test khớp filter '$TEST_FILTER'"
+            exit 1
+          fi
+          total=0
+          for f in "${files[@]}"; do
+            n="$(grep -o -m1 'Counters total="[0-9]*"' "$f" | grep -o '[0-9]*' || true)"
+            total=$((total + ${n:-0}))
+          done
+          echo "tổng số test đã chạy: $total" | tee "$EVIDENCE_DIR/logs/test-count.txt"
+          if [ "$total" -eq 0 ]; then
+            echo "::error::0 test khớp filter '$TEST_FILTER'"
+            exit 1
+          fi
+
+      - name: Upload log và ảnh chụp
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verification-evidence-pr${{ github.event.pull_request.number }}-attempt${{ github.run_attempt }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 14
